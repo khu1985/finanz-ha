@@ -1,8 +1,7 @@
 """Rechenkern Steuern.
 
 - Direkte Bundessteuer exakt nach Tarif (aus kennzahlen), inkl. Elterntarif und Höchstsatz.
-- Staats- und Gemeindesteuer als lineare Näherung um die letzte Veranlagung:
-  Steuer(x) = Steuer_ref + Grenzsteuersatz × (x − Einkommen_ref).
+- Staats- und Gemeindesteuer als Potenzkurve durch die letzte Veranlagung (Steuer und Grenzsteuersatz).
 - Kapitalleistungen: Bund 1/5 des Tarifs (DBG Art. 38), Kanton mit effektivem Satz aus Tabelle.
 - Verheiratete werden gemeinsam besteuert (eine Steuereinheit), Konkubinatspaare getrennt
   (je eine Steuereinheit unter steuern.personen).
@@ -40,10 +39,21 @@ def bundessteuer(einkommen: float, verheiratet: bool, kinder: int, kz: dict) -> 
 
 
 def kantonssteuer(einkommen: float, st: dict) -> float:
+    """Staats- und Gemeindesteuer als Potenzkurve durch die letzte Veranlagung.
+
+    Steuer(x) = S · (x / E)^e mit e = Grenzsteuersatz · E / S: trifft die veranlagte Steuer S beim Einkommen E
+    und dort genau den Grenzsteuersatz; darunter sinkt die Steuer progressiv statt linear (auch grosse Abzüge
+    wie PK-Einkäufe werden so realistisch bewertet).
+    """
     ref_e = float(st.get("steuerbar_kanton", 0))
     ref_s = float(st.get("steuer_kanton_gemeinde", 0))
     g = float(st.get("grenzsteuersatz_kanton", 0)) / 100
-    return round(max(0.0, ref_s + g * (einkommen - ref_e)), 2)
+    if einkommen <= 0:
+        return 0.0
+    if ref_e <= 0 or ref_s <= 0:
+        return round(max(0.0, ref_s + g * (einkommen - ref_e)), 2)
+    exponent = max(1.0, g * ref_e / ref_s)
+    return round(ref_s * (einkommen / ref_e) ** exponent, 2)
 
 
 def anzahl_kinder(k: dict) -> int:

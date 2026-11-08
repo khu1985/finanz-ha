@@ -91,3 +91,33 @@ Kontoinhaber: Person 2
 Einzahlungen 2025 7'258.00
 Gesamtvermögen 48'500.25
 """
+
+STEUERERKLAERUNG = """Kanton Muster – Steuererklärung 2025
+Steuerperiode 2025
+Steuerpflichtige Person: Person 1
+Ziffer 100 Nettolohn aus unselbständiger Erwerbstätigkeit 150'000
+Ziffer 180 Eigenmietwert 20'000
+Ziffer 185 Mietertrag 15'300
+Total der Einkünfte 185'300
+Ziffer 300 Beiträge Säule 3a 5'000
+Ziffer 310 Schuldzinsen 9'000
+Ziffer 320 Liegenschaftsunterhalt 4'000
+Ziffer 330 Berufsauslagen 4'500
+Steuerbares Einkommen Staat 140'000 Bund 145'000
+Steuerbares Vermögen 600'000
+"""
+
+VERANLAGUNG_2025 = """Veranlagungsverfügung Steuerperiode 2025
+Steuerpflichtige Person: Person 1
+Steuerbares Einkommen Staat 141'200 Bund 145'000
+Steuerbares Vermögen 600'000
+Staatssteuer 14'000.00
+Gemeindesteuer 9'000.00
+Direkte Bundessteuer 7'500.00
+"""
+
+VERANLAGUNG_2024 = """Veranlagungsverfügung Steuerperiode 2024
+Steuerpflichtige Person: Person 1
+Steuerbares Einkommen Staat 131'200 Bund 135'000
+Staats- und Gemeindesteuer 20'200.00
+"""

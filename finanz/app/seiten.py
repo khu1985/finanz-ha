@@ -12,6 +12,7 @@ import vermoegen as vm
 import versicherungen as vi
 import berater as br
 import dokumente as dk
+import steuerdokumente as sd
 import vorsorge as vs
 import wohnen as wo
 
@@ -127,6 +128,7 @@ STATUS_TEXTE = [
     ("/ki", "KI liest das Dokument … das kann eine Minute dauern."),
     ("versicherungen/hochladen", "Verträge werden hochgeladen und analysiert …"),
     ("vorsorge/hochladen", "Vorsorgedokumente werden hochgeladen und analysiert …"),
+    ("steuern/hochladen", "Steuerdokumente werden hochgeladen und analysiert …"),
     ("importordner", "Import-Ordner wird eingelesen …"),
     ("import", "Daten werden importiert …"),
     ("liste", "Liste wird importiert …"),
@@ -389,7 +391,7 @@ def steuern(k: dict, db) -> str:
                 '<p class="leise">Bund: ein Fünftel des ordentlichen Tarifs. Kanton: effektiver Satz aus der Tabelle '
                 'unter Einstellungen (Schätzung – mit dem kantonalen Rechner prüfen). Ehepaare werden pro Jahr addiert, '
                 'Konkubinatspaare getrennt besteuert.</p>')
-    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + karte("Abzüge simulieren", abzuege) + karte(
+    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + steuerdokumente_karten(k, db) + karte("Abzüge simulieren", abzuege) + karte(
         "Kapitalbezug PK und 3a", kap_html)
 
 
@@ -590,7 +592,8 @@ Studio Code Server) in den Ordner <code>/addon_configs/…_finanz/import/</code>
 Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erledigte Dateien nach <code>import/erledigt/</code>.</p>
 <ul class="hinweise"><li><code>finanz.yaml</code> – ersetzt die ganze Konfiguration (vorherige Fassung wird gesichert)</li>
 <li><code>vermoegen*.csv</code> – Konten und Saldi · <code>versicherungen*.csv</code> – Versicherungsliste</li>
-<li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
+<li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
+<code>veranlagung*.pdf</code> – Steuerdokumente · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
     return formular + karte("Import-Ordner", importieren) + karte("Experte", experte) + karte("Sichern und übertragen", datei)
 
@@ -760,7 +763,7 @@ def vorsorge_dokument(k: dict, db, did: int) -> str:
         haken = (f'<input type="checkbox" name="nimm_{s}" value="1" checked style="width:auto">'
                  if wert is not None and ziel else "")
         zeilen.append([haken, escape(beschr),
-                       f'<input name="wert_{s}" value="{"" if wert is None else f"{wert:g}"}" inputmode="decimal" style="max-width:140px">',
+                       f'<input name="wert_{s}" value="{"" if wert is None else f"{wert:g}"}" inputmode="decimal" style="max-width:140px;min-width:104px">',
                        aktuell])
     quelle = {"muster": "automatisch erkannt – bitte mit dem Dokument vergleichen", "ki": "per KI ausgelesen – bitte prüfen",
               "hand": "von Hand bearbeitet", "ohne Text": "kein Text im PDF (gescannt?) – Werte von Hand eintragen"}.get(d["quelle"], d["quelle"])
@@ -927,7 +930,7 @@ def statuszeile(k: dict, db) -> str:
     else:
         chips.append(("warn", "Noch keine Saldi"))
     chips.append(("", f"{len(vi.alle(db))} Verträge"))
-    chips.append(("", f"{len(dk.alle(db))} Vorsorgedokumente"))
+    chips.append(("", f"{len(dk.alle(db))} Vorsorge- und {len(sd.alle(db))} Steuerdokumente"))
     todo = konfig.konfig_pfad().read_text(encoding="utf-8").count("TODO") if konfig.konfig_pfad().exists() else 0
     if todo:
         chips.append(("warn", f"{todo} offene TODO in der Konfiguration"))
@@ -967,3 +970,106 @@ def aenderungen(k: dict, db) -> str:
     text = meta.changelog()
     text = "\n".join(z for z in text.splitlines() if not z.startswith("# "))
     return karte(f"Version {meta.version()}", f'<div class="antwort">{_absatz(text)}</div>')
+
+
+# ---------------------------------------------------------------- Steuerdokumente
+
+VERGLEICH_FELDER = ["steuerbar_kanton", "steuerbar_bund", "steuer_kanton_gemeinde", "bundessteuer", "steuerbares_vermoegen",
+                    "lohn_netto", "abzug_3a", "abzug_pk_einkauf", "schuldzinsen", "unterhalt_liegenschaft", "eigenmietwert",
+                    "mietertrag"]
+
+
+def steuerdokumente_karten(k: dict, db) -> str:
+    doks = sd.alle(db)
+    form = """<form method="post" action="steuern/hochladen" enctype="multipart/form-data">
+<p class="leise">Steuererklärungen, Veranlagungsverfügungen oder Steuerrechnungen als PDF (mehrere Jahre möglich). Die App
+erkennt Steuerperiode, steuerbares Einkommen Kanton/Bund, Steuerbeträge, Abzüge und Liegenschaftswerte, vergleicht die Jahre
+und übernimmt die Werte auf Wunsch in die Steuer-Einstellungen.</p>
+<div class="zeile"><input type="file" name="datei" accept=".pdf,.txt,application/pdf" multiple required style="max-width:360px">
+<button>Hochladen und analysieren</button></div></form>"""
+    if not doks:
+        return karte("Steuerdokumente", form)
+    zeilen = [[f'<a href="steuern/dokument/{d["id"]}">{d["jahr"] or "?"} · {escape(d["person"] or "Haushalt")}</a>',
+               escape(sd.TYPEN.get(d["typ"], d["typ"])), chf(d["werte"].get("steuerbar_kanton", 0)),
+               chf(d["werte"].get("steuer_kanton_gemeinde", 0) + d["werte"].get("bundessteuer", 0)),
+               "✓" if d["uebernommen"] else ""] for d in doks]
+    liste = tabelle(["Jahr · Person", "Art", "Steuerbar Kanton", "Steuern", "übernommen"], zeilen, zahlen_ab=2)
+    html = karte("Steuerdokumente", liste + form)
+    # Mehrjahresvergleich pro Person
+    for person, jahre in sd.vergleich(doks).items():
+        js = sorted(jahre)
+        felder = [f for f in VERGLEICH_FELDER if any(f in jahre[j] for j in js)]
+        if not felder:
+            continue
+        z = []
+        for f in felder:
+            werte = [jahre[j].get(f) for j in js]
+            delta = ""
+            if len(js) >= 2 and werte[-1] is not None and werte[-2] is not None:
+                delta = chf(werte[-1] - werte[-2], True)
+            z.append([escape(sd.FELDER[f][0])] + [chf(w) if w is not None else "–" for w in werte] + [delta])
+        grenz = sd.grenzsteuersatz(jahre)
+        zusatz = (f'<p>Geschätzter Grenzsteuersatz Kanton + Gemeinde aus den Veranlagungen: <b>{grenz:.1f} %</b>'
+                  ' – im Dokument übernehmen.</p>') if grenz else ""
+        html += karte(f"Vergleich {person}", tabelle(["Kennzahl"] + [str(j) for j in js] + ["Δ Vorjahr"], z) + zusatz
+                      + '<p class="leise">Pro Jahr zählt die Veranlagung, sonst die Steuererklärung.</p>')
+    abgl = sd.abgleich(doks)
+    if abgl:
+        html += karte("Erklärung und Veranlagung", hinweisliste(abgl))
+    return html
+
+
+def steuer_dokument(k: dict, db, did: int) -> str:
+    d = sd.einer(db, did)
+    if not d:
+        raise ValueError("Dokument nicht gefunden.")
+    typen = "".join(f'<option value="{t}"{" selected" if t == d["typ"] else ""}>{escape(n)}</option>' for t, n in sd.TYPEN.items())
+    namen = [p["name"] for p in k["personen"]]
+    pers = '<option value="">– Person wählen –</option>' + "".join(
+        f'<option{" selected" if vi.gleiche_person(n, d["person"]) else ""}>{escape(n)}</option>' for n in namen)
+    person = next((p for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), None)
+    einheit = st.einheit_von(k, person["name"] if person else None).st if person else {}
+    gleiche = [x for x in sd.alle(db) if vi.gleiche_person(x["person"] or "Haushalt", d["person"] or "Haushalt")]
+    grenz = sd.grenzsteuersatz({j: w for j, w in sd.vergleich(gleiche).get(d["person"] or "Haushalt", {}).items()})
+    zeilen = []
+    for s, (beschr, _) in sd.FELDER.items():
+        wert = d["werte"].get(s)
+        if wert is None and s not in ("steuerbar_kanton", "steuerbar_bund", "steuer_kanton_gemeinde", "bundessteuer"):
+            continue
+        ziel = sd.ZIELE.get(s, "")
+        aktuell = ""
+        if ziel.startswith("steuer:"):
+            aktuell = chf(einheit.get(ziel.split(":")[1], 0)) if einheit else ""
+        elif ziel.startswith("wohnen:"):
+            aktuell = chf(k["wohnen"].get(ziel.split(":")[1], 0))
+        elif ziel.startswith("person:") and person:
+            aktuell = chf(pfad_lesen(person, ziel.split(":")[1]) or 0)
+        haken = (f'<input type="checkbox" name="nimm_{s}" value="1" checked style="width:auto">' if wert is not None and ziel else "")
+        zeilen.append([haken, escape(beschr),
+                       f'<input name="wert_{s}" value="{"" if wert is None else f"{wert:g}"}" inputmode="decimal" style="max-width:140px;min-width:104px">',
+                       aktuell])
+    if grenz:
+        zeilen.append([f'<input type="checkbox" name="nimm_grenzsteuersatz" value="1" checked style="width:auto">',
+                       "Grenzsteuersatz Kanton + Gemeinde % (aus mehreren Jahren)", f"{grenz:.1f}",
+                       f'{einheit.get("grenzsteuersatz_kanton", "")} %' if einheit else ""])
+    quelle = {"muster": "automatisch erkannt – bitte mit dem Dokument vergleichen", "ki": "per KI ausgelesen – bitte prüfen",
+              "hand": "von Hand bearbeitet", "ohne Text": "kein Text im PDF (gescannt?) – Werte von Hand eintragen"}.get(d["quelle"], d["quelle"])
+    form = f"""<form method="post" action="steuern/dokument/{did}"><div class="felder">
+<label>Art<select name="typ">{typen}</select></label><label>Steuerperiode<input name="jahr" value="{d['jahr'] or ''}" inputmode="numeric"></label>
+<label>Person<select name="person">{pers}</select></label></div>
+{tabelle(["", "Wert", "Erkannt", "Heute in den Einstellungen"], zeilen, zahlen_ab=9)}
+<input type="hidden" name="grenz" value="{grenz or ''}">
+<div class="zeile"><button formaction="steuern/dokument/{did}/uebernehmen">Ausgewählte Werte übernehmen</button>
+<button class="zweit">Nur speichern</button><a class="knopf zweit" href="steuern/dokument/{did}/datei">Original öffnen</a></div></form>"""
+    ki = ""
+    if k.get("ki", {}).get("aktiv"):
+        ki = (f'<form method="post" action="steuern/dokument/{did}/ki"><div class="zeile"><button class="zweit">Mit KI auslesen'
+              '</button><span class="leise">Sendet den Text an die KI-Aufgabe von Home Assistant.</span></div></form>')
+    tipps = sd.hinweise(k, d) + [h for h in sd.abgleich(gleiche) if str(d["jahr"]) in h]
+    loeschen = (f'<form method="post" action="steuern/dokument/{did}/loeschen" onsubmit="return confirm(\'Dokument löschen?\')">'
+                '<button class="zweit">Dokument löschen</button></form>')
+    return (karte(f"{sd.TYPEN.get(d['typ'], d['typ'])} {d['jahr'] or ''}",
+                  f'<p class="leise">{escape(d["dateiname"])} · {escape(quelle)}</p>' + form + ki)
+            + (karte("Einschätzung", hinweisliste(tipps)) if tipps else "")
+            + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{escape(d["text"][:20000]) or "Kein Text."}</pre></details>')
+            + '<p><a href="steuern">← Steuern</a></p>' + loeschen)

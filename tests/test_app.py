@@ -135,3 +135,16 @@ def test_version_und_protokoll(tmp_path):
     e = meta.protokoll(log, "INFO")
     assert [x[1] for x in e] == ["ERROR", "INFO"] and "Traceback x" in e[0][2]
     assert len(meta.protokoll(log, "DEBUG")) == 3 and len(meta.protokoll(log, "ERROR")) == 1
+
+
+def test_steuerdokument_upload(server):
+    from policen import VERANLAGUNG_2025, pdf
+    code, ziel = _upload(f"{server}/steuern/hochladen", "datei", "veranlagung.pdf", pdf(VERANLAGUNG_2025))
+    assert ziel.startswith("/steuern/dokument/1")
+    html = urllib.request.urlopen(f"{server}/steuern/dokument/1").read().decode()
+    assert "Veranlagungsverfügung" in html and "141200" in html
+    code, ziel = _post(f"{server}/steuern/dokument/1/uebernehmen",
+                       {"typ": "veranlagung", "jahr": "2025", "person": "Person 1", "wert_steuerbar_kanton": "141200",
+                        "nimm_steuerbar_kanton": "1"})
+    assert code == 303 and konfig.laden()["steuern"]["steuerbar_kanton"] == 141_200   # verheiratet: Haushalt
+    assert "Vergleich" in urllib.request.urlopen(f"{server}/steuern").read().decode()

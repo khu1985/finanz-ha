@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.4.0 – 2026-11-08
+
+- **Steuerdokumente:** Steuererklärungen, Veranlagungsverfügungen und Steuerrechnungen hochladen; Erkennung von
+  Steuerperiode, Person, steuerbarem Einkommen Kanton/Bund, Vermögen, Steuerbeträgen, Eigenmietwert, Mietertrag und Abzügen
+- Mehrjahresvergleich pro Person, Grenzsteuersatz aus zwei Veranlagungen, Abgleich Erklärung ↔ Veranlagung
+- Hinweise zu 3a, PK-Einkauf, Liegenschaftsunterhalt, Eigenmietwert 2029, Mietertrag und Kinderabzug im Konkubinat
+- Übernahme in die Steuer-Einstellungen (auch neue Person bei Konkubinat), optional per KI auslesen
+- Berater erhalten die Steuerhistorie als Fakten; Import-Ordner erkennt steuer*.pdf und veranlagung*.pdf
+- Kantonssteuer als Potenzkurve statt linear: grosse Abzüge (z. B. PK-Einkauf) werden realistischer bewertet
+
 ## 0.3.0 – 2026-11-08
 
 - Version im Kopf und in der Fusszeile, Seite «Änderungen» mit diesem Changelog

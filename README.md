@@ -3,7 +3,7 @@
 Finanzplanung für einen Schweizer Haushalt (Ehepaar, Konkubinat oder Einzelperson): AHV, Pensionskasse, Säule 3a,
 Pensionslücke, Steuern (Bund nach Tarif, Kanton als Näherung, getrennt bei Konkubinat), Kapitalbezug gestaffelt,
 Tragbarkeit, Amortisation bis zur Fälligkeit, Wegfall des Eigenmietwerts ab 2029, Vermögensverlauf, Versicherungen
-mit Deckungscheck und Risiko-Analyse, Vorsorgedokumente hochladen und Anlageberater-Profile (optional mit KI). Bedienung und Rechenmodell siehe
+mit Deckungscheck und Risiko-Analyse, Vorsorge- und Steuerdokumente hochladen und Anlageberater-Profile (optional mit KI). Bedienung und Rechenmodell siehe
 [finanz/DOCS.md](finanz/DOCS.md) (in Home Assistant unter «Dokumentation»).
 
 > Keine Anlage-, Steuer- oder Rechtsberatung. Schätzungen mit vereinfachten Modellen.
@@ -63,6 +63,7 @@ flowchart TB
 | `finanz/app/vermoegen.py` | SQLite mit Konten und Saldi, CSV-Import, Nettovermögen, Verlauf |
 | `finanz/app/versicherungen.py` | Policen hochladen/importieren, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a- und IK-Auszug erkennen und übernehmen |
+| `finanz/app/steuerdokumente.py` | Steuererklärung/Veranlagung erkennen, Mehrjahresvergleich, Abgleich, Übernahme |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Aufträge und Antworten |
 | `finanz/app/importordner.py` | Import-Ordner für persönliche Dateien |
 | `finanz/apparmor.txt` | AppArmor-Profil |

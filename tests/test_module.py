@@ -118,7 +118,7 @@ def test_konkubinat_getrennte_steuern(konkubinat):
     assert s["einheiten"][0]["bund"] == round(st.bundessteuer(100_000, False, 1, kz))   # Elterntarif
     assert s["einheiten"][1]["bund"] == round(st.bundessteuer(100_000, False, 0, kz))   # Grundtarif
     assert s["einheiten"][0]["bund"] < s["einheiten"][1]["bund"]
-    assert st.ersparnis_abzug(konkubinat, 1000, "Person 2")["kanton"] == 220
+    assert st.ersparnis_abzug(konkubinat, 1000, "Person 2")["kanton"] == pytest.approx(220, abs=2)
     pks = [vs.pk(p, konkubinat) for p in konkubinat["personen"]]
     drei = [vs.saeule3a(p, konkubinat, 2026) for p in konkubinat["personen"]]
     v = st.kapitalbezug_varianten(konkubinat, pks, drei)
@@ -181,3 +181,41 @@ def test_importordner(daten, k):
     assert konfig.laden()["haushalt"]["name"] == "Import-Test"
     assert len(vi.alle(db)) == 2 and len(dk.alle(db)) == 1 and vm.nettovermoegen(db)["total"] == 1000
     assert not [p for p in imp.iterdir() if p.is_file()] and len(list((imp / "erledigt").iterdir())) == 5
+
+
+# ---------------------------------------------------------------- Steuerdokumente
+
+def test_steuerdokumente(konkubinat, db, tmp_path):
+    import steuerdokumente as sd
+    from policen import STEUERERKLAERUNG, VERANLAGUNG_2024, VERANLAGUNG_2025
+    ids = [sd.hochladen(db, tmp_path, n, pdf(t)) for n, t in
+           (("erklaerung.pdf", STEUERERKLAERUNG), ("v25.pdf", VERANLAGUNG_2025), ("v24.pdf", VERANLAGUNG_2024))]
+    e, v25, v24 = (sd.einer(db, i) for i in ids)
+    assert (e["typ"], e["jahr"], e["person"]) == ("erklaerung", 2025, "Person 1")
+    assert e["werte"]["steuerbar_kanton"] == 140_000 and e["werte"]["steuerbar_bund"] == 145_000
+    assert e["werte"]["abzug_3a"] == 5000 and e["werte"]["eigenmietwert"] == 20_000 and e["werte"]["mietertrag"] == 15_300
+    assert v25["typ"] == "veranlagung" and v25["werte"]["steuer_kanton_gemeinde"] == 23_000   # Staat + Gemeinde
+    assert v24["jahr"] == 2024 and v24["werte"]["steuer_kanton_gemeinde"] == 20_200
+    vergleich = sd.vergleich(sd.alle(db))["Person 1"]
+    assert vergleich[2025]["_typ"] == "veranlagung"                                      # Veranlagung zählt
+    assert sd.grenzsteuersatz(vergleich) == 28.0                                          # 2'800 / 10'000
+    abgl = sd.abgleich(sd.alle(db))
+    assert len(abgl) == 1 and "141'200" in abgl[0] and "+1'200" in abgl[0]
+    tipps = " ".join(sd.hinweise(konkubinat, e))
+    assert "3a" in tipps and "PK-Einkauf" in tipps and "2029" in tipps
+    erledigt = sd.uebernehmen(konkubinat, v25, "Person 1", ["steuerbar_kanton", "steuer_kanton_gemeinde", "grenzsteuersatz"], 28.0)
+    einheit = konkubinat["steuern"]["personen"][0]
+    assert einheit["steuerbar_kanton"] == 141_200 and einheit["steuer_kanton_gemeinde"] == 23_000
+    assert einheit["grenzsteuersatz_kanton"] == 28.0 and len(erledigt) == 3
+    sd.uebernehmen(konkubinat, e, "Person 1", ["eigenmietwert", "abzug_3a"])
+    assert konkubinat["wohnen"]["eigenmietwert"] == 20_000 and konkubinat["personen"][0]["saeule3a"]["beitrag_jahr"] == 5000
+
+
+def test_steuer_uebernahme_neue_person(konkubinat, db, tmp_path):
+    import steuerdokumente as sd
+    from policen import VERANLAGUNG_2025
+    konkubinat["steuern"]["personen"] = []
+    d = sd.einer(db, sd.hochladen(db, tmp_path, "v.pdf", pdf(VERANLAGUNG_2025)))
+    sd.uebernehmen(konkubinat, d, "Person 2", ["steuerbar_bund"])
+    assert konkubinat["steuern"]["personen"][0]["person"] == "Person 2"
+    assert konkubinat["steuern"]["personen"][0]["steuerbar_bund"] == 145_000

@@ -166,6 +166,12 @@ def fakten(k: dict, db, heute: date | None = None) -> str:
     s = st.steuern_heute(k)
     z.append("Steuern heute: " + "; ".join(f"{e['name']} {_chf(e['total'])} (Grenzsatz {e['grenz_total']} %)"
                                           for e in s["einheiten"]))
+    import steuerdokumente as sd
+    for person, jahre in sd.vergleich(sd.alle(db)).items():
+        teile_ = [f"{j}: steuerbar Kanton {_chf(w.get('steuerbar_kanton', 0))}, Steuern Kanton/Gemeinde "
+                  f"{_chf(w.get('steuer_kanton_gemeinde', 0))}, Bund {_chf(w.get('bundessteuer', 0))}, 3a {_chf(w.get('abzug_3a', 0))}, "
+                  f"PK-Einkauf {_chf(w.get('abzug_pk_einkauf', 0))}" for j, w in sorted(jahre.items())]
+        z.append(f"Steuerhistorie {person}: " + "; ".join(teile_))
     l = vs.pensionsluecke(k, nv["frei"], heute.year)
     z.append(f"Ruhestand ab {l.jahr}: Einkommen {_chf(l.einkommen)}/Jahr, Bedarf {_chf(l.bedarf)}, Lücke {_chf(l.luecke)}.")
     vertraege = vi.alle(db)

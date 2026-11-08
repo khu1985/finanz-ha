@@ -4,6 +4,7 @@
 - vermoegen*.csv             → Konten und Saldi
 - versicherungen*.csv        → Versicherungsliste (ohne PDF)
 - versicherung*.pdf, police* → Versicherungsvertrag hochladen und analysieren
+- steuer*.pdf, veranlagung*  → Steuererklärung / Veranlagung analysieren
 - übrige *.pdf               → Vorsorgedokument (Vorsorgeausweis, 3a-, IK-Auszug)
 
 Eingelesene Dateien werden nach import/erledigt/ verschoben.
@@ -16,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 import dokumente as dk
+import steuerdokumente as sd
 import konfig
 import vermoegen as vm
 import versicherungen as vi
@@ -49,6 +51,9 @@ def einlesen(daten: Path, db) -> list[str]:
             elif name.endswith(".pdf") and (name.startswith("versicherung") or name.startswith("police")):
                 vi.hochladen(db, daten, pfad.name, inhalt)
                 meldungen.append(f"{pfad.name}: Versicherungsvertrag analysiert")
+            elif name.endswith(".pdf") and (name.startswith("steuer") or name.startswith("veranlagung")):
+                sd.hochladen(db, daten, pfad.name, inhalt)
+                meldungen.append(f"{pfad.name}: Steuerdokument analysiert")
             elif name.endswith(".pdf"):
                 dk.hochladen(db, daten, pfad.name, inhalt)
                 meldungen.append(f"{pfad.name}: Vorsorgedokument analysiert")

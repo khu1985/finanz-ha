@@ -122,9 +122,9 @@ Kapitalverzehr. Der Kapitalverzehr ist die Annuität aus 3a, PK-Kapital und frei
 Kapitalbezugssteuer über die eingestellten Jahre und Rendite. Der Bedarf versteht sich inkl. Steuern.
 
 **Steuern.** Direkte Bundessteuer exakt nach Tarif (Verheirateten- oder Grundtarif, Elterntarif
-CHF 263 pro Kind, Höchstsatz 11,5 %). Staats- und Gemeindesteuer als lineare Näherung um die letzte
-Veranlagung: Steuer(x) = Steuer_ref + Grenzsteuersatz × (x − Einkommen_ref) – gut für Abzüge bis einige
-zehntausend Franken. Kapitalleistungen: Bund ein Fünftel des Tarifs, Kanton mit effektivem Satz aus
+CHF 263 pro Kind, Höchstsatz 11,5 %). Staats- und Gemeindesteuer als Potenzkurve durch die letzte
+Veranlagung: Steuer(x) = Steuer_ref × (x ÷ Einkommen_ref)^e, wobei e so gewählt ist, dass beim Referenzeinkommen genau
+der Grenzsteuersatz gilt – darunter sinkt die Steuer progressiv, sodass auch grosse PK-Einkäufe realistisch bewertet werden. Kapitalleistungen: Bund ein Fünftel des Tarifs, Kanton mit effektivem Satz aus
 der Tabelle `steuern.kapitalbezug_kanton` (Schätzwerte – mit dem kantonalen Rechner ersetzen).
 Gestaffelt: ein 3a-Konto pro Jahr, das letzte im Pensionsjahr, frühestens ab 60.
 
@@ -151,6 +151,22 @@ Steuertarif) angepasst und lassen sich im YAML-Editor überschreiben.
 
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten.
 Ohne KI braucht die App kein Internet.
+
+## Steuerdokumente
+
+Unter «Steuern» Steuererklärungen, Veranlagungsverfügungen und Steuerrechnungen hochladen (auch mehrere Jahre).
+Die App erkennt Steuerperiode, Person, steuerbares Einkommen Kanton und Bund, steuerbares Vermögen, Staats-,
+Gemeinde- und Bundessteuer, Lohn, Eigenmietwert, Mietertrag sowie Abzüge (3a, PK-Einkauf, Schuldzinsen,
+Liegenschaftsunterhalt, Berufskosten, Kinder). Daraus entstehen:
+
+- **Vergleich pro Person** über die Jahre (Veranlagung vor Erklärung) mit Veränderung zum Vorjahr
+- **Geschätzter Grenzsteuersatz** Kanton + Gemeinde aus zwei Veranlagungen (Δ Steuer ÷ Δ Einkommen)
+- **Abgleich** Erklärung ↔ Veranlagung: Korrekturen der Steuerverwaltung (Einsprachefrist beachten)
+- **Hinweise:** 3a nicht ausgeschöpft, PK-Einkauf ungenutzt (mit Ersparnis), Unterhalt Pauschale vs. effektiv,
+  Wegfall Eigenmietwert ab 2029, Mietertrag, Kinderabzug im Konkubinat
+- **Übernahme** in die Steuer-Einstellungen der Person (bei Konkubinat in `steuern.personen`), Eigenmietwert und 3a
+
+Im Import-Ordner werden `steuer*.pdf` und `veranlagung*.pdf` als Steuerdokumente erkannt.
 
 ## Version, Änderungen und Protokoll
 

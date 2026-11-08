@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import berater as br
 import dokumente as dk
+import steuerdokumente as sd
 import importordner
 import konfig
 import seiten
@@ -60,6 +61,7 @@ def multipart(content_type: str, body: bytes) -> dict:
 DETAIL = {
     "versicherungen": ("Versicherung", lambda k, v, i: seiten.versicherung(k, v, i), vi, vi.ordner, "datei"),
     "vorsorge/dokument": ("Vorsorgedokument", lambda k, v, i: seiten.vorsorge_dokument(k, v, i), dk, dk.ordner, "datei"),
+    "steuern/dokument": ("Steuerdokument", lambda k, v, i: seiten.steuer_dokument(k, v, i), sd, sd.ordner, "datei"),
     "berater": ("Beratung", lambda k, v, i: seiten.beratung(k, v, i), br, None, None),
 }
 
@@ -238,6 +240,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._vorsorge(pfad, form)
         if pfad.startswith("berater"):
             return self._berater(pfad, form)
+        if pfad.startswith("steuern"):
+            return self._steuern(pfad, form)
         raise ValueError("Unbekannte Aktion.")
 
     def _versicherungen(self, pfad: str, form: dict):
@@ -316,6 +320,51 @@ class Handler(BaseHTTPRequestHandler):
                     return (f"Für {form['person']} übernommen: " + ", ".join(erledigt) if erledigt
                             else "Keine Werte ausgewählt."), f"vorsorge/dokument/{did}"
                 return "Gespeichert.", f"vorsorge/dokument/{did}"
+        raise ValueError("Unbekannte Aktion.")
+
+    def _steuern(self, pfad: str, form: dict):
+        daten = konfig.datenordner()
+        teile = pfad.split("/")
+        with db() as v:
+            if pfad == "steuern/hochladen":
+                dateien = form.get("_dateien_datei") or []
+                ids = [sd.hochladen(v, daten, n, inhalt) for n, inhalt in dateien if inhalt]
+                if len(ids) == 1:
+                    return "Steuerdokument analysiert – Werte prüfen und übernehmen.", f"steuern/dokument/{ids[0]}"
+                return f"{len(ids)} Steuerdokumente analysiert."
+            if len(teile) >= 3 and teile[1] == "dokument" and teile[2].isdigit():
+                did = int(teile[2])
+                aktion = teile[3] if len(teile) > 3 else ""
+                dok = sd.einer(v, did)
+                if not dok:
+                    raise ValueError("Dokument nicht gefunden.")
+                if aktion == "loeschen":
+                    sd.loeschen(v, daten, did)
+                    return "Steuerdokument gelöscht.", "steuern"
+                if aktion == "ki":
+                    erg = sd.ki_auslesen(dok, konfig.laden()["ki"].get("entity", ""))
+                    sd.speichern(v, did, erg["typ"], erg["jahr"], erg["person"], erg["werte"], quelle="ki")
+                    return "Per KI ausgelesen – bitte prüfen.", f"steuern/dokument/{did}"
+                werte = {}
+                for s_ in sd.FELDER:
+                    roh = str(form.get("wert_" + s_, "")).strip()
+                    if roh:
+                        werte[s_] = abs(vi.zahl(roh))
+                jahr = int(str(form.get("jahr") or dok["jahr"] or 0).strip() or 0)
+                sd.speichern(v, did, form.get("typ", dok["typ"]), jahr, form.get("person", ""), werte,
+                             quelle=None if werte == dok["werte"] else "hand")
+                if aktion == "uebernehmen":
+                    k = konfig.laden()
+                    gewaehlt = [s_ for s_ in list(werte) + ["grenzsteuersatz"] if form.get("nimm_" + s_)]
+                    grenz = float(form["grenz"]) if form.get("grenz") else None
+                    erledigt = sd.uebernehmen(k, sd.einer(v, did), form.get("person", ""), gewaehlt, grenz)
+                    konfig.speichern(k)
+                    v.execute("UPDATE steuer_dok SET uebernommen = ? WHERE id = ?",
+                              (datetime.now().isoformat(timespec="seconds"), did))
+                    v.commit()
+                    return (f"Für {form['person']} übernommen: " + ", ".join(erledigt) if erledigt
+                            else "Keine Werte ausgewählt."), f"steuern/dokument/{did}"
+                return "Gespeichert.", f"steuern/dokument/{did}"
         raise ValueError("Unbekannte Aktion.")
 
     def _berater(self, pfad: str, form: dict):

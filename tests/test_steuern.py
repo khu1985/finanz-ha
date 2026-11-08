@@ -22,12 +22,15 @@ def test_elterntarif_und_mindeststeuer(k):
 def test_kanton_linear(k):
     s = k["steuern"]
     assert st.kantonssteuer(s["steuerbar_kanton"], s) == s["steuer_kanton_gemeinde"]
-    assert st.kantonssteuer(s["steuerbar_kanton"] - 1000, s) == s["steuer_kanton_gemeinde"] - 220
+    assert st.kantonssteuer(s["steuerbar_kanton"] - 1000, s) == pytest.approx(s["steuer_kanton_gemeinde"] - 220, abs=2)
+    # grosse Abzüge: progressiv sinkend, nie negativ, Ersparnis höchstens Grenzsteuersatz × Abzug
+    gross = s["steuer_kanton_gemeinde"] - st.kantonssteuer(s["steuerbar_kanton"] - 100_000, s)
+    assert 100_000 * 0.10 < gross < 100_000 * 0.22
 
 
 def test_ersparnis_abzug(k):
     e = st.ersparnis_abzug(k, 7258)
-    assert e["kanton"] == round(7258 * 0.22)
+    assert e["kanton"] == pytest.approx(7258 * 0.22, rel=0.03)
     assert e["total"] == e["bund"] + e["kanton"]
 
 
