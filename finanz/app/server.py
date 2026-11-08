@@ -134,6 +134,12 @@ class Handler(BaseHTTPRequestHandler):
                     inhalt = seiten.protokoll(konfig.laden(), v, stufe)
                 html = seiten.seite("Protokoll", "protokoll", inhalt, self.basis)
                 return self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
+            if pfad == "szenarien":
+                with db() as v:
+                    inhalt = seiten.szenarien(konfig.laden(), v, q)
+                html = seiten.seite("Szenarien", "szenarien", inhalt, self.basis, unquote(q.get("m", [""])[0]),
+                                    bool(q.get("f")), self._ampeln())
+                return self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
             if pfad == "gesundheit":
                 return self.senden(200, b"ok", "text/plain")
             detail = self._detail(pfad)
@@ -252,6 +258,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._berater(pfad, form)
         if pfad.startswith("steuern"):
             return self._steuern(pfad, form)
+        if pfad == "szenarien/einkauf":
+            import szenarien as sz
+            k = konfig.laden()
+            plan = sz.einkauf_optimieren(k, form["person"], vm.zahl(form.get("budget") or "0"), int(form["von"]),
+                                         int(form["bis"]), vm.zahl(form.get("schwelle") or "0"),
+                                         vm.zahl(form.get("schritt") or "5000"))
+            if not plan.plan:
+                raise ValueError("Kein Einkauf zu übernehmen.")
+            sz.plan_uebernehmen(k, plan)
+            konfig.speichern(k)
+            return (f"{len(plan.plan)} Einkäufe für {plan.person} übernommen (total CHF "
+                    f"{sum(plan.plan.values()):,.0f}).".replace(",", "'"), "szenarien")
         raise ValueError("Unbekannte Aktion.")
 
     def _versicherungen(self, pfad: str, form: dict):

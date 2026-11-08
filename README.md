@@ -17,6 +17,7 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029 |
 | Vermögen | Konten und Saldi, CSV-Import, Nettovermögen und Verlauf |
 | Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Risiko Invalidität und Tod |
+| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Vergleich verheiratet ↔ Konkubinat (Steuern, AHV, Kapitalbezug, Hinterbliebene) |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
 | Einstellungen | Formular, YAML-Editor, Import-Ordner, Export; Protokoll und Änderungen in der App |
 
@@ -90,6 +91,7 @@ flowchart TB
 | `finanz/app/versicherungen.py` | Policen, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a- und IK-Auszug |
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
+| `finanz/app/szenarien.py` | PK-Einkauf-Optimierung, Vergleich verheiratet ↔ Konkubinat |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Beratungen |
 | `finanz/app/importordner.py` | Import-Ordner für persönliche Dateien |
 | `finanz/app/konfig.py`, `meta.py` | Konfiguration laden/speichern, Version, Changelog, Protokoll |

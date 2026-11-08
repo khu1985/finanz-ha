@@ -168,6 +168,21 @@ Liegenschaftsunterhalt, Berufskosten, Kinder). Daraus entstehen:
 
 Im Import-Ordner werden `steuer*.pdf` und `veranlagung*.pdf` als Steuerdokumente erkannt.
 
+## Szenarien
+
+**PK-Einkauf optimieren.** Person, Budget (0 = ganzes Potenzial), Zeitraum, Mindest-Ersparnis pro Franken und
+Schrittweite wählen. Die App legt Schritt für Schritt jeweils dort ein, wo der nächste Franken am meisten Steuern spart,
+bei gleichem Einkommen in jedem Jahr. So entsteht eine gleichmässige Verteilung über die Jahre. Einkäufe in den
+3 Jahren vor einem geplanten Kapitalbezug sind gesperrt. Der Netto-Vorteil enthält den Zins bis 65 und zieht die
+zusätzliche Kapitalbezugssteuer ab. Mit «Plan übernehmen» werden die Einkäufe unter `pk.einkauf_geplant` eingetragen.
+
+**Verheiratet oder Konkubinat.** Braucht je Person eine Steuererklärung unter `steuern.personen`. Verglichen werden:
+Einkommenssteuern heute (Bund: Summe beider Einkommen, Verheiratetenabzug, Zweiverdienerabzug 50 % des tieferen
+Erwerbseinkommens, mindestens 8'600, höchstens 14'100, Elterntarif; Kanton: Summe mit Splitting-Divisor auf dem
+Mittel der beiden Steuerkurven, einstellbar über `steuern.ehe_splitting_divisor`), AHV-Renten (Plafonierung auf 150 %),
+Steuer auf Kapitalbezügen (zusammengerechnet) und Renten für Hinterbliebene (AHV-Witwen-/Witwerrente,
+PK-Ehegattenrente). Dazu eine Gesamtbilanz ohne Teuerung und Zins sowie die rechtlichen Unterschiede.
+
 ## Ampeln
 
 Grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten. Die Übersicht zeigt alle Bereiche als

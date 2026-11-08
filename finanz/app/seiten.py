@@ -14,11 +14,13 @@ import berater as br
 import dokumente as dk
 import steuerdokumente as sd
 import ampel as am
+import szenarien as sz
 import vorsorge as vs
 import wohnen as wo
 
 NAV = [("", "Übersicht"), ("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"),
-       ("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen"), ("berater", "Berater")]
+       ("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen"), ("szenarien", "Szenarien"),
+       ("berater", "Berater")]
 
 CSS = """
 :root{--bg:#f6f7f9;--karte:#fff;--text:#1c2430;--leise:#5d6b7a;--linie:#e3e7ec;--akzent:#0a708f;
@@ -395,6 +397,7 @@ def steuern(k: dict, db) -> str:
         zeilen.insert(i, [f"3a-Maximalbeitrag {escape(p['name'])}", chf(kz["saeule3a_max"]), chf(e3["total"]),
                           f"{e3['total'] / kz['saeule3a_max'] * 100:.0f} %"])
     abzuege = tabelle(["Massnahme", "Abzug", "Ersparnis", "in % des Abzugs"], zeilen) + (
+        '<p><a href="szenarien">→ Optimalen PK-Einkauf über mehrere Jahre berechnen</a></p>' +
         '<p class="leise">PK-Einkäufe auf mehrere Jahre verteilen glättet die Progression. '
         'In den 3 Jahren vor einem Kapitalbezug sind Einkäufe steuerlich heikel.</p>')
 
@@ -1115,3 +1118,103 @@ def ampel_karte(k: dict, db) -> str:
     legende = (f'<div class="ampel-legende"><span>{licht(am.ROT)}{zaehler[am.ROT]} handeln</span>'
                f'<span>{licht(am.GELB)}{zaehler[am.GELB]} prüfen</span><span>{licht(am.GRUEN)}{zaehler[am.GRUEN]} in Ordnung</span></div>')
     return f'<div class="ampeln">{kacheln}</div>' + legende
+
+
+# ---------------------------------------------------------------- Szenarien
+
+def szenarien(k: dict, db, q: dict | None = None) -> str:
+    q = q or {}
+    return einkauf_karte(k, db, q) + heirat_karte(k, db)
+
+
+def einkauf_karte(k: dict, db, q: dict) -> str:
+    heute = date.today()
+    namen = [p["name"] for p in k["personen"]]
+
+    def wert(name, standard):
+        return (q.get(name) or [str(standard)])[0]
+
+    person = wert("person", namen[0])
+    if person not in namen:
+        person = namen[0]
+    p = next(x for x in k["personen"] if x["name"] == person)
+    budget = vm.zahl(wert("budget", "0") or "0")
+    von = int(wert("von", heute.year))
+    bis = int(wert("bis", min(vs.pensionsjahr(p) - 1, heute.year + 9)))
+    schwelle = vm.zahl(wert("schwelle", "20") or "0")
+    schritt = max(1000.0, vm.zahl(wert("schritt", "5000") or "5000"))
+    opts = "".join(f'<option{" selected" if n == person else ""}>{escape(n)}</option>' for n in namen)
+    form = f"""<form method="get" action="szenarien" data-status="Einkäufe werden optimiert …"><div class="felder">
+<label>Person<select name="person">{opts}</select></label>
+<label>Budget insgesamt (0 = ganzes Potenzial)<input name="budget" value="{budget:g}" inputmode="decimal"></label>
+<label>Ab Jahr<input name="von" value="{von}" inputmode="numeric"></label>
+<label>Bis Jahr<input name="bis" value="{bis}" inputmode="numeric"></label>
+<label>Mindest-Ersparnis pro Franken %<input name="schwelle" value="{schwelle:g}" inputmode="decimal"></label>
+<label>Schrittweite CHF<input name="schritt" value="{schritt:g}" inputmode="decimal"></label>
+</div><div class="zeile"><button>Optimieren</button></div></form>"""
+    plan = sz.einkauf_optimieren(k, person, budget, von, bis, schwelle, schritt, heute)
+    if not plan.plan:
+        return karte("PK-Einkauf optimieren", form + hinweisliste(plan.hinweise or ["Kein Einkauf sinnvoll oder kein Potenzial."]))
+    eingekauft = sum(plan.plan.values())
+    kpis = "".join([
+        kpi(chf(eingekauft), f"Einkauf von {chf(plan.potenzial)} Potenzial"),
+        kpi(chf(plan.total_ersparnis), f"Steuerersparnis ({plan.total_ersparnis / eingekauft * 100:.0f} %)", "gut"),
+        kpi(chf(plan.total_ersparnis - plan.einjahr_ersparnis, True), "mehr als alles in einem Jahr", "",
+            am.GRUEN if plan.total_ersparnis > plan.einjahr_ersparnis else am.GRAU),
+        kpi(chf(plan.netto), "Netto-Vorteil inkl. Zins bis 65, nach Kapitalbezugssteuer"),
+    ])
+    zeilen = [[str(j), chf(b), f"{chf(plan.ersparnis[j])} ({plan.ersparnis[j] / b * 100:.0f} %)",
+               licht(am.schwelle(plan.grenz_letzter[j], 30, 20)) + f"{plan.grenz_letzter[j]:.0f} %"]
+              for j, b in sorted(plan.plan.items())]
+    zeilen.append(["<b>Total</b>", f"<b>{chf(eingekauft)}</b>",
+                   f"<b>{chf(plan.total_ersparnis)}</b> ({plan.total_ersparnis / eingekauft * 100:.0f} %)", ""])
+    tab = tabelle(["Jahr", "Einkauf", "Ersparnis", "letzter Franken"], zeilen)
+    kurve = dg.linie({"Ersparnis pro zusätzlichem Franken (%)":
+                      [(int(round(b / 1000)), round(s, 1)) for b, s in plan.kurve]}, "Grenz-Ersparnis")
+    kurve += '<p class="leise">Waagrecht: Einkauf in einem Jahr in Tausend Franken.</p>'
+    uebernehmen = f"""<form method="post" action="szenarien/einkauf">
+{"".join(f'<input type="hidden" name="{n}" value="{escape(str(v))}">' for n, v in
+         (("person", person), ("budget", budget), ("von", von), ("bis", bis), ("schwelle", schwelle), ("schritt", schritt)))}
+<div class="zeile"><button>Plan als geplante Einkäufe übernehmen</button>
+<span class="leise">Ergänzt «einkauf_geplant» von {escape(person)}; wirkt auf PK-Prognose, Amortisation und Berater.</span></div></form>"""
+    gesperrt = (f'<p class="leise">Gesperrt (3 Jahre vor Kapitalbezug): {", ".join(map(str, plan.gesperrt))}</p>'
+                if plan.gesperrt else "")
+    erklaerung = ('<p class="leise">Die App verteilt den Einkauf in Schritten jeweils auf das Jahr mit der höchsten Ersparnis '
+                  'für den nächsten Franken (gleiches Einkommen jedes Jahr angenommen). Optimal ist, solange der letzte Franken '
+                  'mehr Steuern spart als der spätere Bezug kostet – typisch 20–30 %. Die Kurve zeigt, wie stark die Ersparnis '
+                  'pro Franken sinkt, wenn in einem einzigen Jahr mehr eingekauft wird.</p>')
+    return karte("PK-Einkauf optimieren", form + f'<div class="kpis">{kpis}</div>' + tab + gesperrt + kurve
+                 + hinweisliste(plan.hinweise) + uebernehmen + erklaerung)
+
+
+def heirat_karte(k: dict, db) -> str:
+    h = sz.heirat_vergleich(k, db)
+    titel = "Verheiratet oder Konkubinat"
+    if not h.moeglich:
+        return karte(titel, f'<p>{escape(h.grund)}</p>')
+    jahre = h.jahre_ruhestand
+    zeilen = [
+        [licht(am.GRUEN if h.steuer_diff <= 0 else am.GELB) + "Einkommenssteuern heute (pro Jahr)",
+         chf(h.steuer_konkubinat), chf(h.steuer_verheiratet), chf(h.steuer_diff, True)],
+        [licht(am.GRUEN if h.ahv_diff >= 0 else am.GELB) + "AHV-Renten im Ruhestand (pro Jahr)",
+         chf(h.ahv_konkubinat), chf(h.ahv_verheiratet), chf(h.ahv_diff, True)],
+        [licht(am.GRUEN if h.kapital_diff <= 0 else am.GELB) + "Steuer auf Kapitalbezügen (einmalig)",
+         chf(h.kapital_konkubinat), chf(h.kapital_verheiratet), chf(h.kapital_diff, True)],
+    ]
+    for name, rk, rv in h.hinterbliebene:
+        zeilen.append([licht(am.GRUEN if rv >= rk else am.GELB) + f"Renten für Hinterbliebene beim Tod von {escape(name)} (pro Jahr)",
+                       chf(rk), chf(rv), chf(rv - rk, True)])
+    tab = tabelle(["", "Konkubinat", "Verheiratet", "Unterschied"], zeilen)
+    bis_pension = max(0, min(vs.pensionsjahr(p) for p in k["personen"]) - date.today().year)
+    bilanz = -h.steuer_diff * bis_pension + h.ahv_diff * jahre - h.kapital_diff
+    fazit = (f'<p>Finanziell über den ganzen Zeitraum (Steuern {bis_pension} Jahre bis zur Pensionierung, AHV {jahre} Jahre, '
+             f'Kapitalbezug einmalig): Heirat <b class="{"gut" if bilanz >= 0 else "schlecht"}">'
+             f'{"bringt" if bilanz >= 0 else "kostet"} rund CHF {chf(abs(bilanz))}</b> – ohne Teuerung, ohne Zins und ohne '
+             'den Wert der Absicherung im Todesfall.</p>')
+    d = h.verheiratet_details
+    annahmen = (f'<p class="leise">Verheiratet geschätzt: Bund auf CHF {chf(d["bund_einkommen"])} (Summe beider, '
+                f'Verheiratetenabzug, Zweiverdienerabzug {chf(d["zweiverdiener"])}, Elterntarif), Kanton auf '
+                f'CHF {chf(d["kanton_einkommen"])} mit Splitting-Divisor {d["divisor"]:g} auf dem Mittel eurer beiden Steuerkurven '
+                '(steuern.ehe_splitting_divisor). Kantonale Regeln prüfen; Hinterbliebene: AHV-Witwen-/Witwerrente und '
+                'PK-Ehegattenrente gegenüber nur Waisenrenten bzw. gemeldeter Lebenspartnerrente.</p>')
+    return karte(titel, tab + fazit + hinweisliste(h.qualitativ) + annahmen)

@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.6.0 – 2026-11-08
+
+- Neue Seite **Szenarien**
+- **PK-Einkauf optimieren:** verteilt das Einkaufspotenzial (oder ein Budget) schrittweise auf die Jahre mit der höchsten
+  Ersparnis pro Franken, beachtet die Sperrfrist vor einem Kapitalbezug und eine Mindest-Ersparnis; zeigt Ersparnis pro
+  Jahr, Vergleich mit «alles in einem Jahr», Netto-Vorteil inkl. Zins und Kapitalbezugssteuer sowie die Kurve der
+  Grenz-Ersparnis. Der Plan lässt sich als geplante Einkäufe übernehmen.
+- **Verheiratet oder Konkubinat:** Einkommenssteuern heute (Bund mit Verheiratetenabzug, Zweiverdienerabzug und
+  Elterntarif, Kanton mit Splitting), AHV mit Plafonierung, Steuer auf Kapitalbezügen, Renten für Hinterbliebene,
+  Gesamtbilanz und rechtliche Unterschiede (Erbrecht, PK, Güterrecht)
+- Neue Kennzahlen für die Abzüge des Bundes und `steuern.ehe_splitting_divisor` für den Kanton
+
 ## 0.5.0 – 2026-11-08
 
 - **Ampeln** (grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten):

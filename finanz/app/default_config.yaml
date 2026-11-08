@@ -101,6 +101,9 @@ steuern:
   grenzsteuersatz_kanton: 22      # Kanton + Gemeinde, mit dem Steuerrechner des Kantons ermitteln
   # Kapitalleistungen (PK, 3a): effektiver Satz Kanton + Gemeinde je Bezugsbetrag (Schätzung –
   # mit dem kantonalen Rechner ersetzen). Linear interpoliert.
+  # Kanton bei gemeinsamer Besteuerung (Vergleich Heirat): Splitting-Divisor (2.0 = Vollsplitting) und Zusatzabzug
+  ehe_splitting_divisor: 2.0
+  ehe_abzug_kanton: 0
   kapitalbezug_kanton:
     - [0, 2.0]
     - [100000, 3.0]
@@ -183,6 +186,13 @@ kennzahlen:
     - [141500, 11.00]
     - [184900, 13.20]
   bund_hoechstsatz: 11.5
+  # Abzüge Bund für den Vergleich verheiratet ↔ Konkubinat (Stand 2025, bitte jährlich prüfen)
+  bund_verheiratetenabzug: 2800
+  bund_zweiverdiener_satz: 50
+  bund_zweiverdiener_min: 8600
+  bund_zweiverdiener_max: 14100
+  bund_versicherungsabzug_ehe: 3700
+  bund_versicherungsabzug_einzel: 1800
   bund_elterntarif_kind: 263
   eigenmietwert_abschaffung: 2029
   tragbarkeit_zins: 5.0

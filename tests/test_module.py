@@ -247,3 +247,48 @@ def test_ampel_bewertung(k, daten, db):
     assert a["Liquidität"].status == am.GRUEN
     seiten = am.pro_seite(list(a.values()))
     assert seiten["versicherungen"] == am.ROT and seiten[""] == am.ROT
+
+
+# ---------------------------------------------------------------- Szenarien
+
+def test_einkauf_optimieren_verteilt_progression(konkubinat):
+    import szenarien as sz
+    p = konkubinat["personen"][0]
+    p["pk"].update(einkauf_potenzial=60_000, einkauf_geplant=[], kapitalbezug_anteil=0)
+    plan = sz.einkauf_optimieren(konkubinat, "Person 1", 0, 2026, 2028, schwelle=0, schritt=5000, heute=date(2026, 11, 8))
+    assert sum(plan.plan.values()) == 60_000 and set(plan.plan) == {2026, 2027, 2028}
+    assert max(plan.plan.values()) - min(plan.plan.values()) <= 5000                # gleichmässig verteilt
+    assert plan.total_ersparnis > plan.einjahr_ersparnis                            # Staffeln lohnt sich
+    assert all(b > a for (_, a), (_, b) in zip(plan.kurve[1:], plan.kurve[:-1]) if a and b) or plan.kurve
+    begrenzt = sz.einkauf_optimieren(konkubinat, "Person 1", 20_000, 2026, 2030, heute=date(2026, 11, 8))
+    assert sum(begrenzt.plan.values()) == 20_000
+    sz.plan_uebernehmen(konkubinat, plan)
+    assert len(p["pk"]["einkauf_geplant"]) == 3
+    nachher = sz.einkauf_optimieren(konkubinat, "Person 1", 0, 2026, 2028, heute=date(2026, 11, 8))
+    assert nachher.potenzial == 0 and not nachher.plan                              # Potenzial ausgeschöpft
+
+
+def test_einkauf_sperrfrist_vor_kapitalbezug(konkubinat):
+    import szenarien as sz
+    p = konkubinat["personen"][0]
+    p["geburtsdatum"] = "1966-01-01"                                                # Pension 2031
+    p["pk"].update(einkauf_potenzial=50_000, einkauf_geplant=[], kapitalbezug_anteil=100)
+    plan = sz.einkauf_optimieren(konkubinat, "Person 1", 0, 2026, 2031, heute=date(2026, 11, 8))
+    assert plan.gesperrt == [2028, 2029, 2030] and set(plan.plan) <= {2026, 2027}
+    assert plan.kapitalsteuer_mehr > 0 and plan.netto < plan.total_ersparnis + plan.zins_ertrag
+
+
+def test_heirat_vergleich(konkubinat, db):
+    import szenarien as sz
+    for p in konkubinat["personen"]:
+        p["lohn_brutto"], p["ahv"]["beitragsjahre_bisher"] = 120_000, 44
+        p["risiko"].update(partnerrente_pk=30_000, waisenrente_pk=0)
+    h = sz.heirat_vergleich(konkubinat, db)
+    assert h.moeglich
+    assert h.ahv_konkubinat == 2 * 2520 * 13 and h.ahv_verheiratet == 3780 * 13 and h.ahv_diff < 0   # Plafonierung
+    d = sz.steuer_verheiratet(konkubinat)
+    assert d["zweiverdiener"] == 14_100 and d["bund_einkommen"] == 200_000 - 2800 - 14_100 - 100
+    assert all(rv > rk for _, rk, rv in h.hinterbliebene)                           # Witwenrente + Ehegattenrente
+    k1 = copy.deepcopy(konkubinat)
+    k1["steuern"]["personen"] = []
+    assert not sz.heirat_vergleich(k1, db).moeglich
