@@ -119,7 +119,8 @@ Home Assistant bietet ein Update nur an, wenn die Version in `finanz/config.yaml
 `tests/` prüft Rechenkern, Dokumenterkennung und Web-App mit erfundenen Daten, z. B. Eckwerte der Rentenskala,
 Ehepaar-Plafond und Konkubinat, Bundessteuer an Tarifgrenzen, Kantonssteuer-Kurve, Staffelung, Tragbarkeit,
 Erkennung von Policen, Vorsorgeausweisen und Steuerdokumenten aus erzeugten PDFs, Kündigungsfristen nach VVG,
-Ampel-Schwellen, Import-Ordner sowie alle Seiten und Uploads hinter einem Ingress-Pfad.
+Ampel-Schwellen, PK-Einkauf-Optimierung, Heiratsvergleich, Import-Ordner sowie alle Seiten und Uploads hinter
+einem Ingress-Pfad.
 
 GitHub führt die Tests bei jedem Push auf `main` und `tests` und bei jedem Pull Request aus
 (`.github/workflows/tests.yml`):
