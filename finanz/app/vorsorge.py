@@ -165,9 +165,23 @@ def pk(person: dict, k: dict) -> PkErgebnis:
             beitrag = bvg_koordinierter_lohn(lohn * (1 + wachstum) ** (jahr - start), kz) * bvg_gutschriftsatz(alter, kz) / 100
         guthaben = guthaben * (1 + zins) + beitrag + einkauf.get(jahr, 0)
         verlauf.append((jahr + 1, round(guthaben)))
+    uws = float(cfg.get("umwandlungssatz", kz["bvg_umwandlungssatz"])) / 100
+    ausweis_kapital = float(cfg.get("ausweis_alterskapital") or 0)
+    if ausweis_kapital > 0:
+        # Prognose der Kasse übernehmen; geplante Einkäufe mit Zins bis zur Pensionierung dazurechnen
+        zusatz = sum(b * (1 + zins) ** max(0, ende - j - 1) for j, b in einkauf.items())
+        ziel = ausweis_kapital + zusatz
+        eigen_ende = guthaben
+        faktor = ziel / eigen_ende if eigen_ende else 1.0
+        start_wert = verlauf[0][1]
+        verlauf = [(j, round(start_wert + (w - start_wert) * (ziel - start_wert) / (eigen_ende - start_wert)))
+                   if eigen_ende != start_wert else (j, round(w * faktor)) for j, w in verlauf]
+        guthaben = ziel
+        ausweis_rente = float(cfg.get("ausweis_altersrente") or 0)
+        if ausweis_rente > 0:
+            uws = ausweis_rente / ausweis_kapital
     anteil = min(100.0, max(0.0, float(cfg.get("kapitalbezug_anteil", 0)))) / 100
     kapital = guthaben * anteil
-    uws = float(cfg.get("umwandlungssatz", kz["bvg_umwandlungssatz"])) / 100
     rente = (guthaben - kapital) * uws
     warn = []
     summe_einkauf = sum(einkauf.values())

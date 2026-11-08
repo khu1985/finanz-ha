@@ -20,7 +20,7 @@ def tragbarkeit(k: dict, jetzt: int) -> dict:
     amort = zweite / jahre
     unterhalt = preis * float(w.get("unterhalt_pauschal", 1.0)) / 100
     kalk = hypothek * kz["tragbarkeit_zins"] / 100 + unterhalt + amort
-    einkommen = sum(float(p.get("lohn_brutto", 0)) for p in k["personen"])
+    einkommen = sum(float(p.get("lohn_brutto", 0)) for p in k["personen"]) + 0.8 * float(w.get("mieteinnahmen_jahr", 0) or 0)
     quote = kalk / einkommen * 100 if einkommen else 0.0
     effektiv = hypothek * float(w.get("hypothek_zins", 0)) / 100 + unterhalt + amort
     eigen_bar = eigen - pk_vorbezug

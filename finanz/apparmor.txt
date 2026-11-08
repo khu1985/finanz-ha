@@ -1,0 +1,56 @@
+#include <tunables/global>
+
+# AppArmor-Profil der Finanzplanungs-App (Name = slug). Erlaubt nur, was die App braucht:
+# Python ausführen, App-Code lesen, Konfigurationsordner schreiben, Netzwerk für Ingress/Supervisor.
+profile finanz flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Netzwerk: Webserver (Ingress) und Aufrufe an den Supervisor (KI-Aufgabe)
+  network inet tcp,
+  network inet6 tcp,
+  network inet udp,
+  network inet6 udp,
+  network unix,
+
+  signal (send) set=(kill,term,int,hup,cont),
+  signal (receive) peer=unconfined,
+
+  # Start und Programme
+  /init ix,
+  /run.sh rix,
+  /bin/** rix,
+  /sbin/** rix,
+  /usr/bin/** rix,
+  /usr/sbin/** rix,
+  /usr/local/bin/** rix,
+  /command/** rix,
+  /package/** rix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /etc/s6-overlay/** rix,
+
+  # Bibliotheken und Systemdateien (nur lesen)
+  /lib/** mr,
+  /usr/lib/** mr,
+  /usr/local/lib/** mr,
+  /usr/share/** r,
+  /etc/** r,
+  /proc/** r,
+  /sys/fs/cgroup/** r,
+  /dev/null rw,
+  /dev/urandom r,
+  /dev/tty rw,
+
+  # App-Code (nur lesen) und Python-Cache
+  /app/** r,
+  /app/__pycache__/** rw,
+
+  # Daten: Optionen lesen, Konfigurationsordner der App lesen und schreiben
+  /data/** r,
+  /config/ rw,
+  /config/** rwk,
+
+  # Laufzeit und temporäre Dateien
+  /run/** rwk,
+  /tmp/** rwk,
+  /var/tmp/** rwk,
+}

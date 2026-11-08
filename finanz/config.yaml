@@ -1,7 +1,7 @@
 name: Finanzplanung
-version: "0.1.0"
+version: "0.2.0"
 slug: finanz
-description: Finanzplanung für Schweizer Haushalte – AHV, Pensionskasse, 3a, Steuern, Wohneigentum und Vermögen
+description: Finanzplanung für Schweizer Haushalte – Vorsorge, Steuern, Wohneigentum, Vermögen, Versicherungen und Anlageberater
 url: https://github.com/khu1985/finanz-ha
 arch:
   - aarch64
@@ -13,6 +13,8 @@ ingress: true
 ingress_port: 8099
 panel_icon: mdi:finance
 panel_title: Finanzen
+apparmor: true
+homeassistant_api: true   # nur für die optionale KI-Aufgabe (ai_task)
 map:
   - addon_config:rw
 backup: hot

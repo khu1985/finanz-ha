@@ -9,11 +9,15 @@ import yaml
 import diagramme as dg
 import steuern as st
 import vermoegen as vm
+import versicherungen as vi
+import berater as br
+import dokumente as dk
 import vorsorge as vs
 import wohnen as wo
 
 NAV = [("", "Übersicht"), ("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"),
-       ("vermoegen", "Vermögen"), ("einstellungen", "Einstellungen")]
+       ("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen"), ("berater", "Berater"),
+       ("einstellungen", "Einstellungen")]
 
 CSS = """
 :root{--bg:#f6f7f9;--karte:#fff;--text:#1c2430;--leise:#5d6b7a;--linie:#e3e7ec;--akzent:#0a708f;
@@ -59,6 +63,9 @@ button.klein{padding:2px 10px;font-size:13px}
 .meldung{padding:10px 14px;border-radius:8px;margin-bottom:16px;background:var(--karte);border-left:4px solid var(--akzent)}
 .meldung.fehler{border-color:var(--schlecht)}
 details summary{cursor:pointer;color:var(--akzent)}
+.hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung>b:first-child{display:inline-block;width:18px}
+.antwort h3{font-size:15px;margin:14px 0 6px}.antwort p{margin:6px 0}.antwort ul{margin:6px 0;padding-left:20px}
+pre.text{white-space:pre-wrap;font-size:12px;max-height:480px;overflow:auto}
 """
 
 
@@ -117,7 +124,9 @@ def uebersicht(k: dict, db) -> str:
     kz = k["kennzahlen"]
     offen_3a = sum(max(0.0, kz["saeule3a_max"] - float(p["saeule3a"].get("beitrag_jahr", 0)))
                    for p in k["personen"] if float(p.get("lohn_brutto", 0)) > 0)
-    pot_3a = st.ersparnis_abzug(k, offen_3a)["total"] if offen_3a else 0
+    pot_3a = sum(st.ersparnis_abzug(k, max(0.0, kz["saeule3a_max"] - float(p["saeule3a"].get("beitrag_jahr", 0))),
+                                    p["name"])["total"]
+                 for p in k["personen"] if float(p.get("lohn_brutto", 0)) > 0) if offen_3a else 0
 
     hinweise = []
     for e in pks:
@@ -128,6 +137,12 @@ def uebersicht(k: dict, db) -> str:
         hinweise.append(f"Gestaffelter Kapitalbezug spart rund CHF {chf(kap['ersparnis'])} Steuern (siehe «Steuern»).")
     if k["wohnen"].get("aktiv"):
         hinweise += wo.tragbarkeit(k, jetzt)["pruefungen"]
+    for t in vi.kuendigungstermine(vi.alle(db), date.today()):
+        if (t.kuendigen_bis - date.today()).days <= 45:
+            hinweise.append(f"Kündigungsfrist {t.vertrag['versicherer'] or vi.SPARTEN[t.vertrag['sparte']]}: "
+                            f"bis {t.kuendigen_bis.strftime('%d.%m.%Y')} (siehe «Versicherungen»).")
+    hinweise += [f"{thema}: {text}" for status, thema, text in vi.deckungscheck(k, vi.alle(db))
+                 if status == "fehlt" and vi.alle(db)]
     if luecke.luecke > 0:
         hinweise.append(f"Pensionslücke von CHF {chf(luecke.luecke)} pro Jahr ab {luecke.jahr}.")
 
@@ -139,6 +154,7 @@ def uebersicht(k: dict, db) -> str:
         kpi(f"{luecke.ersatzquote:.0f} %", "Ersatzquote zum heutigen Lohn"),
         kpi(chf(steuer["total"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %"),
         kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else ""),
+        kpi(chf(vi.praemien(vi.alle(db))["total"]), "Versicherungsprämien (CHF/Jahr)"),
     ])
     verl = vm.verlauf(db)
     return kpis + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
@@ -181,14 +197,17 @@ def vorsorge(k: dict, db) -> str:
     pk_html += dg.linie({e.name: e.verlauf for e in pks}, "Altersguthaben")
 
     zeilen_3a = [[escape(d.name), chf(d.beitrag), chf(d.kapital)] for d in drei]
-    ersparnis = st.ersparnis_abzug(k, sum(d.beitrag for d in drei))
+    teile = [st.ersparnis_abzug(k, d.beitrag, p["name"]) for p, d in zip(k["personen"], drei)]
+    if st.einheiten(k)[0].verheiratet:
+        teile = [st.ersparnis_abzug(k, sum(d.beitrag for d in drei))]
+    ersparnis = {x: sum(t[x] for t in teile) for x in ("bund", "kanton", "total")}
     drei_html = tabelle(["Person", "Beitrag/Jahr", "Kapital bei Pensionierung"], zeilen_3a) + (
         f'<p>Steuerersparnis der heutigen 3a-Beiträge: <b>CHF {chf(ersparnis["total"])}</b> pro Jahr '
         f'(Bund {chf(ersparnis["bund"])}, Kanton/Gemeinde {chf(ersparnis["kanton"])}).</p>')
 
     lk = luecke
     luecke_html = tabelle(["Position", f"CHF/Jahr ab {lk.jahr}"], [
-        ["AHV (beide, plafoniert)", chf(lk.ahv)],
+        ["AHV" + (" (plafoniert)" if st.einheiten(k)[0].verheiratet and len(k["personen"]) > 1 else ""), chf(lk.ahv)],
         ["Pensionskassen-Renten", chf(lk.pk_rente)],
         [f"Kapitalverzehr ({k['haushalt']['entnahme_jahre']} Jahre, {k['haushalt']['entnahme_rendite']} %) "
          f"aus CHF {chf(lk.kapital_netto)} netto", chf(lk.kapitalverzehr)],
@@ -200,7 +219,8 @@ def vorsorge(k: dict, db) -> str:
     return (karte("Pensionslücke", _luecke_diagramm(lk) + luecke_html)
             + karte("1. Säule – AHV", ahv_html)
             + karte("2. Säule – Pensionskasse", pk_html)
-            + karte("Säule 3a", drei_html + dg.linie({d.name: d.verlauf for d in drei}, "3a")))
+            + karte("Säule 3a", drei_html + dg.linie({d.name: d.verlauf for d in drei}, "3a"))
+            + vorsorge_dokumente_karte(k, db))
 
 
 # ---------------------------------------------------------------- Steuern
@@ -215,18 +235,25 @@ def steuern(k: dict, db) -> str:
         kpi(chf(s["total"]), f"Total · effektiv {s['effektiv']:.1f} %"),
         kpi(f"{s['grenz_total']:.1f} %", f"Grenzsteuersatz (Bund {s['grenz_bund']:.1f} %)"),
     ])
+    einheiten_html = ""
+    if len(s["einheiten"]) > 1:
+        einheiten_html = karte("Pro Steuererklärung", tabelle(
+            ["Steuerpflichtig", "Bund", "Kanton/Gemeinde", "Total", "Grenzsatz", "effektiv"],
+            [[escape(e["name"]), chf(e["bund"]), chf(e["kanton"]), chf(e["total"]), f'{e["grenz_total"]:.1f} %',
+              f'{e["effektiv"]:.1f} %'] for e in s["einheiten"]]))
     # Abzüge simulieren
     zeilen = []
     for p in k["personen"]:
         pot = float(p["pk"].get("einkauf_potenzial", 0) or 0)
         for betrag in sorted({10000, 20000, round(pot)} - {0}):
             if betrag <= pot:
-                e = st.ersparnis_abzug(k, betrag)
+                e = st.ersparnis_abzug(k, betrag, p["name"])
                 zeilen.append([f"PK-Einkauf {escape(p['name'])}", chf(betrag), chf(e["total"]),
                                f"{e['total'] / betrag * 100:.0f} %"])
-    e3 = st.ersparnis_abzug(k, kz["saeule3a_max"])
-    zeilen.insert(0, ["3a-Maximalbeitrag (eine Person)", chf(kz["saeule3a_max"]), chf(e3["total"]),
-                      f"{e3['total'] / kz['saeule3a_max'] * 100:.0f} %"])
+    for i, p in enumerate(k["personen"]):
+        e3 = st.ersparnis_abzug(k, kz["saeule3a_max"], p["name"])
+        zeilen.insert(i, [f"3a-Maximalbeitrag {escape(p['name'])}", chf(kz["saeule3a_max"]), chf(e3["total"]),
+                          f"{e3['total'] / kz['saeule3a_max'] * 100:.0f} %"])
     abzuege = tabelle(["Massnahme", "Abzug", "Ersparnis", "in % des Abzugs"], zeilen) + (
         '<p class="leise">PK-Einkäufe auf mehrere Jahre verteilen glättet die Progression. '
         'In den 3 Jahren vor einem Kapitalbezug sind Einkäufe steuerlich heikel.</p>')
@@ -236,16 +263,20 @@ def steuern(k: dict, db) -> str:
     kap = st.kapitalbezug_varianten(k, pks, drei)
 
     def plan(v):
-        z = [[j, chf(b), chf(t["bund"]), chf(t["kanton"]), chf(t["total"])] for j, b, t in v["zeilen"]]
-        z.append(["<b>Total</b>", "", "", "", f"<b>{chf(v['steuer_total'])}</b>"])
-        return tabelle(["Jahr", "Bezug", "Bund", "Kanton", "Steuer"], z)
+        mehrere = len(st.einheiten(k)) > 1
+        z = [[j] + ([escape(n)] if mehrere else []) + [chf(b), chf(t["bund"]), chf(t["kanton"]), chf(t["total"])]
+             for j, n, b, t in v["zeilen"]]
+        z.append(["<b>Total</b>"] + ([""] if mehrere else []) + ["", "", "", f"<b>{chf(v['steuer_total'])}</b>"])
+        return tabelle(["Jahr"] + (["Person"] if mehrere else []) + ["Bezug", "Bund", "Kanton", "Steuer"], z,
+                       zahlen_ab=2 if mehrere else 1)
 
     kap_html = (f'<p>Ersparnis durch Staffelung: <b class="gut">CHF {chf(kap["ersparnis"])}</b></p>'
                 '<div class="raster"><div><h2>Alles im Pensionsjahr</h2>' + plan(kap["alles_auf_einmal"])
                 + '</div><div><h2>3a-Konten gestaffelt</h2>' + plan(kap["gestaffelt"]) + "</div></div>"
                 '<p class="leise">Bund: ein Fünftel des ordentlichen Tarifs. Kanton: effektiver Satz aus der Tabelle '
-                'unter Einstellungen (Schätzung – mit dem kantonalen Rechner prüfen). Ehepaare werden pro Jahr addiert.</p>')
-    return heute.join(['<div class="kpis">', '</div>']) + karte("Abzüge simulieren", abzuege) + karte(
+                'unter Einstellungen (Schätzung – mit dem kantonalen Rechner prüfen). Ehepaare werden pro Jahr addiert, '
+                'Konkubinatspaare getrennt besteuert.</p>')
+    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + karte("Abzüge simulieren", abzuege) + karte(
         "Kapitalbezug PK und 3a", kap_html)
 
 
@@ -283,8 +314,10 @@ def wohnen(k: dict, db) -> str:
          f'<b class="{"schlecht" if e["steuereffekt"] > 0 else "gut"}">{chf(e["steuereffekt"], True)}</b>'],
     ]) + (f'<p class="leise">Ab {e["ab"]} entfallen Eigenmietwert, Schuldzins- und Unterhaltsabzug für selbst '
           'bewohntes Eigentum (Volksabstimmung vom 28.9.2025). Positiv = mehr Steuern.</p>')
+    a = br.amortisation(k, db)
+    amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a)) if a else ""
     return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
-        "Wegfall Eigenmietwert", emw) + "</div>"
+        "Wegfall Eigenmietwert", emw) + "</div>" + amort
 
 
 # ---------------------------------------------------------------- Vermögen
@@ -334,12 +367,19 @@ def _felder_person(i: int) -> list[tuple]:
     return [
         (p + "name", "Name"), (p + "geburtsdatum", "Geburtsdatum (JJJJ-MM-TT)"),
         (p + "pensionierung_alter", "Pensionierungsalter"), (p + "lohn_brutto", "Bruttolohn/Jahr"),
+        (p + "sparen_monat", "Sparpotenzial/Monat"),
         (p + "ahv.beitragsjahre_bisher", "AHV-Beitragsjahre bisher"), (p + "ahv.fehlende_jahre", "AHV fehlende Jahre"),
         (p + "ahv.einkommen_durchschnitt", "Ø AHV-Einkommen (0 = Lohn)"),
         (p + "pk.altersguthaben", "PK-Altersguthaben"), (p + "pk.stand", "Stand Ausweis (JJJJ-MM-TT)"),
         (p + "pk.sparbeitrag_jahr", "PK-Sparbeitrag/Jahr (0 = BVG-Minimum)"), (p + "pk.zins", "PK-Zins %"),
         (p + "pk.umwandlungssatz", "Umwandlungssatz %"), (p + "pk.einkauf_potenzial", "Einkaufspotenzial"),
         (p + "pk.kapitalbezug_anteil", "Kapitalbezug %"),
+        (p + "pk.ausweis_alterskapital", "Alterskapital 65 laut Ausweis"), (p + "pk.ausweis_altersrente", "Altersrente laut Ausweis"),
+        (p + "risiko.iv_rente_pk", "IV-Rente PK/Jahr"), (p + "risiko.iv_kinderrente_pk", "IV-Kinderrente PK/Jahr"),
+        (p + "risiko.iv_rente_extern", "IV-Rente extern/Jahr"), (p + "risiko.partnerrente_pk", "Partnerrente PK/Jahr"),
+        (p + "risiko.waisenrente_pk", "Waisenrente PK/Jahr"), (p + "risiko.todesfallkapital_pk", "Todesfallkapital PK"),
+        (p + "risiko.todesfallkapital_extern", "Todesfallkapital extern"),
+        (p + "risiko.partner_bei_pk_gemeldet", "Partner bei PK gemeldet"),
         (p + "saeule3a.guthaben", "3a-Guthaben"), (p + "saeule3a.beitrag_jahr", "3a-Beitrag/Jahr"),
         (p + "saeule3a.rendite", "3a-Rendite %"), (p + "saeule3a.konten", "Anzahl 3a-Konten"),
     ]
@@ -356,9 +396,12 @@ FELDER_STEUERN = [
     ("steuern.grenzsteuersatz_kanton", "Grenzsteuersatz Kanton+Gemeinde %"),
 ]
 FELDER_WOHNEN = [
-    ("wohnen.aktiv", "Wohneigentum rechnen"), ("wohnen.kaufpreis", "Kaufpreis"), ("wohnen.eigenmittel", "Eigenmittel"),
+    ("wohnen.aktiv", "Wohneigentum rechnen"), ("wohnen.kaufpreis", "Kaufpreis bzw. Verkehrswert"), ("wohnen.eigenmittel", "Eigenmittel"),
     ("wohnen.davon_pk_vorbezug", "davon PK-Vorbezug"), ("wohnen.hypothek_zins", "Hypothekarzins %"),
     ("wohnen.eigenmietwert", "Eigenmietwert"), ("wohnen.unterhalt_pauschal", "Unterhalt+Nebenkosten % vom Preis"),
+    ("wohnen.mieteinnahmen_jahr", "Mieteinnahmen/Jahr"), ("wohnen.hypothek_faellig", "Hypothek fällig (JJJJ-MM-TT)"),
+    ("wohnen.amortisation_ziel", "Ziel-Amortisation bei Fälligkeit"), ("wohnen.amortisation_max", "Maximale Amortisation"),
+    ("wohnen.reserve", "Notreserve"),
 ]
 
 
@@ -389,8 +432,11 @@ def pfad_setzen(k: dict, pfad: str, roh: str) -> None:
     obj[teile[-1]] = wert
 
 
+FELDER_KI = [("ki.aktiv", "KI-Aufgabe von Home Assistant nutzen"), ("ki.entity", "KI-Entität (leer = Standard)")]
+
+
 def alle_felder(k: dict) -> list[tuple]:
-    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN
+    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI
     for i in range(len(k["personen"])):
         felder += _felder_person(i)
     return felder
@@ -412,7 +458,8 @@ def einstellungen(k: dict, db) -> str:
     teile = [gruppe("Haushalt", FELDER_HAUSHALT)]
     for i, p in enumerate(k["personen"]):
         teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i)))
-    teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN)]
+    teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN),
+              gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI)]
     formular = ('<form method="post" action="einstellungen">' + "".join(teile)
                 + '<div class="zeile"><button>Speichern</button></div></form>')
     text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
@@ -424,4 +471,331 @@ def einstellungen(k: dict, db) -> str:
 <input type="file" name="datei" accept=".yaml,.yml" required style="max-width:300px"><button>YAML importieren</button></div>
 <p class="leise">Die vorherige Fassung wird als finanz.yaml.bak gesichert. Alle Daten liegen im
 Konfigurationsordner der App und sind im Home-Assistant-Backup enthalten.</p></form>"""
-    return formular + karte("Experte", experte) + karte("Sichern und übertragen", datei)
+    importieren = f"""<form method="post" action="einstellungen/importordner">
+<p>Persönliche Daten gehören nicht ins GitHub-Repository. Kopiere sie stattdessen (z. B. mit Samba, dem File editor oder
+Studio Code Server) in den Ordner <code>/addon_configs/…_finanz/import/</code> – in der App ist das <code>/config/import/</code>.
+Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erledigte Dateien nach <code>import/erledigt/</code>.</p>
+<ul class="hinweise"><li><code>finanz.yaml</code> – ersetzt die ganze Konfiguration (vorherige Fassung wird gesichert)</li>
+<li><code>vermoegen*.csv</code> – Konten und Saldi · <code>versicherungen*.csv</code> – Versicherungsliste</li>
+<li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
+<div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
+    return formular + karte("Import-Ordner", importieren) + karte("Experte", experte) + karte("Sichern und übertragen", datei)
+
+
+# ---------------------------------------------------------------- Versicherungen
+
+STATUS = {"ok": ("✓", "gut"), "fehlt": ("✗", "schlecht"), "pruefen": ("!", "warn"), "info": ("i", "leise")}
+
+
+def versicherungen(k: dict, db) -> str:
+    heute = date.today()
+    vertraege = vi.alle(db)
+    pr = vi.praemien(vertraege)
+    termine = vi.kuendigungstermine(vertraege, heute)
+    naechster = termine[0] if termine else None
+    kpis = "".join([
+        kpi(str(len(vertraege)), "Verträge"),
+        kpi(chf(pr["total"]), f"Prämien pro Jahr · {chf(pr['monat'])}/Monat"),
+        kpi(naechster.kuendigen_bis.strftime("%d.%m.%Y") if naechster else "–",
+            "Nächste Kündigungsfrist" + (f" ({escape(naechster.vertrag['versicherer'] or vi.SPARTEN[naechster.vertrag['sparte']])})" if naechster else ""),
+            "warn" if naechster and (naechster.kuendigen_bis - heute).days <= 30 else ""),
+    ])
+    hochladen = """<form method="post" action="versicherungen/hochladen" enctype="multipart/form-data">
+<p class="leise">Policen, Offerten oder Prämienrechnungen als PDF hochladen (mehrere möglich). Die App liest Versicherer,
+Sparte, Prämie, Daten, Fristen und Summen aus; alles lässt sich danach korrigieren. Gescannte PDFs ohne Text bitte von Hand ergänzen.</p>
+<div class="zeile"><input type="file" name="datei" accept=".pdf,.txt,application/pdf" multiple required style="max-width:360px">
+<button>Hochladen und analysieren</button></div></form>"""
+    liste_import = """<form method="post" action="versicherungen/liste" enctype="multipart/form-data">
+<p class="leise">Policen ohne PDF als CSV: <code>Versicherung;Anbieter;Betrag</code>, optional <code>Person;Police;Beginn;Ablauf;Summe;Notiz</code>.
+Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1», «Invaliden Person 2»).</p>
+<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px"><button>Importieren</button></div></form>"""
+    if not vertraege:
+        return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte(
+            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + risiko_karte(k)
+    zeilen = []
+    for v in vertraege:
+        t = vi.naechster_termin(v, heute)
+        zeilen.append([
+            f'<a href="versicherungen/{v["id"]}">{escape(v["versicherer"] or v["dateiname"])}</a>',
+            escape(vi.SPARTEN.get(v["sparte"], v["sparte"])), escape(v["person"] or "–"),
+            t.kuendigen_bis.strftime("%d.%m.%Y") if t else "–", chf(v["praemie_jahr"]),
+        ])
+    zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>"])
+    liste = tabelle(["Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr"], zeilen, zahlen_ab=4)
+    termin_zeilen = [[t.kuendigen_bis.strftime("%d.%m.%Y"), t.wirksam_auf.strftime("%d.%m.%Y"),
+                      escape(t.vertrag["versicherer"] or t.vertrag["dateiname"]), escape(t.grund)] for t in termine[:8]]
+    termin_html = tabelle(["Kündigen bis", "wirksam auf", "Vertrag", "Grundlage"], termin_zeilen, zahlen_ab=9) + (
+        '<p class="leise">Ohne Datum im Vertrag wird keine Frist berechnet. Massgebend sind Police und AVB; '
+        'die Kündigung muss vor Fristende beim Versicherer eintreffen.</p>')
+    sparten = dg.saeulen([vi.SPARTEN.get(s, s)[:14] for s in pr["nach_sparte"]],
+                         {"Prämie": list(pr["nach_sparte"].values())}) if pr["total"] else ""
+    return (f'<div class="kpis">{kpis}</div>' + karte("Verträge", liste)
+            + '<div class="raster">' + karte("Deckungscheck", _deckung(k, vertraege))
+            + karte("Kündigungstermine", termin_html) + "</div>"
+            + risiko_karte(k) + karte("Prämien nach Sparte", sparten)
+            + '<div class="raster">' + karte("Weitere Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>")
+
+
+def _deckung(k: dict, vertraege: list[dict]) -> str:
+    zeilen = []
+    for status, thema, text in vi.deckungscheck(k, vertraege):
+        zeichen, klasse = STATUS[status]
+        zeilen.append(f'<li class="deckung"><b class="{klasse}">{zeichen}</b> <b>{escape(thema)}:</b> {escape(text)}</li>')
+    return f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>'
+
+
+def versicherung(k: dict, db, vid: int) -> str:
+    v = vi.einer(db, vid)
+    if not v:
+        raise ValueError("Vertrag nicht gefunden.")
+    personen = _personen_optionen(k, v["person"])
+    sparten = "".join(f'<option value="{s}"{" selected" if s == v["sparte"] else ""}>{escape(n)}</option>'
+                      for s, n in vi.SPARTEN.items())
+
+    def feld(name, text, typ="text"):
+        wert = v[name]
+        if typ == "date" or name in ("versicherer", "police", "notiz"):
+            pass
+        elif isinstance(wert, float):
+            wert = f"{wert:.2f}".rstrip("0").rstrip(".")
+        return f'<label>{escape(text)}<input name="{name}" type="{typ}" value="{escape(str(wert))}"></label>'
+
+    unfall = (f'<label>Unfall eingeschlossen<select name="unfall_eingeschlossen">'
+              f'<option value="0"{"" if v["unfall_eingeschlossen"] else " selected"}>nein</option>'
+              f'<option value="1"{" selected" if v["unfall_eingeschlossen"] else ""}>ja</option></select></label>')
+    formular = f"""<form method="post" action="versicherungen/{vid}"><div class="felder">
+<label>Sparte<select name="sparte">{sparten}</select></label>
+{feld("versicherer", "Versicherer")}{feld("police", "Police-Nr.")}
+<label>Person<select name="person">{personen}</select></label>
+{feld("praemie_jahr", "Prämie pro Jahr CHF")}{feld("beginn", "Beginn", "date")}{feld("ablauf", "Ablauf", "date")}
+{feld("kuendigungsfrist_monate", "Kündigungsfrist (Monate)")}{feld("franchise", "Franchise CHF")}
+{feld("selbstbehalt", "Selbstbehalt CHF")}{feld("summe", "Versicherungssumme CHF")}{unfall}
+</div><label style="margin-top:10px">Notiz<input name="notiz" value="{escape(v["notiz"])}"></label>
+<div class="zeile"><button>Speichern</button><a class="knopf zweit" href="versicherungen/{vid}/datei">Original öffnen</a></div></form>"""
+    t = vi.naechster_termin(v, date.today())
+    termin = (f'<p>Nächste Kündigung: bis <b>{t.kuendigen_bis.strftime("%d.%m.%Y")}</b>, wirksam auf '
+              f'{t.wirksam_auf.strftime("%d.%m.%Y")} – {escape(t.grund)}</p>') if t else \
+        '<p class="leise">Für eine Kündigungsfrist Beginn oder Ablauf erfassen.</p>'
+    quelle = {"muster": "automatisch erkannt – bitte prüfen", "ohne Text": "kein Text im PDF (gescannt?) – Werte von Hand erfassen",
+              "ki": "per KI ausgelesen – bitte prüfen", "hand": "von Hand bearbeitet"}.get(v["quelle"], v["quelle"])
+    ki = ""
+    if k.get("ki", {}).get("aktiv"):
+        ki = (f'<form method="post" action="versicherungen/{vid}/ki"><div class="zeile"><button class="zweit">'
+              'Mit KI auslesen</button><span class="leise">Sendet den Vertragstext an die in Home Assistant '
+              'konfigurierte KI-Aufgabe.</span></div></form>')
+    text = escape(v["text"][:20000]) or "Kein Text gefunden."
+    loeschen = (f'<form method="post" action="versicherungen/{vid}/loeschen" onsubmit="return confirm(\'Vertrag und Datei löschen?\')">'
+                '<button class="zweit">Vertrag löschen</button></form>')
+    return (karte(f"{v['versicherer'] or v['dateiname']} · {vi.SPARTEN.get(v['sparte'], v['sparte'])}",
+                  f'<p class="leise">{escape(v["dateiname"])} · {escape(quelle)}</p>' + termin + formular + ki)
+            + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{text}</pre></details>')
+            + '<p><a href="versicherungen">← alle Verträge</a></p>' + loeschen)
+
+
+def _personen_optionen(k: dict, aktuell: str) -> str:
+    namen = vi._personen_namen(k)
+    if aktuell and not any(vi.gleiche_person(n, aktuell) for n in namen):
+        namen = [aktuell] + namen
+    opts = ['<option value="">Haushalt</option>']
+    for n in namen:
+        sel = " selected" if aktuell and vi.gleiche_person(n, aktuell) else ""
+        opts.append(f'<option{sel}>{escape(n)}</option>')
+    return "".join(opts)
+
+
+# ---------------------------------------------------------------- Vorsorgedokumente
+
+def vorsorge_dokumente_karte(k: dict, db) -> str:
+    doks = dk.alle(db)
+    zeilen = [[f'<a href="vorsorge/dokument/{d["id"]}">{escape(d["dateiname"])}</a>', escape(dk.TYPEN.get(d["typ"], d["typ"])),
+               escape(d["person"] or "–"), escape(d["stichtag"] or "–"), str(len(d["werte"])),
+               "✓" if d["uebernommen"] else ""] for d in doks]
+    liste = tabelle(["Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen"], zeilen, zahlen_ab=4) if doks else ""
+    form = """<form method="post" action="vorsorge/hochladen" enctype="multipart/form-data">
+<p class="leise">Vorsorgeausweis der Pensionskasse, 3a-Auszug oder IK-Auszug/Rentenvorausberechnung als PDF. Die App erkennt
+Altersguthaben, Einkaufspotenzial, Prognose mit 65, Invaliden- und Todesfallleistungen bzw. Saldo und Beitragsjahre;
+die Werte lassen sich prüfen und einer Person übernehmen.</p>
+<div class="zeile"><input type="file" name="datei" accept=".pdf,.txt,application/pdf" multiple required style="max-width:360px">
+<button>Hochladen und analysieren</button></div></form>"""
+    return karte("Vorsorgedokumente", liste + form)
+
+
+def vorsorge_dokument(k: dict, db, did: int) -> str:
+    d = dk.einer(db, did)
+    if not d:
+        raise ValueError("Dokument nicht gefunden.")
+    typen = "".join(f'<option value="{t}"{" selected" if t == d["typ"] else ""}>{escape(n)}</option>' for t, n in dk.TYPEN.items())
+    namen = [p["name"] for p in k["personen"]]
+    pers = '<option value="">– Person wählen –</option>' + "".join(
+        f'<option{" selected" if vi.gleiche_person(n, d["person"]) else ""}>{escape(n)}</option>' for n in namen)
+    relevante = [s for s in dk.ZIELE if s in d["werte"]] + [s for s in dk.ZIELE if s not in d["werte"]]
+    zeilen = []
+    for s in relevante:
+        if d["typ"] == "pk_ausweis" and s in ("guthaben_3a", "beitrag_3a", "beitragsjahre", "einkommen_durchschnitt", "ahv_rente_monat"):
+            continue
+        if d["typ"] == "saeule3a" and s not in ("guthaben_3a", "beitrag_3a"):
+            continue
+        if d["typ"] == "ik_auszug" and s not in ("beitragsjahre", "einkommen_durchschnitt", "ahv_rente_monat"):
+            continue
+        beschr, ziel = dk.ZIELE[s]
+        wert = d["werte"].get(s)
+        aktuell = ""
+        person = next((p for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), None)
+        if person and ziel:
+            alt = pfad_lesen(person, ziel)
+            aktuell = chf(alt) if isinstance(alt, (int, float)) and not isinstance(alt, bool) else ""
+        haken = (f'<input type="checkbox" name="nimm_{s}" value="1" checked style="width:auto">'
+                 if wert is not None and ziel else "")
+        zeilen.append([haken, escape(beschr),
+                       f'<input name="wert_{s}" value="{"" if wert is None else f"{wert:g}"}" inputmode="decimal" style="max-width:140px">',
+                       aktuell])
+    quelle = {"muster": "automatisch erkannt – bitte mit dem Dokument vergleichen", "ki": "per KI ausgelesen – bitte prüfen",
+              "hand": "von Hand bearbeitet", "ohne Text": "kein Text im PDF (gescannt?) – Werte von Hand eintragen"}.get(d["quelle"], d["quelle"])
+    tab = tabelle(["", "Wert", "Erkannt", "Heute in den Einstellungen"], zeilen, zahlen_ab=9)
+    form = f"""<form method="post" action="vorsorge/dokument/{did}"><div class="felder">
+<label>Art<select name="typ">{typen}</select></label><label>Person<select name="person">{pers}</select></label></div>
+{tab}<div class="zeile"><button formaction="vorsorge/dokument/{did}/uebernehmen">Ausgewählte Werte übernehmen</button>
+<button class="zweit">Nur speichern</button><a class="knopf zweit" href="vorsorge/dokument/{did}/datei">Original öffnen</a></div></form>"""
+    ki = ""
+    if k.get("ki", {}).get("aktiv"):
+        ki = (f'<form method="post" action="vorsorge/dokument/{did}/ki"><div class="zeile"><button class="zweit">Mit KI auslesen'
+              '</button><span class="leise">Sendet den Text an die KI-Aufgabe von Home Assistant.</span></div></form>')
+    analyse = _dokument_analyse(k, d)
+    loeschen = (f'<form method="post" action="vorsorge/dokument/{did}/loeschen" onsubmit="return confirm(\'Dokument löschen?\')">'
+                '<button class="zweit">Dokument löschen</button></form>')
+    return (karte(f"{dk.TYPEN.get(d['typ'], d['typ'])}" + (f" · {d['anbieter']}" if d["anbieter"] else ""),
+                  f'<p class="leise">{escape(d["dateiname"])} · Stichtag {escape(d["stichtag"] or "unbekannt")} · {escape(quelle)}</p>'
+                  + form + ki)
+            + (karte("Einschätzung", hinweisliste(analyse)) if analyse else "")
+            + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{escape(d["text"][:20000]) or "Kein Text."}</pre></details>')
+            + '<p><a href="vorsorge">← Vorsorge</a></p>' + loeschen)
+
+
+def _dokument_analyse(k: dict, d: dict) -> list[str]:
+    w, h = d["werte"], []
+    person = next((p for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), None)
+    if d["typ"] == "pk_ausweis":
+        if w.get("einkauf_potenzial") and person:
+            e = st.ersparnis_abzug(k, min(w["einkauf_potenzial"], 50000), person["name"])
+            h.append(f"Ein PK-Einkauf von CHF {chf(min(w['einkauf_potenzial'], 50000))} spart rund CHF {chf(e['total'])} Steuern "
+                     f"({e['total'] / min(w['einkauf_potenzial'], 50000) * 100:.0f} %). Danach 3 Jahre kein Kapitalbezug/WEF-Vorbezug.")
+        if w.get("ausweis_altersrente") and w.get("ausweis_alterskapital"):
+            uws = w["ausweis_altersrente"] / w["ausweis_alterskapital"] * 100
+            h.append(f"Umwandlungssatz laut Prognose {uws:.2f} %"
+                     + (" – unter dem BVG-Mindestsatz von 6,8 %, typisch für umhüllende Kassen." if uws < 6.8 else "."))
+        if w.get("iv_rente_pk") and person and person.get("lohn_brutto"):
+            h.append(f"Invalidenrente PK = {w['iv_rente_pk'] / float(person['lohn_brutto']) * 100:.0f} % des Lohns; "
+                     "zusammen mit der IV-Rente der AHV ergibt sich die Absicherung (siehe «Versicherungen» → Risiko).")
+        if w.get("partnerrente_pk") and k["haushalt"].get("zivilstand") != "verheiratet":
+            h.append("Partnerrente: Bei Konkubinat nur, wenn die Lebenspartnerschaft der Kasse gemeldet ist.")
+    elif d["typ"] == "ik_auszug" and w.get("beitragsjahre") and person:
+        alter = date.today().year - vs.geburtsjahr(person)
+        soll = max(0, min(44, alter - 20))
+        if w["beitragsjahre"] < soll:
+            h.append(f"{int(soll - w['beitragsjahre'])} mögliche Beitragslücke(n) – Lücken der letzten 5 Jahre lassen sich nachzahlen.")
+    elif d["typ"] == "saeule3a" and w.get("beitrag_3a", 0) > k["kennzahlen"]["saeule3a_max"]:
+        h.append("Einzahlungen über dem 3a-Maximum – Überschuss zurückfordern, er ist nicht abzugsfähig.")
+    return h
+
+
+# ---------------------------------------------------------------- Risiko (Invalidität, Tod)
+
+def risiko_karte(k: dict) -> str:
+    ahv = vs.ahv(k, date.today().year)
+    rs = vi.risiko(k, ahv)
+    zeilen = []
+    for r in rs:
+        zeilen.append([escape(r.name), chf(r.iv_ahv + r.iv_kinder_ahv), chf(r.iv_pk + r.iv_kinder_pk), chf(r.iv_extern),
+                       f'<b class="{"gut" if r.iv_quote >= 70 else "warn"}">{chf(r.iv_total)}</b>', f"{r.iv_quote:.0f} %"])
+    iv = tabelle(["Invalidität", "IV (AHV)", "PK", "Extern", "Total/Jahr", "vom Lohn"], zeilen)
+    zeilen = [[escape(r.name), chf(r.tod_renten), chf(r.tod_kapital), chf(r.tod_bedarf_kapital)] for r in rs]
+    tod = tabelle(["Tod von …", "Renten Hinterbliebene/Jahr", "Todesfallkapital", "Richtwert Kapital"], zeilen)
+    hinweise = [x for r in rs for x in r.hinweise]
+    return karte("Risiko Invalidität und Tod", iv + tod + hinweisliste(sorted(set(hinweise), key=hinweise.index))
+                 + '<p class="leise">IV-Rente ≈ Altersrente der AHV ohne 13. Rente, Kinderrenten 40 %. PK- und externe Leistungen '
+                   'aus den Einstellungen (Abschnitt «risiko» pro Person) bzw. aus dem hochgeladenen Vorsorgeausweis.</p>')
+
+
+# ---------------------------------------------------------------- Anlageberater
+
+def berater(k: dict, db) -> str:
+    profile = br.profile(k)
+    situation = escape((k.get("berater") or {}).get("situation") or "")
+    sit = f"""<form method="post" action="berater/situation"><label>Unsere Situation und Ziele (bleibt im Home Assistant)
+<textarea name="situation" style="min-height:220px;font-family:inherit;font-size:14px">{situation}</textarea></label>
+<div class="zeile"><button class="zweit">Speichern</button></div></form>"""
+    opts = "".join(f'<option value="{escape(p["id"])}">{escape(p["name"])}</option>' for p in profile)
+    ki_aktiv = k.get("ki", {}).get("aktiv")
+    fragen = f"""<form method="post" action="berater/fragen"><div class="felder">
+<label>Berater<select name="profil">{opts}</select></label></div>
+<label style="margin-top:10px">Frage (optional)<textarea name="frage" style="min-height:90px;font-family:inherit;font-size:14px"
+placeholder="z. B. Wie erreichen wir bis zur Fälligkeit eine Amortisation von 600'000–800'000? Lohnt sich ein PK-Einkauf?"></textarea></label>
+<div class="zeile"><button>{"Beratung anfragen" if ki_aktiv else "Auftrag erstellen"}</button>
+<span class="leise">{"Geht an die KI-Aufgabe von Home Assistant." if ki_aktiv else "KI unter Einstellungen → YAML (ki.aktiv) einschalten oder den Auftrag kopieren."}</span></div></form>"""
+    a = br.amortisation(k, db)
+    amort = _amortisation_html(a) if a else '<p class="leise">Für das Szenario unter Wohnen die Fälligkeit der Hypothek erfassen.</p>'
+    liste = br.alle(db)
+    zeilen = [[f'<a href="berater/{b["id"]}">{escape(b["datum"][:16].replace("T", " "))}</a>', escape(b["profil"]),
+               escape((b["frage"] or "Gesamtbeurteilung")[:80]), "✓" if b["antwort"] else "offen"] for b in liste]
+    verlauf = tabelle(["Datum", "Berater", "Frage", "Antwort"], zeilen, zahlen_ab=9) if liste else '<p class="leise">Noch keine Beratungen.</p>'
+    return ('<div class="raster">' + karte("Situation", sit) + karte("Berater fragen", fragen) + "</div>"
+            + karte("Amortisation bis zur Fälligkeit", amort) + karte("Bisherige Beratungen", verlauf)
+            + '<p class="leise">Die Berater sind KI-Profile, keine zugelassenen Anlageberater. Ergebnisse kritisch prüfen.</p>')
+
+
+def _amortisation_html(a) -> str:
+    z = [["Liquide Mittel heute (ohne nicht anzutastende Arten)", chf(a.liquiditaet_heute)],
+         [f"Sparen bis {a.faellig.strftime('%m.%Y')} ({a.monate} Monate)", chf(a.sparen)]]
+    z += [[f"Verpfändet: {escape(n)}", chf(w)] for n, w in a.zeilen]
+    z += [["− Steuer beim Bezug der verpfändeten Vorsorge", chf(-a.steuer_bezug)],
+          ["− Geplante PK-Einkäufe (nach Steuerersparnis)", chf(-a.einkaeufe)],
+          ["− Notreserve", chf(-a.reserve)],
+          ["<b>Verfügbar bei Fälligkeit</b>", f"<b>{chf(a.verfuegbar)}</b>"],
+          [f"Ziel {chf(a.ziel)} – {chf(a.maximal)}", f'<b class="{"gut" if a.verfuegbar >= a.ziel else "schlecht"}">'
+                                                    f'{chf(a.moeglich)} möglich</b>'],
+          ["Hypothek danach", chf(a.hypothek_danach)]]
+    return tabelle(["Position", "CHF"], z) + hinweisliste(a.hinweise)
+
+
+def beratung(k: dict, db, bid: int) -> str:
+    b = br.eine(db, bid)
+    if not b:
+        raise ValueError("Beratung nicht gefunden.")
+    antwort = (f'<div class="antwort">{_absatz(b["antwort"])}</div>' if b["antwort"] else
+               '<p class="leise">Noch keine Antwort. Auftrag unten kopieren, in deinen KI-Assistenten einfügen und die Antwort hier speichern.</p>')
+    einfuegen = f"""<form method="post" action="berater/{bid}/antwort"><label>Antwort einfügen bzw. bearbeiten
+<textarea name="antwort" style="min-height:{160 if b['antwort'] else 260}px;font-family:inherit;font-size:14px">{escape(b['antwort'])}</textarea></label>
+<div class="zeile"><button class="zweit">Antwort speichern</button></div></form>"""
+    auftrag = f"""<details{"" if b["antwort"] else " open"}><summary>Auftrag anzeigen</summary>
+<textarea readonly id="auftrag" style="min-height:300px">{escape(b['auftrag'])}</textarea>
+<div class="zeile"><button type="button" class="zweit" onclick="navigator.clipboard.writeText(document.getElementById('auftrag').value);this.textContent='Kopiert'">Kopieren</button></div></details>"""
+    loeschen = (f'<form method="post" action="berater/{bid}/loeschen" onsubmit="return confirm(\'Beratung löschen?\')">'
+                '<button class="zweit">Löschen</button></form>')
+    return (karte(f"{b['profil']} · {b['datum'][:16].replace('T', ' ')}",
+                  (f'<p><b>Frage:</b> {escape(b["frage"])}</p>' if b["frage"] else "") + antwort)
+            + karte("Auftrag und Antwort", auftrag + einfuegen) + '<p><a href="berater">← Anlageberater</a></p>' + loeschen)
+
+
+def _absatz(text: str) -> str:
+    """Sehr einfache Darstellung von Markdown: Überschriften, Listen, fett, Absätze."""
+    import re as _re
+    html, liste = [], False
+    for zeile in text.splitlines():
+        z = escape(zeile.rstrip())
+        z = _re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", z)
+        if _re.match(r"^\s*([-*•]|\d+\.)\s+", z):
+            if not liste:
+                html.append("<ul>")
+                liste = True
+            html.append("<li>" + _re.sub(r"^\s*([-*•]|\d+\.)\s+", "", z) + "</li>")
+            continue
+        if liste:
+            html.append("</ul>")
+            liste = False
+        if _re.match(r"^#{1,6}\s", z):
+            html.append("<h3>" + _re.sub(r"^#{1,6}\s", "", z) + "</h3>")
+        elif z.strip():
+            html.append(f"<p>{z}</p>")
+    if liste:
+        html.append("</ul>")
+    return "".join(html)

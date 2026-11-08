@@ -8,7 +8,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 ARTEN = {
-    "bank": "Bankkonto", "depot": "Wertschriften", "krypto": "Krypto", "immobilie": "Immobilie",
+    "bank": "Bankkonto", "depot": "Wertschriften", "krypto": "Krypto", "vorsorge": "Vorsorge 3b (frei/verpfändet)", "immobilie": "Immobilie",
     "hypothek": "Hypothek", "kredit": "Kredit", "sonstiges": "Sonstiges",
 }
 SCHULDEN = {"hypothek", "kredit"}

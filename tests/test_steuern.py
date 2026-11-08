@@ -43,7 +43,7 @@ def test_staffelung_spart_steuern(k):
     pks = [vs.pk(p, k) for p in k["personen"]]
     drei = [vs.saeule3a(p, k, 2026) for p in k["personen"]]
     v = st.kapitalbezug_varianten(k, pks, drei)
-    summe = lambda name: sum(z[1] for z in v[name]["zeilen"])  # noqa: E731
+    summe = lambda name: sum(z[2] for z in v[name]["zeilen"])  # noqa: E731
     assert summe("gestaffelt") == pytest.approx(summe("alles_auf_einmal"), abs=5)  # gleiches Kapital
     assert v["ersparnis"] > 0
 

@@ -19,6 +19,7 @@ personen:
     geschlecht: m                # m | w
     pensionierung_alter: 65
     lohn_brutto: 110000
+    sparen_monat: 0
     ahv:
       beitragsjahre_bisher: 18   # laut individuellem Konto (IK-Auszug)
       fehlende_jahre: 0
@@ -32,6 +33,17 @@ personen:
       einkauf_potenzial: 60000   # maximaler Einkauf laut Vorsorgeausweis
       einkauf_geplant: []        # z. B. [{jahr: 2027, betrag: 20000}]
       kapitalbezug_anteil: 0     # 0–100 % des Altersguthabens als Kapital
+      ausweis_alterskapital: 0   # Prognose laut Vorsorgeausweis mit 65 (0 = selbst rechnen)
+      ausweis_altersrente: 0     # Altersrente laut Vorsorgeausweis pro Jahr (0 = Umwandlungssatz)
+    risiko:                      # Leistungen laut Vorsorgeausweis bzw. Policen, CHF pro Jahr
+      iv_rente_pk: 0
+      iv_kinderrente_pk: 0
+      iv_rente_extern: 0
+      partnerrente_pk: 0         # Ehegatten- bzw. Lebenspartnerrente
+      waisenrente_pk: 0
+      todesfallkapital_pk: 0
+      todesfallkapital_extern: 0
+      partner_bei_pk_gemeldet: false   # nur bei Konkubinat relevant
     saeule3a:
       guthaben: 45000
       beitrag_jahr: 7258
@@ -43,6 +55,7 @@ personen:
     geschlecht: w
     pensionierung_alter: 65
     lohn_brutto: 70000
+    sparen_monat: 0
     ahv:
       beitragsjahre_bisher: 16
       fehlende_jahre: 0
@@ -56,6 +69,17 @@ personen:
       einkauf_potenzial: 40000
       einkauf_geplant: []
       kapitalbezug_anteil: 0
+      ausweis_alterskapital: 0
+      ausweis_altersrente: 0
+    risiko:
+      iv_rente_pk: 0
+      iv_kinderrente_pk: 0
+      iv_rente_extern: 0
+      partnerrente_pk: 0
+      waisenrente_pk: 0
+      todesfallkapital_pk: 0
+      todesfallkapital_extern: 0
+      partner_bei_pk_gemeldet: false
     saeule3a:
       guthaben: 30000
       beitrag_jahr: 7258
@@ -64,6 +88,13 @@ personen:
 
 steuern:
   # Aus der letzten Steuerveranlagung bzw. Steuererklärung übernehmen.
+  # Verheiratete: die Werte unten gelten für den Haushalt.
+  # Nicht verheiratet (Konkubinat): unter «personen» je eine Steuererklärung erfassen, z. B.
+  #   personen:
+  #     - {person: Person 1, steuerbar_bund: 150000, steuerbar_kanton: 148000,
+  #        steuer_kanton_gemeinde: 24000, grenzsteuersatz_kanton: 26, kinder: 1}
+  # «kinder» = Kinder, für die diese Person den Kinderabzug / Elterntarif erhält.
+  personen: []
   steuerbar_bund: 140000
   steuerbar_kanton: 145000
   steuer_kanton_gemeinde: 16000   # Staats- und Gemeindesteuer (inkl. Kirche) laut Rechnung
@@ -86,6 +117,23 @@ wohnen:
   eigenmietwert: 26000
   schuldzinsen_abzug: true
   unterhalt_pauschal: 1.0          # % des Kaufpreises pro Jahr (Unterhalt + Nebenkosten)
+  mieteinnahmen_jahr: 0            # z. B. Einliegerwohnung; zählt zu 80 % für die Tragbarkeit
+  hypothek_faellig: ""             # JJJJ-MM-TT, für das Amortisations-Szenario
+  amortisation_ziel: 0             # gewünschte Amortisation bei Fälligkeit
+  amortisation_max: 0
+  reserve: 50000                   # Notreserve, die nicht amortisiert wird
+  nicht_antasten: [krypto, immobilie, hypothek, kredit, vorsorge]   # Vermögensarten, die nicht in die Amortisation fliessen
+  verpfaendet: []                  # indirekte Amortisation, z. B. [{name: 3a Mobiliar P1, guthaben: 40000, beitrag_monat: 625, rendite: 1.0}]
+  steuer_bezug_verpfaendet: 0      # geschätzte Steuer beim Bezug der verpfändeten Vorsorge
+
+ki:
+  aktiv: false                     # KI-Aufgabe (ai_task) von Home Assistant für Dokumente und Berater nutzen
+  entity: ""                       # z. B. ai_task.openai_ai_task; leer = Standard-KI-Aufgabe
+
+berater:
+  # Freie Beschreibung eurer Situation und Ziele für die Anlageberater (bleibt im Home Assistant).
+  situation: ""
+  profile: []                      # leer = Standardprofile; eigene: [{id, name, anweisung}]
 
 annahmen:
   lohnentwicklung: 0.0             # reale Lohnsteigerung pro Jahr bis zur Pensionierung

@@ -68,7 +68,7 @@ def _post(url, daten):
         return e.code, e.headers["Location"]
 
 
-@pytest.mark.parametrize("pfad", ["", "vorsorge", "steuern", "wohnen", "vermoegen", "einstellungen"])
+@pytest.mark.parametrize("pfad", ["", "vorsorge", "steuern", "wohnen", "vermoegen", "versicherungen", "berater", "einstellungen"])
 def test_seiten(server, pfad):
     req = urllib.request.Request(f"{server}/{pfad}", headers={"X-Ingress-Path": "/api/hassio_ingress/xyz"})
     html = urllib.request.urlopen(req).read().decode()
@@ -91,3 +91,34 @@ def test_einstellungen_und_saldo(server, daten):
 def test_yaml_fehler_wird_gemeldet(server):
     code, ziel = _post(f"{server}/einstellungen/yaml", {"yaml": "- nur eine liste"})
     assert code == 303 and "f=1" in ziel
+
+
+def _upload(url, feld, dateiname, inhalt):
+    grenze = "----finanztest"
+    body = (f"--{grenze}\r\nContent-Disposition: form-data; name=\"{feld}\"; filename=\"{dateiname}\"\r\n"
+            "Content-Type: application/pdf\r\n\r\n").encode() + inhalt + f"\r\n--{grenze}--\r\n".encode()
+    req = urllib.request.Request(url, body, {"Content-Type": f"multipart/form-data; boundary={grenze}"})
+    try:
+        urllib.request.build_opener(OhneWeiterleitung).open(req)
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers["Location"]
+
+
+def test_uploads_und_detailseiten(server):
+    from policen import HAUSRAT, PK_AUSWEIS, pdf
+    code, ziel = _upload(f"{server}/versicherungen/hochladen", "datei", "police.pdf", pdf(HAUSRAT))
+    assert code == 303 and ziel.startswith("/versicherungen/1")
+    html = urllib.request.urlopen(f"{server}/versicherungen/1").read().decode()
+    assert "Mobiliar" in html and "HR-998877" in html
+    assert urllib.request.urlopen(f"{server}/versicherungen/1/datei").read()[:5] == b"%PDF-"
+    code, ziel = _upload(f"{server}/vorsorge/hochladen", "datei", "ausweis.pdf", pdf(PK_AUSWEIS))
+    assert ziel.startswith("/vorsorge/dokument/1")
+    html = urllib.request.urlopen(f"{server}/vorsorge/dokument/1").read().decode()
+    assert "Vorsorgeausweis" in html and "180000" in html
+    code, ziel = _post(f"{server}/vorsorge/dokument/1/uebernehmen",
+                       {"typ": "pk_ausweis", "person": "Person 1", "wert_einkauf_potenzial": "180000", "nimm_einkauf_potenzial": "1"})
+    assert code == 303 and konfig.laden()["personen"][0]["pk"]["einkauf_potenzial"] == 180_000
+    code, ziel = _post(f"{server}/berater/fragen", {"profil": "steuern", "frage": "PK-Einkauf?"})
+    assert ziel.startswith("/berater/1")
+    html = urllib.request.urlopen(f"{server}/berater/1").read().decode()
+    assert "Steuerexperte" in html and "PK-Einkauf?" in html

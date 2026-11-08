@@ -4,8 +4,12 @@
 - Staats- und Gemeindesteuer als lineare Näherung um die letzte Veranlagung:
   Steuer(x) = Steuer_ref + Grenzsteuersatz × (x − Einkommen_ref).
 - Kapitalleistungen: Bund 1/5 des Tarifs (DBG Art. 38), Kanton mit effektivem Satz aus Tabelle.
+- Verheiratete werden gemeinsam besteuert (eine Steuereinheit), Konkubinatspaare getrennt
+  (je eine Steuereinheit unter steuern.personen).
 """
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from vorsorge import geburtsjahr, pensionsjahr
 
@@ -26,11 +30,11 @@ def tarif_progressiv(einkommen: float, stufen: list) -> float:
 
 
 def bundessteuer(einkommen: float, verheiratet: bool, kinder: int, kz: dict) -> float:
+    """Verheiratete und Alleinstehende mit Kindern: Verheiratetentarif, Elterntarif pro Kind."""
     einkommen = max(0.0, float(einkommen) // 100 * 100)  # auf 100 Franken abgerundet
-    stufen = kz["bund_tarif_verheiratet"] if verheiratet else kz["bund_tarif_ledig"]
+    stufen = kz["bund_tarif_verheiratet"] if (verheiratet or kinder) else kz["bund_tarif_ledig"]
     steuer = min(tarif_progressiv(einkommen, stufen), einkommen * kz["bund_hoechstsatz"] / 100)
-    if verheiratet or kinder:
-        steuer -= kinder * kz["bund_elterntarif_kind"]
+    steuer -= kinder * kz["bund_elterntarif_kind"]
     steuer = max(0.0, steuer)
     return 0.0 if steuer < 25 else round(steuer, 2)
 
@@ -46,28 +50,76 @@ def anzahl_kinder(k: dict) -> int:
     return len(k["haushalt"].get("kinder") or [])
 
 
-def steuern_heute(k: dict) -> dict:
-    kz, st = k["kennzahlen"], k["steuern"]
-    bund = bundessteuer(st["steuerbar_bund"], _verheiratet(k), anzahl_kinder(k), kz)
-    kanton = kantonssteuer(st["steuerbar_kanton"], st)
+@dataclass
+class Einheit:
+    name: str
+    personen: list[str]     # Namen der Personen in dieser Steuereinheit
+    st: dict                # steuerbar_bund, steuerbar_kanton, steuer_kanton_gemeinde, grenzsteuersatz_kanton
+    verheiratet: bool
+    kinder: int
+
+
+def einheiten(k: dict) -> list[Einheit]:
+    st = k["steuern"]
+    namen = [p["name"] for p in k["personen"]]
+    if _verheiratet(k) or not st.get("personen"):
+        return [Einheit("Haushalt" if len(namen) > 1 else namen[0], namen, st, _verheiratet(k),
+                        anzahl_kinder(k))]
+    erg = []
+    for i, e in enumerate(st["personen"]):
+        name = str(e.get("person") or (namen[i] if i < len(namen) else f"Person {i + 1}"))
+        merged = {"steuerbar_bund": 0, "steuerbar_kanton": 0, "steuer_kanton_gemeinde": 0,
+                  "grenzsteuersatz_kanton": st.get("grenzsteuersatz_kanton", 0)} | e
+        erg.append(Einheit(name, [name], merged, False, int(e.get("kinder", 0) or 0)))
+    return erg
+
+
+def einheit_von(k: dict, person: str | None) -> Einheit:
+    alle = einheiten(k)
+    if person:
+        for e in alle:
+            if any(n.lower() == person.lower() for n in e.personen):
+                return e
+    return alle[0]
+
+
+def _rechne(e: Einheit, kz: dict) -> dict:
+    s = e.st
+    bund = bundessteuer(s["steuerbar_bund"], e.verheiratet, e.kinder, kz)
+    kanton = kantonssteuer(s["steuerbar_kanton"], s)
+    grenz_bund = (bundessteuer(s["steuerbar_bund"] + 1000, e.verheiratet, e.kinder, kz) - bund) / 10
     total = bund + kanton
-    grenz_bund = (bundessteuer(st["steuerbar_bund"] + 1000, _verheiratet(k), anzahl_kinder(k), kz) - bund) / 10
     return {
-        "bund": round(bund), "kanton": round(kanton), "total": round(total),
+        "name": e.name, "bund": round(bund), "kanton": round(kanton), "total": round(total),
         "grenz_bund": round(grenz_bund, 1),
-        "grenz_total": round(grenz_bund + float(st.get("grenzsteuersatz_kanton", 0)), 1),
-        "effektiv": round(total / st["steuerbar_kanton"] * 100, 1) if st["steuerbar_kanton"] else 0.0,
+        "grenz_total": round(grenz_bund + float(s.get("grenzsteuersatz_kanton", 0)), 1),
+        "effektiv": round(total / s["steuerbar_kanton"] * 100, 1) if s["steuerbar_kanton"] else 0.0,
     }
 
 
-def ersparnis_abzug(k: dict, abzug: float) -> dict:
-    """Steuerersparnis, wenn das steuerbare Einkommen (Bund und Kanton) um `abzug` sinkt."""
-    kz, st = k["kennzahlen"], k["steuern"]
-    v, n = _verheiratet(k), anzahl_kinder(k)
-    b0 = bundessteuer(st["steuerbar_bund"], v, n, kz)
-    b1 = bundessteuer(st["steuerbar_bund"] - abzug, v, n, kz)
-    k0 = kantonssteuer(st["steuerbar_kanton"], st)
-    k1 = kantonssteuer(st["steuerbar_kanton"] - abzug, st)
+def steuern_heute(k: dict) -> dict:
+    kz = k["kennzahlen"]
+    teile = [_rechne(e, kz) for e in einheiten(k)]
+    total = sum(t["total"] for t in teile)
+    basis = sum(float(e.st["steuerbar_kanton"]) for e in einheiten(k))
+    return {
+        "einheiten": teile,
+        "bund": sum(t["bund"] for t in teile), "kanton": sum(t["kanton"] for t in teile), "total": total,
+        "grenz_bund": max(t["grenz_bund"] for t in teile),
+        "grenz_total": max(t["grenz_total"] for t in teile),
+        "effektiv": round(total / basis * 100, 1) if basis else 0.0,
+    }
+
+
+def ersparnis_abzug(k: dict, abzug: float, person: str | None = None) -> dict:
+    """Steuerersparnis, wenn das steuerbare Einkommen (Bund und Kanton) einer Person um `abzug` sinkt."""
+    kz = k["kennzahlen"]
+    e = einheit_von(k, person)
+    s = e.st
+    b0 = bundessteuer(s["steuerbar_bund"], e.verheiratet, e.kinder, kz)
+    b1 = bundessteuer(s["steuerbar_bund"] - abzug, e.verheiratet, e.kinder, kz)
+    k0 = kantonssteuer(s["steuerbar_kanton"], s)
+    k1 = kantonssteuer(s["steuerbar_kanton"] - abzug, s)
     return {"bund": round(b0 - b1), "kanton": round(k0 - k1), "total": round(b0 - b1 + k0 - k1)}
 
 
@@ -83,44 +135,49 @@ def effektiver_satz_kanton(betrag: float, tabelle: list) -> float:
     return punkte[-1][1]
 
 
-def kapitalsteuer(betrag: float, k: dict) -> dict:
-    """Steuer auf Kapitalleistungen eines Jahres (Ehepaare: Summe beider)."""
+def kapitalsteuer(betrag: float, k: dict, einheit: Einheit | None = None) -> dict:
+    """Steuer auf Kapitalleistungen eines Jahres einer Steuereinheit (Ehepaare: Summe beider)."""
     kz, st = k["kennzahlen"], k["steuern"]
     if betrag <= 0:
         return {"bund": 0, "kanton": 0, "total": 0}
-    stufen = kz["bund_tarif_verheiratet"] if _verheiratet(k) else kz["bund_tarif_ledig"]
-    e = betrag // 100 * 100
-    bund = min(tarif_progressiv(e, stufen), e * kz["bund_hoechstsatz"] / 100) / 5
+    e = einheit or einheiten(k)[0]
+    stufen = kz["bund_tarif_verheiratet"] if (e.verheiratet or e.kinder) else kz["bund_tarif_ledig"]
+    b = betrag // 100 * 100
+    bund = min(tarif_progressiv(b, stufen), b * kz["bund_hoechstsatz"] / 100) / 5
     kanton = betrag * effektiver_satz_kanton(betrag, st.get("kapitalbezug_kanton", [])) / 100
     return {"bund": round(bund), "kanton": round(kanton), "total": round(bund + kanton)}
 
 
-def _bezugsplan(k: dict, pks, drei, gestaffelt: bool) -> dict[int, float]:
+def _bezuege(p: dict, pk_e, d, gestaffelt: bool) -> dict[int, float]:
     plan: dict[int, float] = {}
-    for p, pk_e, d in zip(k["personen"], pks, drei):
-        pj = pensionsjahr(p)
-        if pk_e.kapital:
-            plan[pj] = plan.get(pj, 0) + pk_e.kapital
-        konten = max(1, int(p["saeule3a"].get("konten", 1)))
-        if not d.kapital:
-            continue
+    pj = pensionsjahr(p)
+    if pk_e.kapital:
+        plan[pj] = plan.get(pj, 0) + pk_e.kapital
+    konten = max(1, int(p["saeule3a"].get("konten", 1)))
+    if d.kapital:
         if not gestaffelt or konten == 1:
             plan[pj] = plan.get(pj, 0) + d.kapital
-            continue
-        # Bezug ab 5 Jahre vor dem Referenzalter möglich; ein Konto pro Jahr, letztes im Pensionsjahr
-        frueheste = geburtsjahr(p) + 60
-        jahre = [j for j in range(pj - konten + 1, pj + 1) if j >= frueheste] or [pj]
-        anteil = d.kapital / len(jahre)
-        for j in jahre:
-            plan[j] = plan.get(j, 0) + anteil
-    return dict(sorted(plan.items()))
+        else:
+            # Bezug ab 5 Jahre vor dem Referenzalter; ein Konto pro Jahr, das letzte im Pensionsjahr
+            jahre = [j for j in range(pj - konten + 1, pj + 1) if j >= geburtsjahr(p) + 60] or [pj]
+            for j in jahre:
+                plan[j] = plan.get(j, 0) + d.kapital / len(jahre)
+    return plan
 
 
 def kapitalbezug_varianten(k: dict, pks, drei) -> dict:
+    """Pro Variante: Zeilen (Jahr, Steuereinheit, Bezug, Steuer) und Steuertotal."""
     erg = {}
     for name, gestaffelt in (("alles_auf_einmal", False), ("gestaffelt", True)):
-        plan = _bezugsplan(k, pks, drei, gestaffelt)
-        zeilen = [(j, round(b), kapitalsteuer(b, k)) for j, b in plan.items()]
-        erg[name] = {"zeilen": zeilen, "steuer_total": sum(z[2]["total"] for z in zeilen)}
+        zeilen = []
+        for e in einheiten(k):
+            plan: dict[int, float] = {}
+            for p, pk_e, d in zip(k["personen"], pks, drei):
+                if p["name"] in e.personen:
+                    for j, b in _bezuege(p, pk_e, d, gestaffelt).items():
+                        plan[j] = plan.get(j, 0) + b
+            zeilen += [(j, e.name, round(b), kapitalsteuer(b, k, e)) for j, b in sorted(plan.items())]
+        zeilen.sort(key=lambda z: (z[0], z[1]))
+        erg[name] = {"zeilen": zeilen, "steuer_total": sum(z[3]["total"] for z in zeilen)}
     erg["ersparnis"] = erg["alles_auf_einmal"]["steuer_total"] - erg["gestaffelt"]["steuer_total"]
     return erg

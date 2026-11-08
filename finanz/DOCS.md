@@ -29,6 +29,63 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    Hypotheken und Kredite zählen negativ. Immobilie und Hypothek zählen nicht zum freien Vermögen
    für die Pensionsplanung.
 
+## Persönliche Daten importieren
+
+Persönliche Daten gehören **nicht** ins GitHub-Repository. Kopiere sie (Samba, File editor oder Studio Code Server)
+in den Import-Ordner der App: `/addon_configs/<…>_finanz/import/` (in der App `/config/import/`).
+Die App liest ihn beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und verschiebt
+erledigte Dateien nach `import/erledigt/`.
+
+| Datei | Wirkung |
+|---|---|
+| `finanz.yaml` | ersetzt die Konfiguration (vorherige Fassung als `finanz.yaml.bak`) |
+| `vermoegen*.csv` | Konten und Saldi (`Datum;Konto;Saldo;Art;Person`) |
+| `versicherungen*.csv` | Versicherungsliste (`Versicherung;Anbieter;Betrag;Person;Summe;Notiz`) |
+| `versicherung*.pdf`, `police*.pdf` | Versicherungsvertrag analysieren |
+| übrige `*.pdf` | Vorsorgedokument (Vorsorgeausweis, 3a-, IK-Auszug) analysieren |
+
+## Nicht verheiratet (Konkubinat)
+
+`haushalt.zivilstand: ledig` und unter `steuern.personen` je eine Steuererklärung erfassen. Dann rechnet die App
+getrennte Steuern (Elterntarif für die Person mit `kinder: 1`), Kapitalbezüge pro Person und die AHV ohne Plafonierung.
+Die Risiko-Analyse weist darauf hin, dass es ohne Heirat keine AHV-Hinterlassenenrente für den Partner gibt und
+eine PK-Lebenspartnerrente nur nach Meldung bei der Kasse.
+
+## Versicherungen
+
+Policen als PDF hochladen (mehrere gleichzeitig) oder als CSV-Liste importieren. Die Erkennung arbeitet lokal mit
+Mustern; jedes Feld lässt sich auf der Vertragsseite korrigieren. Die Seite zeigt:
+
+- **Deckungscheck:** Grundversicherung pro Person und Kind, Privathaftpflicht, Hausrat, Gebäude (kantonal + privat ist
+  üblich), Todesfallsumme gegenüber Hypothek und Kindern, Doppelversicherungen, Unfall in der Grundversicherung bei
+  Angestellten, Franchise, Sparversicherungen
+- **Kündigungstermine:** Grundversicherung bis 30. November, sonst auf Ablauf bzw. nach 3 Jahren (Art. 35a VVG)
+- **Risiko Invalidität und Tod:** IV-Rente (≈ AHV-Rente ohne 13. Rente, Kinderrenten 40 %), PK und externe Policen;
+  Renten für Hinterbliebene und Todesfallkapital
+
+## Vorsorgedokumente
+
+Unter «Vorsorge» Vorsorgeausweise, 3a- und IK-Auszüge hochladen. Erkannt werden u. a. Altersguthaben,
+Einkaufspotenzial, Prognose mit 65 (Kapital und Rente), Sparbeitrag, Umwandlungssatz, Invaliden-, Partner- und
+Waisenrenten, Todesfallkapital, 3a-Saldo und AHV-Beitragsjahre. Werte prüfen, Person wählen und übernehmen.
+Ist ein Alterskapital laut Ausweis erfasst, rechnet die App mit der Prognose der Kasse (plus geplante Einkäufe).
+
+## Anlageberater
+
+Sechs Profile (Sicherheit, Steuern, Hypothek, Vorsorge, Wachstum, Advocatus Diaboli; eigene unter `berater.profile`).
+Die App kombiniert das Profil mit eurer Situationsbeschreibung, den Fakten aus der Planung und dem
+Amortisations-Szenario bis zur Fälligkeit der Hypothek (liquide Mittel ohne «nicht antasten», Sparen, verpfändete
+3a/3b, Steuer beim Bezug, PK-Einkäufe, Reserve). Ist `ki.aktiv` eingeschaltet, geht der Auftrag an die KI-Aufgabe
+(`ai_task.generate_data`) von Home Assistant; sonst lässt er sich kopieren und die Antwort wieder einfügen.
+Die Berater sind KI-Profile, keine zugelassenen Anlageberater.
+
+## KI (optional)
+
+In Home Assistant eine KI-Integration mit KI-Aufgabe einrichten (z. B. OpenAI, Anthropic, Google), dann unter
+Einstellungen «KI-Aufgabe nutzen» auf ja und optional die Entität setzen. Genutzt für Berater sowie zum Auslesen von
+Verträgen und Vorsorgedokumenten. Dabei verlassen Dokumenttext bzw. Planungsdaten Home Assistant in Richtung des
+gewählten KI-Anbieters.
+
 ## Seiten
 
 | Seite | Inhalt |
@@ -38,6 +95,8 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 | Steuern | Steuern heute, Ersparnis von 3a und PK-Einkäufen, Kapitalbezug alles auf einmal vs. gestaffelt |
 | Wohnen | Tragbarkeit nach Bankenpraxis, maximaler Kaufpreis, Wegfall des Eigenmietwerts ab 2029 |
 | Vermögen | Konten, Saldi, CSV-Import, Verlauf am Monatsende |
+| Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Risiko Invalidität/Tod, Prämien |
+| Berater | Situation, Beraterprofile, Amortisations-Szenario, bisherige Beratungen |
 | Einstellungen | Formular, YAML-Editor, finanz.yaml herunterladen und importieren |
 
 ## Rechenmodell
@@ -85,8 +144,15 @@ Steuertarif) angepasst und lassen sich im YAML-Editor überschreiben.
 | Datei | Inhalt |
 |---|---|
 | `finanz.yaml` | Haushalt, Personen, Steuern, Wohnen, Annahmen, Kennzahlen; frühere Fassung als `finanz.yaml.bak` |
-| `finanz.sqlite` | Konten und Saldi |
+| `finanz.sqlite` | Konten, Saldi, Verträge, Vorsorgedokumente, Beratungen |
+| `versicherungen/`, `vorsorge/` | hochgeladene PDFs |
+| `import/` | Import-Ordner, erledigte Dateien unter `import/erledigt/` |
 | `finanz.log` | Protokoll |
 
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten.
-Die App braucht kein Internet.
+Ohne KI braucht die App kein Internet.
+
+## Sicherheit
+
+Die App läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
+zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe genutzt.
