@@ -1,0 +1,144 @@
+# Vorlage für finanz.yaml – ohne persönliche Daten.
+# Alle Beträge in CHF pro Jahr, Sätze in Prozent.
+
+haushalt:
+  name: Haushalt Muster
+  zivilstand: verheiratet        # verheiratet | ledig
+  kanton: ZH
+  kinder:
+    - name: Kind 1
+      geburtsjahr: 2018
+  bedarf_ruhestand: 96000        # gewünschtes Netto-Ausgabenbudget im Ruhestand (heutige Franken)
+  entnahme_jahre: 25             # über wie viele Jahre Kapital (3a, PK-Kapital, Vermögen) verzehrt wird
+  entnahme_rendite: 2.0          # Rendite auf dem Kapital während der Entnahme
+
+personen:
+  - id: p1
+    name: Person 1
+    geburtsdatum: "1985-06-15"
+    geschlecht: m                # m | w
+    pensionierung_alter: 65
+    lohn_brutto: 110000
+    ahv:
+      beitragsjahre_bisher: 18   # laut individuellem Konto (IK-Auszug)
+      fehlende_jahre: 0
+      einkommen_durchschnitt: 0  # 0 = aus Lohn schätzen
+    pk:
+      altersguthaben: 180000
+      stand: "2026-01-01"
+      sparbeitrag_jahr: 0        # AN + AG laut Vorsorgeausweis; 0 = BVG-Minimum
+      zins: 1.25
+      umwandlungssatz: 6.8
+      einkauf_potenzial: 60000   # maximaler Einkauf laut Vorsorgeausweis
+      einkauf_geplant: []        # z. B. [{jahr: 2027, betrag: 20000}]
+      kapitalbezug_anteil: 0     # 0–100 % des Altersguthabens als Kapital
+    saeule3a:
+      guthaben: 45000
+      beitrag_jahr: 7258
+      rendite: 3.0
+      konten: 3                  # für gestaffelten Bezug
+  - id: p2
+    name: Person 2
+    geburtsdatum: "1987-03-02"
+    geschlecht: w
+    pensionierung_alter: 65
+    lohn_brutto: 70000
+    ahv:
+      beitragsjahre_bisher: 16
+      fehlende_jahre: 0
+      einkommen_durchschnitt: 0
+    pk:
+      altersguthaben: 90000
+      stand: "2026-01-01"
+      sparbeitrag_jahr: 0
+      zins: 1.25
+      umwandlungssatz: 6.8
+      einkauf_potenzial: 40000
+      einkauf_geplant: []
+      kapitalbezug_anteil: 0
+    saeule3a:
+      guthaben: 30000
+      beitrag_jahr: 7258
+      rendite: 3.0
+      konten: 2
+
+steuern:
+  # Aus der letzten Steuerveranlagung bzw. Steuererklärung übernehmen.
+  steuerbar_bund: 140000
+  steuerbar_kanton: 145000
+  steuer_kanton_gemeinde: 16000   # Staats- und Gemeindesteuer (inkl. Kirche) laut Rechnung
+  grenzsteuersatz_kanton: 22      # Kanton + Gemeinde, mit dem Steuerrechner des Kantons ermitteln
+  # Kapitalleistungen (PK, 3a): effektiver Satz Kanton + Gemeinde je Bezugsbetrag (Schätzung –
+  # mit dem kantonalen Rechner ersetzen). Linear interpoliert.
+  kapitalbezug_kanton:
+    - [0, 2.0]
+    - [100000, 3.0]
+    - [250000, 4.5]
+    - [500000, 6.0]
+    - [1000000, 7.5]
+
+wohnen:
+  aktiv: false
+  kaufpreis: 1200000
+  eigenmittel: 260000
+  davon_pk_vorbezug: 0
+  hypothek_zins: 1.8
+  eigenmietwert: 26000
+  schuldzinsen_abzug: true
+  unterhalt_pauschal: 1.0          # % des Kaufpreises pro Jahr (Unterhalt + Nebenkosten)
+
+annahmen:
+  lohnentwicklung: 0.0             # reale Lohnsteigerung pro Jahr bis zur Pensionierung
+  rendite_vermoegen: 3.0
+
+kennzahlen:
+  # Stand 2026 (BSV). Werden alle zwei Jahre angepasst – bitte prüfen.
+  jahr: 2026
+  ahv_min: 1260
+  ahv_max: 2520
+  ahv_plafond_ehepaar: 150         # % der Maximalrente
+  ahv_13_rente: true               # 13. AHV-Rente ab Dezember 2026
+  ahv_vollbeitragsjahre: 44
+  ahv_vorbezug_kuerzung: 6.8       # % pro Vorbezugsjahr
+  bvg_eintrittsschwelle: 22680
+  bvg_koordinationsabzug: 26460
+  bvg_max_lohn: 90720
+  bvg_min_koord_lohn: 3780
+  bvg_mindestzins: 1.25
+  bvg_umwandlungssatz: 6.8
+  bvg_gutschriften: {25: 7, 35: 10, 45: 15, 55: 18}
+  saeule3a_max: 7258
+  saeule3a_max_ohne_pk: 36288
+  # Direkte Bundessteuer, Tarif ab 2025: [Untergrenze, Satz in % für den Teil darüber]
+  bund_tarif_verheiratet:
+    - [29700, 1.0]
+    - [53400, 2.0]
+    - [61300, 3.0]
+    - [79100, 4.0]
+    - [94900, 5.0]
+    - [108600, 6.0]
+    - [120500, 7.0]
+    - [130500, 8.0]
+    - [138300, 9.0]
+    - [144200, 10.0]
+    - [148200, 11.0]
+    - [150300, 12.0]
+    - [152300, 13.0]
+  bund_tarif_ledig:
+    - [15200, 0.77]
+    - [33200, 0.88]
+    - [43500, 2.64]
+    - [58000, 2.97]
+    - [76100, 5.94]
+    - [82000, 6.60]
+    - [108800, 8.80]
+    - [141500, 11.00]
+    - [184900, 13.20]
+  bund_hoechstsatz: 11.5
+  bund_elterntarif_kind: 263
+  eigenmietwert_abschaffung: 2029
+  tragbarkeit_zins: 5.0
+  tragbarkeit_max: 33.3
+  belehnung_max: 80
+  zweite_hypothek_ab: 66.7
+  amortisation_jahre: 15

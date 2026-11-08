@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  wie-im-home-assistant:
+    name: Wie im Home Assistant (Python 3.12, gleiche Pakete)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r finanz/requirements.txt pytest
+      - run: python -m pytest -q tests
+
+  neueste-pakete:
+    name: Neueste Paketversionen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install --upgrade pyyaml pytest
+      - run: python -m pytest -q tests
+
+  app-image:
+    name: App-Image bauen und starten
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image bauen
+        run: docker build -t finanz-test finanz
+      - name: Starten und Startseite abrufen
+        run: |
+          mkdir -p /tmp/finanz
+          docker run -d --name finanz -p 8099:8099 -v /tmp/finanz:/config finanz-test
+          for i in $(seq 1 20); do curl -fs localhost:8099/gesundheit && break; sleep 1; done
+          curl -fs localhost:8099/ | grep -q "Nettovermögen"
+          docker logs finanz

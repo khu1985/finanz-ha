@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+# Persönliche Daten gehören nicht ins Repository
+finanz.yaml
+finanz.yaml.bak
+finanz.sqlite
+finanz.log
+*.csv
+!tests/*.csv
