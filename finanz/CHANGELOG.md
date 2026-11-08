@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.3.0 – 2026-11-08
+
+- Version im Kopf und in der Fusszeile, Seite «Änderungen» mit diesem Changelog
+- Seite «Protokoll»: neueste Einträge zuerst, Filter nach Stufe, Download; Protokolldatei wird bei 1 MB rotiert
+- Statusanzeige: Ladebalken beim Seitenwechsel, Hinweisfenster mit Spinner bei Uploads, Import, KI und Beratern
+  (mit Anzahl und Grösse der Dateien), Knöpfe während der Verarbeitung gesperrt
+- Statuszeile auf der Übersicht: Stand der Saldi, Verträge, Dokumente, offene TODO, wartende Importe, KI, Warnungen
+- Handy: Kopfzeile mit Symbolen für Protokoll und Einstellungen, wischbare Navigation (aktive Seite sichtbar),
+  Kennzahlen zweispaltig, breite Tabellen als Karten, grössere Bedienelemente, keine Zoom-Sprünge bei Eingaben
+
 ## 0.2.1 – 2026-11-08
 
 - Behoben: App startete mit 0.2.0 nicht – AppArmor-Profil nach der Vorlage von Home Assistant neu aufgebaut,

@@ -16,8 +16,7 @@ import vorsorge as vs
 import wohnen as wo
 
 NAV = [("", "Übersicht"), ("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"),
-       ("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen"), ("berater", "Berater"),
-       ("einstellungen", "Einstellungen")]
+       ("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen"), ("berater", "Berater")]
 
 CSS = """
 :root{--bg:#f6f7f9;--karte:#fff;--text:#1c2430;--leise:#5d6b7a;--linie:#e3e7ec;--akzent:#0a708f;
@@ -27,10 +26,40 @@ CSS = """
 --c3:#9cc46a;--c4:#b48be0;--c5:#e57aa8}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
 font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{position:sticky;top:0;z-index:2;background:var(--karte);border-bottom:1px solid var(--linie)}
-nav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1100px;margin:0 auto}
-nav a{padding:6px 12px;border-radius:999px;color:var(--leise);text-decoration:none;white-space:nowrap}
+header{position:sticky;top:0;z-index:5;background:var(--karte);border-bottom:1px solid var(--linie);
+padding-top:env(safe-area-inset-top)}
+.kopf{display:flex;align-items:center;gap:8px;max-width:1100px;margin:0 auto;padding:8px 16px 0}
+.marke{font-weight:700;font-size:17px;color:var(--text);text-decoration:none}
+.version{font-size:12px;color:var(--leise);background:var(--bg);border:1px solid var(--linie);border-radius:999px;
+padding:1px 8px;text-decoration:none}.frei{flex:1}
+.symbol{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;color:var(--leise)}
+.symbol.aktiv,.symbol:hover{background:var(--bg);color:var(--akzent)}
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1100px;margin:0 auto;scrollbar-width:none;
+-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+nav::-webkit-scrollbar{display:none}
+nav a{padding:7px 14px;border-radius:999px;color:var(--leise);text-decoration:none;white-space:nowrap;scroll-snap-align:center}
 nav a.aktiv{background:var(--akzent);color:#fff}
+footer{max-width:1100px;margin:8px auto 0;padding:16px 16px calc(24px + env(safe-area-inset-bottom));
+color:var(--leise);font-size:12px;text-align:center}footer a{color:var(--leise)}
+#lade{position:fixed;top:0;left:0;height:3px;width:0;background:var(--akzent);z-index:20;opacity:0}
+#lade.an{opacity:1;animation:lade 8s cubic-bezier(.1,.7,.2,1) forwards}
+@keyframes lade{from{width:0}to{width:92%}}
+#status{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(2px)}
+#status.an{display:flex}
+.status-box{background:var(--karte);border:1px solid var(--linie);border-radius:14px;padding:20px 24px;max-width:320px;
+margin:16px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.15)}.status-box p{margin:12px 0 0}
+.spinner{width:34px;height:34px;margin:0 auto;border:3px solid var(--linie);border-top-color:var(--akzent);
+border-radius:50%;animation:dreh .8s linear infinite}@keyframes dreh{to{transform:rotate(360deg)}}
+button:disabled{opacity:.6;cursor:progress}
+.meldung{transition:opacity .6s,max-height .6s;max-height:200px;overflow:hidden}.meldung.weg{opacity:0;max-height:0;padding:0;margin:0}
+.status-zeile{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 14px}
+.chip{font-size:12px;border:1px solid var(--linie);background:var(--karte);border-radius:999px;padding:3px 10px;color:var(--leise)}
+.chip.gut{color:var(--gut);border-color:color-mix(in srgb,var(--gut) 40%,var(--linie))}
+.chip.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--linie))}
+.log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}.log td{vertical-align:top;white-space:pre-wrap;word-break:break-word}
+.log .ERROR,.log .CRITICAL{color:var(--schlecht)}.log .WARNING{color:var(--warn)}.log .DEBUG{color:var(--leise)}
+.tab{position:relative}
 main{max-width:1100px;margin:0 auto;padding:16px}
 h1{font-size:22px;margin:4px 0 16px}h2{font-size:17px;margin:0 0 12px}
 .raster{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
@@ -62,7 +91,24 @@ button.klein{padding:2px 10px;font-size:13px}
 .zeile{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px}
 .meldung{padding:10px 14px;border-radius:8px;margin-bottom:16px;background:var(--karte);border-left:4px solid var(--akzent)}
 .meldung.fehler{border-color:var(--schlecht)}
-details summary{cursor:pointer;color:var(--akzent)}
+details summary{cursor:pointer;color:var(--akzent);padding:4px 0}
+@media (max-width:600px){
+main{padding:12px}h1{font-size:20px;margin:2px 0 12px}h2{font-size:16px}
+.karte{padding:12px;border-radius:10px;margin-bottom:12px}.raster{gap:0}
+.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.kpi{padding:10px 12px}.kpi b{font-size:18px}.kpi span{font-size:12px}
+table{font-size:13px}th,td{padding:6px 4px}th{font-size:12px}
+input,select,textarea{font-size:16px}button,.knopf{min-height:44px}button.klein{min-height:32px}
+.zeile>*{flex:1 1 auto}
+table.responsiv thead{display:none}table.responsiv tr{display:block;border-bottom:1px solid var(--linie);padding:6px 0}
+table.responsiv td{display:flex;justify-content:space-between;gap:12px;border:0;padding:2px 2px;text-align:right}
+table.responsiv td::before{content:attr(data-label);color:var(--leise);font-size:12px;text-align:left}
+table.responsiv td:first-child{font-weight:600;text-align:left}table.responsiv td:first-child::before{content:none}
+table.responsiv td:empty{display:none}
+table.log thead{display:none}table.log tr{display:block;padding:6px 0;border-bottom:1px solid var(--linie)}
+table.log td{display:inline;border:0;padding:0 8px 0 0}table.log td:last-child{display:block;padding-top:2px}.zeile input[type=file]{max-width:none!important}
+.kopf{padding:6px 12px 0}nav{padding:6px 12px}
+}
 .hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung>b:first-child{display:inline-block;width:18px}
 .antwort h3{font-size:15px;margin:14px 0 6px}.antwort p{margin:6px 0}.antwort ul{margin:6px 0;padding-left:20px}
 pre.text{white-space:pre-wrap;font-size:12px;max-height:480px;overflow:auto}
@@ -76,14 +122,78 @@ def chf(v: float, vorzeichen: bool = False) -> str:
     return ("+" if vorzeichen and v > 0 else "") + s
 
 
+STATUS_TEXTE = [
+    ("berater/fragen", "Berater arbeitet … das kann bis zu zwei Minuten dauern."),
+    ("/ki", "KI liest das Dokument … das kann eine Minute dauern."),
+    ("versicherungen/hochladen", "Verträge werden hochgeladen und analysiert …"),
+    ("vorsorge/hochladen", "Vorsorgedokumente werden hochgeladen und analysiert …"),
+    ("importordner", "Import-Ordner wird eingelesen …"),
+    ("import", "Daten werden importiert …"),
+    ("liste", "Liste wird importiert …"),
+    ("uebernehmen", "Werte werden übernommen …"),
+    ("loeschen", "Wird gelöscht …"),
+]
+
+JS = """
+(function(){
+  var texte = %s;
+  var ov = document.getElementById('status'), txt = document.getElementById('status-text'), bar = document.getElementById('lade');
+  function zeige(t){ txt.textContent = t; ov.classList.add('an'); }
+  document.addEventListener('submit', function(e){
+    if (e.defaultPrevented) return;
+    var f = e.target, ziel = (e.submitter && e.submitter.getAttribute('formaction')) || f.getAttribute('action') || '';
+    var t = f.dataset.status || 'Wird gespeichert …';
+    for (var i = 0; i < texte.length; i++) { if (ziel.indexOf(texte[i][0]) >= 0) { t = texte[i][1]; break; } }
+    var dateien = f.querySelectorAll('input[type=file]'), n = 0, groesse = 0;
+    dateien.forEach(function(d){ for (var j = 0; j < d.files.length; j++) { n++; groesse += d.files[j].size; } });
+    if (n) t += ' (' + n + ' Datei' + (n > 1 ? 'en' : '') + ', ' + (groesse / 1048576).toFixed(1) + ' MB)';
+    zeige(t);
+    setTimeout(function(){ f.querySelectorAll('button').forEach(function(b){ b.disabled = true; }); }, 0);
+  });
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a');
+    if (!a || a.target || a.hasAttribute('download') || e.ctrlKey || e.metaKey) return;
+    var h = a.getAttribute('href') || '';
+    if (h.indexOf('://') >= 0 || h.charAt(0) === '#' || /datei$|export$|\\.csv$|\\.log$/.test(h)) return;
+    bar.classList.add('an');
+  });
+  window.addEventListener('pageshow', function(){ ov.classList.remove('an'); bar.classList.remove('an');
+    document.querySelectorAll('button').forEach(function(b){ b.disabled = false; }); });
+  var aktiv = document.querySelector('nav a.aktiv'); if (aktiv) aktiv.scrollIntoView({inline: 'center', block: 'nearest'});
+  var m = document.querySelector('.meldung:not(.fehler)');
+  if (m) setTimeout(function(){ m.classList.add('weg'); }, 6000);
+  if (location.search.indexOf('m=') >= 0 && history.replaceState) history.replaceState(null, '', location.pathname);
+})();
+"""
+
+SYMBOL = {
+    "protokoll": '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/></svg>',
+    "einstellungen": '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>',
+}
+
+
 def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = "", fehler: bool = False) -> str:
+    import json as _json
+
+    import meta
     nav = "".join(
         f'<a href="{p or "./"}" class="{"aktiv" if p == pfad else ""}">{n}</a>' for p, n in NAV)
-    m = f'<div class="meldung{" fehler" if fehler else ""}">{escape(meldung)}</div>' if meldung else ""
+    werkzeuge = "".join(
+        f'<a href="{p}" class="symbol{" aktiv" if p == pfad else ""}" title="{n}" aria-label="{n}">{SYMBOL[p]}</a>'
+        for p, n in (("protokoll", "Protokoll"), ("einstellungen", "Einstellungen")))
+    m = f'<div class="meldung{" fehler" if fehler else ""}" role="status">{escape(meldung)}</div>' if meldung else ""
+    v = meta.version()
     return f"""<!doctype html><html lang="de-CH"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><base href="{escape(basis)}/">
-<title>{escape(titel)} – Finanzplanung</title><style>{CSS}</style></head>
-<body><header><nav>{nav}</nav></header><main><h1>{escape(titel)}</h1>{m}{inhalt}</main></body></html>"""
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><base href="{escape(basis)}/">
+<meta name="theme-color" content="#0a708f"><title>{escape(titel)} – Finanzplanung</title><style>{CSS}</style></head>
+<body><div id="lade"></div><header><div class="kopf"><a class="marke" href="./">Finanzen</a>
+<a class="version" href="aenderungen" title="Änderungen">v{escape(v)}</a><span class="frei"></span>{werkzeuge}</div>
+<nav>{nav}</nav></header>
+<main><h1>{escape(titel)}</h1>{m}{inhalt}</main>
+<footer>Finanzplanung v{escape(v)} · <a href="aenderungen">Änderungen</a> · <a href="protokoll">Protokoll</a>
+<br>Keine Anlage-, Steuer- oder Rechtsberatung.</footer>
+<div id="status" aria-live="polite"><div class="status-box"><div class="spinner"></div><p id="status-text">Bitte warten …</p></div></div>
+<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script></body></html>"""
 
 
 def kpi(wert: str, text: str, klasse: str = "") -> str:
@@ -95,12 +205,15 @@ def karte(titel: str, inhalt: str) -> str:
 
 
 def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1) -> str:
+    """Tabelle; ab fünf Spalten auf dem Handy als Karten (Beschriftung je Zelle)."""
     th = "".join(f'<th class="{"z" if i >= zahlen_ab else ""}">{escape(h)}</th>' for i, h in enumerate(kopf))
     tr = []
     for z in zeilen:
-        tds = "".join(f'<td class="{"z" if i >= zahlen_ab else ""}">{c}</td>' for i, c in enumerate(z))
+        tds = "".join(f'<td class="{"z" if i >= zahlen_ab else ""}" data-label="{escape(kopf[i]) if i < len(kopf) else ""}">'
+                      f'{c}</td>' for i, c in enumerate(z))
         tr.append(f"<tr>{tds}</tr>")
-    return f'<div class="tab"><table><thead><tr>{th}</tr></thead><tbody>{"".join(tr)}</tbody></table></div>'
+    klasse = ' class="responsiv"' if len(kopf) > 4 else ""
+    return f'<div class="tab"><table{klasse}><thead><tr>{th}</tr></thead><tbody>{"".join(tr)}</tbody></table></div>'
 
 
 def hinweisliste(punkte: list[str]) -> str:
@@ -157,7 +270,7 @@ def uebersicht(k: dict, db) -> str:
         kpi(chf(vi.praemien(vi.alle(db))["total"]), "Versicherungsprämien (CHF/Jahr)"),
     ])
     verl = vm.verlauf(db)
-    return kpis + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
+    return statuszeile(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
         "Nettovermögen", dg.linie({"Nettovermögen": verl}, "Nettovermögen")
         + '<p class="leise">Saldi unter «Vermögen» erfassen oder als CSV importieren.</p>') + "</div>" + karte(
         "Ruhestand: Einkommen und Bedarf", _luecke_diagramm(luecke))
@@ -799,3 +912,58 @@ def _absatz(text: str) -> str:
     if liste:
         html.append("</ul>")
     return "".join(html)
+
+
+# ---------------------------------------------------------------- Status, Protokoll, Änderungen
+
+def statuszeile(k: dict, db) -> str:
+    import konfig
+    import meta
+    chips = []
+    letzter = db.execute("SELECT MAX(datum) FROM saldi").fetchone()[0]
+    if letzter:
+        alter = (date.today() - date.fromisoformat(letzter)).days
+        chips.append(("gut" if alter <= 45 else "warn", f"Saldi vom {date.fromisoformat(letzter).strftime('%d.%m.%Y')}"))
+    else:
+        chips.append(("warn", "Noch keine Saldi"))
+    chips.append(("", f"{len(vi.alle(db))} Verträge"))
+    chips.append(("", f"{len(dk.alle(db))} Vorsorgedokumente"))
+    todo = konfig.konfig_pfad().read_text(encoding="utf-8").count("TODO") if konfig.konfig_pfad().exists() else 0
+    if todo:
+        chips.append(("warn", f"{todo} offene TODO in der Konfiguration"))
+    imp = konfig.datenordner() / "import"
+    wartend = [p for p in imp.iterdir() if p.is_file()] if imp.exists() else []
+    if wartend:
+        chips.append(("warn", f"{len(wartend)} Datei(en) im Import-Ordner"))
+    chips.append(("gut" if k.get("ki", {}).get("aktiv") else "", "KI an" if k.get("ki", {}).get("aktiv") else "KI aus"))
+    fehler = [e for e in meta.protokoll(konfig.datenordner() / "finanz.log", "WARNING", 50)
+              if e[0][:10] == date.today().isoformat()]
+    if fehler:
+        chips.append(("warn", f"{len(fehler)} Warnung(en) heute – Protokoll"))
+    html = "".join(f'<span class="chip {c}">{escape(t)}</span>' for c, t in chips)
+    return f'<div class="status-zeile">{html}</div>'
+
+
+def protokoll(k: dict, db, stufe: str = "INFO") -> str:
+    import konfig
+    import meta
+    eintraege = meta.protokoll(konfig.datenordner() / "finanz.log", stufe)
+    auswahl = "".join(f'<option{" selected" if s == stufe else ""}>{s}</option>' for s in meta.STUFEN[:4])
+    filter_ = f"""<form method="get" action="protokoll" data-status="Protokoll wird geladen …"><div class="zeile">
+<label style="flex:0 1 200px">Ab Stufe<select name="stufe" onchange="this.form.submit()">{auswahl}</select></label>
+<a class="knopf zweit" href="protokoll.log">Protokoll herunterladen</a></div></form>"""
+    if not eintraege:
+        return karte("Protokoll", filter_ + '<p class="leise">Keine Einträge.</p>')
+    zeilen = "".join(f'<tr class="{s}"><td>{escape(z[5:16])}</td><td>{escape(s)}</td><td>{escape(t)}</td></tr>'
+                     for z, s, t in eintraege)
+    return karte("Protokoll", filter_ + f'<div class="tab"><table class="log"><thead><tr><th>Zeit</th><th>Stufe</th>'
+                 f'<th>Meldung</th></tr></thead><tbody>{zeilen}</tbody></table></div>'
+                 f'<p class="leise">Neueste zuerst, höchstens 400 Einträge. Die Stufe für neue Einträge lässt sich in der App-Konfiguration '
+                 '(log_level) einstellen.</p>')
+
+
+def aenderungen(k: dict, db) -> str:
+    import meta
+    text = meta.changelog()
+    text = "\n".join(z for z in text.splitlines() if not z.startswith("# "))
+    return karte(f"Version {meta.version()}", f'<div class="antwort">{_absatz(text)}</div>')

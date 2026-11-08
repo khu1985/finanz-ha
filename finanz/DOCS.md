@@ -152,6 +152,12 @@ Steuertarif) angepasst und lassen sich im YAML-Editor überschreiben.
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten.
 Ohne KI braucht die App kein Internet.
 
+## Version, Änderungen und Protokoll
+
+Die Version steht oben neben «Finanzen»; ein Tipp darauf öffnet die Änderungen. Das Symbol mit den Linien öffnet
+das Protokoll (Filter nach Stufe, Download), das Zahnrad die Einstellungen. Die Statuszeile auf der Übersicht zeigt,
+wie aktuell die Daten sind und ob etwas Aufmerksamkeit braucht.
+
 ## Sicherheit
 
 Die App läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –

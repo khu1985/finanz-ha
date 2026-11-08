@@ -40,4 +40,6 @@ jobs:
           docker run -d --name finanz -p 8099:8099 -v /tmp/finanz:/config finanz-test
           for i in $(seq 1 20); do curl -fs localhost:8099/gesundheit && break; sleep 1; done
           curl -fs localhost:8099/ | grep -q "Nettovermögen"
+          curl -fs localhost:8099/aenderungen | grep -q "Version [0-9]"
+          curl -fs localhost:8099/protokoll | grep -q "startet"
           docker logs finanz

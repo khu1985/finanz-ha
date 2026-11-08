@@ -68,7 +68,8 @@ def _post(url, daten):
         return e.code, e.headers["Location"]
 
 
-@pytest.mark.parametrize("pfad", ["", "vorsorge", "steuern", "wohnen", "vermoegen", "versicherungen", "berater", "einstellungen"])
+@pytest.mark.parametrize("pfad", ["", "vorsorge", "steuern", "wohnen", "vermoegen", "versicherungen", "berater",
+                                  "einstellungen", "protokoll", "aenderungen"])
 def test_seiten(server, pfad):
     req = urllib.request.Request(f"{server}/{pfad}", headers={"X-Ingress-Path": "/api/hassio_ingress/xyz"})
     html = urllib.request.urlopen(req).read().decode()
@@ -122,3 +123,15 @@ def test_uploads_und_detailseiten(server):
     assert ziel.startswith("/berater/1")
     html = urllib.request.urlopen(f"{server}/berater/1").read().decode()
     assert "Steuerexperte" in html and "PK-Einkauf?" in html
+
+
+def test_version_und_protokoll(tmp_path):
+    import meta
+    assert meta.version().count(".") == 2
+    assert "## " + meta.version() in meta.changelog()
+    log = tmp_path / "finanz.log"
+    log.write_text("2026-11-08 10:00:00,000 INFO Start\n2026-11-08 10:01:00,000 ERROR Kaputt\nTraceback x\n"
+                   "2026-11-08 10:02:00,000 DEBUG Detail\n", encoding="utf-8")
+    e = meta.protokoll(log, "INFO")
+    assert [x[1] for x in e] == ["ERROR", "INFO"] and "Traceback x" in e[0][2]
+    assert len(meta.protokoll(log, "DEBUG")) == 3 and len(meta.protokoll(log, "ERROR")) == 1

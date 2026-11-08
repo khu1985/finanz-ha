@@ -5,6 +5,7 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY app /app
+COPY config.yaml CHANGELOG.md /app/meta/
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import threading
 import traceback
@@ -32,6 +33,7 @@ SEITEN = {
     "versicherungen": ("Versicherungen", seiten.versicherungen),
     "berater": ("Anlageberater", seiten.berater),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
+    "aenderungen": ("Änderungen", seiten.aenderungen),
 }
 VORLAGE_CSV = "Datum;Konto;Saldo;Art;Person\n31.12.2025;Sparkonto;25000.00;bank;\n31.12.2025;Depot;80000;depot;Person 1\n"
 
@@ -120,6 +122,16 @@ class Handler(BaseHTTPRequestHandler):
             if pfad == "vorlage.csv":
                 return self.senden(200, VORLAGE_CSV.encode("utf-8-sig"), "text/csv; charset=utf-8",
                                    {"Content-Disposition": 'attachment; filename="vermoegen-vorlage.csv"'})
+            if pfad == "protokoll.log":
+                log = konfig.datenordner() / "finanz.log"
+                return self.senden(200, log.read_bytes() if log.exists() else b"", "text/plain; charset=utf-8",
+                                   {"Content-Disposition": 'attachment; filename="finanz.log"'})
+            if pfad == "protokoll":
+                stufe = q.get("stufe", ["INFO"])[0].upper()
+                with db() as v:
+                    inhalt = seiten.protokoll(konfig.laden(), v, stufe)
+                html = seiten.seite("Protokoll", "protokoll", inhalt, self.basis)
+                return self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
             if pfad == "gesundheit":
                 return self.senden(200, b"ok", "text/plain")
             detail = self._detail(pfad)
@@ -175,6 +187,7 @@ class Handler(BaseHTTPRequestHandler):
                 meldung = self._aktion(pfad, form)
             if isinstance(meldung, tuple):
                 meldung, ziel = meldung
+            LOG.info("%s: %s", pfad, meldung)
             self.weiter(ziel, meldung)
         except Exception as e:  # noqa: BLE001
             LOG.warning("Aktion %s fehlgeschlagen: %s", pfad, e)
@@ -337,8 +350,11 @@ def main():
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO").upper(),
         format="%(asctime)s %(levelname)s %(message)s",
-        handlers=[logging.StreamHandler(), logging.FileHandler(ordner / "finanz.log", encoding="utf-8")],
+        handlers=[logging.StreamHandler(),
+                  RotatingFileHandler(ordner / "finanz.log", maxBytes=1_000_000, backupCount=1, encoding="utf-8")],
     )
+    import meta
+    LOG.info("Finanzplanung %s startet", meta.version())
     konfig.laden()
     try:
         with db() as v:
