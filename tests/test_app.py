@@ -148,3 +148,14 @@ def test_steuerdokument_upload(server):
                         "nimm_steuerbar_kanton": "1"})
     assert code == 303 and konfig.laden()["steuern"]["steuerbar_kanton"] == 141_200   # verheiratet: Haushalt
     assert "Vergleich" in urllib.request.urlopen(f"{server}/steuern").read().decode()
+
+
+def test_bank_upload_und_erinnerung(server):
+    from pathlib import Path
+    inhalt = (Path(__file__).parent / "bank" / "raiffeisen.csv").read_bytes()
+    code, ziel = _upload(f"{server}/vermoegen/bank", "datei", "raiffeisen.csv", inhalt)
+    assert code == 303 and "Monatssaldi" in urllib.parse.unquote(ziel) and "f=1" not in ziel
+    html = urllib.request.urlopen(f"{server}/").read().decode()
+    assert "Anstehend" in html or "Erinnerungen" in html
+    html = urllib.request.urlopen(f"{server}/szenarien").read().decode()
+    assert "Hypothekar-Strategie" in html

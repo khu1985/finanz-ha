@@ -169,6 +169,15 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         erg.append(Ampel("Todesfall", schlechteste(stati),
                          ", ".join(f"{r.name} CHF {chf(r.tod_kapital)}" for r in rs) + " Kapital", "versicherungen"))
 
+    # Erinnerungen
+    import erinnerungen as er
+    offen = er.alle(k, db, heute)
+    if offen:
+        dringend = [e for e in offen if e.tage(heute) <= 7]
+        s = ROT if dringend else GELB if any(e.tage(heute) <= 30 for e in offen) else GRUEN
+        erg.append(Ampel("Erinnerungen", s, f"{len(offen)} anstehend" + (f", {len(dringend)} dringend" if dringend else "")
+                         + f" – nächste: {offen[0].titel}", ""))
+
     # Daten
     letzter = db.execute("SELECT MAX(datum) FROM saldi").fetchone()[0]
     todo = konfig.konfig_pfad().read_text(encoding="utf-8").count("TODO") if konfig.konfig_pfad().exists() else 0

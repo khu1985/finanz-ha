@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.7.0 – 2026-11-08
+
+- **Hypothekar-Strategie** (Szenarien): SARON, Festhypotheken und Mischungen bzw. Staffelungen über drei
+  SARON-Szenarien (tief, basis, stress) – Zinskosten über den Horizont, höchste Jahreskosten, Zinsbindung, Ampel nach
+  Robustheit, Empfehlung für maximale Sicherheit, Richtwert für eine Forward-Festhypothek; Sätze anpassbar
+- **Bank-Import:** Kontoauszüge als CSV aus dem E-Banking (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken u. a.);
+  erkennt Kodierung, Trennzeichen, Vorspann, IBAN, Bank und Spalten und übernimmt den letzten Saldo jedes Monats;
+  ohne Saldo-Spalte Rückrechnung ab einem Endsaldo; im Import-Ordner als bank*.csv oder konto*.csv
+- **Erinnerungen:** 3a-Einzahlung, PK-Einkauf, Krankenkasse, Kündigungsfristen, Steuererklärung, Vorsorgeausweise,
+  Kennzahlen, Hypothek, Saldi und eigene Erinnerungen; auf der Übersicht mit Ampel und «erledigt»; optional
+  Benachrichtigung über Home Assistant (Notify-Dienst oder Meldung) beim Erscheinen und bei Fälligkeit
+
 ## 0.6.0 – 2026-11-08
 
 - Neue Seite **Szenarien**

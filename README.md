@@ -15,9 +15,10 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke; Vorsorgeausweis, 3a- und IK-Auszug hochladen |
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029 |
-| Vermögen | Konten und Saldi, CSV-Import, Nettovermögen und Verlauf |
+| Vermögen | Konten und Saldi, Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf |
 | Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Risiko Invalidität und Tod |
-| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Vergleich verheiratet ↔ Konkubinat (Steuern, AHV, Kapitalbezug, Hinterbliebene) |
+| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat |
+| Erinnerungen | 3a, PK-Einkauf, Krankenkasse, Kündigungsfristen, Steuererklärung, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
 | Einstellungen | Formular, YAML-Editor, Import-Ordner, Export; Protokoll und Änderungen in der App |
 
@@ -91,6 +92,9 @@ flowchart TB
 | `finanz/app/versicherungen.py` | Policen, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a- und IK-Auszug |
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
+| `finanz/app/hypothek.py` | Hypothekar-Strategie über Zinsszenarien |
+| `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen |
+| `finanz/app/erinnerungen.py` | Erinnerungen, erledigt-Status, Benachrichtigung über Home Assistant |
 | `finanz/app/szenarien.py` | PK-Einkauf-Optimierung, Vergleich verheiratet ↔ Konkubinat |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Beratungen |
 | `finanz/app/importordner.py` | Import-Ordner für persönliche Dateien |
@@ -119,7 +123,8 @@ Home Assistant bietet ein Update nur an, wenn die Version in `finanz/config.yaml
 `tests/` prüft Rechenkern, Dokumenterkennung und Web-App mit erfundenen Daten, z. B. Eckwerte der Rentenskala,
 Ehepaar-Plafond und Konkubinat, Bundessteuer an Tarifgrenzen, Kantonssteuer-Kurve, Staffelung, Tragbarkeit,
 Erkennung von Policen, Vorsorgeausweisen und Steuerdokumenten aus erzeugten PDFs, Kündigungsfristen nach VVG,
-Ampel-Schwellen, PK-Einkauf-Optimierung, Heiratsvergleich, Import-Ordner sowie alle Seiten und Uploads hinter
+Ampel-Schwellen, PK-Einkauf-Optimierung, Heiratsvergleich, Hypothekar-Strategie, Bank-Import (Beispielauszüge in
+`tests/bank/`), Erinnerungen und Benachrichtigungen, Import-Ordner sowie alle Seiten und Uploads hinter
 einem Ingress-Pfad.
 
 GitHub führt die Tests bei jedem Push auf `main` und `tests` und bei jedem Pull Request aus

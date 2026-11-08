@@ -3,6 +3,7 @@
 - finanz.yaml                → ersetzt die Konfiguration (vorherige Fassung als finanz.yaml.bak)
 - vermoegen*.csv             → Konten und Saldi
 - versicherungen*.csv        → Versicherungsliste (ohne PDF)
+- bank*.csv, konto*.csv      → Kontoauszug aus dem E-Banking (Monatssaldi)
 - versicherung*.pdf, police* → Versicherungsvertrag hochladen und analysieren
 - steuer*.pdf, veranlagung*  → Steuererklärung / Veranlagung analysieren
 - übrige *.pdf               → Vorsorgedokument (Vorsorgeausweis, 3a-, IK-Auszug)
@@ -45,6 +46,10 @@ def einlesen(daten: Path, db) -> list[str]:
             elif name.endswith(".csv") and name.startswith("vermoegen"):
                 n, fehler = vm.csv_import(db, inhalt)
                 meldungen.append(f"{pfad.name}: {n} Saldi" + (f", {len(fehler)} übersprungen" if fehler else ""))
+            elif name.endswith(".csv") and (name.startswith("bank") or name.startswith("konto")):
+                import bankimport as bi
+                a, n = bi.aus_datei(db, inhalt, pfad.name)
+                meldungen.append(f"{pfad.name}: {n} Monatssaldi für {a.konto_vorschlag}")
             elif name.endswith(".csv") and name.startswith("versicherung"):
                 n, fehler = vi.csv_import(db, inhalt)
                 meldungen.append(f"{pfad.name}: {n} Verträge" + (f", {len(fehler)} übersprungen" if fehler else ""))

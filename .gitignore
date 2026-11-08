@@ -8,3 +8,4 @@ finanz.sqlite
 finanz.log
 *.csv
 !tests/*.csv
+!tests/bank/*.csv

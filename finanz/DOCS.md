@@ -14,7 +14,8 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 2. [Bedienung](#bedienung)
 3. [Seiten](#seiten)
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) ·
-   [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater)
+   [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
+   [Erinnerungen](#erinnerungen)
 5. [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
@@ -36,7 +37,8 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    - Vorsorgeausweise, 3a- und IK-Auszüge unter **Vorsorge**
    - Steuererklärungen und Veranlagungen unter **Steuern**
    - Versicherungspolicen unter **Versicherungen** (oder eine Liste als CSV)
-3. **Vermögen** erfassen: Saldi von Hand oder als CSV (`Datum;Konto;Saldo;Art;Person`).
+3. **Vermögen** erfassen: Kontoauszüge aus dem E-Banking als CSV importieren, Saldi von Hand oder als eigene Liste
+   (`Datum;Konto;Saldo;Art;Person`).
 4. Die **Übersicht** und ihre Ampeln zeigen, wo etwas zu tun ist. Werte mit «TODO» in der Konfiguration sind
    Platzhalter; ihre Zahl steht in der Statuszeile.
 
@@ -70,13 +72,13 @@ personen:
 
 | Seite | Inhalt |
 |---|---|
-| Übersicht | Ampeln, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
+| Übersicht | Ampeln, anstehende Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit |
-| Vermögen | Konten, Saldi, CSV-Import, Verlauf, Aufteilung nach Art |
+| Vermögen | Konten, Saldi, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Risiko Invalidität und Tod, Prämien |
-| Szenarien | PK-Einkauf optimieren, Vergleich verheiratet ↔ Konkubinat |
+| Szenarien | PK-Einkauf optimieren, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
 | Protokoll, Änderungen | Protokoll der App, Changelog |
@@ -124,7 +126,14 @@ Maximal-Amortisation.
 ## Vermögen
 
 Konten mit Art (Bank, Wertschriften, Krypto, Vorsorge 3b, Immobilie, Hypothek, Kredit, Sonstiges) und Person.
-Saldi von Hand oder per CSV; ein Saldo pro Konto und Tag, neuere ersetzen ältere. Hypotheken und Kredite zählen
+Saldi von Hand, als eigene Liste oder per **Bank-Import**; ein Saldo pro Konto und Tag, neuere ersetzen ältere.
+
+**Bank-Import.** Kontoauszug im E-Banking als CSV exportieren (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken,
+Migros Bank, neon, Yuh u. a.) und unter «Vermögen → Bank-Import» hochladen oder als `bank*.csv` bzw. `konto*.csv` in den
+Import-Ordner legen. Die App erkennt Kodierung, Trennzeichen, Vorspann-Zeilen, IBAN, Bank und die Spalten (Datum,
+Saldo, Betrag oder Gutschrift/Belastung) und übernimmt den letzten Saldo jedes Monats. Der Kontoname entsteht
+automatisch (z. B. «Raiffeisen …7890») oder wird angegeben. Fehlt die Saldo-Spalte, den heutigen Kontostand als
+Endsaldo angeben; die App rechnet die Monatssaldi aus den Beträgen zurück. Hypotheken und Kredite zählen
 negativ. Das freie Vermögen (ohne Immobilie und Hypothek) fliesst in den Kapitalverzehr im Ruhestand.
 
 ## Versicherungen
@@ -152,6 +161,16 @@ Das Ergebnis zeigt Einkauf und Ersparnis pro Jahr, die Ersparnis des letzten Fra
 zusätzlichen Kapitalbezugssteuer) und die Kurve der Grenz-Ersparnis. «Plan übernehmen» trägt die Einkäufe unter
 `pk.einkauf_geplant` ein; ein erneuter Lauf rechnet nur noch mit dem verbleibenden Potenzial.
 
+**Hypothekar-Strategie.** Vergleicht für die Hypothek ab Fälligkeit (nach dem Amortisations-Szenario) SARON,
+Festhypotheken und Mischungen bzw. Staffelungen über drei SARON-Szenarien (tief, basis, stress; Zielniveau und
+Anstiegsjahre einstellbar). Die SARON-Hypothek kostet SARON + Marge; eine Festhypothek läuft zum heutigen Satz und
+wird bei Ablauf zum SARON des Verlängerungsjahres plus der heutigen Laufzeitprämie verlängert. Ergebnis: Zinskosten
+über den Horizont je Szenario, höchste Jahreskosten im Stress, Zinsbindung, Ampel nach Robustheit und eine Empfehlung
+für maximale Sicherheit (tiefste Kosten im Stress). Dazu der «Preis der Sicherheit» gegenüber SARON, ein Richtwert für
+eine Forward-Festhypothek und Hinweise zu Vorfälligkeit und Staffelung. Sätze lassen sich auf der Seite oder unter
+`wohnen.strategie` (`saron`, `marge_saron`, `fest`, `szenarien`, `strategien`, `forward_aufschlag`) anpassen – eigene
+Offerten eintragen.
+
 **Verheiratet oder Konkubinat.** Braucht je Person eine Steuererklärung unter `steuern.personen`. Verglichen werden:
 
 | Punkt | Annahme bei Heirat |
@@ -172,6 +191,37 @@ Profil mit eurer Situationsbeschreibung (`berater.situation`), den Fakten aus de
 Vermögen, Liegenschaft, Amortisations-Szenario, Steuern und Steuerhistorie, Ruhestand, Versicherungen) und eurer
 Frage. Mit KI geht er an die KI-Aufgabe von Home Assistant; ohne KI lässt er sich kopieren und die Antwort wieder
 einfügen. Alle Beratungen bleiben gespeichert. Die Berater sind KI-Profile, keine zugelassenen Anlageberater.
+
+## Erinnerungen
+
+Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfällig, gelb ≤ 30 Tage) und dem Knopf
+«erledigt», der die Aufgabe bis zur nächsten Periode ausblendet:
+
+| Erinnerung | Zeitraum | Fällig |
+|---|---|---|
+| 3a einzahlen (pro Person mit Lohn) | ab 15. Oktober | 20. Dezember |
+| Geplanter PK-Einkauf dieses Jahres | ab 1. September | 10. Dezember |
+| Krankenkasse vergleichen | 20. September bis 30. November | 30. November |
+| Kündigungsfristen der Verträge | 60 Tage vorher | Fristende |
+| Steuererklärung | 2 Monate vorher | `erinnerungen.steuererklaerung_frist` (Standard 31. März) |
+| Neue Vorsorgeausweise hochladen | Februar bis April | 31. März |
+| Kennzahlen prüfen | Januar | 31. Januar |
+| Hypothek vorbereiten | 36 Monate vor Fälligkeit | 12 Monate vor Fälligkeit |
+| Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
+
+Eigene Erinnerungen unter `erinnerungen.eigene`:
+
+```yaml
+erinnerungen:
+  eigene:
+    - {titel: Depot ausgleichen, datum: "06-30", wiederholung: jaehrlich, vorlauf: 14, text: "Gewichtung prüfen"}
+    - {titel: Miete Einliegerwohnung prüfen, datum: "01", wiederholung: monatlich, vorlauf: 3}
+    - {titel: Notar, datum: "2027-02-15", text: "Testament besprechen"}
+```
+
+**Benachrichtigung aufs Handy:** unter Einstellungen → Erinnerungen `benachrichtigung` setzen – einen Notify-Dienst
+(z. B. `notify.mobile_app_iphone`) oder `persistent` für eine Meldung in Home Assistant. Die App prüft stündlich und
+sendet je Erinnerung höchstens zwei Meldungen: beim Erscheinen und bei Fälligkeit.
 
 ## Nicht verheiratet (Konkubinat)
 
@@ -204,6 +254,7 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Kündigungsfristen | > 45 Tage | ≤ 45 Tage | ≤ 14 Tage |
 | Invalidität | ≥ 70 % des Lohns | ≥ 55 % | darunter |
 | Todesfall | Kapital ≥ Richtwert | ≥ 50 % oder Partnerrente nicht gemeldet | darunter |
+| Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
 
 ## Persönliche Daten und Import-Ordner
@@ -217,6 +268,7 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 |---|---|
 | `finanz.yaml` | ersetzt die Konfiguration (vorherige Fassung als `finanz.yaml.bak`) |
 | `vermoegen*.csv` | Konten und Saldi (`Datum;Konto;Saldo;Art;Person`) |
+| `bank*.csv`, `konto*.csv` | Kontoauszug aus dem E-Banking (Monatssaldi) |
 | `versicherungen*.csv` | Versicherungsliste (`Versicherung;Anbieter;Betrag;Person;Summe;Notiz`) |
 | `versicherung*.pdf`, `police*.pdf` | Versicherungsvertrag analysieren |
 | `steuer*.pdf`, `veranlagung*.pdf` | Steuerdokument analysieren |
@@ -232,7 +284,8 @@ oder **Einstellungen → Experte**.
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, Kinder, Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
-| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet` |
+| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
+| `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist`, `eigene` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung, Rendite |
@@ -290,14 +343,15 @@ Richtung des gewählten KI-Anbieters.
 | Datei / Ordner | Inhalt |
 |---|---|
 | `finanz.yaml` | Konfiguration; frühere Fassung als `finanz.yaml.bak` |
-| `finanz.sqlite` | Konten, Saldi, Verträge, Vorsorge- und Steuerdokumente, Beratungen |
+| `finanz.sqlite` | Konten, Saldi, Verträge, Vorsorge- und Steuerdokumente, Beratungen, erledigte und gesendete Erinnerungen |
 | `versicherungen/`, `vorsorge/`, `steuern/` | hochgeladene PDFs |
 | `import/` | Import-Ordner, erledigte Dateien unter `import/erledigt/` |
 | `finanz.log` | Protokoll (rotiert bei 1 MB) |
 
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten. Ohne KI braucht die App
 kein Internet. Sie läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
-zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe genutzt.
+zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe und die
+Benachrichtigungen genutzt.
 
 ## Fehlersuche
 
@@ -306,6 +360,10 @@ zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale
 - **Seite zeigt «Fehler»:** meist ein Wert im falschen Format (z. B. Text statt Zahl, Datum nicht `JJJJ-MM-TT`).
   Details im Protokoll der App; Konfiguration im YAML-Editor korrigieren oder `finanz.yaml.bak` zurückholen.
 - **Dokument erkennt nichts:** «Ausgelesener Text» auf der Dokumentseite prüfen. Ist er leer, ist das PDF gescannt.
+- **Bank-Import meldet «Keine Kopfzeile»:** Den Auszug als CSV (nicht PDF/Excel) exportieren; die Kopfzeile muss
+  eine Datums- und eine Betrags- oder Saldo-Spalte enthalten.
+- **Keine Benachrichtigung:** Namen des Notify-Dienstes in Home Assistant unter Entwicklerwerkzeuge → Aktionen prüfen;
+  Fehler stehen im Protokoll.
 - **Import-Ordner liest nichts:** Dateinamen prüfen (siehe Tabelle); fehlerhafte Dateien bleiben im Ordner, der
   Grund steht im Protokoll.
 - **Vorabversion testen:** `https://github.com/khu1985/finanz-ha#tests` als Repository hinzufügen.

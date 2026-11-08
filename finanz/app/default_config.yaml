@@ -129,6 +129,11 @@ wohnen:
   verpfaendet: []                  # indirekte Amortisation, z. B. [{name: 3a Mobiliar P1, guthaben: 40000, beitrag_monat: 625, rendite: 1.0}]
   steuer_bezug_verpfaendet: 0      # geschätzte Steuer beim Bezug der verpfändeten Vorsorge
 
+erinnerungen:
+  benachrichtigung: ""             # leer = aus; «persistent» = Meldung in HA; sonst Notify-Dienst, z. B. notify.mobile_app_iphone
+  steuererklaerung_frist: "03-31"  # MM-TT, Frist für die Steuererklärung im Kanton
+  eigene: []                       # z. B. [{titel: Depot prüfen, datum: "06-30", wiederholung: jaehrlich, vorlauf: 14, text: ...}]
+
 ki:
   aktiv: false                     # KI-Aufgabe (ai_task) von Home Assistant für Dokumente und Berater nutzen
   entity: ""                       # z. B. ai_task.openai_ai_task; leer = Standard-KI-Aufgabe

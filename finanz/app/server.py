@@ -242,10 +242,27 @@ class Handler(BaseHTTPRequestHandler):
             if fehler:
                 text += " Übersprungen: " + "; ".join(fehler[:5]) + (" …" if len(fehler) > 5 else "")
             return text
+        if pfad == "vermoegen/bank":
+            import bankimport as bi
+            dateien = form.get("_dateien_datei") or []
+            endsaldo = vm.zahl(form["endsaldo"]) if str(form.get("endsaldo", "")).strip() else None
+            teile = []
+            with db() as v:
+                for name, inhalt in dateien:
+                    a, n = bi.aus_datei(v, inhalt, name, form.get("konto", "") if len(dateien) == 1 else "",
+                                        form.get("art", ""), form.get("person", ""), endsaldo)
+                    teile.append(f"{a.konto_vorschlag if not form.get('konto') or len(dateien) > 1 else form['konto']}: "
+                                 f"{n} Monatssaldi" + (f" ({a.zeitraum[0][:7]} bis {a.zeitraum[1][:7]})" if a.zeitraum else ""))
+            return "Importiert – " + "; ".join(teile)
         if pfad == "vermoegen/loeschen":
             with db() as v:
                 vm.konto_loeschen(v, int(form["id"]))
             return "Konto gelöscht."
+        if pfad == "erinnerungen/erledigt":
+            import erinnerungen as er
+            with db() as v:
+                er.erledigen(v, form["schluessel"])
+            return "Erinnerung erledigt.", ""
         if pfad == "einstellungen/importordner":
             with db() as v:
                 meldungen = importordner.einlesen(konfig.datenordner(), v)
@@ -438,6 +455,8 @@ def main():
             importordner.einlesen(ordner, v)
     except Exception as e:  # noqa: BLE001
         LOG.warning("Import-Ordner: %s", e)
+    import erinnerungen
+    erinnerungen.hintergrund(konfig.laden, db)
     port = int(os.environ.get("PORT", "8099"))
     LOG.info("Finanzplanung läuft auf Port %d, Daten in %s", port, ordner)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

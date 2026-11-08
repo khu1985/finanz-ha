@@ -1,0 +1,10 @@
+Kontoauszug
+Konto: Privatkonto
+IBAN: CH93 0076 2011 6238 5295 7
+Zeitraum: 01.08.2026 - 31.10.2026
+
+Buchungsdatum,Buchungstext,Gutschrift,Belastung,Valuta
+05.08.2026,"Einkauf Migros",,"120.50",05.08.2026
+25.08.2026,"Lohn","6'000.00",,25.08.2026
+10.09.2026,"Versicherung",,"300.00",10.09.2026
+25.10.2026,"Lohn","6'000.00",,25.10.2026

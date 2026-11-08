@@ -128,6 +128,8 @@ table.log td{display:inline;border:0;padding:0 8px 0 0}table.log td:last-child{d
 .kopf{padding:6px 12px 0}nav{padding:6px 12px}
 }
 .hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung .ampel{margin-right:8px}
+.erinnerung{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--linie)}
+.erinnerung>div{flex:1}.erinnerung .ampel{margin-top:6px}.erinnerung form{margin-left:8px}
 .antwort h3{font-size:15px;margin:14px 0 6px}.antwort p{margin:6px 0}.antwort ul{margin:6px 0;padding-left:20px}
 pre.text{white-space:pre-wrap;font-size:12px;max-height:480px;overflow:auto}
 """
@@ -149,6 +151,7 @@ STATUS_TEXTE = [
     ("importordner", "Import-Ordner wird eingelesen …"),
     ("import", "Daten werden importiert …"),
     ("liste", "Liste wird importiert …"),
+    ("vermoegen/bank", "Kontoauszüge werden gelesen …"),
     ("uebernehmen", "Werte werden übernommen …"),
     ("loeschen", "Wird gelöscht …"),
 ]
@@ -299,7 +302,7 @@ def uebersicht(k: dict, db) -> str:
         kpi(chf(vi.praemien(vi.alle(db))["total"]), "Versicherungsprämien (CHF/Jahr)"),
     ])
     verl = vm.verlauf(db)
-    return statuszeile(k, db) + ampel_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
+    return statuszeile(k, db) + ampel_karte(k, db) + erinnerungen_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
         "Nettovermögen", dg.linie({"Nettovermögen": verl}, "Nettovermögen")
         + '<p class="leise">Saldi unter «Vermögen» erfassen oder als CSV importieren.</p>') + "</div>" + karte(
         "Ruhestand: Einkommen und Bedarf", _luecke_diagramm(luecke))
@@ -497,11 +500,21 @@ def vermoegen(k: dict, db) -> str:
 Arten: bank, depot, krypto, immobilie, hypothek, kredit, sonstiges. Bestehende Saldi am gleichen Datum werden ersetzt.</p>
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px">
 <button>Importieren</button><a class="knopf zweit" href="vorlage.csv">Vorlage herunterladen</a></div></form>"""
+    bank = f"""<form method="post" action="vermoegen/bank" enctype="multipart/form-data">
+<p class="leise">Kontoauszug als CSV aus dem E-Banking (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken, Migros Bank, neon,
+Yuh u. a.). Die App erkennt Bank, IBAN und Spalten und übernimmt den letzten Saldo jedes Monats. Fehlt im Auszug eine
+Saldo-Spalte, den heutigen Kontostand als Endsaldo angeben.</p>
+<div class="felder"><label>Konto (leer = automatisch, z. B. «Raiffeisen …7890»)<input name="konto" list="konten"></label>
+<label>Art<select name="art">{arten}</select></label><label>Person<select name="person">{pers}</select></label>
+<label>Endsaldo (nur ohne Saldo-Spalte)<input name="endsaldo" inputmode="decimal"></label></div>
+<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt" multiple required style="max-width:360px">
+<button>Auszug importieren</button></div></form>"""
     arten_zeilen = [[vm.ARTEN.get(a, a), chf(v)] for a, v in sorted(nv["nach_art"].items(), key=lambda x: -x[1])]
     return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["frei"]), "Freies Vermögen (ohne Immobilie/Hypothek)") + "</div>"
             + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
             + karte("Konten", liste)
-            + '<div class="raster">' + karte("Saldo erfassen", erfassen) + karte("CSV importieren", importieren)
+            + '<div class="raster">' + karte("Bank-Import", bank) + karte("Saldo erfassen", erfassen)
+            + karte("CSV importieren (eigene Liste)", importieren)
             + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>")
 
 
@@ -578,10 +591,12 @@ def pfad_setzen(k: dict, pfad: str, roh: str) -> None:
 
 
 FELDER_KI = [("ki.aktiv", "KI-Aufgabe von Home Assistant nutzen"), ("ki.entity", "KI-Entität (leer = Standard)")]
+FELDER_ERINNERUNG = [("erinnerungen.benachrichtigung", "Benachrichtigung (leer, «persistent» oder notify.…)"),
+                     ("erinnerungen.steuererklaerung_frist", "Frist Steuererklärung (MM-TT)")]
 
 
 def alle_felder(k: dict) -> list[tuple]:
-    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI
+    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI + FELDER_ERINNERUNG
     for i in range(len(k["personen"])):
         felder += _felder_person(i)
     return felder
@@ -604,7 +619,8 @@ def einstellungen(k: dict, db) -> str:
     for i, p in enumerate(k["personen"]):
         teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i)))
     teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN),
-              gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI)]
+              gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI),
+              gruppe("Erinnerungen", FELDER_ERINNERUNG)]
     formular = ('<form method="post" action="einstellungen">' + "".join(teile)
                 + '<div class="zeile"><button>Speichern</button></div></form>')
     text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
@@ -621,7 +637,8 @@ Konfigurationsordner der App und sind im Home-Assistant-Backup enthalten.</p></f
 Studio Code Server) in den Ordner <code>/addon_configs/…_finanz/import/</code> – in der App ist das <code>/config/import/</code>.
 Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erledigte Dateien nach <code>import/erledigt/</code>.</p>
 <ul class="hinweise"><li><code>finanz.yaml</code> – ersetzt die ganze Konfiguration (vorherige Fassung wird gesichert)</li>
-<li><code>vermoegen*.csv</code> – Konten und Saldi · <code>versicherungen*.csv</code> – Versicherungsliste</li>
+<li><code>vermoegen*.csv</code> – Konten und Saldi · <code>bank*.csv</code>, <code>konto*.csv</code> – Kontoauszüge aus dem
+E-Banking · <code>versicherungen*.csv</code> – Versicherungsliste</li>
 <li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
 <code>veranlagung*.pdf</code> – Steuerdokumente · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
@@ -1124,7 +1141,7 @@ def ampel_karte(k: dict, db) -> str:
 
 def szenarien(k: dict, db, q: dict | None = None) -> str:
     q = q or {}
-    return einkauf_karte(k, db, q) + heirat_karte(k, db)
+    return einkauf_karte(k, db, q) + hypothek_karte(k, db, q) + heirat_karte(k, db)
 
 
 def einkauf_karte(k: dict, db, q: dict) -> str:
@@ -1218,3 +1235,85 @@ def heirat_karte(k: dict, db) -> str:
                 '(steuern.ehe_splitting_divisor). Kantonale Regeln prüfen; Hinterbliebene: AHV-Witwen-/Witwerrente und '
                 'PK-Ehegattenrente gegenüber nur Waisenrenten bzw. gemeldeter Lebenspartnerrente.</p>')
     return karte(titel, tab + fazit + hinweisliste(h.qualitativ) + annahmen)
+
+
+def hypothek_karte(k: dict, db, q: dict) -> str:
+    import copy as _copy
+
+    import hypothek as hy
+    titel = "Hypothekar-Strategie"
+    if not k["wohnen"].get("aktiv"):
+        return karte(titel, '<p class="leise">Unter Einstellungen → Wohnen Wohneigentum aktivieren.</p>')
+    k2 = _copy.deepcopy(k)
+    eigen = k2["wohnen"].setdefault("strategie", {}) or {}
+    k2["wohnen"]["strategie"] = eigen
+    cfg0 = hy.konfiguration(k)
+    felder = [("betrag", "Hypothek ab Start (0 = nach Amortisation)", cfg0.get("betrag") or 0),
+              ("horizont_jahre", "Horizont Jahre", cfg0["horizont_jahre"]),
+              ("saron", "SARON heute %", cfg0["saron"]), ("marge_saron", "Marge SARON %", cfg0["marge_saron"]),
+              ("fest5", "Festsatz 5 J. %", cfg0["fest"][5]), ("fest10", "Festsatz 10 J. %", cfg0["fest"][10]),
+              ("stress", "SARON im Stressszenario %", cfg0["szenarien"]["stress"]["ziel"])]
+    werte = {}
+    for name, _, standard in felder:
+        roh = (q.get("h_" + name) or [""])[0]
+        werte[name] = vm.zahl(roh) if roh.strip() else float(standard)
+    eigen.update({"betrag": werte["betrag"], "horizont_jahre": int(werte["horizont_jahre"]), "saron": werte["saron"],
+                  "marge_saron": werte["marge_saron"],
+                  "fest": {**cfg0["fest"], 5: werte["fest5"], 10: werte["fest10"]},
+                  "szenarien": {**cfg0["szenarien"], "stress": {**cfg0["szenarien"]["stress"], "ziel": werte["stress"]}}})
+    s = hy.vergleichen(k2, db)
+    if not s:
+        return karte(titel, '<p class="leise">Keine Hypothek erfasst.</p>')
+    erhalten = "".join(f'<input type="hidden" name="{n}" value="{escape(v[0])}">' for n, v in q.items() if not n.startswith("h_"))
+    form = (f'<form method="get" action="szenarien" data-status="Strategien werden verglichen …">{erhalten}<div class="felder">'
+            + "".join(f'<label>{escape(t)}<input name="h_{n}" value="{werte[n]:g}" inputmode="decimal"></label>' for n, t, _ in felder)
+            + '</div><div class="zeile"><button>Neu rechnen</button></div></form>')
+    stress = "stress" if "stress" in s.pfade else list(s.pfade)[-1]
+    rang = sorted(e.kosten[stress] for e in s.ergebnisse)
+
+    def ampel_von(e):
+        i = rang.index(e.kosten[stress])
+        return am.GRUEN if i < len(rang) / 3 else am.GELB if i < 2 * len(rang) / 3 else am.ROT
+
+    szen = list(s.pfade)
+    zeilen = []
+    for e in sorted(s.ergebnisse, key=lambda e: e.kosten[stress]):
+        name = escape(e.name) + (" ★" if e.name == s.empfehlung else "")
+        zeilen.append([licht(ampel_von(e)) + name] + [chf(e.kosten[n]) for n in szen]
+                      + [chf(e.max_jahr[stress]), f"{e.zinsbindung:g} J."])
+    tab = tabelle(["Strategie"] + [f"Kosten {n}" for n in szen] + ["max. Jahr (Stress)", "Zinsbindung"], zeilen)
+    kpis = "".join([
+        kpi(chf(s.betrag), f"Hypothek ab {s.start.strftime('%m.%Y')}"),
+        kpi(escape(s.empfehlung), "Am sichersten (tiefste Kosten im Stress)", "", am.GRUEN),
+        kpi(f"{s.horizont} Jahre", "Betrachtungshorizont"),
+    ])
+    pfade = dg.linie({f"SARON {n}": [(s.start.year + t, round(v, 2)) for t, v in enumerate(p)] for n, p in s.pfade.items()},
+                     "SARON-Szenarien")
+    return karte(titel, f'<div class="kpis">{kpis}</div>' + tab
+                 + '<p class="leise">Ampel: Rang der Kosten im Stressszenario (grün = robusteste Drittel). Kosten = Zinsen über den '
+                   'Horizont ohne Amortisation. Festsätze laut Einstellungen (Standard: Richtsätze einer Bank, Stand 08.11.2026) – '
+                   'eigene Offerten unter wohnen.strategie eintragen.</p>'
+                 + pfade + hinweisliste(s.hinweise) + form)
+
+
+
+def erinnerungen_karte(k: dict, db) -> str:
+    import erinnerungen as er
+    heute = date.today()
+    liste = er.alle(k, db, heute)
+    if not liste:
+        return ""
+    zeilen = []
+    for e in liste[:10]:
+        t = e.tage(heute)
+        wann = "überfällig" if t < 0 else "heute" if t == 0 else f"in {t} Tagen"
+        link = f' <a href="{e.seite}">öffnen</a>' if e.seite else ""
+        zeilen.append(
+            f'<li class="erinnerung">{licht(er.status(e, heute), wann)}<div><b>{escape(e.titel)}</b>'
+            f'<span class="leise"> · bis {e.faellig:%d.%m.%Y} ({wann})</span><br><span>{escape(e.text)}</span>{link}</div>'
+            f'<form method="post" action="erinnerungen/erledigt" data-status="Wird gespeichert …">'
+            f'<input type="hidden" name="schluessel" value="{escape(e.schluessel)}"><button class="zweit klein">erledigt</button></form></li>')
+    ziel = (k.get("erinnerungen") or {}).get("benachrichtigung")
+    fuss = (f'<p class="leise">Benachrichtigung über Home Assistant: {escape(ziel)}.</p>' if ziel else
+            '<p class="leise">Benachrichtigungen aufs Handy unter Einstellungen → Erinnerungen einschalten.</p>')
+    return karte(f"Anstehend ({len(liste)})", f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>' + fuss)

@@ -292,3 +292,95 @@ def test_heirat_vergleich(konkubinat, db):
     k1 = copy.deepcopy(konkubinat)
     k1["steuern"]["personen"] = []
     assert not sz.heirat_vergleich(k1, db).moeglich
+
+
+# ---------------------------------------------------------------- Hypothekar-Strategie
+
+def test_hypothek_strategie(k):
+    import hypothek as hy
+    k["wohnen"].update(aktiv=True, kaufpreis=2_000_000, eigenmittel=1_000_000, hypothek_faellig="2030-07-01",
+                       strategie={"saron": 0.0, "marge_saron": 1.0, "fest": {5: 1.8, 10: 2.0}, "horizont_jahre": 10})
+    s = hy.vergleichen(k, None, date(2026, 11, 8))
+    e = {x.name: x for x in s.ergebnisse}
+    assert s.betrag == 1_000_000 and s.start == date(2030, 7, 1)
+    fest10 = e["Fest 10 Jahre"]
+    assert fest10.kosten["tief"] == fest10.kosten["stress"] == 200_000             # 10 Jahre × 2 %
+    saron = e["SARON 100 %"]
+    assert saron.kosten["tief"] == 100_000 and saron.kosten["stress"] > fest10.kosten["stress"]
+    assert s.empfehlung == "Fest 10 Jahre"                                         # tiefste Kosten im Stress
+    assert e["Fest 5 Jahre (verlängert)"].kosten["tief"] < e["Fest 5 Jahre (verlängert)"].kosten["stress"]  # Verlängerung zum Marktzins
+    assert 10 in s.forward_satz and s.forward_satz[10] > 2.0                       # Forward mit Aufschlag
+    assert hy.saron_pfad(0.0, 3.0, 3, 5) == [1.0, 2.0, 3.0, 3.0, 3.0]
+
+
+# ---------------------------------------------------------------- Bank-Import
+
+def test_bankimport_raiffeisen(db):
+    from pathlib import Path
+
+    import bankimport as bi
+    inhalt = (Path(__file__).parent / "bank" / "raiffeisen.csv").read_bytes()
+    a = bi.analysieren(inhalt, "raiffeisen.csv")
+    assert a.bank == "Raiffeisen" and a.iban == "CH1280808001234567890" and a.konto_vorschlag == "Raiffeisen …7890"
+    assert a.monatssaldi == {"2026-09": ("2026-09-30", 18000.0), "2026-10": ("2026-10-31", 25000.0)}
+    assert a.einnahmen == 18000 and a.ausgaben == 3000
+    a, n = bi.aus_datei(db, inhalt, "raiffeisen.csv", person="Person 1")
+    assert n == 2 and vm.nettovermoegen(db)["total"] == 25000
+
+
+def test_bankimport_ohne_saldo(db):
+    from pathlib import Path
+
+    import bankimport as bi
+    inhalt = (Path(__file__).parent / "bank" / "postfinance_ohne_saldo.csv").read_bytes()
+    a = bi.analysieren(inhalt, "pf.csv")
+    assert a.iban == "CH9300762011623852957" and not a.monatssaldi and a.einnahmen == 12000 and a.ausgaben == 420.5
+    with pytest.raises(ValueError):
+        bi.aus_datei(db, inhalt, "pf.csv")
+    _, n = bi.aus_datei(db, inhalt, "pf.csv", konto="Privatkonto", endsaldo=20_000)
+    assert n == 3
+    saldi = {r["datum"]: r["betrag"] for r in db.execute("SELECT datum, betrag FROM saldi")}
+    assert saldi == {"2026-08-25": 14300.0, "2026-09-10": 14000.0, "2026-10-25": 20000.0}
+
+
+def test_bankimport_latin1_und_komma():
+    import bankimport as bi
+    csv = "Datum,Beschreibung,Betrag,Saldo\n01.11.2026,Überweisung,-50.00,950.00\n".encode("cp1252")
+    a = bi.analysieren(csv, "konto.csv")
+    assert a.letzter == ("2026-11-01", 950.0)
+    with pytest.raises(ValueError):
+        bi.analysieren(b"nur;irgendwas\n1;2\n")
+
+
+# ---------------------------------------------------------------- Erinnerungen
+
+def test_erinnerungen(k, db, tmp_path):
+    import erinnerungen as er
+    heute = date(2026, 11, 8)
+    k["personen"][0]["pk"]["einkauf_geplant"] = [{"jahr": 2026, "betrag": 20000}]
+    k["wohnen"].update(aktiv=True, hypothek_faellig="2028-07-01")
+    k["erinnerungen"] = {"eigene": [{"titel": "Depot prüfen", "datum": "11-20", "vorlauf": 30},
+                                    {"titel": "Zu weit weg", "datum": "2027-06-30"}]}
+    titel = {e.titel for e in er.alle(k, db, heute)}
+    assert {"3a einzahlen – Person 1", "3a einzahlen – Person 2", "PK-Einkauf überweisen – Person 1",
+            "Krankenkasse vergleichen", "Hypothek per 01.07.2028 vorbereiten", "Depot prüfen", "Vermögen erfassen"} <= titel
+    assert "Zu weit weg" not in titel
+    kvg = next(e for e in er.alle(k, db, heute) if e.titel == "Krankenkasse vergleichen")
+    assert kvg.faellig == date(2026, 11, 30) and er.status(kvg, heute) == "gelb"
+    er.erledigen(db, kvg.schluessel)
+    assert "Krankenkasse vergleichen" not in {e.titel for e in er.alle(k, db, heute)}
+    assert "Steuererklärung 2025 einreichen" in {e.titel for e in er.alle(k, db, date(2026, 3, 1))}
+
+
+def test_benachrichtigung_einmal_pro_stufe(k, db):
+    import erinnerungen as er
+    gesendet = []
+    k["erinnerungen"] = {"benachrichtigung": "mobile_app_test", "eigene": [{"titel": "Test", "datum": "2026-11-20"}]}
+    heute = date(2026, 11, 8)
+    erste = er.benachrichtigen(k, db, heute, senden=lambda d, x: gesendet.append((d, x)))
+    assert erste and all(d == "notify.mobile_app_test" for d, _ in gesendet)
+    assert er.benachrichtigen(k, db, heute, senden=lambda d, x: gesendet.append((d, x))) == []      # nicht doppelt
+    faellig = er.benachrichtigen(k, db, date(2026, 11, 20), senden=lambda d, x: gesendet.append((d, x)))
+    assert any("Fällig: Test" in t for t in faellig)
+    k["erinnerungen"]["benachrichtigung"] = ""
+    assert er.benachrichtigen(k, db, heute, senden=lambda d, x: 1 / 0) == []
