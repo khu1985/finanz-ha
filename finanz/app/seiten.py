@@ -13,6 +13,7 @@ import versicherungen as vi
 import berater as br
 import dokumente as dk
 import steuerdokumente as sd
+import ampel as am
 import vorsorge as vs
 import wohnen as wo
 
@@ -61,6 +62,20 @@ button:disabled{opacity:.6;cursor:progress}
 .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}.log td{vertical-align:top;white-space:pre-wrap;word-break:break-word}
 .log .ERROR,.log .CRITICAL{color:var(--schlecht)}.log .WARNING{color:var(--warn)}.log .DEBUG{color:var(--leise)}
 .tab{position:relative}
+.ampel{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:baseline;flex:none;
+background:var(--leise);opacity:.45}
+.ampel.gruen{background:#2fa35b;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#2fa35b 20%,transparent)}
+.ampel.gelb{background:#e6a817;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#e6a817 22%,transparent)}
+.ampel.rot{background:#d93b30;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#d93b30 20%,transparent)}
+nav a .ampel{width:8px;height:8px;margin-right:6px;box-shadow:none}nav a.aktiv .ampel{outline:2px solid #fff}
+.kpi{position:relative}.kpi>.ampel{position:absolute;top:12px;right:10px;margin:0}
+.ampeln{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin-bottom:16px}
+.ampel-kachel{display:flex;gap:10px;align-items:flex-start;background:var(--karte);border:1px solid var(--linie);
+border-radius:12px;padding:10px 12px;text-decoration:none;color:var(--text)}
+.ampel-kachel .ampel{margin-top:5px}.ampel-kachel b{display:block;font-size:14px}.ampel-kachel span{color:var(--leise);font-size:12px}
+.ampel-kachel.rot{border-color:color-mix(in srgb,#d93b30 45%,var(--linie))}
+.ampel-kachel.gelb{border-color:color-mix(in srgb,#e6a817 45%,var(--linie))}
+.ampel-legende{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--leise);margin:-8px 0 14px}
 main{max-width:1100px;margin:0 auto;padding:16px}
 h1{font-size:22px;margin:4px 0 16px}h2{font-size:17px;margin:0 0 12px}
 .raster{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
@@ -110,7 +125,7 @@ table.log thead{display:none}table.log tr{display:block;padding:6px 0;border-bot
 table.log td{display:inline;border:0;padding:0 8px 0 0}table.log td:last-child{display:block;padding-top:2px}.zeile input[type=file]{max-width:none!important}
 .kopf{padding:6px 12px 0}nav{padding:6px 12px}
 }
-.hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung>b:first-child{display:inline-block;width:18px}
+.hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung .ampel{margin-right:8px}
 .antwort h3{font-size:15px;margin:14px 0 6px}.antwort p{margin:6px 0}.antwort ul{margin:6px 0;padding-left:20px}
 pre.text{white-space:pre-wrap;font-size:12px;max-height:480px;overflow:auto}
 """
@@ -174,12 +189,15 @@ SYMBOL = {
 }
 
 
-def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = "", fehler: bool = False) -> str:
+def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = "", fehler: bool = False,
+          ampeln: dict | None = None) -> str:
     import json as _json
 
     import meta
+    ampeln = ampeln or {}
     nav = "".join(
-        f'<a href="{p or "./"}" class="{"aktiv" if p == pfad else ""}">{n}</a>' for p, n in NAV)
+        f'<a href="{p or "./"}" class="{"aktiv" if p == pfad else ""}">'
+        f'{licht(ampeln[p]) if ampeln.get(p) in (am.GELB, am.ROT) else ""}{n}</a>' for p, n in NAV)
     werkzeuge = "".join(
         f'<a href="{p}" class="symbol{" aktiv" if p == pfad else ""}" title="{n}" aria-label="{n}">{SYMBOL[p]}</a>'
         for p, n in (("protokoll", "Protokoll"), ("einstellungen", "Einstellungen")))
@@ -198,8 +216,15 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
 <script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script></body></html>"""
 
 
-def kpi(wert: str, text: str, klasse: str = "") -> str:
-    return f'<div class="kpi"><b class="{klasse}">{wert}</b><span>{escape(text)}</span></div>'
+def licht(status: str, titel: str = "") -> str:
+    """Ampel-Punkt; Text für Screenreader und Tooltip."""
+    t = titel or am.TEXT.get(status, "")
+    return f'<span class="ampel {status}" title="{escape(t)}" role="img" aria-label="Ampel {escape(am.TEXT.get(status, ""))}"></span>'
+
+
+def kpi(wert: str, text: str, klasse: str = "", ampel: str = "") -> str:
+    punkt = licht(ampel) if ampel else ""
+    return f'<div class="kpi">{punkt}<b class="{klasse}">{wert}</b><span>{escape(text)}</span></div>'
 
 
 def karte(titel: str, inhalt: str) -> str:
@@ -265,14 +290,14 @@ def uebersicht(k: dict, db) -> str:
         kpi(chf(nv["total"]), "Nettovermögen (CHF)"),
         kpi(chf(luecke.einkommen), f"Einkommen im Ruhestand ab {luecke.jahr} (CHF/Jahr)"),
         kpi(chf(-luecke.luecke) if luecke.luecke else "keine", "Pensionslücke (CHF/Jahr)",
-            "schlecht" if luecke.luecke else "gut"),
-        kpi(f"{luecke.ersatzquote:.0f} %", "Ersatzquote zum heutigen Lohn"),
+            "schlecht" if luecke.luecke else "gut", am.luecke_status(luecke.luecke, luecke.bedarf)),
+        kpi(f"{luecke.ersatzquote:.0f} %", "Ersatzquote zum heutigen Lohn", "", am.schwelle(luecke.ersatzquote, 70, 60)),
         kpi(chf(steuer["total"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %"),
         kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else ""),
         kpi(chf(vi.praemien(vi.alle(db))["total"]), "Versicherungsprämien (CHF/Jahr)"),
     ])
     verl = vm.verlauf(db)
-    return statuszeile(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
+    return statuszeile(k, db) + ampel_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
         "Nettovermögen", dg.linie({"Nettovermögen": verl}, "Nettovermögen")
         + '<p class="leise">Saldi unter «Vermögen» erfassen oder als CSV importieren.</p>') + "</div>" + karte(
         "Ruhestand: Einkommen und Bedarf", _luecke_diagramm(luecke))
@@ -328,7 +353,7 @@ def vorsorge(k: dict, db) -> str:
          f"aus CHF {chf(lk.kapital_netto)} netto", chf(lk.kapitalverzehr)],
         ["<b>Einkommen total</b>", f"<b>{chf(lk.einkommen)}</b>"],
         ["Bedarf", chf(lk.bedarf)],
-        ["<b>Lücke</b>", f'<b class="{"schlecht" if lk.luecke else "gut"}">{chf(lk.luecke)}</b>'],
+        [licht(am.luecke_status(lk.luecke, lk.bedarf)) + "<b>Lücke</b>", f'<b class="{"schlecht" if lk.luecke else "gut"}">{chf(lk.luecke)}</b>'],
     ]) + f'<p class="leise">Kapital nach Kapitalbezugssteuer von CHF {chf(lk.kapitalsteuer)} (gestaffelt), inkl. freiem Vermögen.</p>'
 
     return (karte("Pensionslücke", _luecke_diagramm(lk) + luecke_html)
@@ -406,9 +431,11 @@ def wohnen(k: dict, db) -> str:
     kz = k["kennzahlen"]
     kl = "schlecht" if t["quote"] > kz["tragbarkeit_max"] else "gut"
     kpis = "".join([
-        kpi(f"{t['quote']:.1f} %", f"Tragbarkeit (max. {kz['tragbarkeit_max']:.0f} %)", kl),
+        kpi(f"{t['quote']:.1f} %", f"Tragbarkeit (max. {kz['tragbarkeit_max']:.0f} %)", kl,
+            am.tragbarkeit_status(t["quote"], kz["tragbarkeit_max"])),
         kpi(f"{t['belehnung']:.0f} %", f"Belehnung (max. {kz['belehnung_max']} %)",
-            "schlecht" if t["belehnung"] > kz["belehnung_max"] else "gut"),
+            "schlecht" if t["belehnung"] > kz["belehnung_max"] else "gut",
+            am.schwelle(t["belehnung"], kz["zweite_hypothek_ab"], kz["belehnung_max"], hoeher_besser=False)),
         kpi(chf(t["effektiv_monat"]), "Effektive Kosten pro Monat"),
         kpi(chf(t["max_preis"]), "Maximal tragbarer Kaufpreis"),
     ])
@@ -600,7 +627,6 @@ Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erle
 
 # ---------------------------------------------------------------- Versicherungen
 
-STATUS = {"ok": ("✓", "gut"), "fehlt": ("✗", "schlecht"), "pruefen": ("!", "warn"), "info": ("i", "leise")}
 
 
 def versicherungen(k: dict, db) -> str:
@@ -614,7 +640,8 @@ def versicherungen(k: dict, db) -> str:
         kpi(chf(pr["total"]), f"Prämien pro Jahr · {chf(pr['monat'])}/Monat"),
         kpi(naechster.kuendigen_bis.strftime("%d.%m.%Y") if naechster else "–",
             "Nächste Kündigungsfrist" + (f" ({escape(naechster.vertrag['versicherer'] or vi.SPARTEN[naechster.vertrag['sparte']])})" if naechster else ""),
-            "warn" if naechster and (naechster.kuendigen_bis - heute).days <= 30 else ""),
+            "warn" if naechster and (naechster.kuendigen_bis - heute).days <= 30 else "",
+            am.termin_status((naechster.kuendigen_bis - heute).days) if naechster else ""),
     ])
     hochladen = """<form method="post" action="versicherungen/hochladen" enctype="multipart/form-data">
 <p class="leise">Policen, Offerten oder Prämienrechnungen als PDF hochladen (mehrere möglich). Die App liest Versicherer,
@@ -634,11 +661,13 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
         zeilen.append([
             f'<a href="versicherungen/{v["id"]}">{escape(v["versicherer"] or v["dateiname"])}</a>',
             escape(vi.SPARTEN.get(v["sparte"], v["sparte"])), escape(v["person"] or "–"),
-            t.kuendigen_bis.strftime("%d.%m.%Y") if t else "–", chf(v["praemie_jahr"]),
+            (licht(am.termin_status((t.kuendigen_bis - heute).days)) + t.kuendigen_bis.strftime("%d.%m.%Y")) if t else "–",
+            chf(v["praemie_jahr"]),
         ])
     zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>"])
     liste = tabelle(["Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr"], zeilen, zahlen_ab=4)
-    termin_zeilen = [[t.kuendigen_bis.strftime("%d.%m.%Y"), t.wirksam_auf.strftime("%d.%m.%Y"),
+    termin_zeilen = [[licht(am.termin_status((t.kuendigen_bis - heute).days), f"noch {(t.kuendigen_bis - heute).days} Tage")
+                      + t.kuendigen_bis.strftime("%d.%m.%Y"), t.wirksam_auf.strftime("%d.%m.%Y"),
                       escape(t.vertrag["versicherer"] or t.vertrag["dateiname"]), escape(t.grund)] for t in termine[:8]]
     termin_html = tabelle(["Kündigen bis", "wirksam auf", "Vertrag", "Grundlage"], termin_zeilen, zahlen_ab=9) + (
         '<p class="leise">Ohne Datum im Vertrag wird keine Frist berechnet. Massgebend sind Police und AVB; '
@@ -655,8 +684,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
 def _deckung(k: dict, vertraege: list[dict]) -> str:
     zeilen = []
     for status, thema, text in vi.deckungscheck(k, vertraege):
-        zeichen, klasse = STATUS[status]
-        zeilen.append(f'<li class="deckung"><b class="{klasse}">{zeichen}</b> <b>{escape(thema)}:</b> {escape(text)}</li>')
+        zeilen.append(f'<li class="deckung">{licht(am.deckung_status(status))}<b>{escape(thema)}:</b> {escape(text)}</li>')
     return f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>'
 
 
@@ -725,7 +753,7 @@ def vorsorge_dokumente_karte(k: dict, db) -> str:
     doks = dk.alle(db)
     zeilen = [[f'<a href="vorsorge/dokument/{d["id"]}">{escape(d["dateiname"])}</a>', escape(dk.TYPEN.get(d["typ"], d["typ"])),
                escape(d["person"] or "–"), escape(d["stichtag"] or "–"), str(len(d["werte"])),
-               "✓" if d["uebernommen"] else ""] for d in doks]
+               licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
     liste = tabelle(["Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen"], zeilen, zahlen_ab=4) if doks else ""
     form = """<form method="post" action="vorsorge/hochladen" enctype="multipart/form-data">
 <p class="leise">Vorsorgeausweis der Pensionskasse, 3a-Auszug oder IK-Auszug/Rentenvorausberechnung als PDF. Die App erkennt
@@ -821,10 +849,11 @@ def risiko_karte(k: dict) -> str:
     rs = vi.risiko(k, ahv)
     zeilen = []
     for r in rs:
-        zeilen.append([escape(r.name), chf(r.iv_ahv + r.iv_kinder_ahv), chf(r.iv_pk + r.iv_kinder_pk), chf(r.iv_extern),
+        zeilen.append([licht(am.iv_status(r.iv_quote) if r.lohn else am.GRAU) + escape(r.name), chf(r.iv_ahv + r.iv_kinder_ahv), chf(r.iv_pk + r.iv_kinder_pk), chf(r.iv_extern),
                        f'<b class="{"gut" if r.iv_quote >= 70 else "warn"}">{chf(r.iv_total)}</b>', f"{r.iv_quote:.0f} %"])
     iv = tabelle(["Invalidität", "IV (AHV)", "PK", "Extern", "Total/Jahr", "vom Lohn"], zeilen)
-    zeilen = [[escape(r.name), chf(r.tod_renten), chf(r.tod_kapital), chf(r.tod_bedarf_kapital)] for r in rs]
+    zeilen = [[licht(am.tod_status(r.tod_kapital, r.tod_bedarf_kapital)) + escape(r.name), chf(r.tod_renten),
+               chf(r.tod_kapital), chf(r.tod_bedarf_kapital)] for r in rs]
     tod = tabelle(["Tod von …", "Renten Hinterbliebene/Jahr", "Todesfallkapital", "Richtwert Kapital"], zeilen)
     hinweise = [x for r in rs for x in r.hinweise]
     return karte("Risiko Invalidität und Tod", iv + tod + hinweisliste(sorted(set(hinweise), key=hinweise.index))
@@ -852,7 +881,7 @@ placeholder="z. B. Wie erreichen wir bis zur Fälligkeit eine Amortisation von 6
     amort = _amortisation_html(a) if a else '<p class="leise">Für das Szenario unter Wohnen die Fälligkeit der Hypothek erfassen.</p>'
     liste = br.alle(db)
     zeilen = [[f'<a href="berater/{b["id"]}">{escape(b["datum"][:16].replace("T", " "))}</a>', escape(b["profil"]),
-               escape((b["frage"] or "Gesamtbeurteilung")[:80]), "✓" if b["antwort"] else "offen"] for b in liste]
+               escape((b["frage"] or "Gesamtbeurteilung")[:80]), licht(am.GRUEN, "beantwortet") + "beantwortet" if b["antwort"] else licht(am.GELB, "offen") + "offen"] for b in liste]
     verlauf = tabelle(["Datum", "Berater", "Frage", "Antwort"], zeilen, zahlen_ab=9) if liste else '<p class="leise">Noch keine Beratungen.</p>'
     return ('<div class="raster">' + karte("Situation", sit) + karte("Berater fragen", fragen) + "</div>"
             + karte("Amortisation bis zur Fälligkeit", amort) + karte("Bisherige Beratungen", verlauf)
@@ -867,7 +896,7 @@ def _amortisation_html(a) -> str:
           ["− Geplante PK-Einkäufe (nach Steuerersparnis)", chf(-a.einkaeufe)],
           ["− Notreserve", chf(-a.reserve)],
           ["<b>Verfügbar bei Fälligkeit</b>", f"<b>{chf(a.verfuegbar)}</b>"],
-          [f"Ziel {chf(a.ziel)} – {chf(a.maximal)}", f'<b class="{"gut" if a.verfuegbar >= a.ziel else "schlecht"}">'
+          [licht(am.amortisation_status(a.verfuegbar, a.ziel)) + f"Ziel {chf(a.ziel)} – {chf(a.maximal)}", f'<b class="{"gut" if a.verfuegbar >= a.ziel else "schlecht"}">'
                                                     f'{chf(a.moeglich)} möglich</b>'],
           ["Hypothek danach", chf(a.hypothek_danach)]]
     return tabelle(["Position", "CHF"], z) + hinweisliste(a.hinweise)
@@ -992,7 +1021,7 @@ und übernimmt die Werte auf Wunsch in die Steuer-Einstellungen.</p>
     zeilen = [[f'<a href="steuern/dokument/{d["id"]}">{d["jahr"] or "?"} · {escape(d["person"] or "Haushalt")}</a>',
                escape(sd.TYPEN.get(d["typ"], d["typ"])), chf(d["werte"].get("steuerbar_kanton", 0)),
                chf(d["werte"].get("steuer_kanton_gemeinde", 0) + d["werte"].get("bundessteuer", 0)),
-               "✓" if d["uebernommen"] else ""] for d in doks]
+               licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
     liste = tabelle(["Jahr · Person", "Art", "Steuerbar Kanton", "Steuern", "übernommen"], zeilen, zahlen_ab=2)
     html = karte("Steuerdokumente", liste + form)
     # Mehrjahresvergleich pro Person
@@ -1073,3 +1102,16 @@ def steuer_dokument(k: dict, db, did: int) -> str:
             + (karte("Einschätzung", hinweisliste(tipps)) if tipps else "")
             + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{escape(d["text"][:20000]) or "Kein Text."}</pre></details>')
             + '<p><a href="steuern">← Steuern</a></p>' + loeschen)
+
+
+
+def ampel_karte(k: dict, db) -> str:
+    ampeln = am.bewerten(k, db)
+    reihen = sorted(ampeln, key=lambda a: -am.RANG[a.status])
+    kacheln = "".join(
+        f'<a class="ampel-kachel {a.status}" href="{a.seite}">{licht(a.status)}<div><b>{escape(a.bereich)}</b>'
+        f'<span>{escape(a.text)}</span></div></a>' for a in reihen)
+    zaehler = {s: sum(1 for a in ampeln if a.status == s) for s in (am.ROT, am.GELB, am.GRUEN)}
+    legende = (f'<div class="ampel-legende"><span>{licht(am.ROT)}{zaehler[am.ROT]} handeln</span>'
+               f'<span>{licht(am.GELB)}{zaehler[am.GELB]} prüfen</span><span>{licht(am.GRUEN)}{zaehler[am.GRUEN]} in Ordnung</span></div>')
+    return f'<div class="ampeln">{kacheln}</div>' + legende

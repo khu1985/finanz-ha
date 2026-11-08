@@ -64,6 +64,7 @@ flowchart TB
 | `finanz/app/versicherungen.py` | Policen hochladen/importieren, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a- und IK-Auszug erkennen und übernehmen |
 | `finanz/app/steuerdokumente.py` | Steuererklärung/Veranlagung erkennen, Mehrjahresvergleich, Abgleich, Übernahme |
+| `finanz/app/ampel.py` | Ampeln für alle Bereiche und die Navigation |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Aufträge und Antworten |
 | `finanz/app/importordner.py` | Import-Ordner für persönliche Dateien |
 | `finanz/apparmor.txt` | AppArmor-Profil |

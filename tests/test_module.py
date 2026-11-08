@@ -219,3 +219,31 @@ def test_steuer_uebernahme_neue_person(konkubinat, db, tmp_path):
     sd.uebernehmen(konkubinat, d, "Person 2", ["steuerbar_bund"])
     assert konkubinat["steuern"]["personen"][0]["person"] == "Person 2"
     assert konkubinat["steuern"]["personen"][0]["steuerbar_bund"] == 145_000
+
+
+# ---------------------------------------------------------------- Ampeln
+
+def test_ampel_schwellen():
+    import ampel as am
+    assert am.termin_status(10) == am.ROT and am.termin_status(30) == am.GELB and am.termin_status(90) == am.GRUEN
+    assert am.iv_status(80) == am.GRUEN and am.iv_status(60) == am.GELB and am.iv_status(40) == am.ROT
+    assert am.tragbarkeit_status(30, 33.3) == am.GRUEN and am.tragbarkeit_status(36, 33.3) == am.GELB
+    assert am.tragbarkeit_status(40, 33.3) == am.ROT
+    assert am.amortisation_status(900_000, 800_000) == am.GRUEN and am.amortisation_status(700_000, 800_000) == am.GELB
+    assert am.luecke_status(0, 100_000) == am.GRUEN and am.luecke_status(5_000, 100_000) == am.GELB
+    assert am.schlechteste([am.GRUEN, am.GELB, am.GRAU]) == am.GELB and am.schlechteste([]) == am.GRAU
+
+
+def test_ampel_bewertung(k, daten, db):
+    import ampel as am
+    from policen import KVG, pdf
+    leer = {a.bereich: a for a in am.bewerten(k, db)}
+    assert leer["Versicherungsschutz"].status == am.GRAU and leer["Liquidität"].status == am.GRAU
+    vi.hochladen(db, daten, "kvg.pdf", pdf(KVG))
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Konto", "bank"), date.today().isoformat(), 100_000)
+    a = {x.bereich: x for x in am.bewerten(k, db)}
+    assert a["Versicherungsschutz"].status == am.ROT and "Privathaftpflicht" in a["Versicherungsschutz"].text
+    assert a["Kündigungsfristen"].status in (am.GRUEN, am.GELB, am.ROT)
+    assert a["Liquidität"].status == am.GRUEN
+    seiten = am.pro_seite(list(a.values()))
+    assert seiten["versicherungen"] == am.ROT and seiten[""] == am.ROT

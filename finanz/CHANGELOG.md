@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.5.0 – 2026-11-08
+
+- **Ampeln** (grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten):
+  - Übersicht: Ampel-Kacheln für Ruhestand, Liquidität, Tragbarkeit, Amortisation, Steuern, Steuerdokumente,
+    Versicherungsschutz, Kündigungsfristen, Invalidität, Todesfall und Daten – sortiert nach Dringlichkeit, mit Link
+  - Navigation: Punkt an Seiten mit gelber oder roter Ampel
+  - Kennzahlen (Pensionslücke, Ersatzquote, Tragbarkeit, Belehnung, nächste Kündigungsfrist), Deckungscheck,
+    Kündigungstermine, Risiko Invalidität/Tod, Amortisation, Dokumente (übernommen) und Beratungen (beantwortet)
+
 ## 0.4.0 – 2026-11-08
 
 - **Steuerdokumente:** Steuererklärungen, Veranlagungsverfügungen und Steuerrechnungen hochladen; Erkennung von

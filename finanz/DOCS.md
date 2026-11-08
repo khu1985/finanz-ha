@@ -168,6 +168,25 @@ Liegenschaftsunterhalt, Berufskosten, Kinder). Daraus entstehen:
 
 Im Import-Ordner werden `steuer*.pdf` und `veranlagung*.pdf` als Steuerdokumente erkannt.
 
+## Ampeln
+
+Grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten. Die Übersicht zeigt alle Bereiche als
+Kacheln (dringendste zuerst); ein Punkt in der Navigation markiert Seiten mit gelber oder roter Ampel.
+
+| Bereich | Grün | Gelb | Rot |
+|---|---|---|---|
+| Ruhestand | keine Lücke | Lücke bis 10 % des Bedarfs | grössere Lücke |
+| Liquidität | Konten ≥ Reserve | ≥ halbe Reserve | darunter |
+| Tragbarkeit | ≤ 33 % | bis 38 % | darüber |
+| Amortisation | Ziel erreicht | ≥ 80 % des Ziels | darunter |
+| Steuern | 3a ausgeschöpft | 3a offen oder PK-Einkauf bei Grenzsatz ≥ 30 % prüfen | – |
+| Steuerdokumente | aktuell, ohne Korrekturen | Korrektur der Veranlagung oder älter als 2 Jahre | – |
+| Versicherungsschutz | vollständig | etwas zu prüfen | obligatorische/empfohlene Deckung fehlt |
+| Kündigungsfristen | > 45 Tage | ≤ 45 Tage | ≤ 14 Tage |
+| Invalidität | ≥ 70 % des Lohns | ≥ 55 % | darunter |
+| Todesfall | Kapital ≥ Richtwert | ≥ 50 % oder Partnerrente nicht gemeldet | darunter |
+| Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
+
 ## Version, Änderungen und Protokoll
 
 Die Version steht oben neben «Finanzen»; ein Tipp darauf öffnet die Änderungen. Das Symbol mit den Linien öffnet

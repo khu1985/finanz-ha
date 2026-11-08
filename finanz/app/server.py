@@ -146,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
             with db() as verbindung:
                 inhalt = funktion(k, verbindung)
             meldung = unquote(q.get("m", [""])[0])
-            html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")))
+            html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
             self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
         except Exception as e:  # noqa: BLE001
             LOG.error("Fehler auf %s: %s\n%s", pfad, e, traceback.format_exc())
@@ -154,6 +154,16 @@ class Handler(BaseHTTPRequestHandler):
                                 '<p>Häufigste Ursache: ein Wert in den Einstellungen hat das falsche Format.</p>',
                                 self.basis, "Die Seite konnte nicht berechnet werden.", True)
             self.senden(500, html.encode("utf-8"), "text/html; charset=utf-8")
+
+    def _ampeln(self) -> dict:
+        """Ampel pro Seite für die Navigation; Fehler dürfen die Seite nie verhindern."""
+        try:
+            import ampel
+            with db() as v:
+                return ampel.pro_seite(ampel.bewerten(konfig.laden(), v))
+        except Exception as e:  # noqa: BLE001
+            LOG.debug("Ampeln: %s", e)
+            return {}
 
     def _detail(self, pfad: str):
         """Detailseiten /<bereich>/<id> und Originaldateien /<bereich>/<id>/datei."""
@@ -175,7 +185,7 @@ class Handler(BaseHTTPRequestHandler):
                 inhalt = funktion(konfig.laden(), v, nr)
             _, q = self._pfad()
             html = seiten.seite(titel, praefix.split("/")[0], inhalt, self.basis,
-                                unquote(q.get("m", [""])[0]), bool(q.get("f")))
+                                unquote(q.get("m", [""])[0]), bool(q.get("f")), self._ampeln())
             return self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
         return None
 
