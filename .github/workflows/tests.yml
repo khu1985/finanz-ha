@@ -2,7 +2,9 @@ name: Tests
 
 on:
   push:
+    branches: [main, tests]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   wie-im-home-assistant:
