@@ -1,56 +1,60 @@
 #include <tunables/global>
 
-# AppArmor-Profil der Finanzplanungs-App (Name = slug). Erlaubt nur, was die App braucht:
-# Python ausführen, App-Code lesen, Konfigurationsordner schreiben, Netzwerk für Ingress/Supervisor.
+# AppArmor-Profil der Finanzplanungs-App (Name = slug), nach der Vorlage der Home-Assistant-Entwicklerdoku.
+# Dateizugriff ist wie im Container erlaubt; eingeschränkt werden Fähigkeiten (nur Docker-Standard),
+# mount, ptrace und Zugriffe auf Kernel-Schnittstellen.
 profile finanz flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
+  # Fähigkeiten: höchstens der Docker-Standardsatz
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability fsetid,
+  capability kill,
+  capability setgid,
+  capability setuid,
+  capability setpcap,
+  capability net_bind_service,
+
   # Netzwerk: Webserver (Ingress) und Aufrufe an den Supervisor (KI-Aufgabe)
-  network inet tcp,
-  network inet6 tcp,
-  network inet udp,
-  network inet6 udp,
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
   network unix,
 
-  signal (send) set=(kill,term,int,hup,cont),
-  signal (receive) peer=unconfined,
+  signal,
 
-  # Start und Programme
-  /init ix,
+  # Dateien
+  file,
+
+  # Programme
   /run.sh rix,
   /bin/** rix,
   /sbin/** rix,
   /usr/bin/** rix,
   /usr/sbin/** rix,
   /usr/local/bin/** rix,
-  /command/** rix,
-  /package/** rix,
+  /init ix,
+  /command/** ix,
+  /package/** ix,
   /run/{s6,s6-rc*,service}/** ix,
-  /etc/s6-overlay/** rix,
 
-  # Bibliotheken und Systemdateien (nur lesen)
-  /lib/** mr,
-  /usr/lib/** mr,
-  /usr/local/lib/** mr,
-  /usr/share/** r,
-  /etc/** r,
-  /proc/** r,
-  /sys/fs/cgroup/** r,
-  /dev/null rw,
-  /dev/urandom r,
-  /dev/tty rw,
-
-  # App-Code (nur lesen) und Python-Cache
-  /app/** r,
-  /app/__pycache__/** rw,
-
-  # Daten: Optionen lesen, Konfigurationsordner der App lesen und schreiben
-  /data/** r,
-  /config/ rw,
+  # Daten der App
+  /data/** rw,
   /config/** rwk,
-
-  # Laufzeit und temporäre Dateien
-  /run/** rwk,
+  /app/** r,
   /tmp/** rwk,
-  /var/tmp/** rwk,
+  /run/{,**} rwk,
+
+  # Kein Zugriff auf Kernel-Schnittstellen
+  deny /sys/firmware/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+  deny /proc/sys/kernel/** wklx,
+  deny /proc/kcore rwklx,
+  deny mount,
+  deny umount,
+  deny ptrace,
 }

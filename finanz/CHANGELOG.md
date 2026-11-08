@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.2.1 – 2026-11-08
+
+- Behoben: App startete mit 0.2.0 nicht – AppArmor-Profil nach der Vorlage von Home Assistant neu aufgebaut,
+  Start ohne s6-overlay direkt mit Python
+
 ## 0.2.0 – 2026-11-08
 
 - **Versicherungen:** Policen als PDF hochladen oder als CSV-Liste importieren; Erkennung von Versicherer,

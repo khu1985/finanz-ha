@@ -9,4 +9,6 @@ COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
 WORKDIR /app
+# Ohne s6-overlay starten (init: false): Python läuft direkt als Hauptprozess
+ENTRYPOINT []
 CMD ["/run.sh"]
