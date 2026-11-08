@@ -85,6 +85,8 @@ personen:
 
 ## Vorsorge
 
+![Rechenmodell Vorsorge](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/vorsorge.svg)
+
 - **AHV** pro Person mit Beitragsjahren, Erziehungsjahren, Durchschnittseinkommen, Rente pro Monat und Jahr
   (13. AHV-Rente), bei Ehepaaren plafoniert.
 - **Pensionskasse:** Verlauf des Altersguthabens bis zur Pensionierung, Einkäufe, Kapitalbezug, Rente. Ist ein
@@ -98,6 +100,8 @@ personen:
   (Ersparnis eines Einkaufs, Umwandlungssatz, Beitragslücken, Partnerrente im Konkubinat).
 
 ## Steuern
+
+![Rechenmodell Steuern](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/steuern.svg)
 
 - **Steuern heute:** Bund nach Tarif, Kanton und Gemeinde als Kurve durch die letzte Veranlagung, Grenz- und
   effektiver Steuersatz – bei Konkubinat pro Steuererklärung.
@@ -161,6 +165,8 @@ Das Ergebnis zeigt Einkauf und Ersparnis pro Jahr, die Ersparnis des letzten Fra
 zusätzlichen Kapitalbezugssteuer) und die Kurve der Grenz-Ersparnis. «Plan übernehmen» trägt die Einkäufe unter
 `pk.einkauf_geplant` ein; ein erneuter Lauf rechnet nur noch mit dem verbleibenden Potenzial.
 
+![Amortisation und Hypothek](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/hypothek.svg)
+
 **Hypothekar-Strategie.** Vergleicht für die Hypothek ab Fälligkeit (nach dem Amortisations-Szenario) SARON,
 Festhypotheken und Mischungen bzw. Staffelungen über drei SARON-Szenarien (tief, basis, stress; Zielniveau und
 Anstiegsjahre einstellbar). Die SARON-Hypothek kostet SARON + Marge; eine Festhypothek läuft zum heutigen Satz und
@@ -193,6 +199,8 @@ Frage. Mit KI geht er an die KI-Aufgabe von Home Assistant; ohne KI lässt er si
 einfügen. Alle Beratungen bleiben gespeichert. Die Berater sind KI-Profile, keine zugelassenen Anlageberater.
 
 ## Erinnerungen
+
+![Jahreslauf](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/prozess-jahr.svg)
 
 Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfällig, gelb ≤ 30 Tage) und dem Knopf
 «erledigt», der die Aufgabe bis zur nächsten Periode ausblendet:
@@ -258,6 +266,8 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
 
 ## Persönliche Daten und Import-Ordner
+
+![Dokumentverarbeitung](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/dokumente.svg)
 
 Persönliche Daten gehören **nicht** ins GitHub-Repository. Kopiere sie (Samba, File editor oder Studio Code Server)
 in den Import-Ordner der App: `/addon_configs/<…>_finanz/import/` (in der App `/config/import/`). Die App liest ihn
@@ -339,6 +349,8 @@ Verträgen, Vorsorge- und Steuerdokumenten. Dabei verlassen Dokumenttext bzw. Pl
 Richtung des gewählten KI-Anbieters.
 
 ## Daten, Sicherung und Sicherheit
+
+![Architektur](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/architektur.svg)
 
 | Datei / Ordner | Inhalt |
 |---|---|

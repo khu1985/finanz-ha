@@ -1,0 +1,7 @@
+flowchart LR
+    ST["Start der App"] --> IO["Import-Ordner einlesen<br/>finanz.yaml, CSV, PDF"]
+    IO --> ER["erledigt/<br/>verschoben"]
+    H["stündlich"] --> EI["Erinnerungen prüfen"]
+    EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
+    SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
+    LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]

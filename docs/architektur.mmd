@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph Quellen
+        direction LR
+        F["Formulare<br/>Einstellungen"]
+        I["Import-Ordner<br/>finanz.yaml, CSV, PDF"]
+        U["Uploads<br/>Kontoauszüge, Policen,<br/>Vorsorge- und Steuerdokumente"]
+    end
+    subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
+        direction TB
+        S["server.py<br/>Webserver, Formulare, Uploads"]
+        D["Dokumente<br/>bankimport, versicherungen,<br/>dokumente, steuerdokumente"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen"]
+        Z["Szenarien<br/>szenarien, hypothek, berater"]
+        A["ampel.py, erinnerungen.py<br/>Bewertung und Aufgaben"]
+        SE["seiten.py<br/>Seiten, Diagramme, Statusanzeige"]
+    end
+    subgraph Daten["Konfigurationsordner (im Backup)"]
+        direction LR
+        Y[("finanz.yaml")]
+        DB[("finanz.sqlite")]
+        P[("PDFs")]
+        L[("finanz.log")]
+    end
+    HA["Home Assistant<br/>KI-Aufgabe, Benachrichtigung"]
+    F & I & U --> S
+    S --> D --> DB & P
+    S --> Y
+    Y & DB --> K --> Z
+    K & Z --> A --> SE
+    Z -. optional .-> HA
+    A -. stündlich .-> HA
+    S --> L

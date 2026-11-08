@@ -1,0 +1,15 @@
+flowchart TD
+    W["Liegenschaft<br/>Wert, Hypothek, Fälligkeit"] --> AM
+    L["Liquide Mittel<br/>ohne «nicht antasten»"] --> AM
+    S["Sparen bis Fälligkeit"] --> AM
+    VP["Verpfändete 3a/3b<br/>− Steuer beim Bezug"] --> AM
+    EK["PK-Einkäufe<br/>nach Steuerersparnis"] -- abziehen --> AM
+    R["Notreserve"] -- abziehen --> AM
+    AM["Amortisations-Szenario<br/>verfügbar bei Fälligkeit"] --> ZIEL{"Ziel erreicht?"}
+    ZIEL --> REST["Hypothek ab Fälligkeit"]
+    REST --> ST["Strategien<br/>SARON, Fest 5/10, Mix, Staffel"]
+    SZ["SARON-Szenarien<br/>tief · basis · stress"] --> ST
+    ZS["Sätze heute<br/>Marge, Festsätze, Laufzeitprämie"] --> ST
+    ST --> K["Zinskosten über den Horizont<br/>höchste Jahreskosten, Zinsbindung"]
+    K --> EMP["Empfehlung «maximale Sicherheit»<br/>tiefste Kosten im Stress"]
+    K --> FW["Forward-Festhypothek<br/>Richtwert mit Aufschlag"]
