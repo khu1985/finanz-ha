@@ -223,9 +223,44 @@ JS = """
     var dateien = f.querySelectorAll('input[type=file]'), n = 0, groesse = 0;
     dateien.forEach(function(d){ for (var j = 0; j < d.files.length; j++) { n++; groesse += d.files[j].size; } });
     if (n) t += ' (' + n + ' Datei' + (n > 1 ? 'en' : '') + ', ' + (groesse / 1048576).toFixed(1) + ' MB)';
+    var feld = dateien.length === 1 ? dateien[0] : null;
+    if (feld && window.fetch && window.FormData && (n > 1 || groesse > GRENZE)) {
+      e.preventDefault();
+      einzeln(f, feld, ziel, t);
+      return;
+    }
     zeige(t);
     setTimeout(function(){ f.querySelectorAll('button').forEach(function(b){ b.disabled = true; }); }, 0);
   });
+  // Home Assistant nimmt pro Anfrage höchstens 16 MB an: mehrere Dateien einzeln hochladen
+  var GRENZE = 15.5 * 1048576;
+  function einzeln(f, feld, ziel, t){
+    var liste = Array.prototype.slice.call(feld.files), meldungen = [], fehler = false, weiter = ziel.split('/')[0];
+    f.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+    function naechste(i){
+      if (i >= liste.length) {
+        location.href = weiter + (weiter.indexOf('?') >= 0 ? '&' : '?') + 'm=' + encodeURIComponent(meldungen.join(' · '))
+          + (fehler ? '&f=1' : '');
+        return;
+      }
+      var d = liste[i];
+      zeige(t.replace(/\s*\(.*\)$/, '') + ' – Datei ' + (i + 1) + ' von ' + liste.length + ': ' + d.name);
+      if (d.size > GRENZE) {
+        meldungen.push(d.name + ': grösser als 16 MB – über den Import-Ordner hinzufügen'); fehler = true;
+        return naechste(i + 1);
+      }
+      var fd = new FormData(f);
+      fd.delete(feld.name);
+      fd.append(feld.name, d, d.name);
+      fetch(ziel, {method: 'POST', body: fd, headers: {'X-Einzeln': '1'}, credentials: 'same-origin'})
+        .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(j){ meldungen.push(liste.length > 1 ? d.name + ': ' + j.meldung : j.meldung);
+                           if (j.fehler) fehler = true; if (j.ziel && liste.length === 1) weiter = j.ziel; })
+        .catch(function(err){ meldungen.push(d.name + ': ' + err.message); fehler = true; })
+        .then(function(){ naechste(i + 1); });
+    }
+    naechste(0);
+  }
   document.addEventListener('click', function(e){
     var a = e.target.closest('a');
     if (!a || a.target || a.hasAttribute('download') || e.ctrlKey || e.metaKey) return;

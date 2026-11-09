@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.17.1 – 2026-11-09
+
+- **Upload mehrerer Dateien:** Home Assistant nimmt pro Anfrage höchstens 16 MB an («Maximum request body size
+  16777216 exceeded»). Der Browser lädt mehrere Dateien jetzt einzeln hoch – mit Fortschritt «Datei 2 von 5» und
+  einer gemeinsamen Meldung. Einzelne Dateien über 16 MB werden übersprungen mit dem Hinweis auf den Import-Ordner.
+  Gilt für Vorsorge-, Steuer- und Versicherungsdokumente sowie Kontoauszüge
 ## 0.17.0 – 2026-11-09
 
 - **Jahresbericht** (neue Seite unter Überblick): die App speichert jeden Monat einen Stand (Nettovermögen, freies

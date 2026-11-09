@@ -69,7 +69,8 @@ def _post(url, daten):
 
 
 @pytest.mark.parametrize("pfad", ["", "vorsorge", "steuern", "wohnen", "vermoegen", "versicherungen", "berater",
-                                  "einstellungen", "protokoll", "aenderungen"])
+                                  "einstellungen", "protokoll", "aenderungen", "bericht", "budget", "kinder",
+                                  "szenarien", "nachlass", "notfall", "steuererklaerung"])
 def test_seiten(server, pfad):
     req = urllib.request.Request(f"{server}/{pfad}", headers={"X-Ingress-Path": "/api/hassio_ingress/xyz"})
     html = urllib.request.urlopen(req).read().decode()
@@ -159,3 +160,16 @@ def test_bank_upload_und_erinnerung(server):
     assert "Anstehend" in html or "Erinnerungen" in html
     html = urllib.request.urlopen(f"{server}/szenarien").read().decode()
     assert "Hypothekar-Strategie" in html
+
+
+def test_upload_einzeln_als_json(server):
+    """Der Browser schickt mehrere Dateien einzeln (Ingress-Grenze 16 MB) und erhält JSON statt einer Weiterleitung."""
+    import json
+    grenze = "----finanztest"
+    body = (f"--{grenze}\r\nContent-Disposition: form-data; name=\"datei\"; filename=\"a.txt\"\r\n"
+            "Content-Type: text/plain\r\n\r\n").encode() + "Vorsorgeausweis\nAltersguthaben 100000\n".encode() \
+        + f"\r\n--{grenze}--\r\n".encode()
+    req = urllib.request.Request(f"{server}/vorsorge/hochladen", body,
+                                 {"Content-Type": f"multipart/form-data; boundary={grenze}", "X-Einzeln": "1"})
+    antwort = json.loads(urllib.request.urlopen(req).read().decode())
+    assert antwort["fehler"] is False and antwort["ziel"].startswith("vorsorge")

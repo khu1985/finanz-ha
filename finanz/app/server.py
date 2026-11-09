@@ -25,7 +25,7 @@ import versicherungen as vi
 
 LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
-MAX_UPLOAD = 40 * 1024 * 1024
+MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
 MIT_ABFRAGE = {"steuererklaerung", "bericht"}
 SEITEN = {
@@ -112,7 +112,7 @@ class Handler(BaseHTTPRequestHandler):
     def _koerper(self) -> bytes:
         laenge = int(self.headers.get("Content-Length") or 0)
         if laenge > MAX_UPLOAD:
-            raise ValueError("Datei zu gross (max. 5 MB).")
+            raise ValueError("Upload zu gross (höchstens 16 MB pro Datei) – grössere Dateien über den Import-Ordner.")
         return self.rfile.read(laenge)
 
     def _formular(self) -> dict:
@@ -217,10 +217,19 @@ class Handler(BaseHTTPRequestHandler):
             LOG.info("%s: %s", pfad, meldung)
             import sensoren
             sensoren.aktualisieren()
+            if self.headers.get("X-Einzeln"):
+                return self._json({"meldung": meldung, "fehler": False, "ziel": ziel})
             self.weiter(ziel, meldung)
         except Exception as e:  # noqa: BLE001
             LOG.warning("Aktion %s fehlgeschlagen: %s", pfad, e)
+            if self.headers.get("X-Einzeln"):
+                return self._json({"meldung": str(e), "fehler": True, "ziel": ziel})
             self.weiter(ziel, str(e), fehler=True)
+
+    def _json(self, daten: dict) -> None:
+        """Antwort für Uploads, die der Browser Datei für Datei schickt (Grenze des Ingress: 16 MB pro Anfrage)."""
+        import json as _j
+        self.senden(200, _j.dumps(daten, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
     def _aktion(self, pfad: str, form: dict) -> str:
         if pfad == "einstellungen":
