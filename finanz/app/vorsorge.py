@@ -8,6 +8,8 @@ Vereinfachungen (siehe DOCS.md):
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -186,7 +188,7 @@ def pk(person: dict, k: dict) -> PkErgebnis:
     warn = []
     summe_einkauf = sum(einkauf.values())
     if summe_einkauf > float(cfg.get("einkauf_potenzial", 0) or 0) > 0:
-        warn.append(f"{person['name']}: geplante Einkäufe ({summe_einkauf:,.0f}) übersteigen das Einkaufspotenzial.".replace(",", "'"))
+        warn.append(f"{person['name']}: geplante Einkäufe ({summe_einkauf:,.0f}) übersteigen das Einkaufspotenzial." >> TS)
     if kapital > 0:
         for j in einkauf:
             if j >= ende - 3:
@@ -221,7 +223,7 @@ def saeule3a(person: dict, k: dict, jetzt: int | None = None) -> DreiAErgebnis:
     hinw = []
     if beitrag < kz["saeule3a_max"] and float(person.get("lohn_brutto", 0)) > 0:
         hinw.append(f"{person['name']}: 3a-Maximum ({kz['saeule3a_max']:,.0f}) nicht ausgeschöpft – "
-                    "seit 2026 können Lücken ab 2025 nachträglich eingezahlt werden.".replace(",", "'"))
+                    "seit 2026 können Lücken ab 2025 nachträglich eingezahlt werden." >> TS)
     if beitrag > kz["saeule3a_max"]:
         hinw.append(f"{person['name']}: 3a-Beitrag über dem Maximum mit Pensionskasse.")
     return DreiAErgebnis(person["name"], verlauf, round(g), beitrag, hinw)

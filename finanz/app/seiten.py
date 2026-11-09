@@ -1,6 +1,8 @@
 """HTML-Seiten der App (serverseitig gerendert, ohne JavaScript-Framework)."""
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from datetime import date
 from html import escape
 
@@ -20,7 +22,8 @@ import wohnen as wo
 
 NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("berater", "Berater")]),
-    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("szenarien", "Szenarien")]),
+    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("szenarien", "Szenarien"),
+                 ("nachlass", "Nachlass")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")]),
 ]
@@ -158,7 +161,7 @@ pre.text{white-space:pre-wrap;font-size:12px;max-height:480px;overflow:auto}
 
 
 def chf(v: float, vorzeichen: bool = False) -> str:
-    s = f"{abs(v):,.0f}".replace(",", "'")
+    s = f"{abs(v):,.0f}" >> TS
     if v < 0:
         return "−" + s
     return ("+" if vorzeichen and v > 0 else "") + s
@@ -348,7 +351,7 @@ def uebersicht(k: dict, db) -> str:
         kpi(chf(-luecke.luecke) if luecke.luecke else "keine", "Pensionslücke (CHF/Jahr)",
             "schlecht" if luecke.luecke else "gut", am.luecke_status(luecke.luecke, luecke.bedarf)),
         kpi(f"{luecke.ersatzquote:.0f} %", "Ersatzquote zum heutigen Lohn", "", am.schwelle(luecke.ersatzquote, 70, 60)),
-        kpi(chf(steuer["total"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %"),
+        kpi(chf(steuer["total_inkl"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %"),
         kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else ""),
         kpi(chf(vi.praemien(vi.alle(db))["total"]), "Versicherungsprämien (CHF/Jahr)"),
     ])
@@ -428,15 +431,17 @@ def steuern(k: dict, db) -> str:
     heute = "".join([
         kpi(chf(s["bund"]), "Direkte Bundessteuer"),
         kpi(chf(s["kanton"]), "Staats- und Gemeindesteuer"),
-        kpi(chf(s["total"]), f"Total · effektiv {s['effektiv']:.1f} %"),
+        kpi(chf(s["total"]), f"Einkommenssteuern · effektiv {s['effektiv']:.1f} %"),
         kpi(f"{s['grenz_total']:.1f} %", f"Grenzsteuersatz (Bund {s['grenz_bund']:.1f} %)"),
+        kpi(chf(s["vermoegen"]), "Vermögenssteuer", "", am.GRAU if not s["vermoegen"] else ""),
+        kpi(chf(s["total_inkl"]), "Steuern total pro Jahr"),
     ])
     einheiten_html = ""
     if len(s["einheiten"]) > 1:
         einheiten_html = karte("Pro Steuererklärung", tabelle(
-            ["Steuerpflichtig", "Bund", "Kanton/Gemeinde", "Total", "Grenzsatz", "effektiv"],
-            [[escape(e["name"]), chf(e["bund"]), chf(e["kanton"]), chf(e["total"]), f'{e["grenz_total"]:.1f} %',
-              f'{e["effektiv"]:.1f} %'] for e in s["einheiten"]]))
+            ["Steuerpflichtig", "Bund", "Kanton/Gemeinde", "Vermögen", "Total", "Grenzsatz", "effektiv"],
+            [[escape(e["name"]), chf(e["bund"]), chf(e["kanton"]), chf(e["vermoegen"]), chf(e["total"] + e["vermoegen"]),
+              f'{e["grenz_total"]:.1f} %', f'{e["effektiv"]:.1f} %'] for e in s["einheiten"]]))
     # Abzüge simulieren
     zeilen = []
     for p in k["personen"]:
@@ -603,6 +608,7 @@ FELDER_STEUERN = [
     ("steuern.steuerbar_bund", "Steuerbares Einkommen Bund"), ("steuern.steuerbar_kanton", "Steuerbares Einkommen Kanton"),
     ("steuern.steuer_kanton_gemeinde", "Staats- und Gemeindesteuer CHF"),
     ("steuern.grenzsteuersatz_kanton", "Grenzsteuersatz Kanton+Gemeinde %"),
+    ("steuern.steuerbar_vermoegen", "Steuerbares Vermögen"), ("steuern.vermoegenssteuer", "Vermögenssteuer CHF (Veranlagung)"),
 ]
 FELDER_WOHNEN = [
     ("wohnen.aktiv", "Wohneigentum rechnen"), ("wohnen.kaufpreis", "Kaufpreis bzw. Verkehrswert"), ("wohnen.eigenmittel", "Eigenmittel"),
@@ -1077,6 +1083,7 @@ def aenderungen(k: dict, db) -> str:
 # ---------------------------------------------------------------- Steuerdokumente
 
 VERGLEICH_FELDER = ["steuerbar_kanton", "steuerbar_bund", "steuer_kanton_gemeinde", "bundessteuer", "steuerbares_vermoegen",
+                    "vermoegenssteuer",
                     "lohn_netto", "abzug_3a", "abzug_pk_einkauf", "schuldzinsen", "unterhalt_liegenschaft", "eigenmietwert",
                     "mietertrag"]
 
@@ -1275,12 +1282,22 @@ def heirat_karte(k: dict, db) -> str:
         zeilen.append([licht(am.GRUEN if rv >= rk else am.GELB) + f"Renten für Hinterbliebene beim Tod von {escape(name)} (pro Jahr)",
                        chf(rk), chf(rv), chf(rv - rk, True)])
     tab = tabelle(["", "Konkubinat", "Verheiratet", "Unterschied"], zeilen)
-    bis_pension = max(0, min(vs.pensionsjahr(p) for p in k["personen"]) - date.today().year)
-    bilanz = -h.steuer_diff * bis_pension + h.ahv_diff * jahre - h.kapital_diff
-    fazit = (f'<p>Finanziell über den ganzen Zeitraum (Steuern {bis_pension} Jahre bis zur Pensionierung, AHV {jahre} Jahre, '
-             f'Kapitalbezug einmalig): Heirat <b class="{"gut" if bilanz >= 0 else "schlecht"}">'
-             f'{"bringt" if bilanz >= 0 else "kostet"} rund CHF {chf(abs(bilanz))}</b> – ohne Teuerung, ohne Zins und ohne '
-             'den Wert der Absicherung im Todesfall.</p>')
+    ib = h.ib_jahr
+    b0, b1 = h.bilanz_ohne_ib, h.bilanz_mit_ib
+    def satz(b):
+        return f'<b class="{"gut" if b >= 0 else "schlecht"}">{"bringt" if b >= 0 else "kostet"} rund CHF {chf(abs(b))}</b>'
+    fazit = karte_inhalt = (
+        '<h2>Bilanz über den ganzen Zeitraum</h2>'
+        + tabelle(["Annahme", "Steuern heute", "Kapitalbezug", "AHV", "Heirat"], [
+            [f"Gemeinsame Besteuerung bleibt", f"{h.jahre_bis_pension} Jahre", chf(-h.kapital_diff, True),
+             chf(h.ahv_diff * h.jahre_ruhestand, True), satz(b0)],
+            [licht(am.GRUEN) + f"Individualbesteuerung ab {ib}", f"{h.jahre_ehetarif} Jahre (bis {ib})",
+             chf(-h.kapital_diff_ib, True), chf(h.ahv_diff * h.jahre_ruhestand, True), satz(b1)],
+        ], zahlen_ab=1)
+        + f'<p class="leise">Steuern bis zur Pensionierung, AHV über {h.jahre_ruhestand} Ruhestandsjahre, Kapitalbezug einmalig; '
+          'ohne Teuerung, Zins und den Wert der Absicherung im Todesfall. Mit Individualbesteuerung ist der Steuerunterschied '
+          f'ab {ib} null (Einheitstarif für alle); übrig bleibt vor allem die AHV-Plafonierung. Jahr unter '
+          '<code>kennzahlen.individualbesteuerung_ab</code> anpassen, sobald der Bundesrat den Termin festlegt.</p>')
     d = h.verheiratet_details
     annahmen = (f'<p class="leise">Verheiratet geschätzt: Bund auf CHF {chf(d["bund_einkommen"])} (Summe beider, '
                 f'Verheiratetenabzug, Zweiverdienerabzug {chf(d["zweiverdiener"])}, Elterntarif), Kanton auf '
@@ -1579,3 +1596,67 @@ actions:
                    'Nach einem Neustart von Home Assistant erscheinen sie spätestens nach 15 Minuten wieder.</p>'
                  + f'<details><summary>Beispiele für Dashboard und Automation</summary><pre class="text">{escape(beispiel)}</pre></details>'
                  + form)
+
+
+
+# ---------------------------------------------------------------- Nachlass
+
+def nachlass(k: dict, db) -> str:
+    import nachlass as nl
+    cfg = k.get("nachlass") or {}
+    faelle = nl.faelle(k, db)
+    teile = []
+    if not faelle:
+        teile.append(karte("Nachlass", '<p class="leise">Der Nachlass-Vergleich braucht zwei Personen.</p>'))
+    else:
+        verheiratet = faelle[0].verheiratet
+        kopf = ["", *[f"Tod von {escape(f.verstorben)}" for f in faelle]]
+
+        def zeile(text, werte, ampeln=None):
+            z = [text]
+            for i, w in enumerate(werte):
+                z.append((licht(ampeln[i]) if ampeln else "") + w)
+            return z
+        st_text = nl.partner_steuer(k, faelle[0].erbe_partner_mit)[1] if not verheiratet else "Ehegatten sind steuerfrei."
+        zeilen = [
+            zeile("Nachlass (Vermögen und Anteil Liegenschaft)", [chf(f.nachlass) for f in faelle]),
+            zeile("davon Liegenschaft (Anteil nach Hypothek)", [chf(f.davon_liegenschaft) for f in faelle]),
+            zeile("Erbe des Partners ohne Testament", [chf(f.erbe_partner_ohne) for f in faelle],
+                  [am.ROT if not f.erbe_partner_ohne and f.nachlass else am.GRUEN for f in faelle]),
+            zeile("Erbe des Partners mit Testament (höchstens)", [chf(f.erbe_partner_mit) for f in faelle]),
+            zeile("Pflichtteil der Kinder", [chf(f.erbe_kinder_mit) for f in faelle]),
+            zeile("Erbschaftssteuer des Partners", [chf(f.steuer_partner_mit) for f in faelle]),
+            zeile("Vorsorgekapital an den Partner (PK, 3a)", [chf(f.vorsorge_kapital) for f in faelle]),
+            zeile("– Steuer auf dem Vorsorgekapital", [chf(f.vorsorge_steuer) for f in faelle]),
+            zeile("Risikopolicen an den Partner", [chf(f.policen) for f in faelle]),
+            zeile("Renten pro Jahr an Partner und Kinder", [chf(f.renten_partner) for f in faelle]),
+            zeile("Auszahlung an die Erben, damit der Partner das Haus behält", [chf(f.ausgleich_haus) for f in faelle],
+                  [am.GRUEN if not f.ausgleich_haus else am.GELB if f.ausgleich_haus <= f.policen + f.vorsorge_kapital else am.ROT
+                   for f in faelle]),
+        ]
+        hinweise = [h for f in faelle for h in f.hinweise]
+        annahmen = ('<p class="leise">Nachlass = eigene Konten + Hälfte der gemeinsamen + Anteil an der Liegenschaft nach Hypothek '
+                    '(Anteile unter <code>nachlass.anteil_immobilie</code>, sonst gleich). Mit Testament: verfügbare Quote '
+                    + ("(Kinder behalten 1/4)." if verheiratet else "(bei Kindern die Hälfte, ohne Kinder alles).")
+                    + f' Erbschaftssteuer: {escape(st_text)} Vorsorge und Policen fallen nicht in den Nachlass. '
+                    'Güterrecht und Hausrat sind nicht berücksichtigt – für Testament und Erbvertrag eine Fachperson beiziehen.</p>')
+        teile.append(karte("Was erhält der Partner?", tabelle(kopf, zeilen) + hinweisliste(hinweise) + annahmen))
+    # Checkliste
+    liste = nl.checkliste(k)
+    namen = [p["name"] for p in k["personen"]]
+    zeilen = []
+    for s_, titel, text, status in liste:
+        zellen = [f'<b>{escape(titel)}</b><br><span class="leise">{escape(text)}</span>']
+        for n in namen:
+            ok = status[n]
+            zellen.append(f'<label style="flex-direction:row;align-items:center;gap:6px;color:var(--text)">{licht(am.GRUEN if ok else am.GELB)}'
+                          f'<input type="checkbox" name="{s_}|{escape(n)}" value="1"{" checked" if ok else ""} style="width:auto"></label>')
+        zeilen.append(zellen)
+    offen = sum(1 for _, _, _, st_ in liste for v in st_.values() if not v)
+    zusammen = escape(str(cfg.get("zusammen_seit") or ""))
+    form = (f'<form method="post" action="nachlass/checkliste">'
+            + tabelle(["Was", *[escape(n) for n in namen]], zeilen, zahlen_ab=9)
+            + f'<div class="felder"><label>Gemeinsamer Haushalt seit (Jahr)<input name="zusammen_seit" value="{zusammen}" inputmode="numeric"></label></div>'
+            + '<div class="zeile"><button>Speichern</button></div></form>')
+    teile.append(karte(f"Checkliste ({offen} offen)", form))
+    return "".join(teile)

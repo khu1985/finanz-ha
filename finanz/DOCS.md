@@ -15,7 +15,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 3. [Seiten](#seiten)
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
-   [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
+   [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
@@ -82,7 +82,8 @@ personen:
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit |
 | Vermögen | Konten, Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
-| Szenarien | PK-Einkauf optimieren, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat |
+| Szenarien | PK-Einkauf optimieren, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
+| Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
 | Protokoll, Änderungen | Protokoll der App, Changelog |
@@ -122,6 +123,8 @@ personen:
     Mietertrag, Kinderabzug im Konkubinat
   - **Übernahme** in die Steuer-Einstellungen der Person, Eigenmietwert und 3a
 - **Kapitalbezug PK und 3a:** alles im Pensionsjahr gegenüber gestaffelt, pro Steuereinheit.
+- **Vermögenssteuer:** Betrag aus der Veranlagung (`steuern.vermoegenssteuer`, auch aus Steuerdokumenten) oder
+  steuerbares Vermögen × `kennzahlen.vermoegen_promille` ‰. «Steuern total pro Jahr» = Einkommens- plus Vermögenssteuer.
 
 ## Wohnen
 
@@ -213,7 +216,28 @@ Offerten eintragen.
 | Hinterbliebene | AHV-Witwen-/Witwerrente und PK-Ehegattenrente statt nur Waisenrenten bzw. gemeldeter Lebenspartnerrente |
 
 Dazu eine Gesamtbilanz (Steuern bis zur Pensionierung, AHV über die Ruhestandsjahre, Kapitalbezug einmalig; ohne
-Teuerung und Zins) und die rechtlichen Unterschiede (Erbrecht, Pensionskasse, Güterrecht).
+Teuerung und Zins) und die rechtlichen Unterschiede (Erbrecht, Pensionskasse, Güterrecht). Die Bilanz steht zweimal:
+mit gemeinsamer Besteuerung bis zur Pensionierung und mit **Individualbesteuerung** ab
+`kennzahlen.individualbesteuerung_ab` (Standard 2032; am 8. März 2026 angenommen, Kantone spätestens 2032). Ab dann
+zählt bei den Einkommenssteuern kein Heiratsunterschied mehr; AHV-Plafond, Hinterbliebenenleistungen und Erbrecht
+bleiben.
+
+## Nachlass und Absicherung
+
+Für jeden Todesfall (Person A stirbt, Person B stirbt) zeigt die Seite, was der überlebende Partner erhält:
+
+| Zeile | Herkunft |
+|---|---|
+| Erbteil ohne / mit Testament | Konkubinat: ohne Testament nichts; mit Testament die frei verfügbare Quote (mit Kindern ½, sonst alles). Verheiratet: ½ bzw. ¾ mit Testament |
+| Erbschaftssteuer | nach Wohnkanton (`nachlass.erbschaftssteuer` überschreibt); BL: Konkubinat ab 5 Jahren gemeinsamem Wohnsitz (`nachlass.zusammen_seit`) 15 % nach 30'000, sonst 30 % nach 10'000; Ehegatten befreit |
+| AHV, Pensionskasse | Witwen-/Witwerrente bzw. Waisenrenten; PK-Lebenspartnerrente nur, wenn gemeldet |
+| Todesfallkapital, 3a | aus Risiko-Angaben und Begünstigung |
+| Liegenschaft | Anteil (`nachlass.anteil_immobilie`) – was an die Erben auszuzahlen wäre, um die Liegenschaft zu behalten |
+
+Die **Checkliste** pro Person (Testament, PK-Partnerschaft gemeldet, Begünstigung 3a und Policen, Vorsorgeauftrag,
+Patientenverfügung, Konkubinatsvertrag, Regelung Liegenschaft, Willensvollstrecker, Notfallordner) wird unter
+`nachlass.checkliste` gespeichert. Ampel: rot im Konkubinat ohne Testamente, gelb bei offenen Punkten. Keine
+Rechtsberatung – Testament und Vorsorgeauftrag handschriftlich bzw. notariell errichten.
 
 ## Anlageberater
 
@@ -324,6 +348,7 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Todesfall | Kapital ≥ Richtwert | ≥ 50 % oder Partnerrente nicht gemeldet | darunter |
 | Krankenkasse | Franchisen passen | Optimierung spart ≥ 200 pro Jahr | – |
 | Anlage | Aufteilung passt | über 20'000 ohne Zweck auf Konten oder Krypto über dem Richtwert | – |
+| Nachlass | Checkliste erledigt | Punkte offen | Konkubinat ohne Testament beider Personen |
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
 
@@ -355,17 +380,18 @@ oder **Einstellungen → Experte**.
 |---|---|
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, Kinder, Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` |
-| `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
+| `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |
 | `fruehpension` | `pk_kuerzung_uws` |
+| `nachlass` | `zusammen_seit`, `anteil_immobilie`, `erbschaftssteuer` (überschreibt den Kanton), `checkliste` |
 | `sensoren` | `aktiv`, `praefix` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung, Rendite |
-| `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit (Stand 2026) |
+| `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
 
 Die Kennzahlen werden in der Regel alle zwei Jahre (AHV/BVG) bzw. jährlich (3a, Steuertarif, Abzüge) angepasst
 und lassen sich im YAML-Editor überschreiben.

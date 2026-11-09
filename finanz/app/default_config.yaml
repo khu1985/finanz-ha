@@ -99,6 +99,8 @@ steuern:
   steuerbar_kanton: 145000
   steuer_kanton_gemeinde: 16000   # Staats- und Gemeindesteuer (inkl. Kirche) laut Rechnung
   grenzsteuersatz_kanton: 22      # Kanton + Gemeinde, mit dem Steuerrechner des Kantons ermitteln
+  steuerbar_vermoegen: 0          # steuerbares Vermögen laut Veranlagung
+  vermoegenssteuer: 0             # Vermögenssteuer Kanton + Gemeinde laut Veranlagung (0 = Schätzung mit vermoegen_promille)
   # Kapitalleistungen (PK, 3a): effektiver Satz Kanton + Gemeinde je Bezugsbetrag (Schätzung –
   # mit dem kantonalen Rechner ersetzen). Linear interpoliert.
   # Kanton bei gemeinsamer Besteuerung (Vergleich Heirat): Splitting-Divisor (2.0 = Vollsplitting) und Zusatzabzug
@@ -128,6 +130,12 @@ wohnen:
   nicht_antasten: [krypto, immobilie, hypothek, kredit, vorsorge]   # Vermögensarten, die nicht in die Amortisation fliessen
   verpfaendet: []                  # indirekte Amortisation, z. B. [{name: 3a Mobiliar P1, guthaben: 40000, beitrag_monat: 625, rendite: 1.0}]
   steuer_bezug_verpfaendet: 0      # geschätzte Steuer beim Bezug der verpfändeten Vorsorge
+
+nachlass:
+  zusammen_seit: ""                # Jahr, seit dem ihr am gleichen Wohnsitz zusammenlebt (Erbschaftssteuer, 3a-Begünstigung)
+  anteil_immobilie: {}             # z. B. {Person 1: 50, Person 2: 50}; leer = gleiche Anteile
+  erbschaftssteuer: {}             # eigener Satz für den Partner: {satz: 15, freibetrag: 30000}
+  checkliste: {}                   # wird über die Seite «Nachlass» gepflegt
 
 anlage:
   risiko: mittel                   # tief | mittel | hoch – für den langfristigen Topf
@@ -223,6 +231,8 @@ kennzahlen:
   bund_versicherungsabzug_einzel: 1800
   bund_elterntarif_kind: 263
   eigenmietwert_abschaffung: 2029
+  vermoegen_promille: 0            # Schätzung der Vermögenssteuer in ‰ des steuerbaren Vermögens, wenn kein Betrag erfasst ist
+  individualbesteuerung_ab: 2032   # angenommen am 8.3.2026; spätestens 2032, Bundesrat kann früher in Kraft setzen
   tragbarkeit_zins: 5.0
   tragbarkeit_max: 33.3
   belehnung_max: 80

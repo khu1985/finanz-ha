@@ -1,6 +1,8 @@
 """Webserver der Finanzplanungs-App (Home Assistant Ingress)."""
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -33,6 +35,7 @@ SEITEN = {
     "vermoegen": ("Vermögen", seiten.vermoegen),
     "versicherungen": ("Versicherungen", seiten.versicherungen),
     "berater": ("Anlageberater", seiten.berater),
+    "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -278,6 +281,16 @@ class Handler(BaseHTTPRequestHandler):
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
             return f"{len(werte)} Sensoren geschrieben.", "einstellungen"
+        if pfad == "nachlass/checkliste":
+            import nachlass as nl
+            k = konfig.laden()
+            n = k.setdefault("nachlass", {})
+            n["checkliste"] = {s_: {p["name"]: bool(form.get(f"{s_}|{p['name']}")) for p in k["personen"]}
+                               for s_, _, _ in nl.CHECKLISTE}
+            if str(form.get("zusammen_seit", "")).strip():
+                n["zusammen_seit"] = int(str(form["zusammen_seit"]).strip()[:4])
+            konfig.speichern(k)
+            return "Nachlass-Checkliste gespeichert.", "nachlass"
         if pfad == "erinnerungen/erledigt":
             import erinnerungen as er
             with db() as v:
@@ -306,7 +319,7 @@ class Handler(BaseHTTPRequestHandler):
             sz.plan_uebernehmen(k, plan)
             konfig.speichern(k)
             return (f"{len(plan.plan)} Einkäufe für {plan.person} übernommen (total CHF "
-                    f"{sum(plan.plan.values()):,.0f}).".replace(",", "'"), "szenarien")
+                    f"{sum(plan.plan.values()):,.0f})." >> TS, "szenarien")
         raise ValueError("Unbekannte Aktion.")
 
     def _versicherungen(self, pfad: str, form: dict):

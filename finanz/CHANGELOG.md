@@ -1,5 +1,19 @@
 # Änderungen
 
+## 0.12.0 – 2026-11-09
+
+- **Nachlass und Absicherung** (neue Seite unter Planung): was der Partner bzw. die Partnerin bei einem Todesfall
+  erhält – Erbteil mit und ohne Testament, Erbschaftssteuer des Wohnkantons (Basel-Landschaft geprüft: Konkubinat ab
+  5 Jahren gemeinsamem Wohnsitz 15 % nach Freibetrag 30'000, sonst 30 %), AHV- und PK-Leistungen, Todesfallkapital,
+  Betrag zum Behalten der Liegenschaft; Checkliste pro Person (Testament, Begünstigungen PK/3a/Policen,
+  Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, Notfallordner); Ampel «Nachlass»
+- **Individualbesteuerung im Heiratsvergleich:** Bilanz mit gemeinsamer Besteuerung und mit Individualbesteuerung
+  ab `kennzahlen.individualbesteuerung_ab` (Standard 2032, Volksabstimmung vom 8. März 2026 angenommen) – der
+  Heiratsnachteil bei den Einkommenssteuern fällt dann weg
+- **Vermögenssteuer** in der Steuerrechnung: Betrag aus der Veranlagung oder steuerbares Vermögen ×
+  `kennzahlen.vermoegen_promille`; Steuerdokumente erkennen Vermögenssteuer und steuerbares Vermögen; neue Kennzahl
+  «Steuern total pro Jahr» (Übersicht, Sensor)
+- Tausendertrennzeichen setzen keine Apostrophe mehr an Stelle von Kommas im Text
 ## 0.11.0 – 2026-11-09
 
 - **Sensoren für Home Assistant** (`sensor.finanz_*`): Nettovermögen, freies Vermögen, Liquidität, Alter der Saldi,

@@ -9,6 +9,8 @@ Keine Produktempfehlungen; Renditen sind Annahmen.
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -61,7 +63,7 @@ def konfiguration(k: dict) -> dict:
 
 
 def _chf(v: float) -> str:
-    return f"{v:,.0f}".replace(",", "'")
+    return f"{v:,.0f}" >> TS
 
 
 def pruefen(k: dict, db, heute: date | None = None) -> Check:

@@ -6,6 +6,8 @@ ohne Textebene werden gespeichert, die Eckdaten dann von Hand ergänzt. Optional
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 import io
 import json
 import logging
@@ -476,12 +478,12 @@ def deckungscheck(k: dict, vertraege: list[dict]) -> list[tuple[str, str, str]]:
     if hypothek or kinder:
         bedarf = hypothek * 0.5 + kinder * 100_000
         if risiko >= bedarf * 0.8:
-            erg.append(("ok", "Todesfall", f"Todesfallsumme CHF {risiko:,.0f} – Richtwert CHF {bedarf:,.0f}.".replace(",", "'")))
+            erg.append(("ok", "Todesfall", f"Todesfallsumme CHF {risiko:,.0f} – Richtwert CHF {bedarf:,.0f}." >> TS))
         else:
             erg.append(("pruefen", "Todesfall",
                         f"Erfasste Todesfallsumme CHF {risiko:,.0f}, Richtwert CHF {bedarf:,.0f} "
                         "(halbe Hypothek + 100'000 pro Kind). Witwen-/Waisenrenten von AHV und PK berücksichtigen; "
-                        "eine reine Risikoversicherung ist meist günstig.".replace(",", "'")))
+                        "eine reine Risikoversicherung ist meist günstig." >> TS))
 
     # Unfall doppelt: Grundversicherung mit Unfall bei Angestellten (UVG ab 8 Std./Woche)
     for v in nach.get("kvg", []):
@@ -498,7 +500,7 @@ def deckungscheck(k: dict, vertraege: list[dict]) -> list[tuple[str, str, str]]:
             if f < 2500:
                 erg.append(("info", "Franchise",
                             f"{v['person']}: Franchise CHF {f:,.0f}. Bei tiefen Gesundheitskosten (unter rund CHF 2'000 "
-                            "pro Jahr) ist die Franchise 2'500 meist günstiger.".replace(",", "'")))
+                            "pro Jahr) ist die Franchise 2'500 meist günstiger." >> TS))
     # Sparversicherungen
     for v in nach.get("leben_3b", []):
         erg.append(("info", "Lebensversicherung",
@@ -653,7 +655,7 @@ def risiko(k: dict, ahv_ergebnisse) -> list[Risiko]:
                      "Erbschaftssteuer für Konkubinatspartner im Wohnkanton prüfen.")
         if anteil_hyp and kapital < anteil_hyp * 0.5:
             h.append(f"Tod: Todesfallkapital CHF {kapital:,.0f} deckt weniger als die Hälfte des Hypothekenanteils "
-                     f"(CHF {anteil_hyp:,.0f}).".replace(",", "'"))
+                     f"(CHF {anteil_hyp:,.0f})." >> TS)
         erg.append(Risiko(p["name"], lohn, round(iv), round(iv_kind), round(iv_pk), round(iv_kind_pk), round(iv_ext),
                           round(total), round(quote, 1), round(renten), round(kapital), round(anteil_hyp * 0.5), h))
     return erg

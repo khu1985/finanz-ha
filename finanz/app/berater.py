@@ -7,6 +7,8 @@ angezeigt; die Antwort lässt sich dann einfügen. Alles bleibt im Konfiguration
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
@@ -111,7 +113,7 @@ def amortisation(k: dict, db, heute: date | None = None) -> Amortisation | None:
     moeglich = max(0.0, min(verfuegbar, maximal or verfuegbar, hypothek))
     hinw = []
     if ziel and verfuegbar < ziel:
-        hinw.append(f"Bis zur Fälligkeit fehlen rund CHF {ziel - verfuegbar:,.0f} für die Ziel-Amortisation.".replace(",", "'"))
+        hinw.append(f"Bis zur Fälligkeit fehlen rund CHF {ziel - verfuegbar:,.0f} für die Ziel-Amortisation." >> TS)
     if einkaeufe:
         hinw.append("Geplante PK-Einkäufe binden Geld bis zur Pensionierung; danach ist 3 Jahre lang kein "
                     "Kapitalbezug (auch kein WEF-Vorbezug) möglich, ohne den Steuerabzug zu verlieren.")
@@ -119,7 +121,7 @@ def amortisation(k: dict, db, heute: date | None = None) -> Amortisation | None:
         b = float(p["saeule3a"].get("beitrag_jahr", 0))
         if b > k["kennzahlen"]["saeule3a_max"]:
             hinw.append(f"{p['name']}: 3a-Beitrag {b:,.0f} über dem Maximum {k['kennzahlen']['saeule3a_max']:,.0f} – "
-                        "Überschuss ist nicht abzugsfähig.".replace(",", "'"))
+                        "Überschuss ist nicht abzugsfähig." >> TS)
     return Amortisation(faellig, monate, round(hypothek), round(liquid), round(sparen), round(verpf), round(steuer),
                         round(einkaeufe), round(reserve), round(verfuegbar), ziel, maximal, round(moeglich),
                         round(hypothek - moeglich), zeilen, hinw)
@@ -128,7 +130,7 @@ def amortisation(k: dict, db, heute: date | None = None) -> Amortisation | None:
 # ---------------------------------------------------------------- Fakten und Auftrag
 
 def _chf(v) -> str:
-    return f"CHF {float(v):,.0f}".replace(",", "'")
+    return f"CHF {float(v):,.0f}" >> TS
 
 
 def fakten(k: dict, db, heute: date | None = None) -> str:

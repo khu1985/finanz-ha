@@ -1,6 +1,8 @@
 """Erinnerungen: wiederkehrende Aufgaben aus der Planung plus eigene, mit «erledigt» und HA-Benachrichtigung."""
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 import json
 import logging
 import os
@@ -36,7 +38,7 @@ def _monate_zurueck(d: date, n: int) -> date:
 
 
 def _chf(v: float) -> str:
-    return f"{v:,.0f}".replace(",", "'")
+    return f"{v:,.0f}" >> TS
 
 
 def tabellen(db) -> None:

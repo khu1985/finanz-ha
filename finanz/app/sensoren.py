@@ -102,8 +102,8 @@ def berechnen(k: dict, db, heute: date | None = None) -> list[Sensor]:
 
     def steuern():
         t = st.steuern_heute(k)
-        s.append(_chf("Steuern pro Jahr", "steuern_jahr", t["total"], "mdi:bank-transfer-out", bund=t["bund"],
-                      kanton=t["kanton"], effektiv=t["effektiv"],
+        s.append(_chf("Steuern pro Jahr", "steuern_jahr", t["total_inkl"], "mdi:bank-transfer-out", bund=t["bund"],
+                      kanton=t["kanton"], vermoegen=t["vermoegen"], effektiv=t["effektiv"],
                       pro_person={e["name"]: e["total"] for e in t["einheiten"]}))
         s.append(Sensor("grenzsteuersatz", "Grenzsteuersatz", t["grenz_total"], "%", "", "measurement", "mdi:percent-outline"))
         f = kantone.steuererklaerung(k)

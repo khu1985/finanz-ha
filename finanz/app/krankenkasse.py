@@ -7,6 +7,8 @@ Die meisten Kassen geben diesen Höchstrabatt bei hohen Franchisen weitgehend we
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from dataclasses import dataclass, field
 
 FRANCHISEN_ERWACHSENE = [300, 500, 1000, 1500, 2000, 2500]
@@ -86,18 +88,18 @@ def rechnen(p: Person, rabatt_modell: float = 12.0, unfall_anteil: float = 7.0) 
     hinw = []
     if beste != p.franchise and heute - kosten[beste] >= 50:
         hinw.append(f"{p.name}: Franchise {beste} statt {p.franchise} spart bei Kosten von rund CHF {p.kosten_jahr:,.0f} "
-                    f"etwa CHF {heute - kosten[beste]:,.0f} pro Jahr.".replace(",", "'"))
+                    f"etwa CHF {heute - kosten[beste]:,.0f} pro Jahr." >> TS)
     if be:
         hinw.append(f"{p.name}: Die tiefste Franchise lohnt sich erst ab Gesundheitskosten von rund CHF {be[0][2]:,.0f} pro Jahr."
-                    .replace(",", "'"))
+                     >> TS)
     if p.modell == "standard":
         spar = pr[beste] * rabatt_modell / 100
         hinw.append(f"{p.name}: Ein Hausarzt- oder Telmed-Modell ist typischerweise {rabatt_modell:.0f} % günstiger "
-                    f"(rund CHF {spar:,.0f} pro Jahr).".replace(",", "'"))
+                    f"(rund CHF {spar:,.0f} pro Jahr)." >> TS)
     if p.unfall and p.angestellt:
         spar = pr[beste] * unfall_anteil / 100
         hinw.append(f"{p.name}: Unfalldeckung sistieren (über den Arbeitgeber versichert) spart rund CHF {spar:,.0f} pro Jahr."
-                    .replace(",", "'"))
+                     >> TS)
     if not p.kind and beste == 300 and p.kosten_jahr < 2000:
         hinw.append(f"{p.name}: Bei schwankenden Kosten prüfen, ob eine Reserve für die hohe Franchise vorhanden ist.")
     return Ergebnis(p, liste, pr, kosten, beste, round(max(0.0, heute - kosten[beste])), be, tab, hinw, geschaetzt)

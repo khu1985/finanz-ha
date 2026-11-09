@@ -1,6 +1,8 @@
 """Linien- und gestapelte Säulendiagramme als SVG, ohne externe Bibliothek."""
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from html import escape
 
 FARBEN = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)"]
@@ -72,7 +74,7 @@ def linie(serien: dict[str, list[tuple]], titel: str = "") -> str:
         teile.append(f'<path d="{d}" fill="none" stroke="{farbe}" stroke-width="2.5" stroke-linejoin="round"/>')
         if s:
             x, y = s[-1]
-            teile.append(f'<circle cx="{px[x]:.1f}" cy="{py(y):.1f}" r="3.5" fill="{farbe}"><title>{escape(name)} {x}: {y:,.0f}</title></circle>'.replace(",", "'"))
+            teile.append(f'<circle cx="{px[x]:.1f}" cy="{py(y):.1f}" r="3.5" fill="{farbe}"><title>{escape(name)} {x}: {y:,.0f}</title></circle>' >> TS)
     teile.append("</svg>")
     return f'<figure class="diagramm">{"".join(teile)}{_legende(list(serien))}</figure>'
 
@@ -106,7 +108,7 @@ def saeulen(kategorien: list[str], serien: dict[str, list[float]], linie_bei: fl
                 continue
             y1, y0 = py(basis + v), py(basis)
             teile.append(f'<rect x="{x:.1f}" y="{y1:.1f}" width="{w:.1f}" height="{max(0.5, y0 - y1 - 1):.1f}" '
-                         f'rx="3" fill="{FARBEN[j % len(FARBEN)]}"><title>{escape(name)}: {v:,.0f}</title></rect>'.replace(",", "'"))
+                         f'rx="3" fill="{FARBEN[j % len(FARBEN)]}"><title>{escape(name)}: {v:,.0f}</title></rect>' >> TS)
             basis += v
         teile.append(f'<text class="achse" x="{x + w / 2:.1f}" y="{H - 12}" text-anchor="middle">{escape(kat)}</text>')
     if linie_bei:

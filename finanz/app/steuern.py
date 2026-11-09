@@ -78,7 +78,8 @@ def einheiten(k: dict) -> list[Einheit]:
     erg = []
     for i, e in enumerate(st["personen"]):
         name = str(e.get("person") or (namen[i] if i < len(namen) else f"Person {i + 1}"))
-        merged = {"steuerbar_bund": 0, "steuerbar_kanton": 0, "steuer_kanton_gemeinde": 0,
+        merged = {"steuerbar_bund": 0, "steuerbar_kanton": 0, "steuer_kanton_gemeinde": 0, "steuerbar_vermoegen": 0,
+                  "vermoegenssteuer": 0,
                   "grenzsteuersatz_kanton": st.get("grenzsteuersatz_kanton", 0)} | e
         erg.append(Einheit(name, [name], merged, False, int(e.get("kinder", 0) or 0)))
     return erg
@@ -101,10 +102,20 @@ def _rechne(e: Einheit, kz: dict) -> dict:
     total = bund + kanton
     return {
         "name": e.name, "bund": round(bund), "kanton": round(kanton), "total": round(total),
+        "vermoegen": round(vermoegenssteuer(s, kz)),
         "grenz_bund": round(grenz_bund, 1),
         "grenz_total": round(grenz_bund + float(s.get("grenzsteuersatz_kanton", 0)), 1),
         "effektiv": round(total / s["steuerbar_kanton"] * 100, 1) if s["steuerbar_kanton"] else 0.0,
     }
+
+
+def vermoegenssteuer(st_: dict, kz: dict) -> float:
+    """Vermögenssteuer (Kanton und Gemeinde) aus der Veranlagung; fehlt der Betrag, Schätzung mit Promille-Satz."""
+    betrag = float(st_.get("vermoegenssteuer", 0) or 0)
+    if betrag:
+        return betrag
+    basis = float(st_.get("steuerbar_vermoegen", 0) or 0)
+    return basis * float(kz.get("vermoegen_promille", 0) or 0) / 1000
 
 
 def steuern_heute(k: dict) -> dict:
@@ -115,6 +126,7 @@ def steuern_heute(k: dict) -> dict:
     return {
         "einheiten": teile,
         "bund": sum(t["bund"] for t in teile), "kanton": sum(t["kanton"] for t in teile), "total": total,
+        "vermoegen": sum(t["vermoegen"] for t in teile), "total_inkl": total + sum(t["vermoegen"] for t in teile),
         "grenz_bund": max(t["grenz_bund"] for t in teile),
         "grenz_total": max(t["grenz_total"] for t in teile),
         "effektiv": round(total / basis * 100, 1) if basis else 0.0,

@@ -1,6 +1,8 @@
 """Szenarien: optimale PK-Einkäufe und Vergleich verheiratet ↔ Konkubinat."""
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 import copy
 from dataclasses import dataclass, field
 from datetime import date
@@ -92,11 +94,11 @@ def einkauf_optimieren(k: dict, person_name: str, budget: float, von: int, bis: 
         einheit = st.einheit_von(k, person_name)
         mehr_kap = st.kapitalsteuer(basis + wert_65 * anteil, k, einheit)["total"] - st.kapitalsteuer(basis, k, einheit)["total"]
         hinweise.append(f"Kapitalbezug {anteil * 100:.0f} %: Der eingekaufte Betrag wird beim Bezug mit rund CHF "
-                        f"{mehr_kap:,.0f} besteuert (bereits abgezogen).".replace(",", "'"))
+                        f"{mehr_kap:,.0f} besteuert (bereits abgezogen)." >> TS)
     elif wert_65:
         hinweise.append("Bezug als Rente: Der Einkauf erhöht die Altersrente (Umwandlungssatz), die als Einkommen besteuert wird.")
     if bereits:
-        hinweise.append(f"Bereits geplante Einkäufe von CHF {bereits:,.0f} sind vom Potenzial abgezogen.".replace(",", "'"))
+        hinweise.append(f"Bereits geplante Einkäufe von CHF {bereits:,.0f} sind vom Potenzial abgezogen." >> TS)
     if k["wohnen"].get("aktiv"):
         hinweise.append("Nach einem Einkauf ist 3 Jahre lang kein Vorbezug für Wohneigentum (WEF) möglich. "
                         "Die Amortisation aus freiem Vermögen ist davon nicht betroffen.")
@@ -130,6 +132,22 @@ class HeiratVergleich:
     qualitativ: list = field(default_factory=list)
     jahre_ruhestand: int = 25
     verheiratet_details: dict = field(default_factory=dict)
+    ib_jahr: int = 2032                   # Individualbesteuerung spätestens ab
+    jahre_bis_pension: int = 0
+    jahre_ehetarif: int = 0               # Jahre bis zur Pensionierung, in denen noch gemeinsam besteuert wird
+    pension_jahr: int = 0
+
+    @property
+    def kapital_diff_ib(self) -> float:   # Kapitalbezug nach Einführung: getrennt besteuert wie heute im Konkubinat
+        return 0.0 if self.pension_jahr >= self.ib_jahr else self.kapital_diff
+
+    @property
+    def bilanz_ohne_ib(self) -> float:
+        return -self.steuer_diff * self.jahre_bis_pension + self.ahv_diff * self.jahre_ruhestand - self.kapital_diff
+
+    @property
+    def bilanz_mit_ib(self) -> float:
+        return -self.steuer_diff * self.jahre_ehetarif + self.ahv_diff * self.jahre_ruhestand - self.kapital_diff_ib
 
     @property
     def steuer_diff(self) -> float:          # positiv = Heirat kostet mehr Steuern pro Jahr
@@ -221,5 +239,12 @@ def heirat_vergleich(k: dict, db, heute: date | None = None) -> HeiratVergleich:
         "Vermögen: ohne Ehevertrag Errungenschaftsbeteiligung; Wohneigentum, Hypothek und Pfandrechte bleiben wie im Grundbuch.",
         "Steuern: Verheiratete werden gemeinsam veranlagt; Kapitalbezüge im gleichen Jahr werden zusammengerechnet.",
     ]
+    ib = int(k["kennzahlen"].get("individualbesteuerung_ab", 2032) or 2032)
+    pj = min(vs.pensionsjahr(p) for p in k["personen"])
+    bis_pension = max(0, pj - heute.year)
+    ehetarif = max(0, min(pj, ib) - heute.year)
+    qual.insert(0, f"Individualbesteuerung: am 8. März 2026 angenommen, Umsetzung bei Bund und Kantonen spätestens {ib}. "
+                   "Danach werden Ehepaare getrennt mit einem Einheitstarif besteuert; der Steuernachteil der Heirat fällt weg, "
+                   "Kinderabzüge werden je hälftig aufgeteilt. Die Plafonierung der AHV-Renten bleibt.")
     return HeiratVergleich(True, "", s_konk["total"], s_verh["total"], details, ahv_k, ahv_v, kap_k, kap_v, hinter,
-                           qual, jahre, s_verh)
+                           qual, jahre, s_verh, ib, bis_pension, ehetarif, pj)

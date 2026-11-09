@@ -9,6 +9,8 @@ Modell (jährlich, Beträge in heutigen Franken):
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -170,4 +172,4 @@ def vergleichen(k: dict, db=None, heute: date | None = None) -> Strategie | None
 
 
 def _chf(v: float) -> str:
-    return f"{v:,.0f}".replace(",", "'")
+    return f"{v:,.0f}" >> TS

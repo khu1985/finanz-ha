@@ -557,3 +557,96 @@ def test_sensoren_fehler_und_aus(k, daten, db):
     assert sensoren.status()["fehler"] == "kein Token"
     k["sensoren"] = {"aktiv": False}
     assert sensoren.schreiben(k, db, senden=kaputt) == []
+
+
+# ---------------------------------------------------------------- Nachlass
+
+def test_erbschaftssteuer_bl(konkubinat):
+    import nachlass as nl
+    k = konkubinat
+    k["haushalt"]["kanton"] = "BL"
+    k["nachlass"] = {"zusammen_seit": 2015}
+    steuer, text, geprueft = nl.partner_steuer(k, 330_000, date(2026, 11, 9))
+    assert steuer == 45_000 and geprueft and "15 %" in text                    # (330'000 − 30'000) × 15 %
+    k["nachlass"] = {"zusammen_seit": 2024}
+    assert nl.partner_steuer(k, 110_000, date(2026, 11, 9))[0] == 30_000         # (110'000 − 10'000) × 30 %
+    k["nachlass"] = {"erbschaftssteuer": {"satz": 10, "freibetrag": 0}}
+    assert nl.partner_steuer(k, 100_000)[0] == 10_000
+    k["nachlass"] = {}
+    k["haushalt"]["kanton"] = "XY"
+    assert nl.partner_steuer(k, 100_000)[2] is False
+
+
+def test_nachlass_faelle(konkubinat, db):
+    import nachlass as nl
+    k = konkubinat
+    k["haushalt"]["kanton"] = "BL"
+    k["nachlass"] = {"zusammen_seit": 2015}
+    k["wohnen"].update(aktiv=True, kaufpreis=2_000_000, eigenmittel=800_000)
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "P1", "bank", "Person 1"), "2026-11-01", 200_000)
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Gemeinsam", "bank", ""), "2026-11-01", 100_000)
+    f1, f2 = nl.faelle(k, db, date(2026, 11, 9))
+    assert f1.verstorben == "Person 1" and f1.nachlass == 200_000 + 50_000 + 400_000 and f1.davon_liegenschaft == 400_000
+    assert f1.erbe_partner_ohne == 0 and f1.erbe_partner_mit == 325_000 and f1.erbe_kinder_mit == 325_000
+    assert f1.steuer_partner_mit == round((325_000 - 30_000) * 0.15)
+    assert f1.ausgleich_haus == 400_000                                          # ohne Testament alles auszahlen
+    assert any("Ohne Testament" in h for h in f1.hinweise)
+    k["nachlass"]["checkliste"] = {"testament": {"Person 1": True, "Person 2": False}}
+    f1, _ = nl.faelle(k, db, date(2026, 11, 9))
+    assert f1.ausgleich_haus == 400_000 - 325_000
+    verh = copy.deepcopy(k)
+    verh["haushalt"]["zivilstand"] = "verheiratet"
+    f1v, _ = nl.faelle(verh, db, date(2026, 11, 9))
+    assert f1v.erbe_partner_ohne == 325_000 and f1v.erbe_partner_mit == round(650_000 * 0.75) and f1v.steuer_partner_mit == 0
+    liste = nl.checkliste(k)
+    assert liste[0][0] == "testament" and liste[0][3] == {"Person 1": True, "Person 2": False}
+
+
+def test_ampel_nachlass(konkubinat, daten, db):
+    import ampel as am
+    a = {x.bereich: x for x in am.bewerten(konkubinat, db)}
+    assert a["Nachlass"].status == am.ROT
+    konkubinat["nachlass"] = {"checkliste": {s: {"Person 1": True, "Person 2": True} for s, _, _ in
+                                             __import__("nachlass").CHECKLISTE}}
+    a = {x.bereich: x for x in am.bewerten(konkubinat, db)}
+    assert a["Nachlass"].status == am.GRUEN
+
+
+# ---------------------------------------------------------------- Individualbesteuerung und Vermögenssteuer
+
+def test_heirat_individualbesteuerung(konkubinat, db):
+    import szenarien as sz
+    k = konkubinat
+    for p in k["personen"]:
+        p["lohn_brutto"], p["ahv"]["beitragsjahre_bisher"] = 120_000, 44
+    k["kennzahlen"]["individualbesteuerung_ab"] = 2030
+    h = sz.heirat_vergleich(k, db, date(2026, 11, 9))
+    assert h.ib_jahr == 2030 and h.jahre_ehetarif == 4 and h.jahre_bis_pension > h.jahre_ehetarif
+    assert h.kapital_diff_ib == 0                                                # Pension nach 2030
+    assert h.bilanz_mit_ib == pytest.approx(-h.steuer_diff * 4 + h.ahv_diff * h.jahre_ruhestand)
+    assert h.qualitativ[0].startswith("Individualbesteuerung")
+
+
+def test_vermoegenssteuer(k):
+    import steuern as st
+    k["steuern"].update(steuerbar_vermoegen=800_000, vermoegenssteuer=2_400)
+    s = st.steuern_heute(k)
+    assert s["vermoegen"] == 2400 and s["total_inkl"] == s["total"] + 2400
+    k["steuern"]["vermoegenssteuer"] = 0
+    k["kennzahlen"]["vermoegen_promille"] = 2.5
+    assert st.steuern_heute(k)["vermoegen"] == 2000
+
+
+def test_steuerdokument_vermoegenssteuer():
+    import steuerdokumente as sd
+    text = ("Veranlagungsverfügung Steuerperiode 2025\nSteuerbares Einkommen Staat 141'200 Bund 145'000\n"
+            "Steuerbares Vermögen 600'000\nStaatssteuer Einkommen 14'000.00\nStaatssteuer Vermögen 1'500.00\n"
+            "Gemeindesteuer 9'000.00\nVermögenssteuer total 2'100.00\n")
+    w = sd.erkennen(text)["werte"]
+    assert w["staatssteuer"] == 14_000 and w["vermoegenssteuer"] == 2_100 and w["steuerbares_vermoegen"] == 600_000
+
+
+def test_tausender_nur_zahlen():
+    from tausender import TS
+    assert f"Damit A kann, wären CHF {555000:,.0f} und {1234.5:,.2f}" >> TS == "Damit A kann, wären CHF 555'000 und 1'234.50"
+    assert "1,5 Jahre, 12,345" >> TS == "1,5 Jahre, 12'345"

@@ -6,6 +6,8 @@ schätzen und die Werte in die Steuer-Einstellungen einer Person übernehmen.
 """
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 import json
 import re
 from datetime import datetime
@@ -27,6 +29,7 @@ FELDER = {
     "satzbestimmend": ("Satzbestimmendes Einkommen", r"satzbestimmend"),
     "steuerbares_vermoegen": ("Steuerbares Vermögen", r"steuerbares vermögen|steuerbares reinvermögen"),
     "steuer_kanton_gemeinde": ("Staats- und Gemeindesteuer", r"(?:total )?(?:staats-|kantons-) ?(?:und|u\.) ?gemeindesteuer|total kanton und gemeinde|total steuern kanton"),
+    "vermoegenssteuer": ("Vermögenssteuer", r"vermögenssteuer|steuer (?:auf dem|vom) vermögen"),
     "staatssteuer": ("Staatssteuer", r"^\s*staatssteuer|kantonssteuer(?! und)"),
     "gemeindesteuer": ("Gemeindesteuer", r"^\s*gemeindesteuer|einwohnergemeinde"),
     "bundessteuer": ("Direkte Bundessteuer", r"direkte bundessteuer|bundessteuer"),
@@ -45,12 +48,16 @@ FELDER = {
     "schulden": ("Schulden", r"total (?:der )?schulden|private schulden"),
 }
 
+EINKOMMENSSTEUER = {"steuer_kanton_gemeinde", "staatssteuer", "gemeindesteuer", "bundessteuer"}
+
 # Übernahme in die Konfiguration: Schlüssel → Ziel ("steuer:" = Steuereinheit der Person, "person:", "wohnen:")
 ZIELE = {
     "steuerbar_kanton": "steuer:steuerbar_kanton",
     "steuerbar_bund": "steuer:steuerbar_bund",
     "steuer_kanton_gemeinde": "steuer:steuer_kanton_gemeinde",
     "grenzsteuersatz": "steuer:grenzsteuersatz_kanton",
+    "steuerbares_vermoegen": "steuer:steuerbar_vermoegen",
+    "vermoegenssteuer": "steuer:vermoegenssteuer",
     "abzug_3a": "person:saeule3a.beitrag_jahr",
     "eigenmietwert": "wohnen:eigenmietwert",
 }
@@ -157,6 +164,8 @@ def erkennen(text: str) -> dict:
         if not muster or schluessel in erg["werte"]:
             continue
         for z in zeilen:
+            if schluessel in EINKOMMENSSTEUER and re.search(r"vermögen", z, re.I):
+                continue  # «Staatssteuer Vermögen» gehört zur Vermögenssteuer
             if re.search(muster, z, re.I) and not re.search(r"steuerbares einkommen", z, re.I):
                 w = _zeilenwert(z, muster)
                 if w is not None:
@@ -270,7 +279,7 @@ def abgleich(doks: list[dict]) -> list[str]:
 
 
 def _f(v: float) -> str:
-    return f"{v:,.0f}".replace(",", "'")
+    return f"{v:,.0f}" >> TS
 
 
 def hinweise(k: dict, d: dict) -> list[str]:

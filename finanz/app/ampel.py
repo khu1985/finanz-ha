@@ -1,6 +1,8 @@
 """Ampeln: grün / gelb / rot (grau = keine Daten) für alle Bereiche der Finanzplanung."""
 from __future__ import annotations
 
+from tausender import TS  # noqa: E402
+
 from dataclasses import dataclass
 from datetime import date
 
@@ -29,7 +31,7 @@ def schwelle(wert: float, gut: float, mittel: float, hoeher_besser: bool = True)
 
 
 def chf(v: float) -> str:
-    return f"{v:,.0f}".replace(",", "'")
+    return f"{v:,.0f}" >> TS
 
 
 # ---------------------------------------------------------------- Einzelbewertungen
@@ -185,6 +187,17 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         brach = max(0, c.anlegbar - c.depot)
         erg.append(Ampel("Anlage", GELB if brach > 20000 or c.krypto_anteil > float(an.konfiguration(k)["krypto_max"]) else GRUEN,
                          f"CHF {chf(brach)} ohne Zweck auf Konten" if brach > 20000 else "Aufteilung passt", "vermoegen"))
+
+    # Nachlass (nur bei Paaren)
+    if len(k["personen"]) >= 2:
+        import nachlass as nl
+        liste = nl.checkliste(k)
+        offen = sum(1 for _, _, _, st_ in liste for v in st_.values() if not v)
+        test = next(st_ for s_, _, _, st_ in liste if s_ == "testament")
+        konk = k["haushalt"].get("zivilstand") != "verheiratet"
+        status = (ROT if konk and not all(test.values()) else GELB if offen else GRUEN)
+        erg.append(Ampel("Nachlass", status, ("Testament fehlt – Partner erbt nichts" if status == ROT else
+                                             f"{offen} Punkte der Checkliste offen" if offen else "geregelt"), "nachlass"))
 
     # Erinnerungen
     import erinnerungen as er
