@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.20.0 – 2026-11-09
+
+- **Dokumente-Übersicht unter App:** alle hochgeladenen Policen, Vorsorge- und Steuerdokumente und Buchungen pro
+  Konto mit Grösse, Datum, Person und Link zum Original; Filter nach Bereich, Kennzahlen (Speicher, Duplikate,
+  ohne Text)
+- **Löschen überall:** einzeln, Auswahl (mit «alle wählen») oder alle eines Bereichs – auf der Dokumente-Seite und
+  direkt in den Listen Versicherungen, Vorsorge und Steuern; Buchungen pro Konto löschen
+- **Duplikate:** dieselbe Datei wird beim Hochladen und im Import-Ordner nicht ein zweites Mal eingelesen;
+  vorhandene Duplikate lassen sich mit einem Klick entfernen
+- Weniger «database is locked» beim Löschen, während die App Dokumente im Hintergrund neu sichtet
+
 ## 0.19.0 – 2026-11-09
 
 - **Ampeln bei den Einstellungen:** jedes Feld zeigt, ob der Wert plausibel ist (grün), wahrscheinlich falsch,

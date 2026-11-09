@@ -17,7 +17,8 @@ NICHT_FREI = {"immobilie", "hypothek"}
 
 
 def verbinden(pfad: Path) -> sqlite3.Connection:
-    db = sqlite3.connect(pfad)
+    # Wartezeit bei gleichzeitigem Schreiben (Hintergrund, z. B. Neu-Sichten nach einem Update) statt «database is locked»
+    db = sqlite3.connect(pfad, timeout=30)
     db.row_factory = sqlite3.Row
     db.executescript(
         """

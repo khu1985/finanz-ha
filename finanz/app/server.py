@@ -27,7 +27,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"steuererklaerung", "bericht"}
+MIT_ABFRAGE = {"steuererklaerung", "bericht", "dokumente"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -42,6 +42,7 @@ SEITEN = {
     "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
+    "dokumente": ("Dokumente", seiten.dokumente),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -378,11 +379,32 @@ class Handler(BaseHTTPRequestHandler):
                 c["bauteile"] = teile
             konfig.speichern(k)
             return "Bauteile gespeichert." if not form.get("richtwerte") else "Richtwerte werden verwendet.", "wohnen"
+        if pfad == "dokumente/loeschen":
+            import verwaltung as vw
+            ziel = form.get("zurueck") or "dokumente"
+            if not ziel.split("?")[0] in ("dokumente", "versicherungen", "vorsorge", "steuern", "budget"):
+                ziel = "dokumente"
+            with db() as v:
+                alle = vw.eintraege(v, konfig.datenordner())
+                if form.get("einzeln"):
+                    auswahl = [form["einzeln"]]
+                elif form.get("aktion") == "duplikate":
+                    auswahl = [e.schluessel for e in alle if e.duplikat_von]
+                elif form.get("aktion") == "alle":
+                    bereich = form.get("bereich") or ""
+                    auswahl = [e.schluessel for e in alle if not bereich or e.schluessel.startswith(bereich + ":")]
+                else:
+                    auswahl = [s_[4:] for s_ in form if s_.startswith("sel_") and form.get(s_)]
+                if not auswahl:
+                    raise ValueError("Nichts ausgewählt.")
+                n = vw.loeschen(v, konfig.datenordner(), auswahl)
+            return f"{n} Eintrag/Einträge gelöscht.", ziel
         if pfad == "dokumente/neu-sichten":
             import sichtung
             with db() as v:
                 b = sichtung.ausfuehren(konfig.laden(), v, konfig.datenordner(), "Knopf", alle=bool(form.get("alle")))
-            ziel = form.get("zurueck") if form.get("zurueck") in ("versicherungen", "vorsorge", "steuern", "einstellungen") \
+            ziel = form.get("zurueck") if form.get("zurueck") in ("versicherungen", "vorsorge", "steuern", "einstellungen",
+                                                               "dokumente") \
                 else "einstellungen"
             text = (f"{b.geprueft} Dokument(e) neu gesichtet: {len(b.geaendert)} mit neuen Werten, {len(b.neu)} neu angelegt"
                     + (f", {b.geschuetzt} von Hand bearbeitete belassen" if b.geschuetzt else "")
@@ -488,7 +510,10 @@ class Handler(BaseHTTPRequestHandler):
         teile = pfad.split("/")
         with db() as v:
             if pfad == "versicherungen/hochladen":
-                dateien = form.get("_dateien_datei") or []
+                import verwaltung as vw
+                dateien, doppelt = vw.neue_dateien(v, daten, "v", form.get("_dateien_datei") or [])
+                if doppelt and not dateien:
+                    raise ValueError("Bereits hochgeladen: " + "; ".join(doppelt))
                 ids = [vi.hochladen(v, daten, n, inhalt) for n, inhalt in dateien if inhalt]
                 LOG.info("%d Versicherungsverträge hochgeladen", len(ids))
                 import krankenkasse as kk
@@ -497,7 +522,8 @@ class Handler(BaseHTTPRequestHandler):
                 if kvg:
                     konfig.speichern(k)
                 zusatz = f" Grundversicherung von {', '.join(kvg)} in den Krankenkassen-Rechner übernommen." if kvg else ""
-                if len(ids) == 1 and not kvg:
+                zusatz += (" Übersprungen, weil schon vorhanden: " + "; ".join(doppelt)) if doppelt else ""
+                if len(ids) == 1 and not kvg and not doppelt:
                     return "Vertrag analysiert – bitte die erkannten Werte prüfen.", f"versicherungen/{ids[0]}"
                 return f"{len(ids)} Dokument(e) analysiert.{zusatz}"
             if pfad == "versicherungen/krankenkasse":
@@ -540,11 +566,14 @@ class Handler(BaseHTTPRequestHandler):
         teile = pfad.split("/")
         with db() as v:
             if pfad == "vorsorge/hochladen":
-                dateien = form.get("_dateien_datei") or []
+                import verwaltung as vw
+                dateien, doppelt = vw.neue_dateien(v, daten, "d", form.get("_dateien_datei") or [])
+                if doppelt and not dateien:
+                    raise ValueError("Bereits hochgeladen: " + "; ".join(doppelt))
                 ids = [dk.hochladen(v, daten, n, inhalt) for n, inhalt in dateien if inhalt]
-                if len(ids) == 1:
+                if len(ids) == 1 and not doppelt:
                     return "Dokument analysiert – Werte prüfen und übernehmen.", f"vorsorge/dokument/{ids[0]}"
-                return f"{len(ids)} Dokumente analysiert."
+                return f"{len(ids)} Dokumente analysiert." + (" Übersprungen, weil schon vorhanden: " + "; ".join(doppelt) if doppelt else "")
             if len(teile) >= 3 and teile[1] == "dokument" and teile[2].isdigit():
                 did = int(teile[2])
                 aktion = teile[3] if len(teile) > 3 else ""
@@ -591,11 +620,14 @@ class Handler(BaseHTTPRequestHandler):
         teile = pfad.split("/")
         with db() as v:
             if pfad == "steuern/hochladen":
-                dateien = form.get("_dateien_datei") or []
+                import verwaltung as vw
+                dateien, doppelt = vw.neue_dateien(v, daten, "s", form.get("_dateien_datei") or [])
+                if doppelt and not dateien:
+                    raise ValueError("Bereits hochgeladen: " + "; ".join(doppelt))
                 ids = [sd.hochladen(v, daten, n, inhalt) for n, inhalt in dateien if inhalt]
-                if len(ids) == 1:
+                if len(ids) == 1 and not doppelt:
                     return "Steuerdokument analysiert – Werte prüfen und übernehmen.", f"steuern/dokument/{ids[0]}"
-                return f"{len(ids)} Steuerdokumente analysiert."
+                return f"{len(ids)} Steuerdokumente analysiert." + (" Übersprungen, weil schon vorhanden: " + "; ".join(doppelt) if doppelt else "")
             if len(teile) >= 3 and teile[1] == "dokument" and teile[2].isdigit():
                 did = int(teile[2])
                 aktion = teile[3] if len(teile) > 3 else ""

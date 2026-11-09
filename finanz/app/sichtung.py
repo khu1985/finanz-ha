@@ -139,6 +139,7 @@ def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
                                    f"{vi.SPARTEN.get(werte.get('sparte', v['sparte']), '')} ({', '.join(sorted(neu))})".strip())
                 if werte.get("sparte") == "kvg" and kk.police_uebernehmen(k, vi.einer(db, v["id"])):
                     config_geaendert = True
+        db.commit()
         if zusatz and len(vertraege) == 1:
             cur = db.execute("INSERT INTO vertraege (dateiname, hochgeladen, text, datei) VALUES (?, ?, ?, ?)",
                              (haupt["dateiname"], datetime.now().isoformat(timespec="seconds"), text, datei))
@@ -162,6 +163,7 @@ def _dokumente(db, daten: Path, b: Bericht, alle: bool, bereich: str, modul, tab
             continue
         b.geprueft += 1
         db.execute(f"UPDATE {tabelle} SET text = ? WHERE id = ?", (text, d["id"]))   # noqa: S608 – feste Tabellennamen
+        db.commit()
         if d["quelle"] in GESCHUETZT and not alle:
             b.geschuetzt += 1
             continue
@@ -205,6 +207,7 @@ def _dokumente(db, daten: Path, b: Bericht, alle: bool, bereich: str, modul, tab
             db.execute(f"UPDATE {tabelle} SET uebernommen = '' WHERE id = ?", (d["id"],))   # noqa: S608
             felder.append("bitte neu übernehmen")
         b.geaendert.append(f"{bereich}: {d['dateiname']} ({', '.join(felder)})")
+        db.commit()
     db.commit()
 
 

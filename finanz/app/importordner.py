@@ -55,6 +55,8 @@ def einlesen(daten: Path, db) -> list[str]:
             elif name.endswith(".csv") and name.startswith("versicherung"):
                 n, fehler = vi.csv_import(db, inhalt)
                 meldungen.append(f"{pfad.name}: {n} Verträge" + (f", {len(fehler)} übersprungen" if fehler else ""))
+            elif name.endswith(".pdf") and _doppelt(db, daten, name, inhalt):
+                meldungen.append(f"{pfad.name}: schon vorhanden, nicht erneut eingelesen")
             elif name.endswith(".pdf") and (name.startswith("versicherung") or name.startswith("police")):
                 vid = vi.hochladen(db, daten, pfad.name, inhalt)
                 import krankenkasse as kk
@@ -79,3 +81,9 @@ def einlesen(daten: Path, db) -> list[str]:
     for m in meldungen:
         LOG.info("Import-Ordner: %s", m)
     return meldungen
+
+
+def _doppelt(db, daten, name: str, inhalt: bytes) -> bool:
+    import verwaltung as vw
+    kurz = "v" if name.startswith(("versicherung", "police")) else "s" if name.startswith(("steuer", "veranlagung")) else "d"
+    return not vw.neue_dateien(db, daten, kurz, [(name, inhalt)])[0]

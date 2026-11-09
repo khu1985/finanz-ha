@@ -27,7 +27,8 @@ NAVIGATION = [
                  ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
                  ("notfall", "Notfallordner")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
-    ("App", [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")]),
+    ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("protokoll", "Protokoll"),
+             ("aenderungen", "Änderungen")]),
 ]
 NAV = [e for _, gruppe in NAVIGATION for e in gruppe]
 
@@ -172,7 +173,8 @@ code.entitaet{font-size:12px;word-break:break-all;white-space:normal}
 .fortschritt{height:8px;border-radius:4px;background:var(--linie);overflow:hidden;margin:4px 0 12px}
 .fortschritt i{display:block;height:100%;background:var(--gut)}
 .druck-kopf,.nur-druck{display:none}
-.hinweis-text{margin:0 0 10px}
+.hinweis-text{margin:0 0 10px}.reiter{flex-wrap:wrap;gap:6px;margin-bottom:12px}
+button.loeschen{color:var(--schlecht)}form.loesch-form td:first-child{width:28px}
 label[id^="f-"]{scroll-margin-top:110px}.feld-titel{display:flex;align-items:baseline;gap:6px}.feld-titel .ampel{flex:0 0 auto;transform:translateY(1px)}
 label small.feld-gelb,label small.feld-rot{display:block;font-size:12px;margin-top:3px;line-height:1.3}
 label small.feld-gelb{color:var(--warn,#b7791f)}label small.feld-rot{color:var(--schlecht)}.text-original{white-space:nowrap}form.inline{display:inline;margin:0}form.inline select{width:auto;min-width:72px;padding:4px 6px;font-size:13px}
@@ -218,6 +220,12 @@ JS = """
   var texte = %s;
   var ov = document.getElementById('status'), txt = document.getElementById('status-text'), bar = document.getElementById('lade');
   function zeige(t){ txt.textContent = t; ov.classList.add('an'); }
+  document.addEventListener('change', function(e){
+    if (e.target.matches && e.target.matches('[data-alle]')) {
+      var f = e.target.closest('form');
+      if (f) f.querySelectorAll('input[name^="sel_"]').forEach(function(c){ c.checked = e.target.checked; });
+    }
+  });
   document.addEventListener('submit', function(e){
     if (e.defaultPrevented) return;
     var f = e.target, ziel = (e.submitter && e.submitter.getAttribute('formaction')) || f.getAttribute('action') || '';
@@ -989,14 +997,18 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
             ts, tt, original = am.GRAU, "kein Dokument (aus Liste erfasst)", '<span class="leise">kein PDF</span>'
         original = f'<span class="text-original">{licht(ts, tt)} {original}</span>'
         zeilen.append([
+            auswahl_zelle(f"v:{v['id']}"),
             f'<a href="versicherungen/{v["id"]}">{escape(v["versicherer"] or v["dateiname"])}</a>',
             escape(vi.SPARTEN.get(v["sparte"], v["sparte"])), escape(v["person"] or "–"),
             (licht(am.termin_status((t.kuendigen_bis - heute).days)) + t.kuendigen_bis.strftime("%d.%m.%Y")) if t else "–",
             chf(v["praemie_jahr"]),
             original,
+            loesch_knopf(f"v:{v['id']}", f"Vertrag {v['versicherer'] or v['dateiname']} löschen?"),
         ])
-    zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>", ""])
-    liste = tabelle(["Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr", "Text · Original"], zeilen, zahlen_ab=4)
+    zeilen.append(["", "<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>", "", ""])
+    liste = loesch_form(tabelle(["", "Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr", "Text · Original", ""],
+                                zeilen, zahlen_ab=5), "versicherungen", "v",
+                        "Alle Verträge löschen? Verträge und Dateien werden endgültig entfernt.")
     liste += sichtung_knopf("versicherungen")
     ohne_text = [v for v in vertraege if v["datei"] and text_status(v["text"])[0] == am.ROT]
     if ohne_text:
@@ -1113,11 +1125,14 @@ def text_karte(text: str | None, ki_aktiv: bool) -> str:
 
 def vorsorge_dokumente_karte(k: dict, db) -> str:
     doks = dk.alle(db)
-    zeilen = [[f'{licht(*text_status(d.get("text")))} <a href="vorsorge/dokument/{d["id"]}">{escape(d["dateiname"])}</a>',
+    zeilen = [[auswahl_zelle(f"d:{d['id']}"),
+               f'{licht(*text_status(d.get("text")))} <a href="vorsorge/dokument/{d["id"]}">{escape(d["dateiname"])}</a>',
                escape(dk.TYPEN.get(d["typ"], d["typ"])),
                escape(d["person"] or "–"), escape(d["stichtag"] or "–"), str(len(d["werte"])),
-               licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
-    liste = (tabelle(["Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen"], zeilen, zahlen_ab=4)
+               licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen"),
+               loesch_knopf(f"d:{d['id']}", f"{d['dateiname']} löschen?")] for d in doks]
+    liste = (loesch_form(tabelle(["", "Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen", ""], zeilen, zahlen_ab=5),
+                         "vorsorge", "d", "Alle Vorsorgedokumente löschen? Dokumente und Dateien werden endgültig entfernt.")
              + sichtung_knopf("vorsorge")) if doks else ""
     form = """<form method="post" action="vorsorge/hochladen" enctype="multipart/form-data">
 <p class="leise">Vorsorgeausweis der Pensionskasse, 3a-Auszug oder IK-Auszug/Rentenvorausberechnung als PDF. Die App erkennt
@@ -1396,12 +1411,16 @@ und übernimmt die Werte auf Wunsch in die Steuer-Einstellungen.</p>
 <button>Hochladen und analysieren</button></div></form>"""
     if not doks:
         return karte("Steuerdokumente", form)
-    zeilen = [[f'{licht(*text_status(d.get("text")))} <a href="steuern/dokument/{d["id"]}">{d["jahr"] or "?"} · '
+    zeilen = [[auswahl_zelle(f"s:{d['id']}"),
+               f'{licht(*text_status(d.get("text")))} <a href="steuern/dokument/{d["id"]}">{d["jahr"] or "?"} · '
                f'{escape(d["person"] or "Haushalt")}</a>',
                escape(sd.TYPEN.get(d["typ"], d["typ"])), chf(d["werte"].get("steuerbar_kanton", 0)),
                chf(d["werte"].get("steuer_kanton_gemeinde", 0) + d["werte"].get("bundessteuer", 0)),
-               licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
-    liste = tabelle(["Jahr · Person", "Art", "Steuerbar Kanton", "Steuern", "übernommen"], zeilen, zahlen_ab=2)
+               licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen"),
+               loesch_knopf(f"s:{d['id']}", f"{d['dateiname']} löschen?")] for d in doks]
+    liste = loesch_form(tabelle(["", "Jahr · Person", "Art", "Steuerbar Kanton", "Steuern", "übernommen", ""], zeilen,
+                                zahlen_ab=3), "steuern", "s",
+                        "Alle Steuerdokumente löschen? Dokumente und Dateien werden endgültig entfernt.")
     liste += sichtung_knopf("steuern")
     html = karte("Steuerdokumente", liste + form)
     # Mehrjahresvergleich pro Person
@@ -2481,3 +2500,82 @@ def sichtung_karte(db) -> str:
                  'Vorsorge- und Steuerdokumente mit der neuen Erkennung neu und kategorisiert die Buchungen neu – ohne '
                  'erneutes Hochladen. Von Hand korrigierte Werte bleiben erhalten; geänderte Werte bereits übernommener '
                  'Dokumente erscheinen wieder als «noch nicht übernommen».</p>' + info + form)
+
+
+# ---------------------------------------------------------------- Dokumente verwalten
+
+def auswahl_zelle(schluessel: str) -> str:
+    return f'<input type="checkbox" name="sel_{escape(schluessel)}" value="1" aria-label="auswählen">'
+
+
+def loesch_knopf(schluessel: str, frage: str = "Eintrag löschen?") -> str:
+    return (f'<button class="zweit klein loeschen" name="einzeln" value="{escape(schluessel)}" '
+            f'onclick="return confirm(\'{escape(frage)}\')" title="löschen" aria-label="löschen">Löschen</button>')
+
+
+def loesch_form(inhalt: str, zurueck: str, bereich: str = "", alle_text: str = "") -> str:
+    """Tabelle mit Auswahl-Kästchen und Lösch-Knöpfen in ein Formular packen (keine verschachtelten Formulare)."""
+    alle = (f'<input type="hidden" name="bereich" value="{escape(bereich)}">'
+            f'<button class="zweit klein" name="aktion" value="alle" onclick="return confirm(\'{escape(alle_text)}\')">'
+            f'{escape(alle_text.split("?")[0])}</button>') if alle_text else ""
+    return (f'<form method="post" action="dokumente/loeschen" class="loesch-form" data-status="Wird gelöscht …">'
+            f'<input type="hidden" name="zurueck" value="{escape(zurueck)}">' + inhalt
+            + '<div class="zeile nicht-drucken"><label class="entfernen"><input type="checkbox" data-alle>alle auswählen</label>'
+              '<button class="zweit klein" onclick="return confirm(\'Ausgewählte Einträge und Dateien löschen?\')">'
+              'Ausgewählte löschen</button>' + alle + "</div></form>")
+
+
+def dokumente(k: dict, db, q: dict | None = None) -> str:
+    import konfig
+    import verwaltung as vw
+    q = q or {}
+    filt = (q.get("bereich") or [""])[0]
+    if filt not in vw.BEREICHE:
+        filt = ""
+    alle = vw.eintraege(db, konfig.datenordner())
+    liste = [e for e in alle if not filt or e.schluessel.startswith(filt + ":")]
+    dateien = [e for e in alle if e.original]
+    gross = sum(e.groesse for e in alle)
+    dup = [e for e in alle if e.duplikat_von]
+    ohne_text = [e for e in dateien if text_status(e.text)[0] == am.ROT]
+    kpis = '<div class="kpis">' + "".join([
+        kpi(str(len(dateien)), "Dokumente mit Datei"),
+        kpi(vw.groesse_text(gross), "Speicher"),
+        kpi(str(len(dup)), "Duplikate", "", am.GELB if dup else am.GRUEN),
+        kpi(str(len(ohne_text)), "ohne Text (gescannt)", "", am.ROT if ohne_text else am.GRUEN),
+    ]) + "</div>"
+    reiter = '<div class="zeile reiter nicht-drucken">' + "".join(
+        f'<a class="knopf{"" if (b == filt) else " zweit"} klein" href="dokumente{"?bereich=" + b if b else ""}">'
+        f'{escape(t)} ({sum(1 for e in alle if not b or e.schluessel.startswith(b + ":"))})</a>'
+        for b, t in [("", "Alle")] + list(vw.BEREICHE.items())) + "</div>"
+    zeilen = []
+    for e in liste:
+        if e.original:
+            ts, tt = text_status(e.text)
+            datei = f'{licht(ts, tt)} <a href="{escape(e.original)}">{vw.groesse_text(e.groesse)}</a>'
+        else:
+            datei = '<span class="leise">–</span>'
+        dup_txt = (f' <span class="status-stb fehlt" title="gleicher Inhalt wie ein älteres Dokument">Duplikat</span>'
+                   if e.duplikat_von else "")
+        zeilen.append([auswahl_zelle(e.schluessel),
+                       f'<span>{escape(e.bereich)} · <a href="{escape(e.link)}">{escape(e.titel)}</a>{dup_txt}</span>',
+                       escape(e.art), escape(e.person or "–"), escape(e.datum[8:10] + "." + e.datum[5:7] + "." + e.datum[:4]
+                                                                       if len(e.datum) >= 10 else e.datum or "–"),
+                       datei, loesch_knopf(e.schluessel, f"{e.titel} löschen?")])
+    if not zeilen:
+        return kpis + reiter + karte("Dokumente", '<p class="leer">Keine Einträge.</p>')
+    bereich_name = vw.BEREICHE.get(filt, "")
+    tab = tabelle(["", "Dokument", "Art", "Person", "Datum", "Datei", ""], zeilen, zahlen_ab=9)
+    extra = ""
+    if dup:
+        extra = ('<button class="zweit klein" name="aktion" value="duplikate" onclick="return confirm('
+                 f"'{len(dup)} Duplikat(e) löschen? Das jeweils älteste Dokument bleibt.')\">"
+                 f"{len(dup)} Duplikat(e) löschen</button>")
+    inhalt = tab + (f'<div class="zeile nicht-drucken">{extra}</div>' if extra else "")
+    form = loesch_form(inhalt, "dokumente" + (f"?bereich={filt}" if filt else ""), filt,
+                       f"Alle {bereich_name or 'Einträge'} löschen? Dateien und Werte werden endgültig entfernt.")
+    return (kpis + reiter + karte("Gespeicherte Dokumente und Einträge", form
+                                  + '<p class="leise">Löschen entfernt den Eintrag und die Originaldatei im Datenordner. Bereits in '
+                                    'die Einstellungen übernommene Werte bleiben erhalten. Buchungen: löscht alle Buchungen '
+                                    'des Kontos (Saldi unter «Vermögen» bleiben).</p>')
+            + sichtung_knopf("dokumente", "Alle Dokumente neu sichten"))

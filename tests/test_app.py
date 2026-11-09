@@ -70,7 +70,7 @@ def _post(url, daten):
 
 @pytest.mark.parametrize("pfad", ["", "vorsorge", "steuern", "wohnen", "vermoegen", "versicherungen", "berater",
                                   "einstellungen", "protokoll", "aenderungen", "bericht", "budget", "kinder",
-                                  "szenarien", "nachlass", "notfall", "steuererklaerung"])
+                                  "szenarien", "nachlass", "notfall", "steuererklaerung", "dokumente"])
 def test_seiten(server, pfad):
     req = urllib.request.Request(f"{server}/{pfad}", headers={"X-Ingress-Path": "/api/hassio_ingress/xyz"})
     html = urllib.request.urlopen(req).read().decode()

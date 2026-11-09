@@ -1148,3 +1148,26 @@ def test_plausibilitaet_einstellungen(k):
     import seiten
     zf = pr.zusammenfassung(k, seiten.alle_felder(k))
     assert zf[am.ROT] and sum(len(v) for v in zf.values()) == len(seiten.alle_felder(k))
+
+
+def test_dokumente_verwalten(k, db, tmp_path):
+    import dokumente as dk
+    import verwaltung as vw
+    from policen import HAUSRAT, KK_POLICE
+    a = vi.hochladen(db, tmp_path, "kk.txt", KK_POLICE.encode())             # zwei Verträge, eine Datei
+    hausrat = pdf(HAUSRAT)
+    b = vi.hochladen(db, tmp_path, "hausrat.pdf", hausrat)
+    c = vi.hochladen(db, tmp_path, "hausrat-kopie.pdf", hausrat)               # Duplikat
+    d = dk.hochladen(db, tmp_path, "3a.txt", b"Saeule 3a Konto\\nSaldo CHF 1'000.00\\n")
+    import budget as bu
+    bu.speichern(db, "Privatkonto", [("2026-01-05", -50.0, "Migros")], k)
+    alle = {e.schluessel: e for e in vw.eintraege(db, tmp_path)}
+    assert len([s for s in alle if s.startswith("v:")]) == 4 and f"d:{d}" in alle and "b:Privatkonto" in alle
+    assert alle[f"v:{c}"].duplikat_von == f"v:{b}" and not alle[f"v:{a}"].duplikat_von
+    assert not [e for e in alle.values() if e.schluessel.startswith("v:") and e.duplikat_von and e.schluessel != f"v:{c}"]
+    neu, doppelt = vw.neue_dateien(db, tmp_path, "v", [("x.pdf", hausrat), ("y.txt", b"neu")])
+    assert [n for n, _ in neu] == ["y.txt"] and doppelt and "schon vorhanden" in doppelt[0]
+    assert vw.loeschen(db, tmp_path, [f"v:{c}", f"d:{d}", "b:Privatkonto", "x:1"]) == 3
+    rest = {e.schluessel for e in vw.eintraege(db, tmp_path)}
+    assert f"v:{c}" not in rest and f"d:{d}" not in rest and "b:Privatkonto" not in rest
+    assert not (tmp_path / "vorsorge" / f"{d}.txt").exists()

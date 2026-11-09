@@ -17,7 +17,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [Steuererklärung](#steuererklärung-vorbereiten) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
-6. [Ampeln](#ampeln)
+6. [Ampeln](#ampeln) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
 9. [Rechenmodell](#rechenmodell)
@@ -91,6 +91,7 @@ personen:
 | Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
+| Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
 | Änderungen | Changelog der installierten Version |
 
@@ -554,6 +555,28 @@ fehlt oder ist unmöglich, **grau** = optional bzw. leer (Standard). Oben stehen
 | Vorsorgeausweis älter als ein Jahr, Sparbeitrag fehlt (BVG-Minimum angenommen), Ausweis-Rente ÷ Kapital unplausibel | gelb |
 | Jahreslohn unter 12'000 (Monatslohn?), kein 3a-Beitrag, Partner im Konkubinat nicht bei der PK gemeldet | gelb |
 | Steuerwerte fehlen (verheiratet) bzw. pro Person im Konkubinat, Fälligkeit der Hypothek vorbei | rot bzw. grau, gelb |
+
+## Dokumente verwalten und löschen
+
+Unter **App → Dokumente** stehen alle hochgeladenen Policen, Vorsorge- und Steuerdokumente sowie die Buchungen pro
+Konto in einer Liste: Bereich, Art, Person, Datum, Dateigrösse und ein Link zum Original. Oben zeigen Kennzahlen die
+Anzahl Dokumente mit Datei, den belegten Speicher, Duplikate und Dokumente ohne lesbaren Text (gescannt); mit den
+Reitern lässt sich nach Bereich filtern.
+
+| Aktion | So geht's |
+|---|---|
+| ein Dokument löschen | «Löschen» in seiner Zeile |
+| mehrere löschen | Kästchen ankreuzen (Kästchen im Tabellenkopf wählt alle) → «Ausgewählte löschen» |
+| alle eines Bereichs bzw. alle | Reiter wählen → «Alle … löschen» |
+| Duplikate entfernen | «Duplikate löschen» – behalten wird jeweils das älteste Dokument |
+
+Dieselben Knöpfe (einzeln und Auswahl) gibt es direkt in den Listen bei Versicherungen, Vorsorge und Steuern.
+Gelöscht werden der Eintrag und die Originaldatei; eine Datei, die noch von einem anderen Eintrag genutzt wird (z. B.
+Grund- und Zusatzversicherung aus derselben Police), bleibt erhalten. Bereits in die Einstellungen übernommene Werte
+bleiben bestehen. Löschen lässt sich nicht rückgängig machen – vorher ggf. eine Sicherung erstellen.
+
+**Duplikate:** Wird eine Datei hochgeladen (oder in den Import-Ordner gelegt), die inhaltlich schon vorhanden ist,
+liest die App sie nicht erneut ein und meldet «Bereits hochgeladen».
 
 ## Dokumente neu sichten
 
