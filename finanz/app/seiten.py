@@ -244,7 +244,7 @@ JS = """
         return;
       }
       var d = liste[i];
-      zeige(t.replace(/\s*\(.*\)$/, '') + ' – Datei ' + (i + 1) + ' von ' + liste.length + ': ' + d.name);
+      zeige(t.replace(/\\s*\\(.*\\)$/, '') + ' – Datei ' + (i + 1) + ' von ' + liste.length + ': ' + d.name);
       if (d.size > GRENZE) {
         meldungen.push(d.name + ': grösser als 16 MB – über den Import-Ordner hinzufügen'); fehler = true;
         return naechste(i + 1);
