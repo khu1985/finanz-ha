@@ -1069,7 +1069,7 @@ def test_krankenkassen_police_kvg_vvg(k, db, tmp_path):
     assert (tmp_path / "versicherungen" / alle[0]["datei"]).exists()
 
 
-def test_neu_sichten(k, db, tmp_path):
+def test_neu_sichten(k, db, tmp_path, daten):
     import dokumente as dk
     import sichtung
     from policen import HAUSRAT, KK_POLICE
@@ -1102,7 +1102,7 @@ def test_neu_sichten(k, db, tmp_path):
     assert not r2.geaendert and not r2.neu
 
 
-def test_neu_sichten_nach_update(k, db, tmp_path):
+def test_neu_sichten_nach_update(k, db, tmp_path, daten):
     import meta
     import sichtung
     from policen import HAUSRAT
