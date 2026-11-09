@@ -65,11 +65,15 @@ def berechnen(k: dict, db, heute: date | None = None) -> list[Sensor]:
     heute = heute or date.today()
     s: list[Sensor] = []
 
+    _letzter["bereich_fehler"] = {}
+
     def sicher(fn):
         try:
             fn()
         except Exception as e:  # noqa: BLE001 – ein fehlerhafter Bereich darf die übrigen Sensoren nicht verhindern
-            LOG.debug("Sensor übersprungen: %s", e)
+            import traceback
+            _letzter["bereich_fehler"][fn.__name__] = f"{type(e).__name__}: {e} | {traceback.format_exc(limit=-3)}"
+            LOG.warning("Sensoren «%s» übersprungen: %s", fn.__name__, e)
 
     nv = vm.nettovermoegen(db)
     konten = vm.konten(db)

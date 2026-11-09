@@ -531,6 +531,7 @@ def test_sensoren(k, db):
     gesendet = {}
     werte = sensoren.schreiben(k, db, senden=lambda e, n: gesendet.__setitem__(e, n), heute=date(2026, 11, 9))
     ids = set(gesendet)
+    assert not sensoren.status().get("bereich_fehler"), sensoren.status()["bereich_fehler"]
     assert {"sensor.finanz_nettovermoegen", "sensor.finanz_ampel", "sensor.finanz_naechste_frist",
             "sensor.finanz_steuererklaerung_frist", "sensor.finanz_pensionsluecke", "sensor.finanz_erinnerungen"} <= ids
     nv = gesendet["sensor.finanz_nettovermoegen"]
