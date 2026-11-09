@@ -15,7 +15,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 3. [Seiten](#seiten)
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
-   [Erinnerungen](#erinnerungen)
+   [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
@@ -267,6 +267,30 @@ erinnerungen:
 (z. B. `notify.mobile_app_iphone`) oder `persistent` für eine Meldung in Home Assistant. Die App prüft stündlich und
 sendet je Erinnerung höchstens zwei Meldungen: beim Erscheinen und bei Fälligkeit.
 
+## Sensoren in Home Assistant
+
+Die App liefert ihre Kennzahlen als Sensoren an Home Assistant – für Dashboards, Verlauf und Automationen
+(Präfix unter Einstellungen → Sensoren, Standard `finanz`):
+
+| Sensor | Inhalt |
+|---|---|
+| `sensor.finanz_nettovermoegen`, `_freies_vermoegen`, `_liquiditaet` | CHF; Aufteilung nach Art als Attribut |
+| `sensor.finanz_saldi_alter` | Tage seit den letzten Saldi |
+| `sensor.finanz_einkommen_ruhestand`, `_pensionsluecke`, `_ersatzquote` | Ruhestand (AHV, PK, Kapitalverzehr als Attribute) |
+| `sensor.finanz_fruehestes_pensionsalter` | frühestes Alter ohne Lücke; Einkommen je Alter als Attribut |
+| `sensor.finanz_steuern_jahr`, `_grenzsteuersatz` | Steuern heute; pro Person als Attribut |
+| `sensor.finanz_steuererklaerung_frist` | Datum der nächsten Frist (Kanton, Erstreckung) |
+| `sensor.finanz_amortisation_verfuegbar` | bei Fälligkeit verfügbar; Ziel und Fälligkeit als Attribute |
+| `sensor.finanz_versicherungspraemien`, `_krankenkasse_ersparnis` | Prämien; optimale Franchise je Person |
+| `sensor.finanz_ungenutzt` | Geld ohne Zweck auf Konten; Mehrertrag und Krypto-Anteil |
+| `sensor.finanz_ampel` | `gruen` / `gelb` / `rot`; Bereiche und Texte als Attribute |
+| `sensor.finanz_handeln` | Anzahl roter Bereiche |
+| `sensor.finanz_erinnerungen`, `_naechste_frist` | anstehende Erinnerungen; nächste mit Titel und Tagen |
+
+Die Werte werden beim Start, alle 15 Minuten und nach jeder Änderung geschrieben. Über die REST-API gesetzte Zustände
+überstehen keinen Neustart von Home Assistant; sie erscheinen danach spätestens nach 15 Minuten wieder. Unter
+Einstellungen → Sensoren stehen Status, alle Werte und Beispiele für eine Dashboard-Karte und eine Automation.
+
 ## Nicht verheiratet (Konkubinat)
 
 `haushalt.zivilstand: ledig` und unter `steuern.personen` je eine Steuererklärung erfassen (`person`,
@@ -337,6 +361,7 @@ oder **Einstellungen → Experte**.
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |
 | `fruehpension` | `pk_kuerzung_uws` |
+| `sensoren` | `aktiv`, `praefix` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung, Rendite |
@@ -404,7 +429,7 @@ Richtung des gewählten KI-Anbieters.
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten. Ohne KI braucht die App
 kein Internet. Sie läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
 zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe und die
-Benachrichtigungen genutzt.
+Benachrichtigungen und Sensoren genutzt.
 
 ## Fehlersuche
 

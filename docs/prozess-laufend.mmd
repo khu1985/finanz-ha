@@ -3,5 +3,6 @@ flowchart LR
     IO --> ER["erledigt/<br/>verschoben"]
     H["stündlich"] --> EI["Erinnerungen prüfen"]
     EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
+    Q["alle 15 Minuten<br/>und nach Änderungen"] --> SE["Sensoren schreiben<br/>sensor.finanz_*"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]

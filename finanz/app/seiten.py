@@ -149,6 +149,7 @@ table.log thead{display:none}table.log tr{display:block;padding:6px 0;border-bot
 table.log td{display:inline;border:0;padding:0 8px 0 0}table.log td:last-child{display:block;padding-top:2px}.zeile input[type=file]{max-width:none!important}
 }
 .hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung .ampel{margin-right:8px}
+code.entitaet{font-size:12px;word-break:break-all;white-space:normal}
 .erinnerung{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--linie)}
 .erinnerung>div{flex:1}.erinnerung .ampel{margin-top:6px}.erinnerung form{margin-left:8px}
 .antwort h3{font-size:15px;margin:14px 0 6px}.antwort p{margin:6px 0}.antwort ul{margin:6px 0;padding-left:20px}
@@ -641,13 +642,14 @@ def pfad_setzen(k: dict, pfad: str, roh: str) -> None:
 
 
 FELDER_KI = [("ki.aktiv", "KI-Aufgabe von Home Assistant nutzen"), ("ki.entity", "KI-Entität (leer = Standard)")]
+FELDER_SENSOREN = [("sensoren.aktiv", "Sensoren an Home Assistant liefern"), ("sensoren.praefix", "Präfix der Entitäten")]
 FELDER_ERINNERUNG = [("erinnerungen.benachrichtigung", "Benachrichtigung (leer, «persistent» oder notify.…)"),
                      ("erinnerungen.steuererklaerung_frist", "Frist Steuererklärung (MM-TT, leer = Kanton)"),
                      ("erinnerungen.fristerstreckung", "Fristerstreckung bis (MM-TT)")]
 
 
 def alle_felder(k: dict) -> list[tuple]:
-    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI + FELDER_ERINNERUNG
+    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI + FELDER_ERINNERUNG + FELDER_SENSOREN
     for i in range(len(k["personen"])):
         felder += _felder_person(i)
     return felder
@@ -671,7 +673,7 @@ def einstellungen(k: dict, db) -> str:
         teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i)))
     teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN),
               gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI),
-              gruppe("Erinnerungen", FELDER_ERINNERUNG)]
+              gruppe("Erinnerungen", FELDER_ERINNERUNG), gruppe("Sensoren", FELDER_SENSOREN)]
     formular = ('<form method="post" action="einstellungen">' + "".join(teile)
                 + '<div class="zeile"><button>Speichern</button></div></form>')
     text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
@@ -693,7 +695,7 @@ E-Banking · <code>versicherungen*.csv</code> – Versicherungsliste</li>
 <li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
 <code>veranlagung*.pdf</code> – Steuerdokumente · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
-    return formular + karte("Import-Ordner", importieren) + karte("Experte", experte) + karte("Sichern und übertragen", datei)
+    return formular + sensoren_karte(k) + karte("Import-Ordner", importieren) + karte("Experte", experte) + karte("Sichern und übertragen", datei)
 
 
 # ---------------------------------------------------------------- Versicherungen
@@ -1525,3 +1527,55 @@ def anlage_karte(k: dict, db) -> str:
             'langfristige Annahmen, keine Prognosen; keine Produktempfehlung. Das Risikoprofil hängt von Horizont, '
             'Verlusttoleranz und Einkommenssicherheit ab.</p>')
     return karte("Anlage-Check", f'<div class="kpis">{kpis}</div>' + tab + toepfe + hinweisliste(c.hinweise) + form + fuss)
+
+
+
+# ---------------------------------------------------------------- Sensoren
+
+def sensoren_karte(k: dict) -> str:
+    import sensoren
+    cfg = k.get("sensoren") or {}
+    praefix = str(cfg.get("praefix") or "finanz")
+    st_ = sensoren.status()
+    if not cfg.get("aktiv", True):
+        zustand = licht(am.GRAU) + "ausgeschaltet"
+    elif st_["fehler"]:
+        zustand = licht(am.ROT) + escape("Fehler: " + st_["fehler"])
+    elif st_["zeit"]:
+        zustand = licht(am.GRUEN) + f'{st_["anzahl"]} Sensoren, zuletzt {escape(st_["zeit"][11:16])} Uhr'
+    else:
+        zustand = licht(am.GELB) + "noch nicht geschrieben (startet kurz nach dem Start der App)"
+    zeilen = [[f'<code class="entitaet">{escape(e)}</code>', escape(str(w)) + (f" {escape(u)}" if u and w not in ("unknown",) else "")]
+              for e, w, u in st_["werte"]]
+    liste = tabelle(["Entität", "Wert"], zeilen, zahlen_ab=1) if zeilen else ""
+    beispiel = f"""# Dashboard-Karte
+type: entities
+title: Finanzen
+entities:
+  - sensor.{praefix}_ampel
+  - sensor.{praefix}_nettovermoegen
+  - sensor.{praefix}_naechste_frist
+  - sensor.{praefix}_erinnerungen
+  - sensor.{praefix}_pensionsluecke
+  - sensor.{praefix}_krankenkasse_ersparnis
+
+# Automation: Hinweis, wenn eine Ampel auf Rot geht
+alias: Finanzen – Ampel rot
+triggers:
+  - trigger: state
+    entity_id: sensor.{praefix}_ampel
+    to: rot
+actions:
+  - action: notify.notify
+    data:
+      title: Finanzen
+      message: "{{{{ state_attr('sensor.{praefix}_ampel', 'texte') }}}}"
+"""
+    form = ('<form method="post" action="einstellungen/sensoren" data-status="Sensoren werden geschrieben …">'
+            '<div class="zeile"><button class="zweit">Sensoren jetzt schreiben</button></div></form>')
+    return karte("Sensoren in Home Assistant",
+                 f"<p>{zustand}</p>" + liste
+                 + '<p class="leise">Die App schreibt die Werte beim Start, alle 15 Minuten und nach jeder Änderung. '
+                   'Nach einem Neustart von Home Assistant erscheinen sie spätestens nach 15 Minuten wieder.</p>'
+                 + f'<details><summary>Beispiele für Dashboard und Automation</summary><pre class="text">{escape(beispiel)}</pre></details>'
+                 + form)

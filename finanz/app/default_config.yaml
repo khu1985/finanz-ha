@@ -149,6 +149,10 @@ erinnerungen:
   fristerstreckung: ""             # MM-TT, wenn eine Erstreckung gewährt wurde
   eigene: []                       # z. B. [{titel: Depot prüfen, datum: "06-30", wiederholung: jaehrlich, vorlauf: 14, text: ...}]
 
+sensoren:
+  aktiv: true                      # Kennzahlen als sensor.finanz_* an Home Assistant liefern
+  praefix: finanz
+
 ki:
   aktiv: false                     # KI-Aufgabe (ai_task) von Home Assistant für Dokumente und Berater nutzen
   entity: ""                       # z. B. ai_task.openai_ai_task; leer = Standard-KI-Aufgabe

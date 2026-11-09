@@ -20,6 +20,7 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat |
 | Erinnerungen | 3a, PK-Einkauf (inkl. optimaler Betrag), 3a-Lücken, Liegenschaftsunterhalt, Krankenkasse, Kündigungsfristen, Steuererklärung mit Frist des Wohnkantons, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
+| Sensoren | Kennzahlen, Ampel, Erinnerungen und Fristen als `sensor.finanz_*` für Dashboards und Automationen |
 | Einstellungen | Formular, YAML-Editor, Import-Ordner, Export; Protokoll und Änderungen in der App |
 
 ## Installation
@@ -105,6 +106,7 @@ flowchart TB
 | `finanz/app/krankenkasse.py` | Franchise- und Modell-Optimierung der Grundversicherung |
 | `finanz/app/fruehpension.py` | Frühpensionierung 58–65 |
 | `finanz/app/anlage.py` | Anlage-Check |
+| `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/kantone.py` | Fristen der Steuererklärung aller Kantone |
 | `finanz/app/erinnerungen.py` | Erinnerungen, erledigt-Status, Benachrichtigung über Home Assistant |
 | `finanz/app/szenarien.py` | PK-Einkauf-Optimierung, Vergleich verheiratet ↔ Konkubinat |
@@ -237,6 +239,7 @@ flowchart LR
     IO --> ER["erledigt/<br/>verschoben"]
     H["stündlich"] --> EI["Erinnerungen prüfen"]
     EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
+    Q["alle 15 Minuten<br/>und nach Änderungen"] --> SE["Sensoren schreiben<br/>sensor.finanz_*"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]
 ```

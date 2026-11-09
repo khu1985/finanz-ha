@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.11.0 – 2026-11-09
+
+- **Sensoren für Home Assistant** (`sensor.finanz_*`): Nettovermögen, freies Vermögen, Liquidität, Alter der Saldi,
+  Einkommen im Ruhestand, Pensionslücke, Ersatzquote, frühestes Pensionsalter, Steuern, Grenzsteuersatz, Frist der
+  Steuererklärung, Amortisation, Versicherungsprämien, Krankenkassen-Ersparnis, Geld ohne Zweck, Ampel (gesamt, mit
+  Bereichen als Attribut), Anzahl «handeln», Erinnerungen und nächste Frist – mit Einheiten, Geräte- und Zustandsklassen
+  für Verlauf und Statistik
+- Geschrieben beim Start, alle 15 Minuten und nach jeder Änderung; Status, Liste und Beispiele für Dashboard und
+  Automation unter Einstellungen; Präfix einstellbar, abschaltbar
+
 ## 0.10.0 – 2026-11-09
 
 - **Krankenkasse: Franchise und Modell** (Versicherungen): pro Person und Kind Prämie, Franchise, erwartete

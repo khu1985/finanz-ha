@@ -206,6 +206,8 @@ class Handler(BaseHTTPRequestHandler):
             if isinstance(meldung, tuple):
                 meldung, ziel = meldung
             LOG.info("%s: %s", pfad, meldung)
+            import sensoren
+            sensoren.aktualisieren()
             self.weiter(ziel, meldung)
         except Exception as e:  # noqa: BLE001
             LOG.warning("Aktion %s fehlgeschlagen: %s", pfad, e)
@@ -268,6 +270,14 @@ class Handler(BaseHTTPRequestHandler):
             with db() as v:
                 vm.konto_loeschen(v, int(form["id"]))
             return "Konto gelöscht."
+        if pfad == "einstellungen/sensoren":
+            import sensoren
+            with db() as v:
+                werte = sensoren.schreiben(konfig.laden(), v)
+            st_ = sensoren.status()
+            if st_["fehler"]:
+                raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
+            return f"{len(werte)} Sensoren geschrieben.", "einstellungen"
         if pfad == "erinnerungen/erledigt":
             import erinnerungen as er
             with db() as v:
@@ -483,7 +493,9 @@ def main():
     except Exception as e:  # noqa: BLE001
         LOG.warning("Import-Ordner: %s", e)
     import erinnerungen
+    import sensoren
     erinnerungen.hintergrund(konfig.laden, db)
+    sensoren.hintergrund(konfig.laden, db)
     port = int(os.environ.get("PORT", "8099"))
     LOG.info("Finanzplanung läuft auf Port %d, Daten in %s", port, ordner)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

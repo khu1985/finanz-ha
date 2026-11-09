@@ -521,3 +521,38 @@ def test_anlage_check(k, db):
     assert c.krypto_anteil == pytest.approx(60 / 710 * 100, abs=0.1)
     assert any("Krypto" in h for h in c.hinweise) and any("ohne Zweck" in h for h in c.hinweise)
     assert c.opportunitaet == round((300_000 - 50_000) * (3.5 - 0.3) / 100)
+
+
+# ---------------------------------------------------------------- Sensoren
+
+def test_sensoren(k, db):
+    import sensoren
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Konto", "bank"), "2026-11-01", 100_000)
+    gesendet = {}
+    werte = sensoren.schreiben(k, db, senden=lambda e, n: gesendet.__setitem__(e, n), heute=date(2026, 11, 9))
+    ids = set(gesendet)
+    assert {"sensor.finanz_nettovermoegen", "sensor.finanz_ampel", "sensor.finanz_naechste_frist",
+            "sensor.finanz_steuererklaerung_frist", "sensor.finanz_pensionsluecke", "sensor.finanz_erinnerungen"} <= ids
+    nv = gesendet["sensor.finanz_nettovermoegen"]
+    assert nv["state"] == "100000" and nv["attributes"]["unit_of_measurement"] == "CHF"
+    assert nv["attributes"]["device_class"] == "monetary" and nv["attributes"]["friendly_name"] == "Finanzen Nettovermögen"
+    ampel = gesendet["sensor.finanz_ampel"]
+    assert ampel["state"] in ("gruen", "gelb", "rot") and ampel["attributes"]["device_class"] == "enum"
+    assert "bereiche" in ampel["attributes"]
+    assert gesendet["sensor.finanz_saldi_alter"]["state"] == "8"
+    assert sensoren.status()["anzahl"] == len(werte) and not sensoren.status()["fehler"]
+    k["sensoren"] = {"aktiv": True, "praefix": "geld"}
+    gesendet.clear()
+    sensoren.schreiben(k, db, senden=lambda e, n: gesendet.__setitem__(e, n))
+    assert all(e.startswith("sensor.geld_") for e in gesendet)
+
+
+def test_sensoren_fehler_und_aus(k, db):
+    import sensoren
+
+    def kaputt(e, n):
+        raise RuntimeError("kein Token")
+    sensoren.schreiben(k, db, senden=kaputt)
+    assert sensoren.status()["fehler"] == "kein Token"
+    k["sensoren"] = {"aktiv": False}
+    assert sensoren.schreiben(k, db, senden=kaputt) == []
