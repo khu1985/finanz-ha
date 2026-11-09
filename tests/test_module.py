@@ -1093,6 +1093,13 @@ def test_neu_sichten(k, db, tmp_path, daten):
     assert dok["uebernommen"] == "" and dok["person"] == "Person 1"            # gewählte Person bleibt
     assert any("Vorsorge" in x and "bitte neu übernehmen" in x for x in r.geaendert)
     assert k["krankenkasse"]["personen"][0]["modell"] == "hausarzt"
+    det = {(x["bereich"], x["feld"]): x for x in r.details}
+    assert det[("Versicherungen", "Prämie pro Jahr")]["alt"] == "22.50"
+    assert det[("Versicherungen", "Prämie pro Jahr")]["neu"] == "5'065.80"
+    assert det[("Versicherungen", "Modell")]["alt"] == "–" and det[("Versicherungen", "Modell")]["neu"] == "Hausarzt"
+    assert det[("Vorsorge", "3a-Guthaben")]["alt"] == "1" and det[("Vorsorge", "3a-Guthaben")]["neu"] == "12'000"
+    assert any(x["feld"] == "neuer Vertrag" for x in r.details)
+    assert sichtung.letzte(db).details == r.details
     # mit «alle» wird auch die Handkorrektur überschrieben
     sichtung.ausfuehren(k, db, tmp_path, "Test", alle=True)
     assert vi.einer(db, b)["praemie_jahr"] == pytest.approx(612.4)

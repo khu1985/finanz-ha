@@ -555,7 +555,8 @@ sichten» (oder mit dem Knopf bei den Listen) geht das jederzeit.
 | Buchungen (Budget) | werden mit den aktuellen Regeln neu kategorisiert |
 | Originaldatei fehlt (z. B. aus einer Liste erfasst) | bleibt unverändert |
 
-Das Ergebnis (geprüft, geändert, neu, belassen) steht auf der Karte und im Protokoll; nach einem Update mit
+Das Ergebnis (geprüft, geändert, neu, belassen) steht auf der Karte – mit einer Tabelle aller geänderten Werte
+(Dokument, Feld, vorher, neu) – und im Protokoll; nach einem Update mit
 Änderungen erscheint 14 Tage lang ein Hinweis in der Übersicht.
 
 ## Uploads und Dateigrösse

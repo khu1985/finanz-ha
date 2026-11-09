@@ -2417,7 +2417,22 @@ def sichtung_karte(db) -> str:
                 + (f", {b.geschuetzt} von Hand bearbeitete belassen" if b.geschuetzt else "")
                 + (f", {b.fehlend} ohne Originaldatei" if b.fehlend else "")
                 + (f", {b.buchungen} Buchungen neu kategorisiert" if b.buchungen else "") + ".</p>")
-        if b.geaendert or b.neu:
+        if b.details:
+            zeilen = []
+            vorher = None
+            for d_ in b.details:
+                gleich = (d_["bereich"], d_["dokument"]) == vorher
+                vorher = (d_["bereich"], d_["dokument"])
+                dok = "" if gleich else (f'<span>{escape(d_["bereich"])} · <a href="{escape(d_["link"])}">'
+                                         f'{escape(d_["dokument"])}</a></span>')
+                zeilen.append([dok, escape(d_["feld"]), f'<span class="leise">{escape(d_["alt"])}</span>',
+                               f'<b>{escape(d_["neu"])}</b>'])
+            info += ("<details open><summary>Geänderte Werte</summary>"
+                     + tabelle(["Dokument", "Feld", "vorher", "neu"], zeilen, zahlen_ab=9, karten=True)
+                     + (hinweisliste([x for x in b.geaendert if "bitte neu übernehmen" in x]) if any(
+                         "bitte neu übernehmen" in x for x in b.geaendert) else "")
+                     + "</details>")
+        elif b.geaendert or b.neu:
             info += "<details><summary>Änderungen</summary>" + hinweisliste(b.geaendert + b.neu) + "</details>"
         if b.fehler:
             info += hinweisliste(["Fehler: " + f for f in b.fehler])

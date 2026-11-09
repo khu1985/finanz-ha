@@ -37,6 +37,52 @@ class Bericht:
     fehlend: int = 0                                          # Originaldatei nicht mehr vorhanden
     buchungen: int = 0
     fehler: list[str] = field(default_factory=list)
+    details: list[dict] = field(default_factory=list)        # {bereich, dokument, link, feld, alt, neu}
+
+
+VERTRAG_FELDER = {
+    "sparte": "Sparte", "versicherer": "Versicherer", "police": "Police / Versicherten-Nr.", "person": "Person",
+    "praemie_jahr": "Prämie pro Jahr", "beginn": "Beginn", "ablauf": "Ablauf", "kuendigungsfrist_monate": "Kündigungsfrist (Monate)",
+    "franchise": "Franchise", "selbstbehalt": "Selbstbehalt", "summe": "Versicherungssumme",
+    "unfall_eingeschlossen": "Unfall eingeschlossen", "notiz": "Notiz", "modell": "Modell", "geburtsdatum": "Geburtsdatum",
+    "unfall_praemie": "Unfallanteil pro Jahr", "produkte": "Produkte",
+}
+
+
+def _text(wert) -> str:
+    if wert is None or wert == "":
+        return "–"
+    if isinstance(wert, float):
+        return f"{wert:,.2f}".replace(",", "'").removesuffix(".00")
+    if isinstance(wert, int) and not isinstance(wert, bool):
+        return f"{wert:,}".replace(",", "'")
+    return str(wert)
+
+
+def _name(v: dict, werte: dict) -> str:
+    """«Atupri · Krankenkasse Grundversicherung · Kai»"""
+    import versicherungen as vi
+    sparte = werte.get("sparte") or v.get("sparte")
+    teile = [werte.get("versicherer") or v.get("versicherer") or v.get("dateiname"), vi.SPARTEN.get(sparte, sparte),
+             werte.get("person") or v.get("person")]
+    return " · ".join(str(t) for t in teile if t)
+
+
+def _anzeige(feld: str, wert):
+    import krankenkasse as kk
+    import versicherungen as vi
+    if feld == "sparte":
+        return vi.SPARTEN.get(wert, wert)
+    if feld == "modell":
+        return kk.MODELLE.get(wert, wert) if wert else wert
+    if feld == "unfall_eingeschlossen":
+        return "ja" if wert else "nein"
+    return wert
+
+
+def _detail(b: Bericht, bereich: str, dokument: str, link: str, feld: str, alt, neu) -> None:
+    b.details.append({"bereich": bereich, "dokument": dokument, "link": link, "feld": feld,
+                      "alt": _text(alt), "neu": _text(neu)})
 
 
 def _tabelle(db) -> None:
@@ -84,6 +130,10 @@ def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
             neu = {f: w for f, w in werte.items() if f in vi.FELDER and w not in (None, "") and v.get(f) != w
                    and not (isinstance(w, (int, float)) and isinstance(v.get(f), (int, float)) and abs(v[f] - w) < 0.005)}
             if neu:
+                for f_, w in sorted(neu.items()):
+                    alt, w_ = _anzeige(f_, v.get(f_)), _anzeige(f_, w)
+                    _detail(b, "Versicherungen", _name(v, werte), f"versicherungen/{v['id']}",
+                            VERTRAG_FELDER.get(f_, f_), alt, w_)
                 vi.aktualisieren(db, v["id"], neu, quelle="muster" if text.strip() else "ohne Text")
                 b.geaendert.append(f"Versicherungen: {v['versicherer'] or v['dateiname']} "
                                    f"{vi.SPARTEN.get(werte.get('sparte', v['sparte']), '')} ({', '.join(sorted(neu))})".strip())
@@ -94,6 +144,9 @@ def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
                              (haupt["dateiname"], datetime.now().isoformat(timespec="seconds"), text, datei))
             vi.aktualisieren(db, cur.lastrowid, zusatz, quelle="muster")
             b.neu.append(f"Versicherungen: Zusatzversicherung aus {haupt['dateiname']}")
+            _detail(b, "Versicherungen", _name({**haupt, **zusatz}, zusatz),
+                    f"versicherungen/{cur.lastrowid}", "neuer Vertrag",
+                    None, f"{zusatz.get('produkte') or 'Zusatzversicherung'}, Prämie {_text(zusatz.get('praemie_jahr'))}/Jahr")
     db.commit()
     return config_geaendert
 
@@ -126,6 +179,21 @@ def _dokumente(db, daten: Path, b: Bericht, alle: bool, bereich: str, modul, tab
                     felder.append(f.capitalize())
         if not felder:
             continue
+        link = f"{'steuern' if mit_jahr else 'vorsorge'}/dokument/{d['id']}"
+        typen = modul.TYPEN
+        if e["typ"] != d["typ"]:
+            _detail(b, bereich, d["dateiname"], link, "Art", typen.get(d["typ"], d["typ"]), typen.get(e["typ"], e["typ"]))
+        if mit_jahr and e.get("jahr") and e["jahr"] != d["jahr"]:
+            _detail(b, bereich, d["dateiname"], link, "Jahr", str(d["jahr"] or ""), str(e["jahr"]))
+        if not mit_jahr:
+            for f_ in ("anbieter", "stichtag"):
+                if e.get(f_) and e[f_] != d.get(f_):
+                    _detail(b, bereich, d["dateiname"], link, f_.capitalize(), d.get(f_), e[f_])
+        beschriftung = ({s_: t for s_, (t, _) in modul.FELDER.items()} if mit_jahr
+                        else {s_: t for s_, (t, _) in modul.ZIELE.items()})
+        for s_ in sorted(set(d["werte"]) | set(e["werte"])):
+            if d["werte"].get(s_) != e["werte"].get(s_):
+                _detail(b, bereich, d["dateiname"], link, beschriftung.get(s_, s_), d["werte"].get(s_), e["werte"].get(s_))
         person = d["person"] or e.get("person", "")
         if mit_jahr:
             modul.speichern(db, d["id"], e["typ"], e.get("jahr") or d["jahr"], person, e["werte"], quelle="muster")

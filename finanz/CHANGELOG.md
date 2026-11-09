@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.18.1 – 2026-11-09
+
+- **Neu sichten: geänderte Werte als Tabelle** unter Einstellungen → «Dokumente neu sichten»: pro Dokument (Bereich,
+  Versicherer bzw. Datei, Sparte, Person, mit Link) jedes geänderte Feld mit Wert vorher und neu, auch neu angelegte
+  Zusatzversicherungen; Modell, Sparte und Unfalldeckung in Klartext
 ## 0.18.0 – 2026-11-09
 
 - **Dokumente nach Updates neu sichten:** Nach jedem App-Update liest die App alle gespeicherten Policen, Vorsorge-
