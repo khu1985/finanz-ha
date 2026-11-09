@@ -18,7 +18,7 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Vermögen | Konten und Saldi, Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf |
 | Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Risiko Invalidität und Tod |
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat |
-| Erinnerungen | 3a, PK-Einkauf, Krankenkasse, Kündigungsfristen, Steuererklärung, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
+| Erinnerungen | 3a, PK-Einkauf (inkl. optimaler Betrag), 3a-Lücken, Liegenschaftsunterhalt, Krankenkasse, Kündigungsfristen, Steuererklärung mit Frist des Wohnkantons, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
 | Einstellungen | Formular, YAML-Editor, Import-Ordner, Export; Protokoll und Änderungen in der App |
 
@@ -102,6 +102,7 @@ flowchart TB
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
 | `finanz/app/hypothek.py` | Hypothekar-Strategie über Zinsszenarien |
 | `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen |
+| `finanz/app/kantone.py` | Fristen der Steuererklärung aller Kantone |
 | `finanz/app/erinnerungen.py` | Erinnerungen, erledigt-Status, Benachrichtigung über Home Assistant |
 | `finanz/app/szenarien.py` | PK-Einkauf-Optimierung, Vergleich verheiratet ↔ Konkubinat |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Beratungen |

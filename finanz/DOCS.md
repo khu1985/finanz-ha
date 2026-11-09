@@ -215,11 +215,21 @@ Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfä
 | Geplanter PK-Einkauf dieses Jahres | ab 1. September | 10. Dezember |
 | Krankenkasse vergleichen | 20. September bis 30. November | 30. November |
 | Kündigungsfristen der Verträge | 60 Tage vorher | Fristende |
-| Steuererklärung | 2 Monate vorher | `erinnerungen.steuererklaerung_frist` (Standard 31. März) |
+| Steuererklärung | 2 Monate vor der ordentlichen Frist | Frist des Wohnkantons bzw. gewährte Erstreckung (siehe unten) |
+| PK-Einkauf prüfen (aus dem Optimierer, wenn kein Einkauf geplant) | ab 1. September | 10. Dezember |
+| 3a-Lücke des Vorjahres nachzahlen (aus den Steuerdokumenten) | ab 1. September | 20. Dezember |
+| Liegenschaftsunterhalt planen (bis zum Wegfall des Eigenmietwerts) | ab 1. Oktober, bis 2028 | 31. Dezember |
+| Weiteres 3a-Konto eröffnen (weniger als 3 Konten) | ab 15. Oktober | 20. Dezember |
 | Neue Vorsorgeausweise hochladen | Februar bis April | 31. März |
 | Kennzahlen prüfen | Januar | 31. Januar |
 | Hypothek vorbereiten | 36 Monate vor Fälligkeit | 12 Monate vor Fälligkeit |
 | Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
+
+**Frist der Steuererklärung.** Die App kennt die ordentliche Frist und die spätestmögliche Erstreckung aller
+26 Kantone (Stand Steuerjahr 2025) und nimmt den Kanton aus `haushalt.kanton`. Wo die Frist auf dem Formular steht
+oder die Quellen abweichen, weist sie darauf hin. Eine abweichende Frist laut Formular unter Einstellungen →
+Erinnerungen als «Frist Steuererklärung» (MM-TT) eintragen, eine gewährte Erstreckung als «Fristerstreckung bis».
+Die Karte «Frist Steuererklärung» unter Steuern zeigt den Stand mit Ampel (rot ≤ 14 Tage, gelb ≤ 60 Tage).
 
 Eigene Erinnerungen unter `erinnerungen.eigene`:
 
@@ -299,7 +309,7 @@ oder **Einstellungen → Experte**.
 | `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
-| `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist`, `eigene` |
+| `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung, Rendite |

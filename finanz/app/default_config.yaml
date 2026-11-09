@@ -131,7 +131,8 @@ wohnen:
 
 erinnerungen:
   benachrichtigung: ""             # leer = aus; «persistent» = Meldung in HA; sonst Notify-Dienst, z. B. notify.mobile_app_iphone
-  steuererklaerung_frist: "03-31"  # MM-TT, Frist für die Steuererklärung im Kanton
+  steuererklaerung_frist: ""       # leer = Frist des Wohnkantons (haushalt.kanton); sonst MM-TT laut Formular
+  fristerstreckung: ""             # MM-TT, wenn eine Erstreckung gewährt wurde
   eigene: []                       # z. B. [{titel: Depot prüfen, datum: "06-30", wiederholung: jaehrlich, vorlauf: 14, text: ...}]
 
 ki:

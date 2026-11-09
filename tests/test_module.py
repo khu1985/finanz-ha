@@ -369,7 +369,7 @@ def test_erinnerungen(k, db, tmp_path):
     assert kvg.faellig == date(2026, 11, 30) and er.status(kvg, heute) == "gelb"
     er.erledigen(db, kvg.schluessel)
     assert "Krankenkasse vergleichen" not in {e.titel for e in er.alle(k, db, heute)}
-    assert "Steuererklärung 2025 einreichen" in {e.titel for e in er.alle(k, db, date(2026, 3, 1))}
+    assert any(e.titel.startswith("Steuererklärung 2025 einreichen") for e in er.alle(k, db, date(2026, 3, 1)))
 
 
 def test_benachrichtigung_einmal_pro_stufe(k, db):
@@ -384,3 +384,60 @@ def test_benachrichtigung_einmal_pro_stufe(k, db):
     assert any("Fällig: Test" in t for t in faellig)
     k["erinnerungen"]["benachrichtigung"] = ""
     assert er.benachrichtigen(k, db, heute, senden=lambda d, x: 1 / 0) == []
+
+
+
+# ---------------------------------------------------------------- Fristen und Steueroptimierung
+
+def test_fristen_kanton(k):
+    import kantone
+    k["haushalt"]["kanton"] = "BE"
+    f = kantone.steuererklaerung(k)
+    assert (f.frist, f.gewaehlt, f.quelle) == ("03-15", "03-15", "kanton") and f.erstreckung == "11-15"
+    k["haushalt"]["kanton"] = "zg"
+    assert kantone.steuererklaerung(k).frist == "04-30"
+    k["erinnerungen"] = {"steuererklaerung_frist": "05.04.", "fristerstreckung": "2026-09-30"}
+    f = kantone.steuererklaerung(k)
+    assert (f.frist, f.gewaehlt, f.quelle) == ("04-05", "09-30", "erstreckt")
+    k["erinnerungen"] = {"steuererklaerung_frist": "03-31"}
+    k["haushalt"]["kanton"] = "BL"
+    assert kantone.steuererklaerung(k).quelle == "kanton"                        # alter Standardwert = Kantonsfrist
+    k["haushalt"]["kanton"] = "LU"
+    k["erinnerungen"] = {}
+    f = kantone.steuererklaerung(k)
+    assert f.pruefen and f.gewaehlt == "03-31" and f.quelle == "standard"
+    assert len(kantone.FRISTEN) == 26
+
+
+def test_erinnerung_steuererklaerung_nach_kanton(k, db):
+    import erinnerungen as er
+    k["haushalt"]["kanton"] = "BE"
+    titel = {e.titel: e for e in er.alle(k, db, date(2026, 2, 1))}
+    e = next(v for t, v in titel.items() if t.startswith("Steuererklärung 2025"))
+    assert e.faellig == date(2026, 3, 15) and "Bern" in e.titel and "Erstreckung bis spätestens 15.11." in e.text
+    k["erinnerungen"] = {"fristerstreckung": "09-30"}
+    e = next(x for x in er.alle(k, db, date(2026, 9, 1)) if x.titel.startswith("Steuererklärung 2025"))
+    assert e.faellig == date(2026, 9, 30) and "erstreckte" in e.titel
+
+
+def test_erinnerungen_steueroptimierung(konkubinat, db, tmp_path):
+    import erinnerungen as er
+    import steuerdokumente as sd
+    from policen import STEUERERKLAERUNG
+    k = konkubinat
+    k["personen"][0]["pk"].update(einkauf_potenzial=60_000, einkauf_geplant=[])
+    k["personen"][1]["pk"].update(einkauf_potenzial=0)
+    k["personen"][0]["saeule3a"]["konten"] = 1
+    k["wohnen"].update(aktiv=True, eigenmietwert=20_000)
+    sd.hochladen(db, tmp_path, "erklaerung.pdf", pdf(STEUERERKLAERUNG))           # 2025: 3a-Abzug 5'000
+    liste = {e.titel: e for e in er.alle(k, db, date(2026, 11, 9))}
+    pk = liste["PK-Einkauf 2026 prüfen – Person 1"]
+    assert "Optimal wären rund CHF" in pk.text and pk.seite == "szenarien"
+    assert "PK-Einkauf 2026 prüfen – Person 2" not in liste
+    luecke = liste["3a-Lücke 2025 nachzahlen – Person 1"]
+    assert "2'258" in luecke.text
+    assert "Liegenschaftsunterhalt planen" in liste and "Weiteres 3a-Konto eröffnen – Person 1" in liste
+    k["personen"][0]["pk"]["einkauf_geplant"] = [{"jahr": 2026, "betrag": 20_000}]
+    liste = {e.titel for e in er.alle(k, db, date(2026, 11, 9))}
+    assert "PK-Einkauf überweisen – Person 1" in liste and "PK-Einkauf 2026 prüfen – Person 1" not in liste
+    assert "Liegenschaftsunterhalt planen" not in {e.titel for e in er.alle(k, db, date(2029, 11, 9))}

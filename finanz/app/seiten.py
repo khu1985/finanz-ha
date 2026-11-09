@@ -472,7 +472,7 @@ def steuern(k: dict, db) -> str:
                 '<p class="leise">Bund: ein Fünftel des ordentlichen Tarifs. Kanton: effektiver Satz aus der Tabelle '
                 'unter Einstellungen (Schätzung – mit dem kantonalen Rechner prüfen). Ehepaare werden pro Jahr addiert, '
                 'Konkubinatspaare getrennt besteuert.</p>')
-    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + steuerdokumente_karten(k, db) + karte("Abzüge simulieren", abzuege) + karte(
+    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + fristen_karte(k) + steuerdokumente_karten(k, db) + karte("Abzüge simulieren", abzuege) + karte(
         "Kapitalbezug PK und 3a", kap_html)
 
 
@@ -642,7 +642,8 @@ def pfad_setzen(k: dict, pfad: str, roh: str) -> None:
 
 FELDER_KI = [("ki.aktiv", "KI-Aufgabe von Home Assistant nutzen"), ("ki.entity", "KI-Entität (leer = Standard)")]
 FELDER_ERINNERUNG = [("erinnerungen.benachrichtigung", "Benachrichtigung (leer, «persistent» oder notify.…)"),
-                     ("erinnerungen.steuererklaerung_frist", "Frist Steuererklärung (MM-TT)")]
+                     ("erinnerungen.steuererklaerung_frist", "Frist Steuererklärung (MM-TT, leer = Kanton)"),
+                     ("erinnerungen.fristerstreckung", "Fristerstreckung bis (MM-TT)")]
 
 
 def alle_felder(k: dict) -> list[tuple]:
@@ -1367,3 +1368,30 @@ def erinnerungen_karte(k: dict, db) -> str:
     fuss = (f'<p class="leise">Benachrichtigung über Home Assistant: {escape(ziel)}.</p>' if ziel else
             '<p class="leise">Benachrichtigungen aufs Handy unter Einstellungen → Erinnerungen einschalten.</p>')
     return karte(f"Anstehend ({len(liste)})", f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>' + fuss)
+
+
+
+def fristen_karte(k: dict) -> str:
+    import erinnerungen as er
+    import kantone
+    f = kantone.steuererklaerung(k)
+    j = date.today().year
+    def tt(mmtt):
+        return f"{mmtt[3:]}.{mmtt[:2]}." if mmtt else "–"
+    frist = er._datum(j, *(int(x) for x in f.gewaehlt.split("-")))
+    tage = (frist - date.today()).days
+    if tage < -7:
+        frist = er._datum(j + 1, *(int(x) for x in f.gewaehlt.split("-")))
+        tage = (frist - date.today()).days
+    status = am.ROT if tage <= 14 else am.GELB if tage <= 60 else am.GRUEN
+    zeilen = [
+        ["Wohnkanton", escape(f"{f.name} ({f.kanton})" if f.kanton else "nicht erfasst")],
+        ["Ordentliche Frist", tt(f.frist) + (" (eigene Angabe)" if f.quelle == "eigen" else "")],
+        ["Erstreckung möglich bis", tt(f.erstreckung)],
+        [licht(status) + "Nächste Frist", f"{frist:%d.%m.%Y}" + (" (erstreckt)" if f.quelle == "erstreckt" else "")
+         + f" · in {tage} Tagen" if tage >= 0 else f"{frist:%d.%m.%Y} · abgelaufen"],
+    ]
+    hinweise = [h for h in [f.hinweis, "Datum auf der zugestellten Steuererklärung prüfen." if f.pruefen else ""] if h]
+    return karte(f"Frist Steuererklärung {j - 1 if frist.year == j else j}", tabelle(["", ""], zeilen, zahlen_ab=9)
+                 + (hinweisliste(hinweise) if hinweise else "")
+                 + '<p class="leise">Eigene Frist oder gewährte Erstreckung unter Einstellungen → Erinnerungen eintragen.</p>')

@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.9.0 – 2026-11-09
+
+- **Frist der Steuererklärung nach Wohnkanton** (alle 26 Kantone, Stand Steuerjahr 2025): ordentliche Frist und
+  spätestmögliche Erstreckung; eigene Frist laut Formular und gewährte Erstreckung in den Einstellungen; neue Karte
+  «Frist Steuererklärung» unter Steuern mit Ampel
+- **Erinnerungen aus der Steueroptimierung:** optimaler PK-Einkauf des laufenden Jahres (aus dem Optimierer, solange
+  kein Einkauf geplant ist), 3a-Lücke des Vorjahres nachzahlen (aus den Steuerdokumenten), Liegenschaftsunterhalt vor
+  dem Wegfall des Eigenmietwerts, weiteres 3a-Konto für den gestaffelten Bezug
+- Erinnerung zur Steuererklärung mit Tipps je nach Haushalt (Unterhalt effektiv, Kinderabzug im Konkubinat, Erstreckung)
+
 ## 0.8.0 – 2026-11-09
 
 - **Menü wie in der vZEV-App:** Seiten in Gruppen (Überblick, Planung, Bestand, App); auf grossen Bildschirmen als
