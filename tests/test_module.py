@@ -525,7 +525,7 @@ def test_anlage_check(k, db):
 
 # ---------------------------------------------------------------- Sensoren
 
-def test_sensoren(k, db):
+def test_sensoren(k, daten, db):
     import sensoren
     vm.saldo_setzen(db, vm.konto_anlegen(db, "Konto", "bank"), "2026-11-01", 100_000)
     gesendet = {}
@@ -548,7 +548,7 @@ def test_sensoren(k, db):
     assert all(e.startswith("sensor.geld_") for e in gesendet)
 
 
-def test_sensoren_fehler_und_aus(k, db):
+def test_sensoren_fehler_und_aus(k, daten, db):
     import sensoren
 
     def kaputt(e, n):
