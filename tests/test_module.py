@@ -1120,3 +1120,31 @@ def test_neu_sichten_nach_update(k, db, tmp_path, daten):
     db.execute("UPDATE sichtung SET bericht = replace(bericht, '\"version\": \"' || version, '\"version\": \"0.0.1')")
     b = sichtung.wenn_neue_version(lambda: k, db, tmp_path)                     # neue Version: neu sichten
     assert b.geprueft == 1 and b.ausloeser == f"Update auf {meta.version()}"
+
+
+def test_plausibilitaet_einstellungen(k):
+    import ampel as am
+    import pruefung as pr
+    p = k["personen"][0]
+    p.update(geburtsdatum="1985-03-12", lohn_brutto=120000)
+    p["pk"].update(altersguthaben=0, stand="", ausweis_alterskapital=800000, ausweis_altersrente=40000)
+    p["ahv"]["beitragsjahre_bisher"] = 30
+    p["saeule3a"]["beitrag_jahr"] = 9000
+    assert pr.pruefen(k, "personen.0.geburtsdatum", date(2026, 11, 9))[0] == am.GRUEN
+    assert pr.pruefen(k, "personen.0.pk.altersguthaben", date(2026, 11, 9))[0] == am.ROT
+    assert pr.pruefen(k, "personen.0.ahv.beitragsjahre_bisher", date(2026, 11, 9))[0] == am.ROT   # 41 Jahre alt
+    assert pr.pruefen(k, "personen.0.saeule3a.beitrag_jahr", date(2026, 11, 9))[0] == am.ROT
+    assert pr.pruefen(k, "personen.0.pk.ausweis_altersrente", date(2026, 11, 9))[0] == am.GRUEN
+    p["pk"]["ausweis_altersrente"] = 400000                                                        # vertauscht
+    assert "vertauscht" in pr.pruefen(k, "personen.0.pk.ausweis_altersrente", date(2026, 11, 9))[1]
+    p["lohn_brutto"] = 9000                                                                        # Monatslohn
+    assert "Monatslohn" in pr.pruefen(k, "personen.0.lohn_brutto", date(2026, 11, 9))[1]
+    k["haushalt"]["bedarf_ruhestand"] = 0
+    assert pr.pruefen(k, "haushalt.bedarf_ruhestand")[0] == am.ROT
+    k["haushalt"]["kanton"] = "XY"
+    assert pr.pruefen(k, "haushalt.kanton")[0] == am.ROT
+    k["wohnen"]["aktiv"] = False
+    assert pr.pruefen(k, "wohnen.kaufpreis")[0] == am.GRAU
+    import seiten
+    zf = pr.zusammenfassung(k, seiten.alle_felder(k))
+    assert zf[am.ROT] and sum(len(v) for v in zf.values()) == len(seiten.alle_felder(k))

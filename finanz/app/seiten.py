@@ -172,7 +172,10 @@ code.entitaet{font-size:12px;word-break:break-all;white-space:normal}
 .fortschritt{height:8px;border-radius:4px;background:var(--linie);overflow:hidden;margin:4px 0 12px}
 .fortschritt i{display:block;height:100%;background:var(--gut)}
 .druck-kopf,.nur-druck{display:none}
-.hinweis-text{margin:0 0 10px}.text-original{white-space:nowrap}form.inline{display:inline;margin:0}form.inline select{width:auto;min-width:72px;padding:4px 6px;font-size:13px}
+.hinweis-text{margin:0 0 10px}
+label[id^="f-"]{scroll-margin-top:110px}.feld-titel{display:flex;align-items:baseline;gap:6px}.feld-titel .ampel{flex:0 0 auto;transform:translateY(1px)}
+label small.feld-gelb,label small.feld-rot{display:block;font-size:12px;margin-top:3px;line-height:1.3}
+label small.feld-gelb{color:var(--warn,#b7791f)}label small.feld-rot{color:var(--schlecht)}.text-original{white-space:nowrap}form.inline{display:inline;margin:0}form.inline select{width:auto;min-width:72px;padding:4px 6px;font-size:13px}
 @media print{
 .side,#nav,footer,#status,#lade,.nicht-drucken,form .zeile,button{display:none!important}
 body,.inhalt,main{background:#fff!important;color:#000!important}main{max-width:none;padding:0}
@@ -864,6 +867,14 @@ FELDER_ERINNERUNG = [("erinnerungen.benachrichtigung", "Benachrichtigung (leer, 
                      ("erinnerungen.fristerstreckung", "Fristerstreckung bis (MM-TT)")]
 
 
+def _gruppe_name(k: dict, pfad: str) -> str:
+    m = re.match(r"personen\.(\d+)\.", pfad)
+    if m and int(m.group(1)) < len(k["personen"]):
+        return f'{k["personen"][int(m.group(1))].get("name") or "Person"}: '
+    return {"haushalt": "Haushalt: ", "annahmen": "Haushalt: ", "steuern": "Steuern: ", "wohnen": "Wohnen: "}.get(
+        pfad.split(".")[0], "")
+
+
 def alle_felder(k: dict) -> list[tuple]:
     felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI + FELDER_ERINNERUNG + FELDER_SENSOREN
     for i in range(len(k["personen"])):
@@ -872,19 +883,42 @@ def alle_felder(k: dict) -> list[tuple]:
 
 
 def _feld(k: dict, pfad: str, text: str) -> str:
+    import pruefung
     wert = pfad_lesen(k, pfad)
+    status, grund = pruefung.pruefen(k, pfad)
+    titel = f'<span class="feld-titel">{licht(status, grund or am.TEXT.get(status, ""))}<span>{escape(text)}</span></span>'
+    hinweis = f'<small class="feld-{status}">{escape(grund)}</small>' if grund and status in (am.ROT, am.GELB) else ""
+    fid = "f-" + pfad.replace(".", "-")
     if isinstance(wert, bool):
-        return (f'<label>{escape(text)}<select name="{pfad}"><option value="ja"{" selected" if wert else ""}>ja</option>'
-                f'<option value="nein"{"" if wert else " selected"}>nein</option></select></label>')
+        return (f'<label id="{fid}">{titel}<select name="{pfad}"><option value="ja"{" selected" if wert else ""}>ja</option>'
+                f'<option value="nein"{"" if wert else " selected"}>nein</option></select>{hinweis}</label>')
     modus = ' inputmode="decimal"' if isinstance(wert, (int, float)) else ""
-    return f'<label>{escape(text)}<input name="{pfad}" value="{escape(str(wert if wert is not None else ""))}"{modus}></label>'
+    return (f'<label id="{fid}">{titel}<input name="{pfad}" value="{escape(str(wert if wert is not None else ""))}"{modus}>'
+            f'{hinweis}</label>')
 
 
 def einstellungen(k: dict, db) -> str:
     def gruppe(titel, felder):
         return karte(titel, '<div class="felder">' + "".join(_feld(k, p, t) for p, t in felder) + "</div>")
 
-    teile = [gruppe("Haushalt", FELDER_HAUSHALT)]
+    import pruefung
+    zf = pruefung.zusammenfassung(k, alle_felder(k))
+    kpis = '<div class="kpis">' + "".join([
+        kpi(str(len(zf[am.GRUEN])), "Werte plausibel", "gut", am.GRUEN),
+        kpi(str(len(zf[am.GELB])), "prüfen", "", am.GELB if zf[am.GELB] else am.GRUEN),
+        kpi(str(len(zf[am.ROT])), "fehlen oder falsch", "schlecht" if zf[am.ROT] else "", am.ROT if zf[am.ROT] else am.GRUEN),
+        kpi(str(len(zf[am.GRAU])), "optional bzw. leer"),
+    ]) + "</div>"
+
+    def liste_(status):
+        return "".join(f'<li>{licht(status)}<a href="einstellungen#f-{p_.replace(".", "-")}">{escape(_gruppe_name(k, p_))}'
+                       f'{escape(t)}</a> – {escape(g)}</li>' for p_, t, g in zf[status])
+    offen = ""
+    if zf[am.ROT] or zf[am.GELB]:
+        offen = karte("Zu prüfen", f'<ul class="hinweise">{liste_(am.ROT)}{liste_(am.GELB)}</ul>'
+                      '<p class="leise">Grün: plausibel · Gelb: wahrscheinlich falsch, veraltet oder fehlt (gerechnet wird '
+                      'trotzdem) · Rot: wichtiger Wert fehlt oder ist unmöglich · Grau: optional bzw. Standard.</p>')
+    teile = [kpis, offen, gruppe("Haushalt", FELDER_HAUSHALT)]
     for i, p in enumerate(k["personen"]):
         teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i)))
     teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN),

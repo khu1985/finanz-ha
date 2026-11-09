@@ -118,6 +118,7 @@ flowchart TB
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
+| `finanz/app/pruefung.py` | Plausibilität der Einstellungen (Ampel pro Feld) |
 | `finanz/app/sichtung.py` | Gespeicherte Dokumente nach Updates neu sichten |
 | `finanz/app/bericht.py` | Monatsstände und Jahresbericht |
 | `finanz/app/waehrung.py` | Fremdwährungen und Kurse |

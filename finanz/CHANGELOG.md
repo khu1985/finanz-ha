@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.19.0 – 2026-11-09
+
+- **Ampeln bei den Einstellungen:** jedes Feld zeigt, ob der Wert plausibel ist (grün), wahrscheinlich falsch,
+  veraltet oder fehlend (gelb, mit kurzem Grund unter dem Feld), ein wichtiger Wert fehlt bzw. unmöglich ist (rot)
+  oder optional leer bleibt (grau). Geprüft werden u. a. Geburtsdatum, Pensionierungsalter, Jahreslohn (Monatslohn
+  statt Jahreslohn?), AHV-Beitragsjahre gegenüber dem Alter, PK-Guthaben und Alter des Vorsorgeausweises, Sparbeitrag,
+  Umwandlungssatz, Ausweis-Kapital und -Rente (vertauscht?), 3a über dem Maximum oder ohne Guthaben, Partnermeldung
+  im Konkubinat, Steuerwerte, Kanton, Bedarf im Ruhestand, Wohnen, Zuzug und Datumsformate
+- Oben eine Zusammenfassung (plausibel, prüfen, fehlen) und die Liste «Zu prüfen» mit Sprung zum Feld; Ampel
+  «Einstellungen» in der Übersicht
 ## 0.18.1 – 2026-11-09
 
 - **Neu sichten: geänderte Werte als Tabelle** unter Einstellungen → «Dokumente neu sichten»: pro Dokument (Bereich,

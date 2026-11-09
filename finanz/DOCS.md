@@ -535,9 +535,25 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Anlage | Aufteilung passt | über 20'000 ohne Zweck auf Konten oder Krypto über dem Richtwert | – |
 | Nachlass | Checkliste erledigt | Punkte offen | Konkubinat ohne Testament beider Personen |
 | Steuererklärung | alle Punkte bereit | Punkte offen (in den 5 Monaten vor der Frist) | Punkte offen, Frist in 14 Tagen |
+| Einstellungen | alle Werte plausibel | Werte prüfen | wichtige Werte fehlen oder sind unmöglich |
 | Liegenschaft | Fonds deckt die nächsten Erneuerungen | Fonds deckt die nächsten 2 Jahre nicht oder weniger gespart als empfohlen | überfällige Bauteile ohne genügend Fonds |
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
+
+## Plausibilität der Einstellungen
+
+Jedes Feld unter **Einstellungen** hat eine Ampel: **grün** = vorhanden und plausibel, **gelb** = wahrscheinlich
+falsch, veraltet oder fehlend (der Grund steht unter dem Feld; gerechnet wird trotzdem), **rot** = ein wichtiger Wert
+fehlt oder ist unmöglich, **grau** = optional bzw. leer (Standard). Oben stehen die Anzahl je Farbe und die Liste
+«Zu prüfen» mit Sprung zum Feld; die Übersicht zeigt die Ampel «Einstellungen».
+
+| Beispiele | Ampel |
+|---|---|
+| Geburtsdatum fehlt oder ungültig, Pensionierungsalter ausserhalb 58–70, mehr AHV-Beitragsjahre als ab 21 möglich | rot |
+| PK-Guthaben fehlt trotz Lohn über der BVG-Eintrittsschwelle, 3a-Beitrag über dem Maximum, Bedarf im Ruhestand fehlt, Kanton unbekannt | rot |
+| Vorsorgeausweis älter als ein Jahr, Sparbeitrag fehlt (BVG-Minimum angenommen), Ausweis-Rente ÷ Kapital unplausibel | gelb |
+| Jahreslohn unter 12'000 (Monatslohn?), kein 3a-Beitrag, Partner im Konkubinat nicht bei der PK gemeldet | gelb |
+| Steuerwerte fehlen (verheiratet) bzw. pro Person im Konkubinat, Fälligkeit der Hypothek vorbei | rot bzw. grau, gelb |
 
 ## Dokumente neu sichten
 

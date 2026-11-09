@@ -98,6 +98,17 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         txt = f"Lücke im Mittel CHF {chf(lm)}/Jahr (Teuerung)"
     erg.append(Ampel("Ruhestand", s, txt, "vorsorge"))
 
+    # Stammdaten: Plausibilität der Einstellungen
+    try:
+        import pruefung
+        import seiten
+        zf = pruefung.zusammenfassung(k, seiten.alle_felder(k), heute)
+        s_ = ROT if zf[ROT] else GELB if zf[GELB] else GRUEN
+        erg.append(Ampel("Einstellungen", s_, f"{len(zf[ROT])} fehlen oder falsch, {len(zf[GELB])} prüfen" if s_ != GRUEN
+                         else "alle Werte plausibel", "einstellungen"))
+    except Exception:  # noqa: BLE001
+        pass
+
     # Liegenschaft: Erneuerungen und Fonds
     try:
         import immobilie as im
