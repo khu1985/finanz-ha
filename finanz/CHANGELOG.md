@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.14.0 – 2026-11-09
+
+- **Zuzug in die Schweiz** pro Person in den Stammdaten (Datum, Herkunftsland, Bewilligung, Eintritt in die Schweizer
+  Pensionskasse, Rente aus dem Ausland, ordentliche Veranlagung):
+  - AHV: Beitragsjahre höchstens ab Zuzug (ohne IK-Auszug lückenlos ab Zuzug), Erziehungsgutschriften nur für Jahre in
+    der Schweiz, Hinweis auf Teilrente und Renten aus EU/EFTA-Staaten
+  - Pensionskasse: Einkaufsgrenze 20 % des versicherten Lohns pro Jahr in den ersten 5 Jahren (BVV 2 Art. 60b) im
+    PK-Einkauf-Optimierer und als Warnung bei geplanten Einkäufen; neues Feld «Versicherter Lohn»
+  - 3a-Nachzahlung nur für Jahre in der Schweiz
+  - Renten aus dem Ausland in Pensionslücke (ab Bezugsalter), Frühpensionierung, Diagramm und Sensor
+  - Quellensteuer (B/L): Hinweis und jährliche Erinnerung, die nachträgliche ordentliche Veranlagung bis 31. März zu
+    beantragen; ab 120'000 Lohn obligatorisch
+  - Erinnerungen rund um den Zuzug: Anmeldung Gemeinde (14 Tage), Krankenkasse (3 Monate), Vorsorge aus dem Ausland,
+    Führerausweis und Fahrzeug (12 Monate)
+  - Karte «Zuzug in die Schweiz» unter Vorsorge, Hinweise in der Übersicht und für die Berater
 ## 0.13.0 – 2026-11-09
 
 - **Budget und Cashflow** (neue Seite unter Bestand): der Bank-Import übernimmt neben den Monatssaldi die einzelnen

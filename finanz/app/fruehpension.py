@@ -111,7 +111,9 @@ def variante(k: dict, alter: int, vermoegen_frei: float, heute: date | None = No
     # Lebenserwartung fix: wer die AHV früher bezieht, verzehrt das Kapital über entsprechend mehr Jahre
     jahre_verzehr = int(hh.get("entnahme_jahre", 25)) + max(0, 65 - ahv_ab)
     verzehr = vs.annuitaet(rest, jahre_verzehr, float(hh.get("entnahme_rendite", 0)) - vs.teuerung(k))
-    einkommen = ahv + pk_rente + verzehr
+    import zuzug as zz
+    ausland = sum(zz.rente_ausland(p) for p in k["personen"])     # ab AHV-Alter angenommen
+    einkommen = ahv + pk_rente + verzehr + ausland
     hinw = []
     if netto < ueber:
         hinw.append(f"Mit {alter} reicht das Kapital nicht für die Überbrückung bis zur AHV.")

@@ -344,6 +344,8 @@ def uebersicht(k: dict, db) -> str:
                  if status == "fehlt" and vi.alle(db)]
     if luecke.luecke > 0:
         hinweise.append(f"Pensionslücke von CHF {chf(luecke.luecke)} pro Jahr ab {luecke.jahr}.")
+    import zuzug as zz
+    hinweise += zz.hinweise(k)
 
     kpis = "".join([
         kpi(chf(nv["total"]), "Nettovermögen (CHF)"),
@@ -365,17 +367,43 @@ def uebersicht(k: dict, db) -> str:
 def _luecke_diagramm(l: vs.Luecke) -> str:
     if l.teuerung and l.verlauf:
         sp = l.verlauf[min(l.spaeter_jahre, len(l.verlauf) - 1)]
-        return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}", f"nach {l.spaeter_jahre} J. ({sp[0]})"],
-                          {"AHV": [0, l.ahv, sp[1]], "Pensionskasse": [0, l.pk_rente, sp[2]],
-                           "Kapitalverzehr": [0, l.kapitalverzehr, sp[3]], "Lohn": [l.lohn_heute, 0, 0]},
+        serien = {"AHV": [0, l.ahv, sp[1]], "Pensionskasse": [0, l.pk_rente, sp[2]],
+                  "Kapitalverzehr": [0, l.kapitalverzehr, sp[3]]}
+        if any(v[4] for v in l.verlauf):
+            serien["Rente Ausland"] = [0, l.ausland, sp[4]]
+        serien["Lohn"] = [l.lohn_heute, 0, 0]
+        return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}", f"nach {l.spaeter_jahre} J. ({sp[0]})"], serien,
                           linie_bei=l.bedarf, linie_text=f"Bedarf {chf(l.bedarf)}")
-    return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}"],
-                      {"AHV": [0, l.ahv], "Pensionskasse": [0, l.pk_rente],
-                       "Kapitalverzehr": [0, l.kapitalverzehr], "Lohn": [l.lohn_heute, 0]},
+    serien = {"AHV": [0, l.ahv], "Pensionskasse": [0, l.pk_rente], "Kapitalverzehr": [0, l.kapitalverzehr]}
+    if l.ausland:
+        serien["Rente Ausland"] = [0, l.ausland]
+    serien["Lohn"] = [l.lohn_heute, 0]
+    return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}"], serien,
                       linie_bei=l.bedarf, linie_text=f"Bedarf {chf(l.bedarf)}")
 
 
 # ---------------------------------------------------------------- Vorsorge
+
+def zuzug_karte(k: dict) -> str:
+    import zuzug as zz
+    stati = zz.status(k)
+    if not any(x.datum for x in stati):
+        return ""
+    zeilen = []
+    for x in stati:
+        if not x.datum:
+            zeilen.append([escape(x.person), "–", "", "", "keine", "nein", ""])
+            continue
+        zeilen.append([escape(x.person), x.datum.strftime("%d.%m.%Y"), f"{x.jahre_ch:g}",
+                       f"{x.ahv_moeglich} von 44" + (f" ({licht(am.GELB)}{x.ahv_luecke} fehlen)" if x.ahv_luecke else ""),
+                       (f"{chf(x.einkauf_limit)}/Jahr bis {x.einkauf_bis:%m.%Y}" if x.einkauf_limit is not None else "keine"),
+                       "ja" if x.quellensteuer else "nein", chf(x.rente_ausland) if x.rente_ausland else "–"])
+    return karte("Zuzug in die Schweiz", tabelle(["Person", "Zuzug", "Jahre in CH", "AHV-Jahre bis 65", "PK-Einkaufsgrenze",
+                                                   "Quellensteuer", "Rente Ausland/Jahr"], zeilen)
+                 + hinweisliste(zz.hinweise(k))
+                 + '<p class="leise">Angaben unter Einstellungen bei der Person. AHV-Beitragsjahre ohne IK-Auszug ab Zuzug '
+                   'geschätzt; Erziehungsgutschriften und 3a-Nachzahlungen nur für Jahre in der Schweiz.</p>')
+
 
 def vorsorge(k: dict, db) -> str:
     jetzt = date.today().year
@@ -414,6 +442,7 @@ def vorsorge(k: dict, db) -> str:
     luecke_html = tabelle(["Position", f"CHF/Jahr ab {lk.jahr}"], [
         ["AHV" + (" (plafoniert)" if st.einheiten(k)[0].verheiratet and len(k["personen"]) > 1 else ""), chf(lk.ahv)],
         ["Pensionskassen-Renten", chf(lk.pk_rente)],
+        *([["Renten aus dem Ausland", chf(lk.ausland)]] if lk.ausland else []),
         [f"Kapitalverzehr ({k['haushalt']['entnahme_jahre']} Jahre, {k['haushalt']['entnahme_rendite']} %"
          + (f", real {float(k['haushalt']['entnahme_rendite']) - lk.teuerung:g} %" if lk.teuerung else "") + ") "
          f"aus CHF {chf(lk.kapital_netto)} netto", chf(lk.kapitalverzehr)],
@@ -432,6 +461,7 @@ def vorsorge(k: dict, db) -> str:
                         'Einstellbar unter <code>annahmen.teuerung</code>.</p>')
 
     return (karte("Pensionslücke", _luecke_diagramm(lk) + luecke_html)
+            + zuzug_karte(k)
             + karte("1. Säule – AHV", ahv_html)
             + karte("2. Säule – Pensionskasse", pk_html)
             + karte("Säule 3a", drei_html + dg.linie({d.name: d.verlauf for d in drei}, "3a"))
@@ -612,6 +642,14 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "risiko.partner_bei_pk_gemeldet", "Partner bei PK gemeldet"),
         (p + "saeule3a.guthaben", "3a-Guthaben"), (p + "saeule3a.beitrag_jahr", "3a-Beitrag/Jahr"),
         (p + "saeule3a.rendite", "3a-Rendite %"), (p + "saeule3a.konten", "Anzahl 3a-Konten"),
+        (p + "pk.versicherter_lohn", "Versicherter Lohn PK (0 = Bruttolohn)"),
+        (p + "zuzug.datum", "Zuzug in die Schweiz (JJJJ-MM-TT, leer = immer hier)"), (p + "zuzug.land", "Herkunftsland"),
+        (p + "zuzug.bewilligung", "Bewilligung (leer/CH, C, B, L)"),
+        (p + "zuzug.pk_eintritt", "Eintritt Schweizer PK (leer = Zuzug)"),
+        (p + "zuzug.pk_vorher_ch", "Früher schon in Schweizer PK"),
+        (p + "zuzug.rente_ausland_jahr", "Rente Ausland/Jahr (heutige CHF)"),
+        (p + "zuzug.rente_ausland_ab", "Rente Ausland ab Alter (0 = Pension)"),
+        (p + "zuzug.nov_beantragt", "Ordentliche Veranlagung beantragt (Quellensteuer)"),
     ]
 
 

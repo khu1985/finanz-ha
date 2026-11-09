@@ -735,3 +735,79 @@ def test_budget_auswertung(k, db):
     k.setdefault("budget", {})["regeln"] = {"muster gmbh": "Wohnen"}
     assert bu.neu_kategorisieren(db, k) == 12
     assert bu.auswerten(k, db, heute=date(2026, 1, 15)).unbekannt == []
+
+
+# ---------------------------------------------------------------- Zuzug in die Schweiz
+
+def _zuzug(k, datum, **mehr):
+    p = k["personen"][0]
+    p["geburtsdatum"] = "1985-06-15"
+    p["ahv"]["beitragsjahre_bisher"] = 0
+    p["zuzug"] = {"datum": datum, **mehr}
+    return p
+
+
+def test_zuzug_ahv(k):
+    import vorsorge as vs
+    import zuzug as zz
+    k["haushalt"]["zivilstand"] = "ledig"
+    vorher = vs.ahv(k, 2026)[0]
+    p = _zuzug(k, "2016-04-01", land="Deutschland")
+    # Beitragspflicht ab 1.1.2006 → ab Zuzug 1.4.2016 bis 1.6.2050: 34 Jahre
+    assert zz.ahv_moegliche_jahre(p) == 34 and zz.ahv_bisher_schaetzen(p, 2026) == 9
+    nachher = vs.ahv(k, 2026)[0]
+    assert nachher.beitragsjahre == 34 and nachher.rente_monat < vorher.rente_monat
+    p["ahv"]["beitragsjahre_bisher"] = 10                  # IK-Auszug hat Vorrang, Obergrenze bleibt
+    assert vs.ahv(k, 2026)[0].beitragsjahre == 34
+    k["haushalt"]["kinder"] = [{"geburtsjahr": 2012}]
+    assert vs.erziehungsjahre(p, k["haushalt"]["kinder"]) == len(range(2016, 2029))
+    h = " ".join(zz.hinweise(k, date(2026, 11, 9)))
+    assert "10 fehlen" in h and "Freizügigkeitsabkommen" in h
+
+
+def test_zuzug_pk_einkauf(k):
+    import szenarien as sz
+    import vorsorge as vs
+    import zuzug as zz
+    p = _zuzug(k, "2024-03-01")
+    p["lohn_brutto"] = 100_000
+    p["pk"]["einkauf_potenzial"] = 200_000
+    assert zz.einkauf_limit(p, 2026) == 20_000 and zz.einkauf_limit(p, 2029) == 20_000 and zz.einkauf_limit(p, 2030) is None
+    plan = sz.einkauf_optimieren(k, p["name"], 0, 2026, 2030, schritt=5000, heute=date(2026, 1, 1))
+    assert all(plan.plan.get(j, 0) <= 20_000 for j in (2026, 2027, 2028))
+    assert any("Art. 60b" in h for h in plan.hinweise)
+    p["pk"]["einkauf_geplant"] = [{"jahr": 2026, "betrag": 50_000}]
+    assert any("60b" in w for w in vs.pk(p, k).warnungen)
+    p["zuzug"]["pk_vorher_ch"] = True
+    assert zz.einkauf_limit(p, 2026) is None
+
+
+def test_zuzug_quellensteuer_und_fristen(k):
+    import erinnerungen as er
+    import zuzug as zz
+    k["haushalt"]["zivilstand"] = "ledig"
+    p = _zuzug(k, "2026-10-01", bewilligung="B")
+    p["lohn_brutto"] = 90_000
+    assert zz.quellensteuer(p, k)
+    titel = [e.titel for e in zz.erinnerungen(k, date(2026, 11, 9))]
+    assert any("Krankenkasse" in t for t in titel) and any("Gemeinde" in t for t in titel)
+    assert not any("Veranlagung" in t for t in titel)       # 2025 noch nicht in der Schweiz
+    titel = [e.titel for e in zz.erinnerungen(k, date(2027, 2, 1))]
+    assert any("Veranlagung beantragen" in t for t in titel)
+    p["zuzug"]["nov_beantragt"] = True
+    assert not any("Veranlagung" in e.titel for e in zz.erinnerungen(k, date(2027, 2, 1)))
+    k["haushalt"]["zivilstand"] = "verheiratet"              # Partner ohne B/L: ordentliche Besteuerung
+    assert not zz.quellensteuer(p, k)
+
+
+def test_zuzug_rente_ausland(k):
+    import vorsorge as vs
+    k["annahmen"]["teuerung"] = 0
+    ohne = vs.pensionsluecke(k, 0, 2026)
+    p = _zuzug(k, "2016-04-01", rente_ausland_jahr=6000, rente_ausland_ab=67)
+    mit = vs.pensionsluecke(k, 0, 2026)
+    assert mit.verlauf[-1][4] == 6000
+    if mit.jahr >= 1985 + 67:
+        assert mit.ausland == 6000
+    else:
+        assert mit.ausland == 0 and mit.luecke_mittel <= ohne.luecke_mittel + 10_000

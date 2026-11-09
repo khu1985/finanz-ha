@@ -31,6 +31,7 @@ personen:
       zins: 1.25
       umwandlungssatz: 6.8
       einkauf_potenzial: 60000   # maximaler Einkauf laut Vorsorgeausweis
+      versicherter_lohn: 0       # laut Vorsorgeausweis (0 = Bruttolohn)
       einkauf_geplant: []        # z. B. [{jahr: 2027, betrag: 20000}]
       kapitalbezug_anteil: 0     # 0–100 % des Altersguthabens als Kapital
       ausweis_alterskapital: 0   # Prognose laut Vorsorgeausweis mit 65 (0 = selbst rechnen)
@@ -49,6 +50,15 @@ personen:
       beitrag_jahr: 7258
       rendite: 3.0
       konten: 3                  # für gestaffelten Bezug
+    zuzug:                       # Zuzug in die Schweiz (leer = schon immer in der Schweiz)
+      datum: ""                  # JJJJ-MM-TT
+      land: ""                   # Herkunftsland
+      bewilligung: ""            # leer/CH, C, B, L (B/L: Quellensteuer)
+      pk_eintritt: ""            # erster Eintritt in eine Schweizer PK (leer = Zuzug)
+      pk_vorher_ch: false        # schon früher in einer Schweizer PK versichert
+      rente_ausland_jahr: 0      # erwartete Altersrente aus dem Ausland pro Jahr (heutige Franken)
+      rente_ausland_ab: 0        # Bezugsalter (0 = Pensionierungsalter)
+      nov_beantragt: false       # nachträgliche ordentliche Veranlagung beantragt (Quellensteuer)
   - id: p2
     name: Person 2
     geburtsdatum: "1987-03-02"
@@ -85,6 +95,15 @@ personen:
       beitrag_jahr: 7258
       rendite: 3.0
       konten: 2
+    zuzug:                       # Zuzug in die Schweiz (leer = schon immer in der Schweiz)
+      datum: ""                  # JJJJ-MM-TT
+      land: ""                   # Herkunftsland
+      bewilligung: ""            # leer/CH, C, B, L (B/L: Quellensteuer)
+      pk_eintritt: ""            # erster Eintritt in eine Schweizer PK (leer = Zuzug)
+      pk_vorher_ch: false        # schon früher in einer Schweizer PK versichert
+      rente_ausland_jahr: 0      # erwartete Altersrente aus dem Ausland pro Jahr (heutige Franken)
+      rente_ausland_ab: 0        # Bezugsalter (0 = Pensionierungsalter)
+      nov_beantragt: false       # nachträgliche ordentliche Veranlagung beantragt (Quellensteuer)
 
 steuern:
   # Aus der letzten Steuerveranlagung bzw. Steuererklärung übernehmen.

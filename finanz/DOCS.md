@@ -16,7 +16,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
-5. [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
+5. [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
@@ -336,6 +336,24 @@ Die Werte werden beim Start, alle 15 Minuten und nach jeder Änderung geschriebe
 überstehen keinen Neustart von Home Assistant; sie erscheinen danach spätestens nach 15 Minuten wieder. Unter
 Einstellungen → Sensoren stehen Status, alle Werte und Beispiele für eine Dashboard-Karte und eine Automation.
 
+## Zuzug in die Schweiz
+
+Pro Person unter **Einstellungen** (bzw. `personen[].zuzug`) erfassen, wer wann in die Schweiz gezogen ist. Leer =
+schon immer bzw. vor dem 21. Altersjahr in der Schweiz. Ein Datum in der Zukunft plant einen Zuzug.
+
+| Feld | Wirkung |
+|---|---|
+| `datum` | AHV-Beitragsjahre höchstens ab Zuzug bis 65 (ohne IK-Auszug lückenlos ab Zuzug geschätzt); Erziehungsgutschriften und 3a-Nachzahlungen nur für Jahre in der Schweiz; Fristen nach dem Zuzug |
+| `land` | Hinweis auf eine eigene Rente aus EU/EFTA-Staaten (Freizügigkeitsabkommen) bzw. auf Sozialversicherungsabkommen |
+| `bewilligung` | B oder L (ohne Ehepartner mit Schweizer Bürgerrecht oder C): Quellensteuer – Abzüge für 3a und PK-Einkauf nur mit nachträglicher ordentlicher Veranlagung (Antrag bis 31. März; ab 120'000 Lohn obligatorisch) |
+| `pk_eintritt`, `pk_vorher_ch` | Wer nie in einer Schweizer Kasse war: in den ersten 5 Jahren nach dem Eintritt höchstens 20 % des versicherten Lohns (`pk.versicherter_lohn`, sonst Bruttolohn) Einkauf pro Jahr (BVV 2 Art. 60b) – gilt im Optimierer |
+| `rente_ausland_jahr`, `rente_ausland_ab` | Altersrente aus dem Ausland in heutigen Franken ab Bezugsalter in der Pensionslücke |
+| `nov_beantragt` | Erinnerung zur ordentlichen Veranlagung entfällt |
+
+Erinnerungen nach dem Zuzug: Anmeldung bei der Gemeinde (14 Tage), Krankenkasse (3 Monate, rückwirkend), Vorsorge aus
+dem Ausland klären (3 Monate), Führerausweis und Fahrzeug (12 Monate). Die Karte «Zuzug in die Schweiz» unter Vorsorge
+zeigt Jahre in der Schweiz, mögliche AHV-Jahre, Einkaufsgrenze, Quellensteuer und Rente aus dem Ausland.
+
 ## Nicht verheiratet (Konkubinat)
 
 `haushalt.zivilstand: ledig` und unter `steuern.personen` je eine Steuererklärung erfassen (`person`,
@@ -401,7 +419,7 @@ oder **Einstellungen → Experte**.
 | Abschnitt | Inhalt |
 |---|---|
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, Kinder, Bedarf im Ruhestand, Kapitalverzehr |
-| `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` |
+| `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |

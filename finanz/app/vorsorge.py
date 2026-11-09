@@ -42,24 +42,34 @@ def ahv_vollrente_monat(einkommen: float, kz: dict) -> float:
 
 
 def ahv_beitragsjahre(person: dict, jetzt: int, kz: dict) -> int:
+    import zuzug as zz
     bisher = int(person["ahv"].get("beitragsjahre_bisher", 0))
+    moeglich = zz.ahv_moegliche_jahre(person)
+    if moeglich is not None and not bisher:                     # ohne IK-Auszug: lückenlos ab Zuzug
+        return max(0, min(kz["ahv_vollbeitragsjahre"], moeglich) - int(person["ahv"].get("fehlende_jahre", 0)))
     # Beiträge bis zum Referenzalter (bei Frühpensionierung als Nichterwerbstätige weiter bezahlt)
     bis = geburtsjahr(person) + 65
-    zukuenftig = max(0, bis - jetzt)
+    zuzug_jahr = zz.datum(person).year if moeglich is not None else 0
+    zukuenftig = max(0, bis - max(jetzt, zuzug_jahr))
     jahre = min(kz["ahv_vollbeitragsjahre"], bisher + zukuenftig)
+    if moeglich is not None:
+        jahre = min(jahre, moeglich)                            # Jahre vor dem Zuzug sind Beitragslücken
     return max(0, jahre - int(person["ahv"].get("fehlende_jahre", 0)))
 
 
 def erziehungsjahre(person: dict, kinder: list[dict]) -> int:
     """Jahre mit mindestens einem Kind unter 16, ab dem 21. Altersjahr bis zum Referenzalter."""
+    import zuzug as zz
     gj = geburtsjahr(person)
+    z = zz.datum(person)
+    ab = max(gj + 21, z.year) if z else gj + 21            # Gutschriften nur mit Wohnsitz in der Schweiz
     jahre = set()
     for kind in kinder or []:
         kj = int(kind.get("geburtsjahr", 0))
         if not kj:
             continue
         for j in range(kj + 1, kj + 17):
-            if gj + 21 <= j < gj + 65:
+            if ab <= j < gj + 65:
                 jahre.add(j)
     return len(jahre)
 
@@ -189,6 +199,12 @@ def pk(person: dict, k: dict) -> PkErgebnis:
     summe_einkauf = sum(einkauf.values())
     if summe_einkauf > float(cfg.get("einkauf_potenzial", 0) or 0) > 0:
         warn.append(f"{person['name']}: geplante Einkäufe ({summe_einkauf:,.0f}) übersteigen das Einkaufspotenzial." >> TS)
+    import zuzug as zz
+    for j, b in sorted(einkauf.items()):
+        grenze = zz.einkauf_limit(person, j)
+        if grenze is not None and b > grenze:
+            warn.append(f"{person['name']}: Einkauf {j} von {b:,.0f} über der Grenze von {grenze:,.0f} pro Jahr in den ersten "
+                        "5 Jahren nach dem Zuzug (BVV 2 Art. 60b)." >> TS)
     if kapital > 0:
         for j in einkauf:
             if j >= ende - 3:
@@ -279,7 +295,8 @@ class Luecke:
     luecke_spaeter: float = 0.0            # nach `spaeter_jahre`
     einkommen_spaeter: float = 0.0
     spaeter_jahre: int = 20
-    verlauf: list = field(default_factory=list)   # [(Jahr, AHV, PK, Verzehr)] in heutigen Franken
+    verlauf: list = field(default_factory=list)   # [(Jahr, AHV, PK, Verzehr, Ausland)] in heutigen Franken
+    ausland: float = 0.0                   # Altersrenten aus dem Ausland (heutige Franken)
 
 
 def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = None) -> Luecke:
@@ -307,19 +324,25 @@ def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = Non
     a = sum(r.rente_jahr for r in ahv_e) * ahv_real_faktor(k, jahr - jetzt)
     p_nom = sum(x.rente_jahr for x in pks)
     p = p_nom * kk
-    einkommen = a + p + verzehr
+    import zuzug as zz
+
+    def ausland_im(jahr_: int) -> float:
+        return sum(zz.rente_ausland(x) for x in k["personen"] if jahr_ >= geburtsjahr(x) + zz.rente_ausland_alter(x))
+    aus = ausland_im(jahr)
+    einkommen = a + p + verzehr + aus
     bedarf = float(hh.get("bedarf_ruhestand", 0))
     lohn = sum(float(x.get("lohn_brutto", 0)) for x in k["personen"])
     verlauf, luecken = [], []
     for j in range(max(1, jahre)):
         p_j = p / (1 + t / 100) ** j
-        verlauf.append((jahr + j, round(a), round(p_j), round(verzehr)))
-        luecken.append(max(0.0, bedarf - (a + p_j + verzehr)))
+        aus_j = ausland_im(jahr + j)
+        verlauf.append((jahr + j, round(a), round(p_j), round(verzehr), round(aus_j)))
+        luecken.append(max(0.0, bedarf - (a + p_j + verzehr + aus_j)))
     spaeter = min(20, max(0, jahre - 1))
-    einkommen_sp = a + p / (1 + t / 100) ** spaeter + verzehr
+    einkommen_sp = a + p / (1 + t / 100) ** spaeter + verzehr + ausland_im(jahr + spaeter)
     return Luecke(jahr, round(a), round(p), round(verzehr), round(netto), round(steuer * kk), round(einkommen),
                   round(bedarf), round(max(0.0, bedarf - einkommen)),
                   round(einkommen / lohn * 100, 1) if lohn else 0.0, round(lohn),
                   t, round(kk, 4), round(p_nom), round(netto_nominal),
                   round(sum(luecken) / len(luecken)) if luecken else 0, round(max(0.0, bedarf - einkommen_sp)),
-                  round(einkommen_sp), spaeter, verlauf)
+                  round(einkommen_sp), spaeter, verlauf, round(aus))

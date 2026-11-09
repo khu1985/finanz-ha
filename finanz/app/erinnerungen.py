@@ -135,6 +135,7 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
 
     # Steueroptimierung
     erg.extend(_steueroptimierung(k, db, heute))
+    erg.extend(_zuzug(k, heute))
 
     # Vorsorgeausweise
     if date(j, 2, 1) <= heute <= date(j, 4, 30):
@@ -168,6 +169,11 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
         erledigt = {r[0] for r in db.execute("SELECT schluessel FROM erinnerungen_erledigt")}
         erg = [e for e in erg if e.schluessel not in erledigt]
     return sorted(erg, key=lambda e: e.faellig)
+
+
+def _zuzug(k: dict, heute: date) -> list[Erinnerung]:
+    import zuzug as zz
+    return zz.erinnerungen(k, heute)
 
 
 def _steueroptimierung(k: dict, db, heute: date) -> list[Erinnerung]:
@@ -209,7 +215,9 @@ def _steueroptimierung(k: dict, db, heute: date) -> list[Erinnerung]:
         for p in k["personen"]:
             if float(p.get("lohn_brutto", 0)) <= 0:
                 continue
-            for jahr in range(max(2025, j - 10), j):
+            import zuzug as zz
+            z = zz.datum(p)
+            for jahr in range(max(2025, j - 10, z.year if z else 0), j):   # nur Jahre mit Erwerb in der Schweiz
                 eigene = [x for x in doks if vi_gleich(x["person"], p["name"]) and x["jahr"] == jahr
                           and "abzug_3a" in x["werte"]]
                 d = next(iter(sd.massgebend(eigene).values()), None)

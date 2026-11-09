@@ -88,7 +88,7 @@ def berechnen(k: dict, db, heute: date | None = None) -> list[Sensor]:
     def ruhestand():
         l = vs.pensionsluecke(k, nv["frei"], heute.year)
         s.append(_chf("Einkommen im Ruhestand", "einkommen_ruhestand", l.einkommen, "mdi:beach",
-                      ab_jahr=l.jahr, ahv=l.ahv, pk_rente=l.pk_rente, kapitalverzehr=l.kapitalverzehr, bedarf=l.bedarf))
+                      ab_jahr=l.jahr, ahv=l.ahv, pk_rente=l.pk_rente, kapitalverzehr=l.kapitalverzehr, rente_ausland=l.ausland, bedarf=l.bedarf))
         s.append(_chf("Pensionslücke", "pensionsluecke", l.luecke, "mdi:chart-bell-curve", ab_jahr=l.jahr,
                       mittel=l.luecke_mittel, nach_20_jahren=l.luecke_spaeter, teuerung=l.teuerung))
         s.append(Sensor("ersatzquote", "Ersatzquote", l.ersatzquote, "%", "", "measurement", "mdi:percent"))

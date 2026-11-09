@@ -53,18 +53,28 @@ def einkauf_optimieren(k: dict, person_name: str, budget: float, von: int, bis: 
     gesperrt = [j for j in jahre_alle if kapitalbezug and j >= pj - 3]
     jahre = [j for j in jahre_alle if j not in gesperrt]
     rest = min(potenzial, budget if budget > 0 else potenzial)
+    import zuzug as zz
+    grenzen = {j: zz.einkauf_limit(p, j) for j in jahre}
     plan = {j: 0.0 for j in jahre}
     letzter = {j: 0.0 for j in jahre}
     hinweise = []
+    if any(g is not None for g in grenzen.values()):
+        hinweise.append(f"Zuzug aus dem Ausland: bis {zz.einkauf_ende(p):%d.%m.%Y} höchstens CHF "
+                        f"{max(g for g in grenzen.values() if g is not None):,.0f} Einkauf pro Jahr (BVV 2 Art. 60b)." >> TS)
     if not jahre:
         hinweise.append("Kein Jahr verfügbar – Zeitraum prüfen (Einkäufe in den 3 Jahren vor einem Kapitalbezug sind gesperrt).")
     while rest > 1 and jahre:
         betrag = min(schritt, rest)
         bestes, bester_satz = None, -1.0
         for j in jahre:
+            if grenzen[j] is not None and plan[j] + betrag > grenzen[j] + 0.5:
+                continue
             satz = (_ersparnis(k, person_name, plan[j] + betrag) - _ersparnis(k, person_name, plan[j])) / betrag * 100
             if satz > bester_satz + 1e-9:
                 bestes, bester_satz = j, satz
+        if bestes is None:
+            hinweise.append("Die jährlichen Einkaufsgrenzen nach dem Zuzug sind ausgeschöpft – Zeitraum verlängern.")
+            break
         if bester_satz < schwelle:
             hinweise.append(f"Weitere Einkäufe würden weniger als {schwelle:.0f} % Steuern sparen – Rest nicht eingeplant.")
             break

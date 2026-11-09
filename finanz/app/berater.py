@@ -178,6 +178,11 @@ def fakten(k: dict, db, heute: date | None = None) -> str:
     z.append(f"Ruhestand ab {l.jahr}: Einkommen {_chf(l.einkommen)}/Jahr, Bedarf {_chf(l.bedarf)}, Lücke {_chf(l.luecke)}"
              + (f" (heutige Franken, Teuerung {l.teuerung:g} %; Lücke im Mittel {_chf(l.luecke_mittel)}, nach "
                 f"{l.spaeter_jahre} Jahren {_chf(l.luecke_spaeter)})" if l.teuerung else "") + ".")
+    import zuzug as zz
+    z.extend("Zuzug: " + h for h in zz.hinweise(k, heute))
+    if any(zz.rente_ausland(p) for p in k["personen"]):
+        z.append("Renten aus dem Ausland: " + ", ".join(f"{p['name']} {_chf(zz.rente_ausland(p))}/Jahr ab {zz.rente_ausland_alter(p)}"
+                                                        for p in k["personen"] if zz.rente_ausland(p)) + ".")
     import budget as bu
     b = bu.auswerten(k, db, heute=heute)
     if b:
