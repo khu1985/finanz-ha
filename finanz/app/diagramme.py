@@ -7,7 +7,7 @@ from html import escape
 
 FARBEN = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)"]
 B, H = 640, 260
-L, R, O, U = 64, 12, 16, 36
+L, R, O, U = 78, 14, 16, 36
 
 
 def chf_kurz(v: float) -> str:
@@ -65,9 +65,17 @@ def linie(serien: dict[str, list[tuple]], titel: str = "") -> str:
         teile.append(f'<line class="gitter" x1="{L}" x2="{B - R}" y1="{py(t):.1f}" y2="{py(t):.1f}"/>'
                      f'<text class="achse" x="{L - 6}" y="{py(t) + 4:.1f}" text-anchor="end">{chf_kurz(t)}</text>')
     schritt = max(1, len(xs) // 6)
-    for i, x in enumerate(xs):
-        if i % schritt == 0 or i == len(xs) - 1:
-            teile.append(f'<text class="achse" x="{px[x]:.1f}" y="{H - 12}" text-anchor="middle">{escape(str(x))}</text>')
+    marken = [i for i in range(len(xs)) if i % schritt == 0]
+    if marken and len(xs) - 1 - marken[-1] < schritt / 2 and len(marken) > 1:
+        marken.pop()                                    # letzte Beschriftung nicht überlappen lassen
+    if len(xs) - 1 not in marken:
+        marken.append(len(xs) - 1)
+    for n, i in enumerate(marken):
+        x = xs[i]
+        vorletzte = n == len(marken) - 2 and len(marken) >= 3
+        klasse = "achse x2" if i != len(xs) - 1 and ((n % 2 == 1 and len(marken) > 4) or vorletzte) else "achse"
+        anker = "end" if i == len(xs) - 1 and len(xs) > 1 else "middle"
+        teile.append(f'<text class="{klasse}" x="{px[x]:.1f}" y="{H - 12}" text-anchor="{anker}">{escape(str(x))}</text>')
     for i, (name, s) in enumerate(serien.items()):
         d = " ".join(f"{'M' if j == 0 else 'L'}{px[x]:.1f},{py(y):.1f}" for j, (x, y) in enumerate(s))
         farbe = FARBEN[i % len(FARBEN)]
@@ -110,7 +118,9 @@ def saeulen(kategorien: list[str], serien: dict[str, list[float]], linie_bei: fl
             teile.append(f'<rect x="{x:.1f}" y="{y1:.1f}" width="{w:.1f}" height="{max(0.5, y0 - y1 - 1):.1f}" '
                          f'rx="3" fill="{FARBEN[j % len(FARBEN)]}"><title>{escape(name)}: {v:,.0f}</title></rect>' >> TS)
             basis += v
-        teile.append(f'<text class="achse" x="{x + w / 2:.1f}" y="{H - 12}" text-anchor="middle">{escape(kat)}</text>')
+        # Bei vielen Säulen jede zweite Beschriftung als «x2» markieren – auf dem Handy ausgeblendet
+        klasse = "achse x2" if len(kategorien) > 7 and i % 2 == 1 and i != len(kategorien) - 1 else "achse"
+        teile.append(f'<text class="{klasse}" x="{x + w / 2:.1f}" y="{H - 12}" text-anchor="middle">{escape(kat)}</text>')
     if linie_bei:
         y = py(linie_bei)
         teile.append(f'<line class="ziel" x1="{L}" x2="{B - R}" y1="{y:.1f}" y2="{y:.1f}"/>'

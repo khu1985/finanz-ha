@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.15.1 – 2026-11-09
+
+- **iPhone-Ansicht geprüft** (iPhone 15 hoch und quer, hell und dunkel): kein seitlicher Überlauf auf allen Seiten
+- Diagramme auf dem Handy mit grösserer Achsenschrift; bei vielen Säulen bzw. Daten nur jede zweite Beschriftung,
+  keine überlappenden Datumsangaben; Werte auf der Y-Achse werden nicht mehr abgeschnitten
+- Eingabefelder auf dem Handy mit 16 px Schrift, damit iOS beim Antippen nicht hineinzoomt (auch Textfelder beim
+  Berater); Checkboxen grösser zum Antippen
+- Zeitachse auf der Seite Kinder als kompakte Tabelle statt einer Karte pro Jahr
+- Keine automatische Schriftvergrösserung von iOS im Querformat
 ## 0.15.0 – 2026-11-09
 
 - **Kinder** (neue Seite unter Planung): Kinder erfassen mit Geburtsdatum, gemeinsam oder aus einer früheren

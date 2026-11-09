@@ -36,7 +36,7 @@ CSS = """
 html[data-theme=dark]{--bg:#111418;--karte:#1b2027;--text:#e7ebef;--leise:#9aa7b4;
 --linie:#2b323b;--akzent:#4fb3d4;--gut:#6cc58f;--warn:#e7a948;--schlecht:#f08a82;--c1:#4fb3d4;--c2:#f0a75a;
 --c3:#9cc46a;--c4:#b48be0;--c5:#e57aa8;color-scheme:dark}
-a{color:var(--akzent)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}a{color:var(--akzent)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
 font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .side{background:var(--karte)}
 .top{display:flex;align-items:center;gap:8px}
@@ -145,7 +145,9 @@ main{padding:12px}h1{font-size:20px;margin:2px 0 12px}h2{font-size:16px}
 .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
 .kpi{padding:10px 12px}.kpi b{font-size:18px}.kpi span{font-size:12px}
 table{font-size:13px}th,td{padding:6px 4px}th{font-size:12px}
-input,select,textarea{font-size:16px}button,.knopf{min-height:44px}button.klein{min-height:32px}
+input,select,textarea{font-size:16px!important}button,.knopf{min-height:44px}button.klein{min-height:32px}
+input[type=checkbox]{width:22px!important;height:22px;flex:0 0 auto}
+.diagramm .achse{font-size:19px}.diagramm .x2{display:none}.diagramm .ziel-text{font-size:19px}.diagramm path{stroke-width:3.5}
 .zeile>*{flex:1 1 auto}
 table.responsiv thead{display:none}table.responsiv tr{display:block;border-bottom:1px solid var(--linie);padding:6px 0}
 table.responsiv td{display:flex;justify-content:space-between;gap:12px;border:0;padding:2px 2px;text-align:right}
@@ -1866,10 +1868,11 @@ def kinder(k: dict, db) -> str:
     zeilen = []
     for j in u.jahre:
         alter_ = ", ".join(f"{escape(n)} {a}" for n, a in j.alter.items())
-        zeilen.append([str(j.jahr), alter_, str(j.kinder), chf(j.zulagen), chf(j.betreuung), chf(j.steuer_kinder)])
+        zeilen.append([f'<b>{j.jahr}</b><br><span class="leise">{alter_}</span>', chf(j.zulagen), chf(j.betreuung),
+                       chf(j.steuer_kinder)])
     diagramm = dg.saeulen([str(j.jahr)[2:] for j in u.jahre],
                           {"Zulagen": [j.zulagen for j in u.jahre], "Steuerwirkung": [j.steuer_kinder for j in u.jahre]})
-    zeit = (diagramm + tabelle(["Jahr", "Alter", "mit Abzug", "Zulagen", "Betreuung", "Steuerwirkung"], zeilen)
+    zeit = (diagramm + tabelle(["Jahr, Alter", "Zulagen", "Betreuung", "Steuerwirkung"], zeilen)
             + '<p class="leise">Steuerwirkung = Kinderabzug Bund (' + chf(float(k["kennzahlen"].get("bund_kinderabzug", 6800)))
             + ') und Kanton (' + chf(float(k["kennzahlen"].get("kanton_kinderabzug", 0) or 0)) + ') mit dem Grenzsteuersatz, '
             'Elterntarif ' + chf(float(k["kennzahlen"].get("bund_elterntarif_kind", 263))) + ' pro Kind und Abzug der '
