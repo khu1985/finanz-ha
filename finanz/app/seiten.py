@@ -412,6 +412,16 @@ def uebersicht(k: dict, db) -> str:
         hinweise.append(f"Pensionslücke von CHF {chf(luecke.luecke)} pro Jahr ab {luecke.jahr}.")
     import zuzug as zz
     hinweise += zz.hinweise(k)
+    try:
+        import sichtung
+        sb = sichtung.letzte(db)
+        if sb and sb.ausloeser.startswith("Update") and (sb.geaendert or sb.neu) and \
+                (date.today() - date.fromisoformat(sb.zeit[:10])).days <= 14:
+            hinweise.append(f"Nach dem {sb.ausloeser} wurden {len(sb.geaendert)} Dokument(e) mit neuen Werten gelesen"
+                            + (f" und {len(sb.neu)} neu angelegt" if sb.neu else "")
+                            + " – Details unter Einstellungen → Dokumente neu sichten.")
+    except Exception:  # noqa: BLE001
+        pass
 
     kpis = "".join([
         kpi(chf(nv["total"]), "Nettovermögen (CHF)"),
@@ -901,7 +911,8 @@ E-Banking · <code>versicherungen*.csv</code> – Versicherungsliste</li>
 <li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
 <code>veranlagung*.pdf</code> – Steuerdokumente · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
-    return formular + sensoren_karte(k) + karte("Import-Ordner", importieren) + karte("Experte", experte) + karte("Sichern und übertragen", datei)
+    return (formular + sensoren_karte(k) + sichtung_karte(db) + karte("Import-Ordner", importieren) + karte("Experte", experte)
+            + karte("Sichern und übertragen", datei))
 
 
 # ---------------------------------------------------------------- Versicherungen
@@ -952,6 +963,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
         ])
     zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>", ""])
     liste = tabelle(["Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr", "Text · Original"], zeilen, zahlen_ab=4)
+    liste += sichtung_knopf("versicherungen")
     ohne_text = [v for v in vertraege if v["datei"] and text_status(v["text"])[0] == am.ROT]
     if ohne_text:
         liste += (f'<p class="leise">{licht(am.ROT, "kein Text")} Bei {len(ohne_text)} Vertrag/Verträgen wurde kein Text '
@@ -1071,7 +1083,8 @@ def vorsorge_dokumente_karte(k: dict, db) -> str:
                escape(dk.TYPEN.get(d["typ"], d["typ"])),
                escape(d["person"] or "–"), escape(d["stichtag"] or "–"), str(len(d["werte"])),
                licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
-    liste = tabelle(["Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen"], zeilen, zahlen_ab=4) if doks else ""
+    liste = (tabelle(["Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen"], zeilen, zahlen_ab=4)
+             + sichtung_knopf("vorsorge")) if doks else ""
     form = """<form method="post" action="vorsorge/hochladen" enctype="multipart/form-data">
 <p class="leise">Vorsorgeausweis der Pensionskasse, 3a-Auszug oder IK-Auszug/Rentenvorausberechnung als PDF. Die App erkennt
 Altersguthaben, Einkaufspotenzial, Prognose mit 65, Invaliden- und Todesfallleistungen bzw. Saldo und Beitragsjahre;
@@ -1355,6 +1368,7 @@ und übernimmt die Werte auf Wunsch in die Steuer-Einstellungen.</p>
                chf(d["werte"].get("steuer_kanton_gemeinde", 0) + d["werte"].get("bundessteuer", 0)),
                licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
     liste = tabelle(["Jahr · Person", "Art", "Steuerbar Kanton", "Steuern", "übernommen"], zeilen, zahlen_ab=2)
+    liste += sichtung_knopf("steuern")
     html = karte("Steuerdokumente", liste + form)
     # Mehrjahresvergleich pro Person
     for person, jahre in sd.vergleich(doks).items():
@@ -2383,3 +2397,38 @@ def bericht(k: dict, db, q: dict | None = None) -> str:
                f'<p class="leise nicht-drucken">{len(staende)} gespeicherte Monatsstände. Die App speichert jeden Monat '
                'automatisch einen Stand; «Stand jetzt speichern» ersetzt den Stand des laufenden Monats.</p>')
     return kopf + aussagen + karte("Kennzahlen im Vergleich", kz) + verlauf + ampeln + mass + knoepfe
+
+
+# ---------------------------------------------------------------- Neu sichten
+
+def sichtung_knopf(zurueck: str, text: str = "Alle Dokumente neu sichten") -> str:
+    return (f'<form method="post" action="dokumente/neu-sichten" data-status="Dokumente werden neu gelesen …" class="nicht-drucken">'
+            f'<input type="hidden" name="zurueck" value="{zurueck}"><div class="zeile"><button class="zweit klein">'
+            f'{escape(text)}</button><span class="leise">mit der aktuellen Erkennung, ohne erneutes Hochladen</span></div></form>')
+
+
+def sichtung_karte(db) -> str:
+    import sichtung
+    b = sichtung.letzte(db)
+    if b:
+        zeit = f"{b.zeit[8:10]}.{b.zeit[5:7]}.{b.zeit[:4]} {b.zeit[11:16]}"
+        info = (f"<p>Zuletzt: {zeit} ({escape(b.ausloeser)}, Version {escape(b.version)}) – {b.geprueft} geprüft, "
+                f"{len(b.geaendert)} mit neuen Werten, {len(b.neu)} neu"
+                + (f", {b.geschuetzt} von Hand bearbeitete belassen" if b.geschuetzt else "")
+                + (f", {b.fehlend} ohne Originaldatei" if b.fehlend else "")
+                + (f", {b.buchungen} Buchungen neu kategorisiert" if b.buchungen else "") + ".</p>")
+        if b.geaendert or b.neu:
+            info += "<details><summary>Änderungen</summary>" + hinweisliste(b.geaendert + b.neu) + "</details>"
+        if b.fehler:
+            info += hinweisliste(["Fehler: " + f for f in b.fehler])
+    else:
+        info = '<p class="leise">Noch nicht gesichtet.</p>'
+    form = ('<form method="post" action="dokumente/neu-sichten" data-status="Dokumente werden neu gelesen …">'
+            '<input type="hidden" name="zurueck" value="einstellungen">'
+            '<label class="entfernen"><input type="checkbox" name="alle" value="1">auch von Hand oder per KI bearbeitete '
+            'Dokumente (überschreibt deren Korrekturen)</label>'
+            '<div class="zeile"><button>Jetzt neu sichten</button></div></form>')
+    return karte("Dokumente neu sichten", '<p class="leise">Nach jedem App-Update liest die App alle gespeicherten Policen, '
+                 'Vorsorge- und Steuerdokumente mit der neuen Erkennung neu und kategorisiert die Buchungen neu – ohne '
+                 'erneutes Hochladen. Von Hand korrigierte Werte bleiben erhalten; geänderte Werte bereits übernommener '
+                 'Dokumente erscheinen wieder als «noch nicht übernommen».</p>' + info + form)

@@ -1067,3 +1067,49 @@ def test_krankenkassen_police_kvg_vvg(k, db, tmp_path):
     # Datei bleibt, solange der zweite Vertrag sie nutzt
     vi.loeschen(db, tmp_path, vid)
     assert (tmp_path / "versicherungen" / alle[0]["datei"]).exists()
+
+
+def test_neu_sichten(k, db, tmp_path):
+    import dokumente as dk
+    import sichtung
+    from policen import HAUSRAT, KK_POLICE
+    # Policen wie mit einer älteren Version: falsche Werte, Zusatzversicherung fehlt
+    a = vi.hochladen(db, tmp_path, "kk.txt", KK_POLICE.encode())
+    for v in vi.alle(db):
+        if v["id"] != a:
+            db.execute("DELETE FROM vertraege WHERE id = ?", (v["id"],))
+    vi.aktualisieren(db, a, {"praemie_jahr": 22.5, "modell": ""}, quelle="muster")
+    b = vi.hochladen(db, tmp_path, "hausrat.pdf", pdf(HAUSRAT))
+    vi.aktualisieren(db, b, {"praemie_jahr": 700}, quelle="hand")              # von Hand korrigiert
+    d = dk.hochladen(db, tmp_path, "3a.txt", b"Saeule 3a Konto\\nSaldo per 31.12.2025 CHF 12'000.00\\n")
+    dk.speichern(db, d, "saeule3a", "Person 1", {"guthaben_3a": 1}, quelle="muster")
+    db.execute("UPDATE vorsorge_dok SET uebernommen = '2026-01-01' WHERE id = ?", (d,))
+    k["personen"][0]["name"] = "Anna"
+    r = sichtung.ausfuehren(k, db, tmp_path, "Test")
+    assert vi.einer(db, a)["praemie_jahr"] == pytest.approx(422.15 * 12) and vi.einer(db, a)["modell"] == "hausarzt"
+    assert vi.einer(db, b)["praemie_jahr"] == 700 and r.geschuetzt == 1
+    assert {v["sparte"] for v in vi.alle(db)} >= {"kvg", "vvg"} and len(r.neu) == 1
+    dok = dk.einer(db, d)
+    assert dok["uebernommen"] == "" and dok["person"] == "Person 1"            # gewählte Person bleibt
+    assert any("Vorsorge" in x and "bitte neu übernehmen" in x for x in r.geaendert)
+    assert k["krankenkasse"]["personen"][0]["modell"] == "hausarzt"
+    # mit «alle» wird auch die Handkorrektur überschrieben
+    sichtung.ausfuehren(k, db, tmp_path, "Test", alle=True)
+    assert vi.einer(db, b)["praemie_jahr"] == pytest.approx(612.4)
+    assert sichtung.letzte(db).ausloeser == "Test"
+    # zweite Sichtung ohne Änderungen
+    r2 = sichtung.ausfuehren(k, db, tmp_path, "Test")
+    assert not r2.geaendert and not r2.neu
+
+
+def test_neu_sichten_nach_update(k, db, tmp_path):
+    import meta
+    import sichtung
+    from policen import HAUSRAT
+    assert sichtung.wenn_neue_version(lambda: k, db, tmp_path) is None         # ohne Dokumente: nur Version merken
+    assert sichtung.letzte(db).version == meta.version() and sichtung.letzte(db).geprueft == 0
+    vi.hochladen(db, tmp_path, "hausrat.pdf", pdf(HAUSRAT))
+    assert sichtung.wenn_neue_version(lambda: k, db, tmp_path) is None         # gleiche Version: nichts tun
+    db.execute("UPDATE sichtung SET bericht = replace(bericht, '\"version\": \"' || version, '\"version\": \"0.0.1')")
+    b = sichtung.wenn_neue_version(lambda: k, db, tmp_path)                     # neue Version: neu sichten
+    assert b.geprueft == 1 and b.ausloeser == f"Update auf {meta.version()}"

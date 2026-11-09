@@ -118,6 +118,7 @@ flowchart TB
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
+| `finanz/app/sichtung.py` | Gespeicherte Dokumente nach Updates neu sichten |
 | `finanz/app/bericht.py` | Monatsstände und Jahresbericht |
 | `finanz/app/waehrung.py` | Fremdwährungen und Kurse |
 | `finanz/app/immobilie.py` | Wert der Liegenschaft und Erneuerungsplanung |
@@ -274,6 +275,7 @@ flowchart LR
     EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
     Q["alle 15 Minuten<br/>und nach Änderungen"] --> SE["Sensoren schreiben<br/>sensor.finanz_*"]
     Q --> MS["erster Lauf im Monat<br/>Stand für den Jahresbericht"]
+    UP["Start nach einem App-Update"] --> NS["Dokumente neu sichten<br/>Policen, Vorsorge, Steuern, Buchungen"]
     Q --> KU["einmal pro Tag (optional)<br/>Wechselkurse der EZB"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]

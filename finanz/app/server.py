@@ -378,6 +378,16 @@ class Handler(BaseHTTPRequestHandler):
                 c["bauteile"] = teile
             konfig.speichern(k)
             return "Bauteile gespeichert." if not form.get("richtwerte") else "Richtwerte werden verwendet.", "wohnen"
+        if pfad == "dokumente/neu-sichten":
+            import sichtung
+            with db() as v:
+                b = sichtung.ausfuehren(konfig.laden(), v, konfig.datenordner(), "Knopf", alle=bool(form.get("alle")))
+            ziel = form.get("zurueck") if form.get("zurueck") in ("versicherungen", "vorsorge", "steuern", "einstellungen") \
+                else "einstellungen"
+            text = (f"{b.geprueft} Dokument(e) neu gesichtet: {len(b.geaendert)} mit neuen Werten, {len(b.neu)} neu angelegt"
+                    + (f", {b.geschuetzt} von Hand bearbeitete belassen" if b.geschuetzt else "")
+                    + (f", {b.fehlend} ohne Originaldatei" if b.fehlend else "") + ".")
+            return text, ziel
         if pfad == "bericht/stand":
             import bericht as br
             with db() as v:
@@ -668,6 +678,8 @@ def main():
     import sensoren
     erinnerungen.hintergrund(konfig.laden, db)
     sensoren.hintergrund(konfig.laden, db)
+    import sichtung
+    sichtung.nach_update(konfig.laden, db, ordner)
     port = int(os.environ.get("PORT", "8099"))
     LOG.info("Finanzplanung läuft auf Port %d, Daten in %s", port, ordner)
     ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()

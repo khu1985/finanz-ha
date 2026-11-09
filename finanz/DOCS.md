@@ -539,6 +539,25 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
 
+## Dokumente neu sichten
+
+Die Originale aller hochgeladenen Policen, Vorsorge- und Steuerdokumente liegen im Datenordner. Nach jedem
+App-Update liest die App sie einmal im Hintergrund mit der neuen Erkennung neu; unter Einstellungen → «Dokumente neu
+sichten» (oder mit dem Knopf bei den Listen) geht das jederzeit.
+
+| Fall | Verhalten |
+|---|---|
+| automatisch erkannte Werte | werden mit den neu erkannten ersetzt |
+| von Hand oder per KI bearbeitet | Werte bleiben, nur der Text wird erneuert – ausser «auch bearbeitete Dokumente» ist gewählt |
+| Vorsorge- oder Steuerdokument bereits übernommen, Werte geändert | wieder «noch nicht übernommen» – neue Werte prüfen und übernehmen |
+| Krankenkassen-Police | geänderte Werte gehen in den Krankenkassen-Rechner; eine neu erkannte Zusatzversicherung wird eigener Vertrag |
+| Person bei Vorsorge- und Steuerdokumenten | bleibt wie gewählt |
+| Buchungen (Budget) | werden mit den aktuellen Regeln neu kategorisiert |
+| Originaldatei fehlt (z. B. aus einer Liste erfasst) | bleibt unverändert |
+
+Das Ergebnis (geprüft, geändert, neu, belassen) steht auf der Karte und im Protokoll; nach einem Update mit
+Änderungen erscheint 14 Tage lang ein Hinweis in der Übersicht.
+
 ## Uploads und Dateigrösse
 
 Home Assistant leitet pro Anfrage höchstens 16 MB an die App weiter. Wählt man mehrere Dateien, schickt der Browser

@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.18.0 – 2026-11-09
+
+- **Dokumente nach Updates neu sichten:** Nach jedem App-Update liest die App alle gespeicherten Policen, Vorsorge-
+  und Steuerdokumente im Hintergrund mit der neuen Erkennung neu – ohne erneutes Hochladen. Von Hand oder per KI
+  korrigierte Werte bleiben erhalten (nur der Text wird erneuert), die gewählte Person bleibt. Ändern sich Werte eines
+  bereits übernommenen Vorsorge- oder Steuerdokuments, erscheint es wieder als «noch nicht übernommen»;
+  Krankenkassen-Policen gehen neu in den Krankenkassen-Rechner, eine neu erkannte Zusatzversicherung wird als eigener
+  Vertrag angelegt; Buchungen werden mit den aktuellen Regeln neu kategorisiert
+- Karte «Dokumente neu sichten» unter Einstellungen mit dem Ergebnis der letzten Sichtung und Knopf (optional auch
+  bearbeitete Dokumente); Knopf «Alle Dokumente neu sichten» bei Versicherungen, Vorsorge- und Steuerdokumenten;
+  Hinweis in der Übersicht nach einem Update mit geänderten Werten
 ## 0.17.2 – 2026-11-09
 
 - **Krankenkassen-Policen genauer auslesen:** Policen mit Grund- und Zusatzversicherung im gleichen PDF (z. B. Atupri)
