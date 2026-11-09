@@ -6,7 +6,8 @@ Stammdaten unter `personen[].zuzug`:
 - bewilligung: leer/CH, C, B, L – B und L ohne Schweizer oder C-Partner in der Ehe: Quellensteuer
 - pk_eintritt: erster Eintritt in eine Schweizer Pensionskasse (leer = Zuzugsdatum)
 - pk_vorher_ch: schon früher in einer Schweizer Pensionskasse versichert (dann keine Einkaufsbegrenzung)
-- rente_ausland_jahr, rente_ausland_ab: erwartete Altersrente aus dem Ausland (heutige Franken) und Bezugsalter
+- rente_ausland_jahr, rente_ausland_ab, rente_ausland_waehrung: erwartete Altersrente aus dem Ausland (heutige
+  Kaufkraft, z. B. in EUR laut Renteninformation) und Bezugsalter
 - nov_beantragt: nachträgliche ordentliche Veranlagung (Quellensteuer) beantragt
 
 Regeln:
@@ -33,6 +34,7 @@ STANDARD = {
     "pk_vorher_ch": False,
     "rente_ausland_jahr": 0.0,
     "rente_ausland_ab": 0,
+    "rente_ausland_waehrung": "CHF",
     "nov_beantragt": False,
 }
 QUELLENSTEUER = {"B", "L"}
@@ -152,7 +154,10 @@ def quellensteuer(person: dict, k: dict) -> bool:
 
 
 def rente_ausland(person: dict) -> float:
-    return _zahl(cfg(person)["rente_ausland_jahr"])
+    """Erwartete Rente aus dem Ausland in Franken (Betrag in der angegebenen Währung, heutige Kaufkraft)."""
+    import waehrung as wg
+    c = cfg(person)
+    return wg.in_chf(_zahl(c["rente_ausland_jahr"]), str(c.get("rente_ausland_waehrung") or "CHF"))
 
 
 def rente_ausland_alter(person: dict) -> int:

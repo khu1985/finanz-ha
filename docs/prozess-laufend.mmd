@@ -4,5 +4,7 @@ flowchart LR
     H["stündlich"] --> EI["Erinnerungen prüfen"]
     EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
     Q["alle 15 Minuten<br/>und nach Änderungen"] --> SE["Sensoren schreiben<br/>sensor.finanz_*"]
+    Q --> MS["erster Lauf im Monat<br/>Stand für den Jahresbericht"]
+    Q --> KU["einmal pro Tag (optional)<br/>Wechselkurse der EZB"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]

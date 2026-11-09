@@ -9,16 +9,16 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, budget, versicherungen,<br/>dokumente, steuerdokumente"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen,<br/>kinder, zuzug"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
         Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
-        C["Checklisten<br/>nachlass, steuererklaerung, notfall"]
+        C["Checklisten und Bericht<br/>nachlass, steuererklaerung, notfall,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
         direction LR
         Y[("finanz.yaml")]
-        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente")]
+        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente,<br/>Monatsstände, Kurse")]
         P[("PDFs")]
         L[("finanz.log")]
     end
@@ -30,5 +30,6 @@ flowchart TB
     K --> C
     K & Z & C --> A --> SE
     Z -. optional .-> HA
+    EZB["EZB-Referenzkurse<br/>(optional)"] -. täglich .-> K
     A -. stündlich und alle 15 Minuten .-> HA
     S --> L

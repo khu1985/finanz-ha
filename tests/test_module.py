@@ -944,3 +944,66 @@ def test_dokumentation_aktuell():
     doku = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(doku)
     assert doku.pruefen() == []
+
+
+# ---------------------------------------------------------------- Jahresbericht, Fremdwährungen, Liegenschaft
+
+def test_waehrung_konten(k, db):
+    import vermoegen as vm
+    import waehrung as wg
+    k.setdefault("waehrungen", {})["kurse"] = {"EUR": 0.9, "USD": 0.8}
+    wg.uebernehmen(k)
+    a = vm.konto_anlegen(db, "Sparkasse", "bank", "", "EUR")
+    b = vm.konto_anlegen(db, "Konto CHF", "bank")
+    vm.saldo_setzen(db, a, "2026-10-31", 10_000)
+    vm.saldo_setzen(db, b, "2026-10-31", 5_000)
+    assert vm.nettovermoegen(db)["total"] == 14_000
+    assert vm.fremdwaehrung(db) == {"EUR": 9_000}
+    assert wg.erkennen("Konto;Währung\n1;EUR\n2;EUR") == "EUR" and wg.erkennen("Saldo CHF") == "CHF"
+    k["waehrungen"]["kurse"] = {}
+    wg.uebernehmen(k)
+    assert wg.kurs("EUR") == wg.STANDARD["EUR"]
+    import zuzug as zz
+    p = k["personen"][0]
+    p["zuzug"] = {"rente_ausland_jahr": 10_000, "rente_ausland_waehrung": "EUR"}
+    assert zz.rente_ausland(p) == round(10_000 * wg.STANDARD["EUR"], 6)
+
+
+def test_jahresbericht(k, db):
+    import bericht as br
+    import vermoegen as vm
+    a = vm.konto_anlegen(db, "Konto", "bank")
+    vm.saldo_setzen(db, a, "2025-12-15", 50_000)
+    vm.saldo_setzen(db, a, "2026-10-15", 70_000)
+    assert br.automatisch(k, db, date(2026, 11, 9)) is True
+    assert br.automatisch(k, db, date(2026, 11, 20)) is False
+    assert len(br.staende(db)) == 1
+    vorjahr = br.jahresstand(db, 2025)
+    assert vorjahr[1]["_aus_saldi"] and vorjahr[1]["nettovermoegen"] == 50_000
+    b = br.erstellen(k, db, 2026, date(2026, 11, 9))
+    z = {x.schluessel: x for x in b.zeilen}
+    assert z["nettovermoegen"].differenz == 20_000 and z["nettovermoegen"].besser is True
+    assert any("Nettovermögen um CHF 20'000 gestiegen" in s for s in b.aussagen)
+
+
+def test_liegenschaft(k, db):
+    import immobilie as im
+    k["wohnen"].update(aktiv=True, kaufpreis=1_000_000, eigenmittel=250_000)
+    k["wohnen"]["liegenschaft"] = {"baujahr": 2000, "neuwert": 800_000, "fonds_bestand": 10_000}
+    k["kennzahlen"]["eigenmietwert_abschaffung"] = 2029
+    p = im.planen(k, db, date(2026, 11, 9))
+    assert p.marktwert == 1_000_000 and p.hypothek == 750_000 and p.belehnung == 75.0
+    heizung = [f for f in p.faelligkeiten if f.name.startswith("Heizung")]
+    assert heizung[0].jahr == 2026 and heizung[0].ueberfaellig and heizung[0].kosten == 32_000
+    assert p.soll_monat_dauer > 0 and p.empfohlen_monat >= p.soll_monat_dauer
+    assert any("2028" in h for h in p.hinweise)
+    import ampel as am
+    assert im.status(p, date(2026, 11, 9)) == am.ROT
+    k["wohnen"]["liegenschaft"]["art"] = "wohnung"
+    namen = {b["name"] for b in im.bauteile(k, date(2026, 11, 9))}
+    assert "Küche" in namen and "Dach (Eindeckung)" not in namen
+    k["wohnen"]["liegenschaft"].update(marktwert=900_000, marktwert_datum="2024-11-09", wertentwicklung=2)
+    assert abs(im.planen(k, db, date(2026, 11, 9)).marktwert - 900_000 * 1.02 ** 2) < 500
+    k["wohnen"]["liegenschaft"]["bauteile"] = [{"name": "Dach", "letzte": 2020, "lebensdauer": 30, "kosten": 60_000}]
+    e = im.erinnerungen(k, date(2049, 1, 1))
+    assert e and "Dach" in e[0].titel

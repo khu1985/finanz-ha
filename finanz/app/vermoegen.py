@@ -36,6 +36,10 @@ def verbinden(pfad: Path) -> sqlite3.Connection:
         """
     )
     db.execute("PRAGMA foreign_keys = ON")
+    spalten = {r[1] for r in db.execute("PRAGMA table_info(konten)")}
+    if "waehrung" not in spalten:
+        db.execute("ALTER TABLE konten ADD COLUMN waehrung TEXT NOT NULL DEFAULT 'CHF'")
+        db.commit()
     return db
 
 
@@ -58,12 +62,13 @@ def datum(text: str) -> str:
     raise ValueError(f"Datum nicht erkannt: {t!r}")
 
 
-def konto_anlegen(db, name: str, art: str = "bank", person: str = "") -> int:
+def konto_anlegen(db, name: str, art: str = "bank", person: str = "", waehrung: str = "CHF") -> int:
     art = art if art in ARTEN else "sonstiges"
     row = db.execute("SELECT id FROM konten WHERE name = ?", (name,)).fetchone()
     if row:
         return row["id"]
-    cur = db.execute("INSERT INTO konten (name, art, person) VALUES (?, ?, ?)", (name, art, person))
+    cur = db.execute("INSERT INTO konten (name, art, person, waehrung) VALUES (?, ?, ?, ?)",
+                     (name, art, person, (waehrung or "CHF").upper()))
     db.commit()
     return cur.lastrowid
 
@@ -74,6 +79,11 @@ def saldo_setzen(db, konto_id: int, tag: str, betrag: float) -> None:
     db.commit()
 
 
+def waehrung_setzen(db, konto_id: int, waehrung: str) -> None:
+    db.execute("UPDATE konten SET waehrung = ? WHERE id = ?", ((waehrung or "CHF").upper(), konto_id))
+    db.commit()
+
+
 def konto_loeschen(db, konto_id: int) -> None:
     db.execute("DELETE FROM saldi WHERE konto_id = ?", (konto_id,))
     db.execute("DELETE FROM konten WHERE id = ?", (konto_id,))
@@ -81,7 +91,7 @@ def konto_loeschen(db, konto_id: int) -> None:
 
 
 def csv_import(db, inhalt: bytes) -> tuple[int, list[str]]:
-    """Spalten: Datum, Konto, Saldo und optional Art, Person. Trennzeichen ; oder , oder Tab."""
+    """Spalten: Datum, Konto, Saldo und optional Art, Person, Währung. Trennzeichen ; oder , oder Tab."""
     text = inhalt.decode("utf-8-sig", errors="replace")
     try:
         dialekt = csv.Sniffer().sniff(text[:2048], delimiters=";,\t")
@@ -102,7 +112,8 @@ def csv_import(db, inhalt: bytes) -> tuple[int, list[str]]:
             art = (zeile.get(spalten.get("art", ""), "") or "bank").strip().lower()
             person = (zeile.get(spalten.get("person", ""), "") or "").strip()
             tag, betrag = datum(zeile[spalten["datum"]]), zahl(zeile[spalten["saldo"]])
-            kid = konto_anlegen(db, name, art, person)
+            waehrung = (zeile.get(spalten.get("währung", spalten.get("waehrung", "")), "") or "CHF").strip() or "CHF"
+            kid = konto_anlegen(db, name, art, person, waehrung)
             saldo_setzen(db, kid, tag, betrag)
             n += 1
         except (ValueError, KeyError, TypeError) as e:
@@ -117,7 +128,7 @@ def _vorzeichen(art: str, betrag: float) -> float:
 def konten(db) -> list[dict]:
     rows = db.execute(
         """
-        SELECT k.id, k.name, k.art, k.person, s.datum, s.betrag,
+        SELECT k.id, k.name, k.art, k.person, k.waehrung, s.datum, s.betrag,
                (SELECT COUNT(*) FROM saldi WHERE konto_id = k.id) AS anzahl
         FROM konten k
         LEFT JOIN saldi s ON s.konto_id = k.id
@@ -125,7 +136,17 @@ def konten(db) -> list[dict]:
         ORDER BY k.art, k.name
         """
     ).fetchall()
-    return [dict(r) | {"wert": _vorzeichen(r["art"], r["betrag"] or 0)} for r in rows]
+    import waehrung as wg
+    return [dict(r) | {"wert": _vorzeichen(r["art"], wg.in_chf(r["betrag"] or 0, r["waehrung"], db))} for r in rows]
+
+
+def fremdwaehrung(db) -> dict[str, float]:
+    """Wert in CHF je Fremdwährung (ohne Schulden)."""
+    erg: dict[str, float] = {}
+    for x in konten(db):
+        if (x["waehrung"] or "CHF") != "CHF" and x["art"] not in SCHULDEN:
+            erg[x["waehrung"]] = erg.get(x["waehrung"], 0) + x["wert"]
+    return erg
 
 
 def nettovermoegen(db) -> dict:
@@ -150,12 +171,14 @@ def verlauf(db, monate: int = 36) -> list[tuple[str, float]]:
         stichtag = date(j + (m == 12), m % 12 + 1, 1).isoformat()  # erster Tag des Folgemonats
         if stichtag <= erster:
             break
-        row = db.execute(
+        rows = db.execute(
             """
-            SELECT COALESCE(SUM(CASE WHEN k.art IN ('hypothek','kredit') THEN -ABS(s.betrag) ELSE s.betrag END), 0)
+            SELECT k.art, k.waehrung, s.betrag
             FROM konten k JOIN saldi s ON s.konto_id = k.id
             WHERE s.datum = (SELECT MAX(datum) FROM saldi WHERE konto_id = k.id AND datum < ?)
-            """, (stichtag,)).fetchone()
-        punkte.append((f"{j}-{m:02d}", round(row[0])))
+            """, (stichtag,)).fetchall()
+        import waehrung as wg
+        summe = sum(_vorzeichen(r["art"], wg.in_chf(r["betrag"], r["waehrung"], db)) for r in rows)
+        punkte.append((f"{j}-{m:02d}", round(summe)))
         j, m = (j, m - 1) if m > 1 else (j - 1, 12)
     return list(reversed(punkte))

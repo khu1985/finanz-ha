@@ -225,13 +225,36 @@ def aktualisieren() -> None:
     _ausloeser.set()
 
 
+def nebenaufgaben(k: dict, db) -> None:
+    """Wechselkurse (falls eingeschaltet) holen und den monatlichen Stand für den Jahresbericht speichern."""
+    try:
+        import vermoegen as vm
+        import waehrung as wg
+        import zuzug as zz
+        offen = {x["waehrung"] for x in vm.konten(db)} | {str(zz.cfg(p).get("rente_ausland_waehrung") or "CHF")
+                                                         for p in k["personen"]}
+        neu = wg.aktualisieren(db, sorted(offen))
+        if neu:
+            LOG.info("Wechselkurse aktualisiert: %s", ", ".join(neu))
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("Wechselkurse: %s", e)
+    try:
+        import bericht
+        if bericht.automatisch(k, db):
+            LOG.info("Monatsstand für den Jahresbericht gespeichert")
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("Monatsstand: %s", e)
+
+
 def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
     def schleife():
         time.sleep(10)
         while True:
             try:
                 with verbinden() as db:
-                    schreiben(laden(), db)
+                    k = laden()
+                    nebenaufgaben(k, db)
+                    schreiben(k, db)
             except Exception as e:  # noqa: BLE001
                 LOG.warning("Sensoren: %s", e)
             _ausloeser.wait(intervall)

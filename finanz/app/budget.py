@@ -146,8 +146,22 @@ def loeschen(db, konto: str | None = None) -> int:
 
 
 def alle(db) -> list[dict]:
+    """Buchungen mit Betrag in Franken (Konten in Fremdwährung zum aktuellen Kurs umgerechnet)."""
+    import waehrung as wg
     _tabelle(db)
-    return [dict(r) for r in db.execute("SELECT * FROM buchungen ORDER BY datum, id")]
+    try:
+        waehr = {r[0]: r[1] for r in db.execute("SELECT name, waehrung FROM konten")}
+    except Exception:  # noqa: BLE001
+        waehr = {}
+    erg = []
+    for r in db.execute("SELECT * FROM buchungen ORDER BY datum, id"):
+        b = dict(r)
+        w = waehr.get(b["konto"], "CHF")
+        if w != "CHF":
+            b["betrag_original"], b["waehrung"] = b["betrag"], w
+            b["betrag"] = round(wg.in_chf(b["betrag"], w, db), 2)
+        erg.append(b)
+    return erg
 
 
 def _umbuchungen(buchungen: list[dict]) -> set[int]:

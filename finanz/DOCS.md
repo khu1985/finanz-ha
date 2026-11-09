@@ -16,7 +16,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
-5. [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [Steuererklärung](#steuererklärung-vorbereiten) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
+5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [Steuererklärung](#steuererklärung-vorbereiten) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
@@ -76,12 +76,13 @@ personen:
 
 | Seite | Inhalt |
 |---|---|
+| Jahresbericht | Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Übersicht | Ampeln, anstehende Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, Kapitalbezug |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Kinder erfassen, Zeitachse mit Zulagen, Betreuung und Steuerwirkung, Hinweise |
-| Vermögen | Konten, Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
+| Vermögen | Konten (auch in Fremdwährung), Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
 | Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
@@ -340,6 +341,59 @@ Die Werte werden beim Start, alle 15 Minuten und nach jeder Änderung geschriebe
 überstehen keinen Neustart von Home Assistant; sie erscheinen danach spätestens nach 15 Minuten wieder. Unter
 Einstellungen → Sensoren stehen Status, alle Werte und Beispiele für eine Dashboard-Karte und eine Automation.
 
+## Jahresbericht
+
+Die App speichert jeden Monat automatisch einen Stand (beim ersten Hintergrundlauf im Monat; «Stand jetzt speichern»
+ersetzt den Stand des laufenden Monats): Nettovermögen, freies Vermögen, Konten, Wertschriften und Krypto, Schulden,
+Pensionskasse, Säule 3a, Einkommen im Ruhestand, Pensionslücke (Mittel), Steuern, Budget (gespart, Sparquote,
+Ausgaben) und alle Ampeln.
+
+Die Seite **Jahresbericht** vergleicht das gewählte Jahr (laufendes Jahr: heutige Werte) mit dem letzten Stand des
+Vorjahres. Gibt es für das Vorjahr keinen Stand, wird das Nettovermögen aus den Saldi per Jahresende berechnet; haben
+nicht alle Konten einen Saldo per 31.12., steht ein Hinweis und der Vergleich des Nettovermögens entfällt.
+«Das Wichtigste» fasst die grossen Veränderungen und Ampelwechsel in Sätzen zusammen; dazu Verlauf des
+Nettovermögens, Ampeln mit Vorjahr und die Massnahmen der nächsten 12 Monate (Ampeln mit Handlungsbedarf,
+Erinnerungen). «Drucken» erzeugt eine Fassung ohne Menü.
+
+## Konten in Fremdwährung
+
+Jedes Konto hat eine Währung (CHF, EUR, USD, GBP; in der Kontenliste unter «Vermögen» umstellbar, beim Erfassen,
+im CSV als Spalte `Währung` und beim Bank-Import automatisch erkannt). Saldi bleiben in der Kontowährung gespeichert;
+alle Auswertungen rechnen in Franken.
+
+| Einstellung | Bedeutung |
+|---|---|
+| `waehrungen.kurse` | Franken pro Einheit, z. B. `{EUR: 0.92, USD: 0.80}`; ohne Angabe EUR 0.92 (Stand 09.11.2026) |
+| `waehrungen.automatisch` | `true` = einmal pro Tag den Referenzkurs der EZB holen (frankfurter.dev; Internet nötig, es werden keine eigenen Daten gesendet) |
+| `personen[].zuzug.rente_ausland_waehrung` | Währung der Rente aus dem Ausland, z. B. EUR laut Renteninformation |
+
+Ohne Kurs rechnet die App 1:1 und zeigt einen Hinweis. Der Verlauf rechnet frühere Saldi mit dem heutigen Kurs. Der
+Anlage-Check zeigt den Anteil in Fremdwährung (ab 10 % mit Hinweis auf das Währungsrisiko); die Steuer-Checkliste
+erinnert an die Umrechnung zum Kurs der ESTV-Kursliste per 31.12.
+
+## Liegenschaft: Wert und Erneuerung
+
+Auf der Seite **Wohnen** (bzw. `wohnen.liegenschaft`):
+
+| Feld | Bedeutung |
+|---|---|
+| `art` | `haus` oder `wohnung` (Stockwerkeigentum: nur eigene Teile wie Küche, Bad, Böden; Dach, Fassade, Heizung über den Erneuerungsfonds der Gemeinschaft) |
+| `marktwert`, `marktwert_datum`, `wertentwicklung` | Schätzung (Bank, Schätzer) und angenommene Entwicklung pro Jahr seither; 0 = Kaufpreis |
+| `neuwert` | Gebäudeversicherungswert – Basis der Richtwerte (0 = 60 % des Kaufpreises) |
+| `baujahr` | Startjahr der Bauteile ohne eigene Angabe |
+| `fonds_bestand`, `fonds_sparen_monat` | bereits angespart bzw. geplant pro Monat |
+| `bauteile[]` | `name`, `letzte` (Jahr der letzten Erneuerung), `lebensdauer`, `kosten` – leer = Richtwerte |
+
+Richtwerte (Lebensdauer, Kosten als Anteil am Neuwert): Heizung 20 J./4 %, Boiler 15/1 %, Dach 40/6 %, Fassade 30/5 %,
+Fenster 30/5 %, Küche 20/4 %, Bad 30/4 %, Elektro 35/2 %, Leitungen 40/3 %, Böden 25/3 %, Malerarbeiten 15/2 %,
+Geräte 15/1 % – in Anlehnung an die paritätische Lebensdauertabelle; eigene Werte und Offerten haben Vorrang.
+
+Die App zeigt den heutigen Wert und die Belehnung darauf, die Erneuerungen der nächsten 30 Jahre (überfällige im
+laufenden Jahr), ob sie steuerlich noch abziehbar sind (bis zum Jahr vor dem Wegfall des Eigenmietwerts) und den
+empfohlenen Erneuerungsfonds pro Monat: das Höhere aus Kosten ÷ Lebensdauer und dem Betrag, mit dem der Fonds über
+30 Jahre nie ins Minus fällt. «Wert als Saldo übernehmen» setzt den Saldo des Immobilien-Kontos. Erinnerung rund ein
+Jahr vor jeder Erneuerung.
+
 ## Kinder
 
 Auf der Seite **Kinder** (bzw. `haushalt.kinder[]`) pro Kind erfassen:
@@ -469,6 +523,8 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Budget | gespart wie geplant | unter 90 % des Plans oder unter 6 Monaten Daten | mehr ausgegeben als eingenommen |
 | Anlage | Aufteilung passt | über 20'000 ohne Zweck auf Konten oder Krypto über dem Richtwert | – |
 | Nachlass | Checkliste erledigt | Punkte offen | Konkubinat ohne Testament beider Personen |
+| Steuererklärung | alle Punkte bereit | Punkte offen (in den 5 Monaten vor der Frist) | Punkte offen, Frist in 14 Tagen |
+| Liegenschaft | Fonds deckt die nächsten Erneuerungen | Fonds deckt die nächsten 2 Jahre nicht oder weniger gespart als empfohlen | überfällige Bauteile ohne genügend Fonds |
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
 
@@ -506,6 +562,7 @@ oder **Einstellungen → Experte**.
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |
 | `fruehpension` | `pk_kuerzung_uws` |
+| `waehrungen` | `kurse`, `automatisch` |
 | `notfall` | `kontakte[]`, `ablage`, `notizen` (Seite Notfallordner) |
 | `nachlass` | `zusammen_seit`, `anteil_immobilie`, `erbschaftssteuer` (überschreibt den Kanton), `checkliste` |
 | `sensoren` | `aktiv`, `praefix` |

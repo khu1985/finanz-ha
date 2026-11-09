@@ -14,12 +14,13 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a- und IK-Auszug hochladen |
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029 |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Kinder | Kinder erfassen (auch aus früheren Beziehungen), Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse und Erinnerungen |
-| Vermögen | Konten und Saldi, Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
+| Vermögen | Konten und Saldi (auch EUR, USD, GBP), Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial |
 | Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell), Risiko Invalidität und Tod |
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
+| Jahresbericht | Monatliche Stände, Vergleich mit dem Vorjahr, Massnahmen, Drucken |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen, Werten aus der App und Saldi per 31.12. |
 | Notfallordner | Druckbare Übersicht für Angehörige mit Konten, Vorsorge, Policen, Kontakten, Ablageorten und ersten Schritten |
 | Nachlass | Was der Partner im Todesfall erhält (Erbteil, Erbschaftssteuer, AHV/PK, Liegenschaft), Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
@@ -66,16 +67,16 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, budget, versicherungen,<br/>dokumente, steuerdokumente"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen,<br/>kinder, zuzug"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
         Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
-        C["Checklisten<br/>nachlass, steuererklaerung, notfall"]
+        C["Checklisten und Bericht<br/>nachlass, steuererklaerung, notfall,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
         direction LR
         Y[("finanz.yaml")]
-        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente")]
+        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente,<br/>Monatsstände, Kurse")]
         P[("PDFs")]
         L[("finanz.log")]
     end
@@ -87,6 +88,7 @@ flowchart TB
     K --> C
     K & Z & C --> A --> SE
     Z -. optional .-> HA
+    EZB["EZB-Referenzkurse<br/>(optional)"] -. täglich .-> K
     A -. stündlich und alle 15 Minuten .-> HA
     S --> L
 ```
@@ -116,6 +118,9 @@ flowchart TB
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
+| `finanz/app/bericht.py` | Monatsstände und Jahresbericht |
+| `finanz/app/waehrung.py` | Fremdwährungen und Kurse |
+| `finanz/app/immobilie.py` | Wert der Liegenschaft und Erneuerungsplanung |
 | `finanz/app/teilzeit.py` | Teilzeit-Rechner |
 | `finanz/app/steuererklaerung.py` | Checkliste Steuererklärung |
 | `finanz/app/notfall.py` | Notfallordner |
@@ -205,6 +210,9 @@ flowchart TD
 ```mermaid
 flowchart TD
     W["Liegenschaft<br/>Wert, Hypothek, Fälligkeit"] --> AM
+    W --> ER["Bauteile und Lebensdauer<br/>Erneuerungen über 30 Jahre"]
+    ER --> FO["Erneuerungsfonds pro Monat<br/>Kosten ÷ Lebensdauer, nie im Minus"]
+    ER --> SA["Unterhaltsabzug<br/>bis zum Wegfall des Eigenmietwerts"]
     L["Liquide Mittel<br/>ohne «nicht antasten»"] --> AM
     S["Sparen bis Fälligkeit"] --> AM
     VP["Verpfändete 3a/3b<br/>− Steuer beim Bezug"] --> AM
@@ -265,6 +273,8 @@ flowchart LR
     H["stündlich"] --> EI["Erinnerungen prüfen"]
     EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
     Q["alle 15 Minuten<br/>und nach Änderungen"] --> SE["Sensoren schreiben<br/>sensor.finanz_*"]
+    Q --> MS["erster Lauf im Monat<br/>Stand für den Jahresbericht"]
+    Q --> KU["einmal pro Tag (optional)<br/>Wechselkurse der EZB"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]
 ```
@@ -291,6 +301,8 @@ flowchart TD
     HY["36–12 Monate vor Fälligkeit<br/>Hypothekar-Strategie, Offerten, Forward"] -.-> UE
     KD["Kinder mit 16, 18, 19 und Ende Ausbildung<br/>Zulagen, Bestätigung, Krankenkasse"] -.-> UE
     NO["jährlich<br/>Notfallordner und Nachlass-Checkliste prüfen"] -.-> UE
+    JB["Dezember–Januar<br/>Jahresbericht: Vergleich mit dem Vorjahr, Massnahmen"] -.-> J
+    LG["rund 1 Jahr vor fälligen Erneuerungen<br/>Offerten, Förderbeiträge, Erneuerungsfonds"] -.-> UE
 ```
 
 </details>

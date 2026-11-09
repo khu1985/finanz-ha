@@ -27,7 +27,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 40 * 1024 * 1024
 
-MIT_ABFRAGE = {"steuererklaerung"}
+MIT_ABFRAGE = {"steuererklaerung", "bericht"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -41,6 +41,7 @@ SEITEN = {
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
+    "bericht": ("Jahresbericht", seiten.bericht),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -241,9 +242,14 @@ class Handler(BaseHTTPRequestHandler):
             return "Konfiguration gespeichert (vorherige Fassung als finanz.yaml.bak)."
         if pfad == "vermoegen/saldo":
             with db() as v:
-                kid = vm.konto_anlegen(v, form["konto"].strip(), form.get("art", "bank"), form.get("person", ""))
+                kid = vm.konto_anlegen(v, form["konto"].strip(), form.get("art", "bank"), form.get("person", ""),
+                                       form.get("waehrung", "CHF"))
                 vm.saldo_setzen(v, kid, vm.datum(form["datum"]), vm.zahl(form["betrag"]))
             return f"Saldo für «{form['konto'].strip()}» gespeichert."
+        if pfad == "vermoegen/waehrung":
+            with db() as v:
+                vm.waehrung_setzen(v, int(form["id"]), form.get("waehrung", "CHF"))
+            return "Währung geändert."
         if pfad == "vermoegen/import":
             with db() as v:
                 n, fehler = vm.csv_import(v, form.get("datei") or b"")
@@ -325,6 +331,49 @@ class Handler(BaseHTTPRequestHandler):
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
             return f"{len(werte)} Sensoren geschrieben.", "einstellungen"
+        if pfad == "wohnen/liegenschaft":
+            k = konfig.laden()
+            c = k["wohnen"].setdefault("liegenschaft", {})
+            c["art"] = "wohnung" if form.get("art") == "wohnung" else "haus"
+            c["marktwert_datum"] = str(form.get("marktwert_datum", "")).strip()
+            for f in ("baujahr", "marktwert", "neuwert", "fonds_bestand", "fonds_sparen_monat"):
+                t = str(form.get(f, "")).strip()
+                c[f] = int(round(vm.zahl(t))) if t else 0
+            t = str(form.get("wertentwicklung", "")).strip()
+            c["wertentwicklung"] = vm.zahl(t) if t else 1.0
+            konfig.speichern(k)
+            if form.get("saldo"):
+                import immobilie as im
+                with db() as v:
+                    p_ = im.planen(k, v)
+                    ks = [x for x in vm.konten(v) if x["art"] == "immobilie"]
+                    kid = ks[0]["id"] if ks else vm.konto_anlegen(v, "Liegenschaft (Schätzung)", "immobilie")
+                    vm.saldo_setzen(v, kid, datetime.now().date().isoformat(), p_.marktwert)
+                return f"Liegenschaft gespeichert, Wert CHF {seiten.chf(p_.marktwert)} als Saldo übernommen.", "wohnen"
+            return "Liegenschaft gespeichert.", "wohnen"
+        if pfad == "wohnen/bauteile":
+            k = konfig.laden()
+            c = k["wohnen"].setdefault("liegenschaft", {})
+            if form.get("richtwerte"):
+                c["bauteile"] = []
+            else:
+                teile = []
+                for i in range(int(form.get("anzahl", 0) or 0)):
+                    name = str(form.get(f"b_name_{i}", "")).strip()
+                    if not name:
+                        continue
+                    z = {f: str(form.get(f"b_{f}_{i}", "")).strip() for f in ("letzte", "lebensdauer", "kosten")}
+                    teile.append({"name": name, "letzte": int(vm.zahl(z["letzte"] or "0")),
+                                  "lebensdauer": max(1, int(vm.zahl(z["lebensdauer"] or "20"))),
+                                  "kosten": int(round(vm.zahl(z["kosten"] or "0")))})
+                c["bauteile"] = teile
+            konfig.speichern(k)
+            return "Bauteile gespeichert." if not form.get("richtwerte") else "Richtwerte werden verwendet.", "wohnen"
+        if pfad == "bericht/stand":
+            import bericht as br
+            with db() as v:
+                br.speichern(konfig.laden(), v)
+            return "Stand gespeichert.", "bericht"
         if pfad == "steuererklaerung":
             import steuererklaerung as se
             jahr = int(form.get("jahr") or datetime.now().year)

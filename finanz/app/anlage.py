@@ -122,6 +122,16 @@ def pruefen(k: dict, db, heute: date | None = None) -> Check:
     if krypto_anteil > float(cfg["krypto_max"]):
         hinw.append(f"Krypto macht {krypto_anteil:.0f} % des Finanzvermögens aus (Richtwert höchstens {cfg['krypto_max']} %) – "
                     "hohe Schwankungen; Teilverkäufe gestaffelt planen statt auf einen Zeitpunkt.")
+    fremd = vm.fremdwaehrung(db)
+    fremd_total = sum(fremd.values())
+    if fremd_total and finanz:
+        anteil = fremd_total / finanz * 100
+        teile = ", ".join(f"{w} CHF {_chf(v)}" for w, v in sorted(fremd.items(), key=lambda x: -x[1]))
+        hinw.append(f"Fremdwährungen: {anteil:.0f} % des Finanzvermögens ({teile}). Ausgaben und Ruhestand sind in Franken – "
+                    "Konten in Fremdwährung tragen ein Währungsrisiko; der Franken hat gegenüber dem Euro über die Jahre "
+                    "meist zugelegt. Nicht benötigte Guthaben in Franken wechseln oder bewusst halten (z. B. für Ausgaben "
+                    "im Euroraum)." if anteil >= 10 else
+                    f"Fremdwährungen: {anteil:.0f} % des Finanzvermögens ({teile}) – kleines Währungsrisiko.")
     if zweck and depot > anlegbar + 1:
         hinw.append("Ein Teil des Depots wird bis zur Fälligkeit für die Amortisation gebraucht – Kursrisiko vor 2030 begrenzen.")
     hinw.append("Arbeitgeberaktien (z. B. Mitarbeiterprogramme) erhöhen das Klumpenrisiko, weil Lohn und Vermögen vom gleichen "

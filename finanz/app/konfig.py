@@ -41,8 +41,10 @@ def _mischen(basis: dict, eigen: dict) -> dict:
 def laden() -> dict:
     pfad = konfig_pfad()
     basis = vorlage()
+    import waehrung
     if not pfad.exists():
         speichern(basis)
+        waehrung.uebernehmen(basis)
         return basis
     with pfad.open(encoding="utf-8") as f:
         eigen = yaml.safe_load(f) or {}
@@ -53,6 +55,7 @@ def laden() -> dict:
         k["personen"] = [_mischen(muster, p) for p in eigen["personen"]]
     if "haushalt" in eigen and "kinder" in eigen["haushalt"]:
         k["haushalt"]["kinder"] = eigen["haushalt"]["kinder"] or []
+    waehrung.uebernehmen(k)
     return k
 
 

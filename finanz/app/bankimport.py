@@ -50,6 +50,7 @@ class Auszug:
     einnahmen: float = 0.0
     ausgaben: float = 0.0
     hinweise: list[str] = field(default_factory=list)
+    waehrung: str = "CHF"
 
 
 def _dekodieren(inhalt: bytes) -> str:
@@ -203,7 +204,8 @@ def rueckrechnen(inhalt: bytes, endsaldo: float, stichtag: str | None = None) ->
 def importieren(db, auszug: Auszug, konto: str, art: str, person: str,
                 monatssaldi: dict[str, tuple[str, float]] | None = None) -> int:
     werte = monatssaldi if monatssaldi is not None else auszug.monatssaldi
-    kid = vm.konto_anlegen(db, konto.strip() or auszug.konto_vorschlag, art or auszug.art_vorschlag, person)
+    kid = vm.konto_anlegen(db, konto.strip() or auszug.konto_vorschlag, art or auszug.art_vorschlag, person,
+                           auszug.waehrung)
     for tag, saldo in werte.values():
         vm.saldo_setzen(db, kid, tag, saldo)
     return len(werte)
@@ -211,7 +213,9 @@ def importieren(db, auszug: Auszug, konto: str, art: str, person: str,
 
 def aus_datei(db, inhalt: bytes, dateiname: str, konto: str = "", art: str = "", person: str = "",
               endsaldo: float | None = None) -> tuple[Auszug, int]:
+    import waehrung as wg
     a = analysieren(inhalt, dateiname)
+    a.waehrung = wg.erkennen(_dekodieren(inhalt))
     monats = None
     if not a.monatssaldi:
         if endsaldo is None:

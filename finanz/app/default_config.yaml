@@ -66,6 +66,7 @@ personen:
       pk_vorher_ch: false        # schon früher in einer Schweizer PK versichert
       rente_ausland_jahr: 0      # erwartete Altersrente aus dem Ausland pro Jahr (heutige Franken)
       rente_ausland_ab: 0        # Bezugsalter (0 = Pensionierungsalter)
+      rente_ausland_waehrung: CHF  # Währung der Rente (z. B. EUR laut Renteninformation)
       nov_beantragt: false       # nachträgliche ordentliche Veranlagung beantragt (Quellensteuer)
   - id: p2
     name: Person 2
@@ -112,6 +113,7 @@ personen:
       pk_vorher_ch: false        # schon früher in einer Schweizer PK versichert
       rente_ausland_jahr: 0      # erwartete Altersrente aus dem Ausland pro Jahr (heutige Franken)
       rente_ausland_ab: 0        # Bezugsalter (0 = Pensionierungsalter)
+      rente_ausland_waehrung: CHF  # Währung der Rente (z. B. EUR laut Renteninformation)
       nov_beantragt: false       # nachträgliche ordentliche Veranlagung beantragt (Quellensteuer)
 
 steuern:
@@ -158,6 +160,16 @@ wohnen:
   nicht_antasten: [krypto, immobilie, hypothek, kredit, vorsorge]   # Vermögensarten, die nicht in die Amortisation fliessen
   verpfaendet: []                  # indirekte Amortisation, z. B. [{name: 3a Mobiliar P1, guthaben: 40000, beitrag_monat: 625, rendite: 1.0}]
   steuer_bezug_verpfaendet: 0      # geschätzte Steuer beim Bezug der verpfändeten Vorsorge
+  liegenschaft:                    # Wert und Erneuerung (Seite Wohnen)
+    art: haus                      # haus | wohnung (Stockwerkeigentum)
+    baujahr: 0
+    marktwert: 0                   # Schätzung (0 = Kaufpreis)
+    marktwert_datum: ""
+    wertentwicklung: 1.0           # % pro Jahr seit der Schätzung
+    neuwert: 0                     # Gebäudeversicherungswert (0 = 60 % des Kaufpreises)
+    fonds_bestand: 0               # für Erneuerungen angespart
+    fonds_sparen_monat: 0          # geplanter Betrag pro Monat
+    bauteile: []                   # [{name, letzte, lebensdauer, kosten}] – leer = Richtwerte
 
 nachlass:
   zusammen_seit: ""                # Jahr, seit dem ihr am gleichen Wohnsitz zusammenlebt (Erbschaftssteuer, 3a-Begünstigung)
@@ -206,6 +218,10 @@ annahmen:
 
 budget:
   regeln: {}                       # eigene Zuordnungen: Stichwort im Buchungstext → Kategorie, z. B. "bäckerei muster": Lebensmittel
+
+waehrungen:
+  kurse: {}                        # CHF pro Einheit, z. B. {EUR: 0.92, USD: 0.80}; ohne Angabe EUR 0.92 (Stand 09.11.2026)
+  automatisch: false               # true = Tageskurs der EZB einmal pro Tag holen (Internet nötig)
 
 kennzahlen:
   # Stand 2026 (BSV). Werden alle zwei Jahre angepasst – bitte prüfen.

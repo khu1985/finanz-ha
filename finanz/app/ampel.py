@@ -98,6 +98,18 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         txt = f"Lücke im Mittel CHF {chf(lm)}/Jahr (Teuerung)"
     erg.append(Ampel("Ruhestand", s, txt, "vorsorge"))
 
+    # Liegenschaft: Erneuerungen und Fonds
+    try:
+        import immobilie as im
+        pl = im.planen(k, db, heute)
+        if pl:
+            bald = [f for f in pl.faelligkeiten if f.jahr <= heute.year + 2]
+            txt = (f"bis {heute.year + 2}: " + ", ".join(f.name.split(" (")[0] for f in bald[:3])
+                   + (f" (CHF {chf(sum(f.kosten for f in bald))})" if bald else "")) if bald else "keine Erneuerung in 2 Jahren"
+            erg.append(Ampel("Liegenschaft", im.status(pl, heute), txt, "wohnen"))
+    except Exception:  # noqa: BLE001
+        pass
+
     # Steuererklärung: in den Monaten vor der Frist
     try:
         import steuererklaerung as se

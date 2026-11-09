@@ -1,5 +1,22 @@
 # Änderungen
 
+## 0.17.0 – 2026-11-09
+
+- **Jahresbericht** (neue Seite unter Überblick): die App speichert jeden Monat einen Stand (Nettovermögen, freies
+  Vermögen, Konten, Wertschriften, Schulden, Pensionskasse, 3a, Einkommen im Ruhestand, Pensionslücke, Steuern,
+  Budget, Ampeln). Der Bericht vergleicht ein Jahr mit dem Vorjahr (fehlt ein Stand, Nettovermögen aus den Saldi per
+  Jahresende – mit Hinweis, wenn Konten ohne Saldo sind), fasst das Wichtigste zusammen, zeigt Ampeln mit Vorjahr und
+  die Massnahmen der nächsten 12 Monate; «Stand jetzt speichern», Drucken bzw. PDF
+- **Konten in Fremdwährung:** Währung pro Konto (CHF, EUR, USD, GBP), Umrechnung in Franken für Nettovermögen,
+  Verlauf, Budget, Anlage-Check, Steuer-Checkliste und Notfallordner; Kurse unter `waehrungen.kurse` (Standard EUR
+  0.92, Stand 09.11.2026) oder auf Wunsch täglich der Referenzkurs der EZB (`waehrungen.automatisch`); Bank-Import
+  erkennt die Währung; Anlage-Check zeigt den Fremdwährungsanteil; Rente aus dem Ausland in EUR erfassbar
+- **Liegenschaft: Wert und Erneuerung** (Seite Wohnen): geschätzter Wert mit Wertentwicklung und Belehnung, Bauteile
+  mit Lebensdauer und Kosten (Richtwerte nach Anteil am Gebäudeversicherungswert oder eigene Werte, Stockwerkeigentum
+  nur eigene Teile), Erneuerungen über 30 Jahre, empfohlener Erneuerungsfonds, steuerliche Abziehbarkeit bis zum
+  Wegfall des Eigenmietwerts, Hinweise (auf zwei Jahre verteilen, Förderbeiträge, Belehnung); Wert als Saldo
+  übernehmen; Ampel «Liegenschaft» und Erinnerungen vor fälligen Erneuerungen
+- Tabellen mit langen Texten erscheinen auf dem Handy als Karten (Anlage-Check, Heiratsvergleich, Notfallordner)
 ## 0.16.0 – 2026-11-09
 
 - **Teilzeit und Kinderbetreuung** (Szenarien): Pensum einer Person für einen Zeitraum reduzieren und sehen, was es

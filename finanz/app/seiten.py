@@ -4,6 +4,7 @@ from __future__ import annotations
 from tausender import TS  # noqa: E402
 
 from datetime import date
+import re
 from html import escape
 
 import yaml
@@ -21,7 +22,7 @@ import vorsorge as vs
 import wohnen as wo
 
 NAVIGATION = [
-    ("Überblick", [("", "Übersicht"), ("berater", "Berater")]),
+    ("Überblick", [("", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")]),
     ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
                  ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
                  ("notfall", "Notfallordner")]),
@@ -171,6 +172,7 @@ code.entitaet{font-size:12px;word-break:break-all;white-space:normal}
 .fortschritt{height:8px;border-radius:4px;background:var(--linie);overflow:hidden;margin:4px 0 12px}
 .fortschritt i{display:block;height:100%;background:var(--gut)}
 .druck-kopf,.nur-druck{display:none}
+form.inline{display:inline;margin:0}form.inline select{width:auto;min-width:72px;padding:4px 6px;font-size:13px}
 @media print{
 .side,#nav,footer,#status,#lade,.nicht-drucken,form .zeile,button{display:none!important}
 body,.inhalt,main{background:#fff!important;color:#000!important}main{max-width:none;padding:0}
@@ -317,7 +319,7 @@ def karte(titel: str, inhalt: str) -> str:
     return f'<section class="karte"><h2>{escape(titel)}</h2>{inhalt}</section>'
 
 
-def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1) -> str:
+def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1, karten: bool = False) -> str:
     """Tabelle; ab fünf Spalten auf dem Handy als Karten (Beschriftung je Zelle)."""
     th = "".join(f'<th class="{"z" if i >= zahlen_ab else ""}">{escape(h)}</th>' for i, h in enumerate(kopf))
     tr = []
@@ -325,7 +327,9 @@ def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1) -> str:
         tds = "".join(f'<td class="{"z" if i >= zahlen_ab else ""}" data-label="{escape(kopf[i]) if i < len(kopf) else ""}">'
                       f'{c}</td>' for i, c in enumerate(z))
         tr.append(f"<tr>{tds}</tr>")
-    klasse = ' class="responsiv"' if len(kopf) > 4 else ""
+    # lange Texte in Wertspalten: auf dem Handy ebenfalls als Karten
+    lang = len(kopf) >= 3 and any(len(re.sub(r"<[^>]+>", "", str(c))) > 45 for z in zeilen for c in z[1:])
+    klasse = ' class="responsiv"' if len(kopf) > 4 or lang or karten else ""
     return f'<div class="tab"><table{klasse}><thead><tr>{th}</tr></thead><tbody>{"".join(tr)}</tbody></table></div>'
 
 
@@ -595,7 +599,69 @@ def wohnen(k: dict, db) -> str:
     a = br.amortisation(k, db)
     amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a)) if a else ""
     return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
-        "Wegfall Eigenmietwert", emw) + "</div>" + amort
+        "Wegfall Eigenmietwert", emw) + "</div>" + amort + liegenschaft_karten(k, db)
+
+
+def liegenschaft_karten(k: dict, db) -> str:
+    import immobilie as im
+    heute = date.today()
+    p = im.planen(k, db, heute)
+    if not p:
+        return ""
+    c = im.konfiguration(k)
+    s_ = im.status(p, heute)
+    kpis = '<div class="kpis">' + "".join([
+        kpi(chf(p.marktwert), f"Wert ({p.marktwert_quelle})"),
+        kpi(f"{p.belehnung:.0f} %", "Belehnung auf den Wert", "schlecht" if p.belehnung > 66.7 else "gut",
+            am.GELB if p.belehnung > 66.7 else am.GRUEN),
+        kpi(chf(sum(f.kosten for f in p.faelligkeiten if f.jahr < heute.year + 10)), "Erneuerungen in 10 Jahren"),
+        kpi(chf(p.empfohlen_monat), "Erneuerungsfonds pro Monat (empfohlen)", "", s_),
+        kpi(chf(p.fonds_bestand), "Fonds heute"),
+    ]) + "</div>"
+    jahre = list(range(heute.year, heute.year + im.HORIZONT))
+    diagramm = dg.saeulen([str(j)[2:] for j in jahre], {"Erneuerungen": [p.jahreskosten.get(j, 0) for j in jahre]},
+                          linie_bei=p.empfohlen_monat * 12 or None, linie_text=f"Fonds {chf(p.empfohlen_monat * 12)}/Jahr")
+    naechste = [f for f in p.faelligkeiten if f.jahr < heute.year + 15]
+    zeilen = [[str(f.jahr) + (" (überfällig)" if f.ueberfaellig else ""), escape(f.name), chf(f.kosten),
+               "ja" if f.jahr <= p.abzug_bis else "nein"] for f in naechste]
+    plan_html = (diagramm + tabelle(["Jahr", "Bauteil", "Kosten", "Steuerlich abziehbar"], zeilen)
+                 + hinweisliste(p.hinweise)
+                 + f'<p class="leise">Empfehlung: das Höhere aus dem langfristigen Bedarf (CHF {chf(p.soll_monat_dauer)}/Monat, '
+                   f'Kosten ÷ Lebensdauer) und dem Betrag, mit dem der Fonds über {im.HORIZONT} Jahre nie ins Minus fällt '
+                   f'(CHF {chf(p.soll_monat_spitze)}/Monat). Kosten in heutigen Franken, Neuwert CHF {chf(p.neuwert)}.</p>')
+    # Formular Grunddaten
+    def feld(name, titel, wert, typ="text"):
+        return f'<label>{escape(titel)}<input name="{name}" value="{escape(str(wert))}" type="{typ}"></label>'
+    art_opts = "".join(f'<option value="{v}"{" selected" if str(c.get("art", "haus")) == v else ""}>{t}</option>'
+                       for v, t in (("haus", "Haus"), ("wohnung", "Stockwerkeigentum")))
+    grund = ('<form method="post" action="wohnen/liegenschaft"><div class="felder">'
+             f'<label>Art<select name="art">{art_opts}</select></label>'
+             + feld("baujahr", "Baujahr", int(im._zahl(c.get("baujahr"))) or "")
+             + feld("marktwert", "Geschätzter Wert (0 = Kaufpreis)", int(im._zahl(c.get("marktwert"))))
+             + feld("marktwert_datum", "Datum der Schätzung", c.get("marktwert_datum", ""), "date")
+             + feld("wertentwicklung", "Wertentwicklung % pro Jahr", im._zahl(c.get("wertentwicklung"), 1.0))
+             + feld("neuwert", "Gebäudeversicherungswert (Neuwert)", int(im._zahl(c.get("neuwert"))))
+             + feld("fonds_bestand", "Erneuerungsfonds heute", int(im._zahl(c.get("fonds_bestand"))))
+             + feld("fonds_sparen_monat", "Geplant pro Monat", int(im._zahl(c.get("fonds_sparen_monat"))))
+             + '</div><div class="zeile"><button>Speichern</button>'
+               '<button class="zweit" name="saldo" value="1">Speichern und Wert als Saldo der Immobilie übernehmen</button>'
+               '</div></form>')
+    teile = p.bauteile + [{"name": "", "letzte": "", "lebensdauer": "", "kosten": ""}]
+    t_html = []
+    for i, b in enumerate(teile):
+        t_html.append('<fieldset class="kind"><div class="felder">'
+                      f'<label>Bauteil<input name="b_name_{i}" value="{escape(str(b["name"]))}"></label>'
+                      f'<label>Letzte Erneuerung (Jahr)<input name="b_letzte_{i}" inputmode="numeric" value="{escape(str(b["letzte"]))}"></label>'
+                      f'<label>Lebensdauer (Jahre)<input name="b_lebensdauer_{i}" inputmode="numeric" value="{escape(str(b["lebensdauer"]))}"></label>'
+                      f'<label>Kosten heute (CHF)<input name="b_kosten_{i}" inputmode="decimal" value="{escape(str(int(b["kosten"])) if b["kosten"] != "" else "")}"></label>'
+                      '</div></fieldset>')
+    bauteile = (f'<details><summary>Bauteile bearbeiten ({len(p.bauteile)})</summary>'
+                f'<form method="post" action="wohnen/bauteile"><input type="hidden" name="anzahl" value="{len(teile)}">'
+                + "".join(t_html) + '<p class="leise">Bauteil ohne Namen = entfernen. «Richtwerte» setzt die Liste zurück.</p>'
+                '<div class="zeile"><button>Bauteile speichern</button><button class="zweit" name="richtwerte" value="1">'
+                'Richtwerte verwenden</button></div></form></details>')
+    return kpis + karte("Erneuerungen und Fonds", plan_html) + '<div class="raster">' + karte(
+        "Liegenschaft: Wert und Fonds", grund) + karte("Bauteile", bauteile) + "</div>"
 
 
 # ---------------------------------------------------------------- Vermögen
@@ -604,14 +670,28 @@ def vermoegen(k: dict, db) -> str:
     ks = vm.konten(db)
     nv = vm.nettovermoegen(db)
     personen = [p["name"] for p in k["personen"]]
+    import waehrung as wg
+    kurse = wg.kurse(db)
     zeilen = []
     for x in ks:
+        w = x["waehrung"] or "CHF"
+        w_opts = "".join(f'<option{" selected" if o == w else ""}>{o}</option>' for o in wg.WAEHRUNGEN)
+        w_form = (f'<form method="post" action="vermoegen/waehrung" class="inline"><input type="hidden" name="id" value="{x["id"]}">'
+                  f'<select name="waehrung" onchange="this.form.submit()" aria-label="Währung">{w_opts}</select></form>')
+        saldo = chf(x["wert"]) + (f'<br><small class="leise">{w} {chf(abs(x["betrag"] or 0))} × {kurse.get(w, (1, ""))[0]:.4f}</small>'
+                                  if w != "CHF" else "")
         zeilen.append([escape(x["name"]), vm.ARTEN.get(x["art"], x["art"]), escape(x["person"] or "gemeinsam"),
-                       escape(x["datum"] or "–"), chf(x["wert"]),
+                       escape(x["datum"] or "–"), w_form, saldo,
                        f'<form method="post" action="vermoegen/loeschen" onsubmit="return confirm(\'Konto und alle Saldi löschen?\')">'
                        f'<input type="hidden" name="id" value="{x["id"]}"><button class="zweit klein">Löschen</button></form>'])
-    zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(nv['total'])}</b>", ""])
-    liste = tabelle(["Konto", "Art", "Person", "Stand", "Saldo", ""], zeilen, zahlen_ab=4)
+    zeilen.append(["<b>Total</b>", "", "", "", "", f"<b>{chf(nv['total'])}</b>", ""])
+    liste = tabelle(["Konto", "Art", "Person", "Stand", "Währung", "Saldo CHF", ""], zeilen, zahlen_ab=5)
+    fremd = sorted({x["waehrung"] for x in ks if (x["waehrung"] or "CHF") != "CHF"})
+    if fremd:
+        liste += ('<p class="leise">Kurse (CHF pro Einheit): ' + ", ".join(
+            f"{w} {kurse[w][0]:.4f} ({kurse[w][1]})" if w in kurse else f"{w} fehlt – 1:1 gerechnet" for w in fremd)
+            + '. Eigene Kurse unter <code>waehrungen.kurse</code>, Tageskurs der EZB mit <code>waehrungen.automatisch: true</code>. '
+              'Der Verlauf rechnet frühere Saldi mit dem heutigen Kurs.</p>')
 
     heute = date.today().isoformat()
     konto_opts = "".join(f'<option value="{escape(x["name"])}">' for x in ks)
@@ -623,10 +703,11 @@ def vermoegen(k: dict, db) -> str:
 <label>Art (bei neuem Konto)<select name="art">{arten}</select></label>
 <label>Person<select name="person">{pers}</select></label>
 <label>Datum<input type="date" name="datum" value="{heute}" required></label>
-<label>Saldo CHF<input name="betrag" inputmode="decimal" required placeholder="12'500.00"></label>
+<label>Saldo (in der Kontowährung)<input name="betrag" inputmode="decimal" required placeholder="12'500.00"></label>
+<label>Währung (bei neuem Konto)<select name="waehrung">{"".join(f"<option>{w}</option>" for w in __import__("waehrung").WAEHRUNGEN)}</select></label>
 </div><div class="zeile"><button>Saldo speichern</button></div></form>"""
     importieren = """<form method="post" action="vermoegen/import" enctype="multipart/form-data">
-<p class="leise">CSV mit den Spalten <code>Datum;Konto;Saldo</code>, optional <code>Art;Person</code>.
+<p class="leise">CSV mit den Spalten <code>Datum;Konto;Saldo</code>, optional <code>Art;Person;Währung</code>.
 Arten: bank, depot, krypto, immobilie, hypothek, kredit, sonstiges. Bestehende Saldi am gleichen Datum werden ersetzt.</p>
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px">
 <button>Importieren</button><a class="knopf zweit" href="vorlage.csv">Vorlage herunterladen</a></div></form>"""
@@ -676,8 +757,9 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "zuzug.bewilligung", "Bewilligung (leer/CH, C, B, L)"),
         (p + "zuzug.pk_eintritt", "Eintritt Schweizer PK (leer = Zuzug)"),
         (p + "zuzug.pk_vorher_ch", "Früher schon in Schweizer PK"),
-        (p + "zuzug.rente_ausland_jahr", "Rente Ausland/Jahr (heutige CHF)"),
+        (p + "zuzug.rente_ausland_jahr", "Rente Ausland/Jahr (heutige Kaufkraft)"),
         (p + "zuzug.rente_ausland_ab", "Rente Ausland ab Alter (0 = Pension)"),
+        (p + "zuzug.rente_ausland_waehrung", "Währung Rente Ausland (CHF, EUR …)"),
         (p + "zuzug.nov_beantragt", "Ordentliche Veranlagung beantragt (Quellensteuer)"),
     ]
 
@@ -1429,7 +1511,7 @@ def heirat_karte(k: dict, db) -> str:
     for name, rk, rv in h.hinterbliebene:
         zeilen.append([licht(am.GRUEN if rv >= rk else am.GELB) + f"Renten für Hinterbliebene beim Tod von {escape(name)} (pro Jahr)",
                        chf(rk), chf(rv), chf(rv - rk, True)])
-    tab = tabelle(["", "Konkubinat", "Verheiratet", "Unterschied"], zeilen)
+    tab = tabelle(["", "Konkubinat", "Verheiratet", "Unterschied"], zeilen, karten=True)
     ib = h.ib_jahr
     b0, b1 = h.bilanz_ohne_ib, h.bilanz_mit_ib
     def satz(b):
@@ -2056,9 +2138,10 @@ def notfall(k: dict, db) -> str:
     # Konten
     konten = vm.konten(db)
     kz = [[escape(x["name"]), escape(vm.ARTEN.get(x["art"], x["art"])), escape(x["person"] or "gemeinsam"),
-           chf(abs(x["betrag"] or 0)) + (f' <small class="leise">{x["datum"][8:10]}.{x["datum"][5:7]}.{x["datum"][:4]}</small>'
+           chf(abs(x["wert"] or 0)) + (f' {x["waehrung"]} {chf(abs(x["betrag"] or 0))}' if (x["waehrung"] or "CHF") != "CHF" else "")
+           + (f' <small class="leise">{x["datum"][8:10]}.{x["datum"][5:7]}.{x["datum"][:4]}</small>'
                                           if x["datum"] else "")] for x in konten]
-    konten_html = tabelle(["Konto", "Art", "Inhaber", "Letzter Saldo"], kz, zahlen_ab=3) if kz else '<p class="leer">Keine Konten erfasst.</p>'
+    konten_html = tabelle(["Konto", "Art", "Inhaber", "Letzter Saldo"], kz, zahlen_ab=3, karten=True) if kz else '<p class="leer">Keine Konten erfasst.</p>'
     # Vorsorge
     vz = []
     try:
@@ -2094,7 +2177,7 @@ def notfall(k: dict, db) -> str:
         lieg = karte("Liegenschaft", "<ul>" + "".join([
             f"<li>Kaufpreis CHF {chf(float(w.get('kaufpreis', 0) or 0))}, Hypothek fällig "
             f"{escape(str(w.get('hypothek_faellig') or '–'))}</li>",
-            *[f"<li>{escape(x['name'])}: CHF {chf(abs(x['betrag'] or 0))}</li>" for x in hyp],
+            *[f"<li>{escape(x['name'])}: CHF {chf(abs(x['wert'] or 0))}</li>" for x in hyp],
             f"<li>Anteil im Todesfall siehe <a href=\"nachlass\">Nachlass</a></li>",
         ]) + "</ul>")
     # Kontakte (Formular)
@@ -2139,3 +2222,63 @@ def notfall(k: dict, db) -> str:
             + lieg
             + karte("Testament, Vorsorgeauftrag, Begünstigungen", nachlass_html)
             + form)
+
+
+# ---------------------------------------------------------------- Jahresbericht
+
+def bericht(k: dict, db, q: dict | None = None) -> str:
+    import bericht as br
+    q = q or {}
+    heute = date.today()
+    try:
+        jahr = int((q.get("jahr") or [heute.year])[0])
+    except ValueError:
+        jahr = heute.year
+    b = br.erstellen(k, db, jahr, heute)
+    staende = br.staende(db)
+    erstes = int(staende[0][0][:4]) if staende else heute.year
+    jahre = "".join(f'<option{" selected" if j == jahr else ""}>{j}</option>' for j in range(min(erstes, heute.year - 3), heute.year + 1))
+    kopf = (f'<form method="get" action="bericht" class="nicht-drucken"><div class="zeile">'
+            f'<label>Jahr<select name="jahr" onchange="this.form.submit()">{jahre}</select></label></div></form>'
+            f'<div class="druck-kopf"><b>Jahresbericht {jahr} – {escape(str(k["haushalt"].get("name") or ""))}</b> · '
+            f'erstellt {heute:%d.%m.%Y}</div>')
+
+    def datum_txt(d):
+        return f"{d[8:10]}.{d[5:7]}.{d[:4]}" if len(d) >= 10 else "–"
+
+    zeilen = []
+    for z in b.zeilen:
+        einheit = (lambda v: f"{v:.1f} %") if z.schluessel == "sparquote" else chf
+        d = z.differenz
+        klasse = "gut" if z.besser else "schlecht" if z.besser is False else ""
+        delta = ("–" if d is None else
+                 f'<span class="{klasse}">{"+" if d > 0 else "−" if d < 0 else "±"}'
+                 f'{(f"{abs(d):.1f}" if z.schluessel == "sparquote" else chf(abs(d)))}</span>')
+        zeilen.append([escape(z.titel), einheit(z.vorher) if z.vorher is not None else "–",
+                       einheit(z.jetzt) if z.jetzt is not None else "–", delta])
+    kz = (tabelle(["Kennzahl", "Vorjahr", str(jahr), "±"], zeilen)
+          + f'<p class="leise">Stand Vorjahr: {datum_txt(b.stand_vorjahr)}, Stand {jahr}: {datum_txt(b.stand)}.</p>'
+          if zeilen else '<p class="leer">Noch keine Kennzahlen.</p>')
+    if not b.stand_vorjahr:
+        kz += ('<p class="leise">Für das Vorjahr gibt es noch keinen gespeicherten Stand. Ab jetzt hält die App jeden Monat '
+               'einen Stand fest; das Nettovermögen wird, wo möglich, aus den Saldi per Jahresende ergänzt.</p>')
+    # Verlauf des Nettovermögens aus den Saldi
+    verlauf = karte("Nettovermögen", dg.linie({"Nettovermögen": vm.verlauf(db, monate=60)}))
+    ampel_zeilen = []
+    for bereich, s_ in sorted(b.ampeln.items(), key=lambda x: {am.ROT: 0, am.GELB: 1}.get(x[1], 2)):
+        v = b.ampeln_vorjahr.get(bereich)
+        ampel_zeilen.append([f"{licht(s_)} {escape(bereich)}", f"{licht(v)} {escape(am.TEXT.get(v, ''))}" if v else "–"])
+    ampeln = karte("Ampeln", tabelle(["Bereich", "Vorjahr"], ampel_zeilen, zahlen_ab=9) if ampel_zeilen else
+                   '<p class="leer">Keine Ampeln.</p>')
+    aussagen = karte("Das Wichtigste", hinweisliste(b.aussagen) if b.aussagen else
+                     '<p class="leise">Noch kein Vergleich möglich – der Bericht wird mit jedem gespeicherten Stand aussagekräftiger.</p>')
+    mass = ""
+    if b.massnahmen:
+        mz = [[escape(w), escape(t), f'<a class="nicht-drucken" href="{escape(s_)}">öffnen</a>'] for w, t, s_ in b.massnahmen]
+        mass = karte("Massnahmen für die nächsten 12 Monate", tabelle(["Wann", "Was", ""], mz, zahlen_ab=9))
+    knoepfe = ('<form method="post" action="bericht/stand" class="nicht-drucken"><div class="zeile">'
+               '<button class="zweit">Stand jetzt speichern</button>'
+               '<button type="button" onclick="window.print()">Drucken bzw. als PDF sichern</button></div></form>'
+               f'<p class="leise nicht-drucken">{len(staende)} gespeicherte Monatsstände. Die App speichert jeden Monat '
+               'automatisch einen Stand; «Stand jetzt speichern» ersetzt den Stand des laufenden Monats.</p>')
+    return kopf + aussagen + karte("Kennzahlen im Vergleich", kz) + verlauf + ampeln + mass + knoepfe

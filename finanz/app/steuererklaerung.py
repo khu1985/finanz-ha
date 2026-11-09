@@ -225,7 +225,9 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
                  "kredit": "Schuldbestätigung", "immobilie": "Steuerwert laut Veranlagung",
                  "vorsorge": "Rückkaufswert per 31.12. (3b) – Konten der Säule 3a nicht deklarieren"}.get(x["art"], "Nachweis per 31.12.")
         if s and abs((date.fromisoformat(s[0]) - stichtag).days) <= 31:
-            wert, status = f"CHF {_chf(abs(s[1]))} am {date.fromisoformat(s[0]):%d.%m.%Y}", "daten"
+            w = x.get("waehrung") or "CHF"
+            betrag = f"{w} {_chf(abs(s[1]))}" + (" – Steuerwert zum Kurs der ESTV-Kursliste per 31.12." if w != "CHF" else "")
+            wert, status = f"{betrag} am {date.fromisoformat(s[0]):%d.%m.%Y}", "daten"
         elif stichtag >= heute:
             wert, status = "Saldo per 31.12. nach Jahresende erfassen", "beleg"
         else:

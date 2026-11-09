@@ -1,5 +1,8 @@
 flowchart TD
     W["Liegenschaft<br/>Wert, Hypothek, Fälligkeit"] --> AM
+    W --> ER["Bauteile und Lebensdauer<br/>Erneuerungen über 30 Jahre"]
+    ER --> FO["Erneuerungsfonds pro Monat<br/>Kosten ÷ Lebensdauer, nie im Minus"]
+    ER --> SA["Unterhaltsabzug<br/>bis zum Wegfall des Eigenmietwerts"]
     L["Liquide Mittel<br/>ohne «nicht antasten»"] --> AM
     S["Sparen bis Fälligkeit"] --> AM
     VP["Verpfändete 3a/3b<br/>− Steuer beim Bezug"] --> AM
