@@ -200,6 +200,14 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
   höchstens 50 % der Prämie). Ergebnis: optimale Franchise, Ersparnis, Kosten bei 0 bis 10'000 Franken
   Gesundheitskosten, ab welchen Kosten die tiefste Franchise lohnt, Hinweise zu Hausarzt/Telmed (`rabatt_modell`) und
   Unfall sistieren. Eigene Offerten unter `krankenkasse.personen[].angebote` (`{2500: 380.50}`). Wechsel bis 30. November.
+- **Krankenkassen-Policen:** Policen mit Grund- und Zusatzversicherung im gleichen PDF werden seitenweise gelesen
+  (Monatsprämie, Modell, Franchise, Unfalldeckung und Unfallanteil, versicherte Person und Geburtsdatum,
+  Versicherten-Nr., gültig ab, erste Anlaufstelle, Prämienregion); die Zusatzversicherung wird ein eigener Vertrag
+  mit Produkten und Rabatten. Die Grundversicherung geht beim Hochladen direkt in den Krankenkassen-Rechner (ein Kind
+  unter anderem Namen wird dem einzigen Kind ohne Police zugeordnet). Die Karte zeigt alle Policen mit Grund- und
+  Zusatzprämien sowie Empfehlungen: günstigeres Modell bei der gleichen Kasse, Frist 30.11., Unfalldeckung
+  (8-Stunden-Regel), Modelle für Kinder, Zusatzversicherungen erst nach Zusage der neuen Kasse kündigen,
+  Zahnversicherung für Kinder, Notfälle im Ausland.
 - **Risiko Invalidität und Tod** pro Person: IV-Rente der AHV, PK und externe Policen gegenüber dem Lohn; Renten für
   Hinterbliebene und Todesfallkapital gegenüber dem Richtwert
 

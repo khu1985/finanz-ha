@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.17.2 – 2026-11-09
+
+- **Krankenkassen-Policen genauer auslesen:** Policen mit Grund- und Zusatzversicherung im gleichen PDF (z. B. Atupri)
+  werden seitenweise gelesen: Monatsprämie, Modell (Standard, Hausarzt/CareMed, HMO, Telmed), Franchise, Unfalldeckung
+  samt Unfallanteil, versicherte Person mit Geburtsdatum, Versicherten-Nr., gültig ab, erste Anlaufstelle (Arzt bzw.
+  Praxis), Prämienregion; die Zusatzversicherung wird als eigener Vertrag mit Produkten, Rabatten und Prämie erfasst
+- KVG-Policen werden beim Hochladen automatisch in den Krankenkassen-Rechner übernommen (Kinder auch unter anderem
+  Namen); die Karte zeigt eine Übersicht aller Policen mit Grund- und Zusatzprämien pro Monat und Jahr
+- Neue Empfehlungen: günstigeres Modell bei der gleichen Kasse im Haushalt, Frist 30.11. mit verbleibenden Tagen,
+  Unfalldeckung (8-Stunden-Regel, ohne Lohn), Modelle für Kinder, Zusatzversicherungen nicht vor einer Zusage kündigen,
+  Zahnversicherung für Kinder, Notfälle im Ausland; Hinweis, wenn keine Gesundheitskosten erfasst sind
 ## 0.17.1 – 2026-11-09
 
 - **Upload mehrerer Dateien:** Home Assistant nimmt pro Anfrage höchstens 16 MB an («Maximum request body size

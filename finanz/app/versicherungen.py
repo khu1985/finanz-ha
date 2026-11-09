@@ -107,10 +107,16 @@ def tabellen(db) -> None:
         );
         """
     )
+    spalten = {r[1] for r in db.execute("PRAGMA table_info(vertraege)")}
+    for name, typ in (("modell", "TEXT NOT NULL DEFAULT ''"), ("geburtsdatum", "TEXT NOT NULL DEFAULT ''"),
+                      ("unfall_praemie", "REAL NOT NULL DEFAULT 0"), ("produkte", "TEXT NOT NULL DEFAULT ''")):
+        if name not in spalten:
+            db.execute(f"ALTER TABLE vertraege ADD COLUMN {name} {typ}")
 
 
 FELDER = ["sparte", "versicherer", "police", "person", "praemie_jahr", "beginn", "ablauf",
-          "kuendigungsfrist_monate", "franchise", "selbstbehalt", "summe", "unfall_eingeschlossen", "notiz"]
+          "kuendigungsfrist_monate", "franchise", "selbstbehalt", "summe", "unfall_eingeschlossen", "notiz",
+          "modell", "geburtsdatum", "unfall_praemie", "produkte"]
 
 
 def ordner(daten: Path) -> Path:
@@ -128,6 +134,7 @@ def hochladen(db, daten: Path, dateiname: str, inhalt: bytes) -> int:
     tabellen(db)
     text = text_auslesen(dateiname, inhalt)
     erkannt = erkennen(text)
+    zusatz = erkannt.pop("_zusatz", None)
     cur = db.execute(
         "INSERT INTO vertraege (dateiname, hochgeladen, text) VALUES (?, ?, ?)",
         (_sicherer_name(dateiname), datetime.now().isoformat(timespec="seconds"), text))
@@ -137,6 +144,11 @@ def hochladen(db, daten: Path, dateiname: str, inhalt: bytes) -> int:
     pfad.write_bytes(inhalt)
     db.execute("UPDATE vertraege SET datei = ? WHERE id = ?", (pfad.name, vid))
     aktualisieren(db, vid, erkannt, quelle="muster" if text.strip() else "ohne Text")
+    if zusatz:
+        # Krankenkassen-Police mit Zusatzversicherung im gleichen PDF: eigener Vertrag (eigene Prämie, eigene Fristen)
+        cur = db.execute("INSERT INTO vertraege (dateiname, hochgeladen, text, datei) VALUES (?, ?, ?, ?)",
+                         (_sicherer_name(dateiname), datetime.now().isoformat(timespec="seconds"), text, pfad.name))
+        aktualisieren(db, cur.lastrowid, zusatz, quelle="muster")
     return vid
 
 
@@ -167,7 +179,7 @@ def einer(db, vid: int) -> dict | None:
 
 def loeschen(db, daten: Path, vid: int) -> None:
     v = einer(db, vid)
-    if v and v["datei"]:
+    if v and v["datei"] and not db.execute("SELECT 1 FROM vertraege WHERE datei = ? AND id <> ?", (v["datei"], vid)).fetchone():
         (ordner(daten) / v["datei"]).unlink(missing_ok=True)
     db.execute("DELETE FROM vertraege WHERE id = ?", (vid,))
     db.commit()
@@ -180,7 +192,7 @@ def text_auslesen(dateiname: str, inhalt: bytes) -> str:
         try:
             from pypdf import PdfReader
             leser = PdfReader(io.BytesIO(inhalt))
-            return "\n".join((s.extract_text() or "") for s in leser.pages[:40])
+            return "\n\f\n".join((s.extract_text() or "") for s in leser.pages[:40])
         except Exception as e:  # noqa: BLE001
             LOG.warning("PDF %s nicht lesbar: %s", dateiname, e)
             return ""
@@ -248,7 +260,135 @@ def praemie_erkennen(text: str) -> float:
     return round(max(w for g, w in kandidaten if g == gewicht), 2)
 
 
+# ---------------------------------------------------------------- Krankenkassen-Policen (KVG mit VVG)
+
+KK_MODELLE = [  # Stichwort in der Produktbezeichnung → Modell
+    (r"\bhmo\b|gesundheitszentrum|praxis-?modell|\bpraxis\b", "hmo"),
+    (r"telmed|callmed|medcall|telemed|smartmed|medgate|telefon", "telmed"),
+    (r"hausarzt|caremed|casamed|familiendoktor|gp-|primeo|my ?doc|benefit plus hausarzt|carenet", "hausarzt"),
+    (r"standard|freie arztwahl|basis", "standard"),
+]
+_BETRAG_KK = r"(-?[0-9]{1,3}(?:[,'’][0-9]{3})*[.,][0-9]{2})"
+
+
+def _kk_zahl(t: str) -> float:
+    t = t.replace("’", "").replace("'", "")
+    return float(t.replace(",", "")) if "." in t else float(t.replace(",", "."))
+
+
+def _kk_seite(seite: str) -> dict:
+    """Eine Seite einer Krankenkassen-Police (KVG oder VVG) auslesen."""
+    e: dict = {}
+    t = seite
+    m = re.search(_BETRAG_KK + r"\s*\n\s*" + _BETRAG_KK + r"\s*\n\s*Total pro Fakturaperiode", t)
+    if m:
+        e["praemie_jahr"] = round(_kk_zahl(m.group(2)) * 12, 2)       # Total Monatsprämie × 12
+    else:
+        m = re.search(r"(?:(?:total\s+)?monatsprämie|prämie pro monat|monatliche prämie)\D{0,15}" + _BETRAG_KK, t, re.I)
+        if m:
+            e["praemie_jahr"] = round(_kk_zahl(m.group(1)) * 12, 2)
+    m = re.search(r"Versicherte Person:?\s*\n?\s*([^\n]+)", t)
+    if m and not re.search(r"geburt|familien", m.group(1), re.I):
+        e["person"] = m.group(1).strip()
+    m = re.search(r"Geburtsdatum[^:\n]*:?\s*\n?\s*(\d{1,2}\.\d{1,2}\.\d{4})", t)
+    if m:
+        e["geburtsdatum"] = datum_iso(m.group(1))
+    m = re.search(r"Versicherten-?Nr\.?:?\s*\n?\s*([0-9][0-9’'.\s]{3,20}[0-9])", t)
+    if m:
+        e["police"] = re.sub(r"[’'\s]", "", m.group(1))
+    m = re.search(r"Gültig ab:?\s*\n?\s*(\d{1,2}\.\d{1,2}\.\d{4})", t)
+    if m:
+        e["gueltig_ab"] = datum_iso(m.group(1))
+    return e
+
+
+def kk_police(text: str) -> dict | None:
+    """Krankenkassen-Police mit Grund- und Zusatzversicherung (z. B. Atupri, CSS, Helsana …) erkennen.
+
+    Gibt die Werte der Grundversicherung zurück; die Zusatzversicherungen stehen unter `_zusatz` (eigener Vertrag)."""
+    seiten = [s for s in text.split("\f") if s.strip()]
+    kvg = [s for s in seiten if re.search(r"Versicherungspolice KVG|Obligatorische Krankenpflege", s, re.I)]
+    vvg = [s for s in seiten if re.search(r"Versicherungspolice VVG", s, re.I) and s not in kvg]
+    if not kvg:
+        return None
+    versicherer = next((n for n in VERSICHERER if re.search(rf"\b{re.escape(n)}\b", text, re.I)), "")
+    k = kvg[0]
+    erg = {"sparte": "kvg", "versicherer": versicherer, **_kk_seite(k)}
+    erg["beginn"] = erg.pop("gueltig_ab", "")
+    m = re.search(r"Obligatorische Krankenpflege,?\s*([^\n]+)", k, re.I)
+    produkt = m.group(1).strip() if m else ""
+    for quelle in (produkt, k):
+        treffer = next((modell for muster, modell in KK_MODELLE if quelle and re.search(muster, quelle, re.I)), None)
+        if treffer:
+            erg["modell"] = treffer
+            break
+    m = re.search(r"Jahresfranchise\D{0,10}" + BETRAG, k, re.I) or re.search(r"franchise\D{0,20}" + BETRAG, k, re.I)
+    if m:
+        erg["franchise"] = zahl(m.group(1))
+    tk = k.lower()
+    if re.search(r"ohne unfall", tk):
+        erg["unfall_eingeschlossen"] = 0
+    elif re.search(r"mit unfall", tk):
+        erg["unfall_eingeschlossen"] = 1
+    m = re.search(r"(?:unfallausschluss|prämienanteil für unfall|unfallanteil|unfalldeckung)\D{0,30}" + _BETRAG_KK, k, re.I)
+    if m:
+        erg["unfall_praemie"] = round(_kk_zahl(m.group(1)) * 12, 2)
+    teile = []
+    m = re.search(r"(?:Ihr/?e?\s+)?[\w-]+-(?:Arzt/Ärztin|Arzt|Ärztin|Praxis)\s+([^\n]+)", k)
+    if m:
+        teile.append(f"Erste Anlaufstelle: {m.group(1).strip()}")
+    m = re.search(r"Prämie:\s*Kanton ([^\n,]+),\s*(Region \d)", k)
+    if m:
+        teile.append(f"Prämienregion {m.group(1).strip()} {m.group(2)}")
+    if produkt:
+        teile.append(f"Produkt: {produkt}")
+    erg["notiz"] = "; ".join(teile)
+    if vvg:
+        v = vvg[0]
+        z = {"sparte": "vvg", "versicherer": versicherer, **_kk_seite(v)}
+        gueltig = z.pop("gueltig_ab", "")
+        produkte = []
+        zeilen = [x.strip() for x in v.splitlines()]
+        for i in range(1, len(zeilen)):
+            name, davor = zeilen[i], zeilen[i - 1]
+            if (re.fullmatch(_BETRAG_KK, davor) and not davor.startswith("-") and re.search(r"[A-Za-zÄÖÜäöü]{3}", name)
+                    and not re.match(r"-|total|monatsprämie|sie sind|gemäss", name, re.I)):
+                produkte.append(f"{name} ({davor}/Monat)")
+        rabatte = [x.strip("- ") for x in zeilen if re.search(r"rabatt", x, re.I)]
+        z["produkte"] = "; ".join(produkte)
+        z["notiz"] = "; ".join(produkte + rabatte)
+        if gueltig:
+            z["ablauf"] = f"{gueltig[:4]}-12-31"         # Zusatzversicherung: meist jährlich auf Ende Kalenderjahr
+        z["kuendigungsfrist_monate"] = 3
+        if re.search(r"zahnbehandlung|denta|zahn", v, re.I):
+            z["notiz"] += "; inkl. Zahnbehandlungen"
+        m = re.search(r"Versicherungssumme bei Invalidität\D{0,10}" + BETRAG, v, re.I)
+        if m:
+            z["summe"] = zahl(m.group(1))
+        erg["_zusatz"] = z
+    return erg
+
+
 def erkennen(text: str) -> dict:
+    erg: dict = {}
+    if not text.strip():
+        return erg
+    kk = kk_police(text)
+    if kk:
+        # Lücken mit der allgemeinen Erkennung auf der Seite der Grundversicherung füllen
+        seite = next((x for x in text.split("\f") if re.search(r"Versicherungspolice KVG|Obligatorische Krankenpflege",
+                                                               x, re.I)), text)
+        allgemein = _allgemein(seite)
+        for schluessel, wert in allgemein.items():
+            if schluessel != "sparte" and kk.get(schluessel) in (None, "", 0) and wert not in (None, ""):
+                if schluessel == "praemie_jahr" and not wert:
+                    continue
+                kk[schluessel] = wert
+        return kk
+    return _allgemein(text)
+
+
+def _allgemein(text: str) -> dict:
     erg: dict = {}
     if not text.strip():
         return erg

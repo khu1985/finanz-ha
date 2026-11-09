@@ -56,7 +56,11 @@ def einlesen(daten: Path, db) -> list[str]:
                 n, fehler = vi.csv_import(db, inhalt)
                 meldungen.append(f"{pfad.name}: {n} Verträge" + (f", {len(fehler)} übersprungen" if fehler else ""))
             elif name.endswith(".pdf") and (name.startswith("versicherung") or name.startswith("police")):
-                vi.hochladen(db, daten, pfad.name, inhalt)
+                vid = vi.hochladen(db, daten, pfad.name, inhalt)
+                import krankenkasse as kk
+                kc = konfig.laden()
+                if kk.police_uebernehmen(kc, vi.einer(db, vid)):
+                    konfig.speichern(kc)
                 meldungen.append(f"{pfad.name}: Versicherungsvertrag analysiert")
             elif name.endswith(".pdf") and (name.startswith("steuer") or name.startswith("veranlagung")):
                 sd.hochladen(db, daten, pfad.name, inhalt)

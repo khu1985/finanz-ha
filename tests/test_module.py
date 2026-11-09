@@ -1037,3 +1037,33 @@ def test_text_status():
     assert seiten.text_status("kurz")[0] == am.GELB
     assert seiten.text_status("x" * 500)[0] == am.GRUEN
     assert "Kein Text in der Datei gefunden" in seiten.text_karte("", False)
+
+
+def test_krankenkassen_police_kvg_vvg(k, db, tmp_path):
+    import krankenkasse as kk
+    from policen import KK_POLICE
+    e = vi.erkennen(KK_POLICE)
+    z = e.pop("_zusatz")
+    assert e["sparte"] == "kvg" and e["versicherer"] == "Atupri" and e["person"] == "Muster Anna"
+    assert e["praemie_jahr"] == pytest.approx(422.15 * 12) and e["modell"] == "hausarzt" and e["franchise"] == 2500
+    assert e["unfall_eingeschlossen"] == 0 and e["unfall_praemie"] == 270 and e["police"] == "1234567"
+    assert e["geburtsdatum"] == "1985-03-12" and e["beginn"] == "2027-01-01" and "Dr. Beispiel" in e["notiz"]
+    assert z["sparte"] == "vvg" and z["praemie_jahr"] == pytest.approx(315) and z["ablauf"] == "2027-12-31"
+    assert "Mivita Reala (22.80/Monat)" in z["produkte"] and "UTI" in z["produkte"] and z["summe"] == 200_000
+    # Hochladen: zwei Verträge aus einem PDF, gemeinsame Datei
+    vid = vi.hochladen(db, tmp_path, "kk.txt", KK_POLICE.encode())
+    alle = vi.alle(db)
+    assert {v["sparte"] for v in alle} == {"kvg", "vvg"} and len({v["datei"] for v in alle}) == 1
+    # In den Krankenkassen-Rechner übernehmen
+    p1 = k["personen"][0]
+    p1["name"] = "Anna"
+    assert kk.police_uebernehmen(k, vi.einer(db, vid)) == "Anna"
+    eintrag = k["krankenkasse"]["personen"][0]
+    assert eintrag["franchise"] == 2500 and eintrag["modell"] == "hausarzt" and eintrag["unfall"] is False
+    ps = {p.name: p for p in kk.personen(k, vi.alle(db))}
+    assert ps["Anna"].unfall_praemie == 270 and ps["Anna"].anlaufstelle.startswith("Dr. Beispiel")
+    h = kk.haushalt_hinweise(k, vi.alle(db), date(2026, 11, 9))
+    assert any("30.11." in x for x in h) and any("Zahnspange" in x for x in h)
+    # Datei bleibt, solange der zweite Vertrag sie nutzt
+    vi.loeschen(db, tmp_path, vid)
+    assert (tmp_path / "versicherungen" / alle[0]["datei"]).exists()

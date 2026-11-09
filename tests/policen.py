@@ -121,3 +121,56 @@ Steuerpflichtige Person: Person 1
 Steuerbares Einkommen Staat 131'200 Bund 135'000
 Staats- und Gemeindesteuer 20'200.00
 """
+
+# Krankenkassen-Police wie bei vielen Kassen: Seite 1 Grundversicherung, Seite 2 Zusatzversicherung (\f = Seitenwechsel)
+KK_POLICE = """5,065.80
+422.15
+Total pro Fakturaperiode  (jährlich)
+Total Monatsprämie
+426.90
+Obligatorische Krankenpflege, CareMed
+-
+Prämie: Kanton Musterland, Region 1, Wohngemeinde Musterdorf
+-
+Jahresfranchise CHF 2'500.00
+-
+Ohne Unfalldeckung, die Prämienreduktion für den Unfallausschluss beträgt CHF 22.50
+-
+Ihr/e CareMed-Arzt/Ärztin Dr. Beispiel, 9999 Musterdorf
+-4.75
+Versicherungspolice KVG
+Versicherte Person:
+Muster Anna
+Geburtsdatum/Geschl.:
+12.03.1985/m
+Versicherten-Nr.:
+1’234’567
+Gültig ab:
+01.01.2027
+Atupri Gesundheitsversicherung AG
+\f
+315.00
+26.25
+Total pro Fakturaperiode  (jährlich)
+Total Monatsprämie
+4.60
+UTI - Kapital-Unfallversicherung bei Tod und Invalidität
+-
+Versicherungssumme bei Invalidität CHF 200'000.00
+22.80
+Mivita Reala
+-
+Zahnbehandlungen gemäss Versicherung Denta
+-
+Der Familienrabatt von 35% ist von der Prämie bereits abgezogen.
+-1.15
+Monatsprämie CHF
+Versicherungspolice VVG
+Versicherte Person:
+Muster Kind
+Geburtsdatum/Geschl.:
+13.10.2021/m
+Gültig ab:
+01.01.2027
+Atupri Gesundheitsversicherung AG
+"""

@@ -1754,11 +1754,24 @@ def krankenkasse_karte(k: dict, db) -> str:
             f'<select name="franchise_{i}">{fr}</select>',
             f'<input name="kosten_{i}" value="{p.kosten_jahr:g}" inputmode="decimal" style="min-width:90px">',
             f'<select name="modell_{i}">{mo}</select>', f'<select name="unfall_{i}">{un}</select>'])
+    policen = [p for p in personen if p.versicherer or p.zusatz_monat]
+    policen_html = ""
+    if policen:
+        pz = [[f"<b>{escape(p.name)}</b>" + (" (Kind)" if p.kind else ""), escape(p.versicherer or "–"),
+               escape(kk.MODELLE.get(p.modell, p.modell)), chf(p.franchise), "ja" if p.unfall else "nein",
+               chf(p.praemie_monat), chf(p.zusatz_monat) if p.zusatz_monat else "–",
+               escape(p.anlaufstelle or "–"), escape(p.zusatz or "–")] for p in policen]
+        total = sum(p.praemie_monat + p.zusatz_monat for p in policen)
+        pz.append(["<b>Total</b>", "", "", "", "", chf(sum(p.praemie_monat for p in policen)),
+                   chf(sum(p.zusatz_monat for p in policen)), f"<b>{chf(total)}/Monat · {chf(total * 12)}/Jahr</b>", ""])
+        policen_html = ("<h2>Policen</h2>" + tabelle(["Person", "Kasse", "Modell", "Franchise", "Unfall", "Grund/Monat",
+                                                      "Zusatz/Monat", "Erste Anlaufstelle", "Zusatzversicherungen"], pz)
+                        + hinweisliste(kk.haushalt_hinweise(k, vertraege)))
     form = (f'<form method="post" action="versicherungen/krankenkasse" data-status="Franchisen werden berechnet …">'
             + tabelle(["Person", "Prämie/Monat 2027", "Franchise", "Gesundheitskosten/Jahr", "Modell", "Unfall"], zeilen, zahlen_ab=9)
             + '<div class="zeile"><button>Speichern und rechnen</button></div></form>')
     if not ergebnisse:
-        return karte("Krankenkasse: Franchise und Modell", '<p class="leise">Prämie pro Monat und erwartete Gesundheitskosten '
+        return karte("Krankenkasse: Franchise und Modell", policen_html + '<p class="leise">Prämie pro Monat und erwartete Gesundheitskosten '
                      '(Arzt, Medikamente, Therapien – was die Grundversicherung bezahlt) eintragen.</p>' + form)
     total_heute = sum(e.kosten.get(e.person.franchise, 0) for e in ergebnisse.values())
     total_best = sum(e.kosten[e.beste] for e in ergebnisse.values())
@@ -1785,7 +1798,8 @@ def krankenkasse_karte(k: dict, db) -> str:
             'höchstens 50 % der Prämie). Genaue Prämien und Kassenvergleich: priminfo.admin.ch; eigene Offerten unter '
             '<code>krankenkasse.personen[].angebote</code> (Franchise: Prämie/Monat) eintragen. Wechsel oder Franchise-Änderung '
             'bis 30. November eingeschrieben, Erhöhung der Franchise auch bei der eigenen Kasse.</p>' if geschaetzt else "")
-    return karte("Krankenkasse: Franchise und Modell", f'<div class="kpis">{kpis}</div>' + hinweisliste(hinweise)
+    return karte("Krankenkasse: Franchise und Modell", f'<div class="kpis">{kpis}</div>' + policen_html
+                 + "<h2>Empfehlungen</h2>" + hinweisliste(hinweise)
                  + "".join(teile) + fuss + "<details><summary>Angaben bearbeiten</summary>" + form + "</details>")
 
 

@@ -481,9 +481,15 @@ class Handler(BaseHTTPRequestHandler):
                 dateien = form.get("_dateien_datei") or []
                 ids = [vi.hochladen(v, daten, n, inhalt) for n, inhalt in dateien if inhalt]
                 LOG.info("%d Versicherungsverträge hochgeladen", len(ids))
-                if len(ids) == 1:
+                import krankenkasse as kk
+                k = konfig.laden()
+                kvg = [n for vid in ids if (n := kk.police_uebernehmen(k, vi.einer(v, vid)))]
+                if kvg:
+                    konfig.speichern(k)
+                zusatz = f" Grundversicherung von {', '.join(kvg)} in den Krankenkassen-Rechner übernommen." if kvg else ""
+                if len(ids) == 1 and not kvg:
                     return "Vertrag analysiert – bitte die erkannten Werte prüfen.", f"versicherungen/{ids[0]}"
-                return f"{len(ids)} Verträge analysiert."
+                return f"{len(ids)} Dokument(e) analysiert.{zusatz}"
             if pfad == "versicherungen/krankenkasse":
                 k = konfig.laden()
                 liste = []
