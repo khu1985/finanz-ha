@@ -65,3 +65,24 @@ def test_eigenmietwert_wegfall(k):
     k["wohnen"].update(eigenmietwert=20_000, kaufpreis=1_000_000, eigenmittel=1_000_000)
     e = wo.eigenmietwert_wegfall(k)
     assert e["netto_heute"] == 16_000 and e["steuereffekt"] < 0   # ohne Schulden: Entlastung
+
+
+def test_liegenschaft_teilweise_vermietet(k):
+    k["haushalt"]["zivilstand"] = "ledig"
+    k["wohnen"].update(aktiv=True, eigenmietwert=20_000, vermietet_anteil=38, mieteinnahmen_jahr=29_760,
+                       kaufpreis=1_000_000, eigenmittel=400_000, hypothek_zins=2.0)
+    s = wo.liegenschaft_steuer(k)
+    assert s["eigenmietwert"] == 12_400 and s["mieteinnahmen"] == 29_760 and s["schuldzinsen"] == 12_000
+    p1, p2 = (p["name"] for p in k["personen"])
+    assert wo.eigentum_anteile(k) == {p1: 50, p2: 50}                     # ohne Angabe gleiche Teile
+    h = wo.liegenschaft_steuer(k, p1)
+    assert h["eigenmietwert"] == 6_200 and h["mieteinnahmen"] == 14_880 and h["schuldzinsen"] == 6_000
+    k["personen"][0]["eigentum_anteil"] = 70                              # Rest an die andere Person
+    assert wo.eigentum_anteile(k) == {p1: 70, p2: 30}
+    e = wo.eigenmietwert_wegfall(k, aktiven_uebrig=0)
+    assert e["zins_quote"] == 38 and e["netto_nachher"] == round(29_760 - 12_000 * 0.38 - 29_760 * 0.2)
+    import pruefung
+    k["wohnen"]["mieteinnahmen_jahr"] = 0
+    assert pruefung.pruefen(k, "wohnen.vermietet_anteil")[0] == "gelb"
+    k["personen"][1]["eigentum_anteil"] = 50
+    assert pruefung.pruefen(k, "personen.0.eigentum_anteil")[0] == "rot"  # 120 %

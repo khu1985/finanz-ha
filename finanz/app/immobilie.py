@@ -174,7 +174,10 @@ def planen(k: dict, db=None, heute: date | None = None) -> Plan | None:
     if vor_wechsel and abzug_bis < heute.year + HORIZONT:
         hinw.append(f"Werterhaltende Arbeiten sind nur bis {abzug_bis} abziehbar (Wegfall Eigenmietwert ab {abschaffung}). "
                     f"Fällige Arbeiten bis dahin (CHF {_chf(vor_wechsel)}) sparen rund CHF {_chf(vor_wechsel * grenz)} "
-                    "Steuern; anstehende Erneuerungen vorzuziehen kann sich lohnen.")
+                    "Steuern; anstehende Erneuerungen vorzuziehen kann sich lohnen."
+                    + (f" Für den vermieteten Teil ({_zahl(k['wohnen'].get('vermietet_anteil')):g} %) bleiben Unterhaltskosten "
+                       "auch danach abziehbar – Rechnungen nach Nutzung aufteilen."
+                       if _zahl(k["wohnen"].get("vermietet_anteil")) else ""))
     gross = [f for f in faellig if f.kosten >= 20000 and f.jahr <= max(abzug_bis, heute.year + 5)]
     if gross:
         hinw.append("Grössere Arbeiten (ab CHF 20'000) wenn möglich auf zwei Steuerjahre verteilen (Rechnungen bzw. Etappen) – "

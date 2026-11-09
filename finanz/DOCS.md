@@ -144,6 +144,23 @@ heute liquide Mittel (ohne die Arten unter `wohnen.nicht_antasten`) + Sparen bis
 3a/3b − Steuer beim Bezug − geplante PK-Einkäufe (nach Steuerersparnis) − Notreserve, verglichen mit Ziel- und
 Maximal-Amortisation.
 
+### Teilweise vermietet und Miteigentum
+
+| Einstellung | Bedeutung |
+|---|---|
+| Wohnen → Eigenmietwert | Eigenmietwert der **ganzen** Liegenschaft, wie wenn alles selbst bewohnt wäre |
+| Wohnen → Vermieteter Anteil % | z. B. 38 für eine Einliegerwohnung; der Eigenmietwert gilt nur für den Rest (62 %) |
+| Wohnen → Mieteinnahmen/Jahr | brutto für die ganze Liegenschaft |
+| Person → Anteil an der Liegenschaft % | Eigentumsanteil für getrennte Erklärungen (Konkubinat, Miteigentum); 0 = Rest zu gleichen Teilen |
+
+Beispiel: Eigenmietwert 40'000, 38 % vermietet, Mieteinnahmen 29'760, Miteigentum je 50 % → jede Person deklariert
+Eigenmietwert 12'400 (40'000 × 62 % × 50 %), Mieteinnahmen 14'880 und die Hälfte der Schuldzinsen; die
+Unterhaltspauschale (10 % bei Gebäuden bis 10 Jahre, sonst 20 %) gilt auf Eigenmietwert und Mieteinnahmen.
+Die Seite Wohnen zeigt das heute und ab 2029: Für den vermieteten Teil bleiben Mieteinnahmen steuerbar und
+Unterhalt abziehbar, Schuldzinsen nur noch im Verhältnis der vermieteten Liegenschaft zum Gesamtvermögen. Die
+Steuererklärungs-Checkliste und der Nachlass rechnen mit denselben Anteilen. Beim Übernehmen aus einem
+Steuerdokument rechnet die App den deklarierten Eigenmietwert und Mietertrag auf die ganze Liegenschaft hoch.
+
 ## Vermögen
 
 Konten mit Art (Bank, Wertschriften, Krypto, Vorsorge 3b, Immobilie, Hypothek, Kredit, Sonstiges) und Person.
@@ -269,7 +286,7 @@ Für jeden Todesfall (Person A stirbt, Person B stirbt) zeigt die Seite, was der
 | Erbschaftssteuer | nach Wohnkanton (`nachlass.erbschaftssteuer` überschreibt); BL: Konkubinat ab 5 Jahren gemeinsamem Wohnsitz (`nachlass.zusammen_seit`) 15 % nach 30'000, sonst 30 % nach 10'000; Ehegatten befreit |
 | AHV, Pensionskasse | Witwen-/Witwerrente bzw. Waisenrenten; PK-Lebenspartnerrente nur, wenn gemeldet |
 | Todesfallkapital, 3a | aus Risiko-Angaben und Begünstigung |
-| Liegenschaft | Anteil (`nachlass.anteil_immobilie`) – was an die Erben auszuzahlen wäre, um die Liegenschaft zu behalten |
+| Liegenschaft | Anteil (Person → «Anteil an der Liegenschaft», sonst `nachlass.anteil_immobilie`) – was an die Erben auszuzahlen wäre, um die Liegenschaft zu behalten |
 
 Die **Checkliste** pro Person (Testament, PK-Partnerschaft gemeldet, Begünstigung 3a und Policen, Vorsorgeauftrag,
 Patientenverfügung, Konkubinatsvertrag, Regelung Liegenschaft, Willensvollstrecker, Notfallordner) wird unter
@@ -638,7 +655,7 @@ oder **Einstellungen → Experte**.
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder)), Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
-| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
+| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (ganze Liegenschaft), `vermietet_anteil`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |

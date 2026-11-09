@@ -618,12 +618,52 @@ def steuern(k: dict, db) -> str:
 
 # ---------------------------------------------------------------- Wohnen
 
+def liegenschaft_steuer_html(k: dict, e: dict) -> tuple[str, str]:
+    """Steuerwerte der Liegenschaft heute und nach dem Wegfall des Eigenmietwerts (gemischte Nutzung, Anteile)."""
+    gemischt = e["vermietet"] > 0 or e["mieteinnahmen"]
+    z = []
+    if e["vermietet"]:
+        z += [["Eigenmietwert ganze Liegenschaft", chf(e["emw_voll"]), ""],
+              [f"Eigenmietwert selbst bewohnt ({e['selbst']:g}&nbsp;%)", chf(e["eigenmietwert"]), "–"]]
+    else:
+        z.append(["Eigenmietwert", chf(e["eigenmietwert"]), "–"])
+    if e["mieteinnahmen"]:
+        z.append([f"+ Mieteinnahmen ({e['vermietet']:g}&nbsp;% vermietet)", chf(e["mieteinnahmen"]), chf(e["mieteinnahmen"])])
+    zq = f" ({e['zins_quote']:g}&nbsp;% abziehbar)" if gemischt else ""
+    z.append([f"− Schuldzinsen{zq}", chf(-e["schuldzinsen"]), chf(-e["zinsen_nachher"]) if gemischt else "–"])
+    z.append([f"− Unterhalt (Pauschale {e['pauschal']:g}&nbsp;%)", chf(-e["unterhalt"]),
+              chf(-e["unterhalt_nachher"]) if gemischt else "–"])
+    z.append(["<b>Netto versteuert</b>", f"<b>{chf(e['netto_heute'])}</b>", f"<b>{chf(e['netto_nachher'])}</b>"])
+    z.append([f"Steuereffekt ab {e['ab']} (Grenzsatz)", "",
+              f'<b class="{"schlecht" if e["steuereffekt"] > 0 else "gut"}">{chf(e["steuereffekt"], True)}</b>'])
+    html = tabelle(["Position", "heute", f"ab {e['ab']}"], z)
+    html += (f'<p class="leise">Ab {e["ab"]} entfallen Eigenmietwert, Schuldzins- und Unterhaltsabzug für selbst '
+             'bewohntes Eigentum (Volksabstimmung vom 28.9.2025). Positiv = mehr Steuern.'
+             + (" Vermieteter Teil: Mieteinnahmen bleiben steuerbar und Unterhalt abziehbar; Schuldzinsen nur noch im "
+                "Verhältnis der vermieteten Liegenschaft zum Gesamtvermögen (vereinfacht mit Marktwert und Konten)."
+                if gemischt else "") + "</p>")
+    verheiratet = k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet"
+    je_person = ""
+    if not verheiratet and len(k["personen"]) > 1:
+        zeilen = []
+        for p in k["personen"]:
+            s = wo.liegenschaft_steuer(k, p.get("name"))
+            zeilen.append([escape(p.get("name") or ""), f"{s['anteil']:g}&nbsp;%", chf(s["eigenmietwert"]), chf(s["mieteinnahmen"]),
+                           chf(s["schuldzinsen"]), chf(s["unterhalt"]), chf(s["netto"])])
+        je_person = karte("Liegenschaft: Deklaration je Person", tabelle(
+            ["Person", "Anteil", "Eigenmietwert", "Mieteinnahmen", "Schuldzinsen", "Unterhalt pauschal", "Netto"], zeilen)
+            + '<p class="leise">Jede Person deklariert ihren Eigentumsanteil (Einstellungen → Person → «Anteil an der '
+              'Liegenschaft»); Schuldzinsen nach Anteil an der Hypothek – bei solidarischer Haftung nach effektiver Zahlung.</p>')
+    return html, je_person
+
+
 def wohnen(k: dict, db) -> str:
     if not k["wohnen"].get("aktiv"):
         return karte("Wohneigentum", '<p>Unter «Einstellungen» → Wohnen aktivieren und Kaufpreis, '
                      'Eigenmittel und Zins erfassen.</p>')
     t = wo.tragbarkeit(k, date.today().year)
-    e = wo.eigenmietwert_wegfall(k)
+    aktiven = sum(x["wert"] for x in vm.konten(db) if x["wert"] > 0 and x["art"] != "immobilie")
+    e = wo.eigenmietwert_wegfall(k, aktiven)
     kz = k["kennzahlen"]
     kl = "schlecht" if t["quote"] > kz["tragbarkeit_max"] else "gut"
     kpis = "".join([
@@ -643,19 +683,11 @@ def wohnen(k: dict, db) -> str:
         ["<b>Kalkulatorische Kosten</b>", f"<b>{chf(t['kalk_kosten'])}</b>"],
         ["Bruttoeinkommen Haushalt", chf(t["einkommen"])],
     ]) + hinweisliste(t["pruefungen"])
-    emw = tabelle(["Position", "CHF/Jahr"], [
-        ["Eigenmietwert (heute steuerbar)", chf(e["eigenmietwert"])],
-        ["− Schuldzinsen", chf(-e["schuldzinsen"])],
-        ["− Unterhalt (Pauschale 20 %)", chf(-e["unterhalt"])],
-        ["<b>Netto heute versteuert</b>", f"<b>{chf(e['netto_heute'])}</b>"],
-        [f"Steuereffekt ab {e['ab']} (Grenzsatz)",
-         f'<b class="{"schlecht" if e["steuereffekt"] > 0 else "gut"}">{chf(e["steuereffekt"], True)}</b>'],
-    ]) + (f'<p class="leise">Ab {e["ab"]} entfallen Eigenmietwert, Schuldzins- und Unterhaltsabzug für selbst '
-          'bewohntes Eigentum (Volksabstimmung vom 28.9.2025). Positiv = mehr Steuern.</p>')
+    emw, je_person = liegenschaft_steuer_html(k, e)
     a = br.amortisation(k, db)
     amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a)) if a else ""
     return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
-        "Wegfall Eigenmietwert", emw) + "</div>" + amort + liegenschaft_karten(k, db)
+        "Liegenschaft in der Steuererklärung", emw) + "</div>" + je_person + amort + liegenschaft_karten(k, db)
 
 
 def liegenschaft_karten(k: dict, db) -> str:
@@ -808,6 +840,7 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "saeule3a.guthaben", "3a-Guthaben"), (p + "saeule3a.beitrag_jahr", "3a-Beitrag/Jahr"),
         (p + "saeule3a.rendite", "3a-Rendite %"), (p + "saeule3a.konten", "Anzahl 3a-Konten"),
         (p + "pensum", "Pensum % (zum Bruttolohn)"),
+        (p + "eigentum_anteil", "Anteil an der Liegenschaft % (0 = Rest gleich verteilt)"),
         (p + "pk.versicherter_lohn", "Versicherter Lohn PK (0 = Bruttolohn)"),
         (p + "zuzug.datum", "Zuzug in die Schweiz (JJJJ-MM-TT, leer = immer hier)"), (p + "zuzug.land", "Herkunftsland"),
         (p + "zuzug.bewilligung", "Bewilligung (leer/CH, C, B, L)"),
@@ -834,8 +867,10 @@ FELDER_STEUERN = [
 FELDER_WOHNEN = [
     ("wohnen.aktiv", "Wohneigentum rechnen"), ("wohnen.kaufpreis", "Kaufpreis bzw. Verkehrswert"), ("wohnen.eigenmittel", "Eigenmittel"),
     ("wohnen.davon_pk_vorbezug", "davon PK-Vorbezug"), ("wohnen.hypothek_zins", "Hypothekarzins %"),
-    ("wohnen.eigenmietwert", "Eigenmietwert"), ("wohnen.unterhalt_pauschal", "Unterhalt+Nebenkosten % vom Preis"),
-    ("wohnen.mieteinnahmen_jahr", "Mieteinnahmen/Jahr"), ("wohnen.hypothek_faellig", "Hypothek fällig (JJJJ-MM-TT)"),
+    ("wohnen.eigenmietwert", "Eigenmietwert ganze Liegenschaft (vor Reduktion)"),
+    ("wohnen.vermietet_anteil", "Vermieteter Anteil % (Rest selbst bewohnt)"),
+    ("wohnen.mieteinnahmen_jahr", "Mieteinnahmen/Jahr (brutto, ganze Liegenschaft)"),
+    ("wohnen.unterhalt_pauschal", "Unterhalt+Nebenkosten % vom Preis"), ("wohnen.hypothek_faellig", "Hypothek fällig (JJJJ-MM-TT)"),
     ("wohnen.amortisation_ziel", "Ziel-Amortisation bei Fälligkeit"), ("wohnen.amortisation_max", "Maximale Amortisation"),
     ("wohnen.reserve", "Notreserve"),
 ]

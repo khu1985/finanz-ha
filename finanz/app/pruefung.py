@@ -118,6 +118,15 @@ def pruefen(k: dict, pfad: str, heute: date | None = None) -> tuple[str, str]:
             return GELB, "sehr hoch – Prozent pro Jahr?"
     if pfad == "wohnen.eigenmietwert" and not z:
         return GELB, "fehlt – aus der Veranlagung"
+    if pfad == "wohnen.eigenmietwert" and z and _zahl(w.get("kaufpreis")) and z > 0.06 * _zahl(w["kaufpreis"]):
+        return GELB, "über 6 % des Kaufpreises – Mietwert pro Jahr?"
+    if pfad == "wohnen.vermietet_anteil":
+        if z is not None and not 0 <= z < 100:
+            return ROT, "zwischen 0 und 99 % (ganz vermietet = keine Selbstnutzung)"
+        if z and not _zahl(w.get("mieteinnahmen_jahr")):
+            return GELB, "Mieteinnahmen fehlen"
+    if pfad == "wohnen.mieteinnahmen_jahr" and z and not _zahl(w.get("vermietet_anteil")):
+        return GELB, "vermieteter Anteil fehlt – Eigenmietwert wird nicht reduziert"
     if pfad == "wohnen.hypothek_faellig":
         d = _datum(wert)
         if d is False:
@@ -203,6 +212,21 @@ def _person(k, p, feld, wert, z, leer, kz, heute):
             return GELB, "nur einer der beiden Werte erfasst"
         if kap and rente and not 0.03 <= rente / kap <= 0.075:
             return GELB, f"Rente ÷ Kapital = {rente / kap * 100:.1f} % – Werte vertauscht?"
+    if feld == "eigentum_anteil":
+        w = k.get("wohnen") or {}
+        if not w.get("aktiv"):
+            return GRAU, "Wohneigentum nicht aktiv"
+        import wohnen as wo
+        summe = sum(_zahl(x.get("eigentum_anteil")) or 0 for x in k["personen"])
+        if z is not None and not 0 <= z <= 100:
+            return ROT, "zwischen 0 und 100 %"
+        if summe > 100.5:
+            return ROT, f"Summe aller Personen {summe:g} % – höchstens 100 %"
+        auto = wo.eigentum_anteile(k).get(p.get("name") or "", 0)
+        if not z:
+            return GRAU, f"automatisch {auto:g} %"
+        if 0 < summe < 99.5 and all(_zahl(x.get("eigentum_anteil")) for x in k["personen"]):
+            return GELB, f"Summe {summe:g} % – Rest gehört Dritten?"
     if feld == "risiko.partner_bei_pk_gemeldet":
         if verheiratet:
             return GRAU, "nur im Konkubinat nötig"

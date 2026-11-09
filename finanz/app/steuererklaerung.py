@@ -202,20 +202,42 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
     # Liegenschaft
     w = k.get("wohnen") or {}
     if w.get("aktiv"):
-        emw = _zahl(w.get("eigenmietwert"))
+        import wohnen as wo
+        ls = wo.liegenschaft_steuer(k)
+        je_person = not verheiratet and len(personen) > 1
+        teile = [wo.liegenschaft_steuer(k, p["name"]) | {"name": p["name"]} for p in personen] if je_person else []
+
+        def _je(feld: str) -> str:
+            return " · ".join(f"{t['name']} ({t['anteil']:g} %) CHF {_chf(t[feld])}" for t in teile)
+        emw = ls["eigenmietwert"]
+        if emw:
+            wert = (f"CHF {_chf(ls['emw_voll'])}, selbst bewohnt {ls['selbst']:g} % = CHF {_chf(emw)}" if ls["vermietet"]
+                    else f"CHF {_chf(emw)}") + (f" – {_je('eigenmietwert')}" if je_person else "")
+        else:
+            wert = ""
         pkt.append(Punkt("eigenmietwert", "Liegenschaft", "Eigenmietwert und Vermögenssteuerwert",
-                         "Letzte Veranlagung bzw. Schätzung der Liegenschaft", f"CHF {_chf(emw)}" if emw else "",
+                         "Letzte Veranlagung bzw. Schätzung der Liegenschaft"
+                         + ("; Eigenmietwert nur auf den selbst bewohnten Teil" if ls["vermietet"] else ""), wert,
                          "daten" if emw else "fehlt"))
+        if ls["mieteinnahmen"] or ls["vermietet"]:
+            mw = (f"CHF {_chf(ls['mieteinnahmen'])} ({ls['vermietet']:g} % vermietet)"
+                  + (f" – {_je('mieteinnahmen')}" if je_person else "")) if ls["mieteinnahmen"] else ""
+            pkt.append(Punkt("mietertrag", "Liegenschaft", "Mieteinnahmen",
+                             "Mietverträge und Mietzinseingänge (brutto, inkl. Nebenkosten-Pauschalen; "
+                             "Nebenkosten-Akonto mit Abrechnung)", mw, "daten" if mw else "fehlt"))
         zinsen_budget = _budget_summe(db, jahr, "Wohnen", "hypothek")
         hyp = sum(-x["wert"] for x in konten if x["art"] == "hypothek")
         geschaetzt = hyp * _zahl(w.get("hypothek_zins")) / 100 if hyp else 0
         wert = (f"laut Budget CHF {_chf(zinsen_budget)}" if zinsen_budget else
                 f"geschätzt CHF {_chf(geschaetzt)} ({_zahl(w.get('hypothek_zins')):g} % auf {_chf(hyp)})" if geschaetzt else "")
+        if je_person and wert:
+            wert += " – nach Anteil an der Hypothek (bzw. effektiver Zahlung) aufteilen"
         pkt.append(Punkt("schuldzinsen", "Liegenschaft", "Hypothekarzinsen", "Zinsausweis der Bank per 31.12.", wert,
                          "daten" if wert else "beleg"))
         pkt.append(Punkt("unterhalt", "Liegenschaft", "Unterhaltskosten",
                          "Rechnungen für Reparaturen und Unterhalt; effektiv abziehen, wenn höher als die Pauschale "
-                         "(meist 10 % bzw. 20 % des Eigenmietwerts)", status="beleg"))
+                         f"(hier {ls['pauschal']:g} % von Eigenmietwert"
+                         + (" und Mieteinnahmen" if ls["mieteinnahmen"] else "") + ")", status="beleg"))
 
     # Vermögen per 31.12.
     for x in konten:

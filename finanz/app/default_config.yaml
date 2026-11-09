@@ -27,6 +27,7 @@ personen:
     pensionierung_alter: 65
     lohn_brutto: 110000
     pensum: 100                  # Arbeitspensum in % zum Bruttolohn
+    eigentum_anteil: 0           # % Anteil an der Liegenschaft (0 = Rest zu gleichen Teilen)
     sparen_monat: 0
     ahv:
       beitragsjahre_bisher: 18   # laut individuellem Konto (IK-Auszug)
@@ -149,10 +150,11 @@ wohnen:
   eigenmittel: 260000
   davon_pk_vorbezug: 0
   hypothek_zins: 1.8
-  eigenmietwert: 26000
+  eigenmietwert: 26000             # ganze Liegenschaft, wie wenn alles selbst bewohnt (vor Reduktion)
+  vermietet_anteil: 0              # % der Liegenschaft vermietet (z. B. Einliegerwohnung); EMW nur auf den Rest
   schuldzinsen_abzug: true
   unterhalt_pauschal: 1.0          # % des Kaufpreises pro Jahr (Unterhalt + Nebenkosten)
-  mieteinnahmen_jahr: 0            # z. B. Einliegerwohnung; zählt zu 80 % für die Tragbarkeit
+  mieteinnahmen_jahr: 0            # brutto, ganze Liegenschaft; zählt zu 80 % für die Tragbarkeit
   hypothek_faellig: ""             # JJJJ-MM-TT, für das Amortisations-Szenario
   amortisation_ziel: 0             # gewünschte Amortisation bei Fälligkeit
   amortisation_max: 0

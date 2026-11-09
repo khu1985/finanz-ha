@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.21.0 – 2026-11-09
+
+- **Teilweise vermietete Liegenschaft:** neue Einstellung «Vermieteter Anteil %»; der Eigenmietwert (ganze
+  Liegenschaft) wird auf den selbst bewohnten Teil reduziert, Mieteinnahmen sind voll steuerbar, die
+  Unterhaltspauschale (10 % bzw. 20 % je nach Alter des Gebäudes) gilt auf beides
+- **Eigentumsanteil pro Person** («Anteil an der Liegenschaft %») für getrennte Steuererklärungen: Wohnen zeigt
+  die Deklaration je Person (Eigenmietwert, Mieteinnahmen, Schuldzinsen, Pauschale); auch Steuererklärungs-Checkliste
+  und Nachlass rechnen damit
+- **Wegfall Eigenmietwert ab 2029** mit gemischter Nutzung: Mieteinnahmen und Unterhalt des vermieteten Teils
+  bleiben, Schuldzinsen anteilig nach vermieteter Liegenschaft zum Gesamtvermögen
+- Übernahme aus Steuerdokumenten rechnet deklarierten Eigenmietwert und Mietertrag auf die ganze Liegenschaft hoch;
+  Ampeln für vermieteten Anteil, Mieteinnahmen und Eigentumsanteile
+
 ## 0.20.0 – 2026-11-09
 
 - **Dokumente-Übersicht unter App:** alle hochgeladenen Policen, Vorsorge- und Steuerdokumente und Buchungen pro

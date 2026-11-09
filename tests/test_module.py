@@ -208,7 +208,12 @@ def test_steuerdokumente(konkubinat, db, tmp_path):
     assert einheit["steuerbar_kanton"] == 141_200 and einheit["steuer_kanton_gemeinde"] == 23_000
     assert einheit["grenzsteuersatz_kanton"] == 28.0 and len(erledigt) == 3
     sd.uebernehmen(konkubinat, e, "Person 1", ["eigenmietwert", "abzug_3a"])
-    assert konkubinat["wohnen"]["eigenmietwert"] == 20_000 and konkubinat["personen"][0]["saeule3a"]["beitrag_jahr"] == 5000
+    # deklariert ist der halbe Anteil → in der Konfiguration die ganze Liegenschaft
+    assert konkubinat["wohnen"]["eigenmietwert"] == 40_000 and konkubinat["personen"][0]["saeule3a"]["beitrag_jahr"] == 5000
+    konkubinat["wohnen"]["vermietet_anteil"] = 38
+    sd.uebernehmen(konkubinat, e, "Person 1", ["eigenmietwert", "mietertrag"])
+    assert konkubinat["wohnen"]["eigenmietwert"] == round(20_000 / 0.5 / 0.62)
+    assert konkubinat["wohnen"]["mieteinnahmen_jahr"] == 30_600
 
 
 def test_steuer_uebernahme_neue_person(konkubinat, db, tmp_path):

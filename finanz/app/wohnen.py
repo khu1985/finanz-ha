@@ -55,18 +55,90 @@ def _max_preis(k: dict, eigen: float, einkommen: float) -> float:
     return unten
 
 
-def eigenmietwert_wegfall(k: dict) -> dict:
-    """Steuerliche Wirkung des Systemwechsels (Wegfall Eigenmietwert und Abzüge)."""
-    w = k["wohnen"]
-    emw = float(w.get("eigenmietwert", 0))
-    hyp = max(0.0, float(w.get("kaufpreis", 0)) - float(w.get("eigenmittel", 0)))
-    zinsen = hyp * float(w.get("hypothek_zins", 0)) / 100 if w.get("schuldzinsen_abzug", True) else 0.0
-    unterhalt = emw * 0.20  # Pauschalabzug (Liegenschaft über 10 Jahre alt: oft 20 % des EMW)
-    heute_netto = emw - zinsen - unterhalt
-    grenz = steuern_heute(k)["grenz_total"] / 100
-    effekt = -heute_netto * grenz  # positiv = mehr Steuern nach dem Wechsel
+def _z(v, std: float = 0.0) -> float:
+    try:
+        return float(v) if v not in (None, "") else std
+    except (TypeError, ValueError):
+        return std
+
+
+def eigentum_anteile(k: dict) -> dict[str, float]:
+    """Eigentumsanteil an der Liegenschaft in % je Person.
+
+    Quelle: Feld «Anteil an der Liegenschaft» der Personen; Personen mit 0 teilen sich den Rest zu gleichen Teilen.
+    Ohne Angaben gilt nachlass.anteil_immobilie (ältere Konfiguration), sonst gleiche Teile.
+    """
+    namen = [p.get("name") or f"Person {i + 1}" for i, p in enumerate(k["personen"])]
+    if not namen:
+        return {}
+    eigen = {n: _z(p.get("eigentum_anteil")) for n, p in zip(namen, k["personen"])}
+    if not any(eigen.values()):
+        alt = (k.get("nachlass") or {}).get("anteil_immobilie") or {}
+        eigen = {n: _z(next((v for kk, v in alt.items() if str(kk).strip().lower() == n.strip().lower()), 0)) for n in namen}
+    rest = max(0.0, 100 - sum(eigen.values()))
+    offen = [n for n, v in eigen.items() if not v]
+    return {n: (v if v else rest / len(offen)) for n, v in eigen.items()}
+
+
+def pauschalsatz(k: dict, jahr: int | None = None) -> float:
+    """Pauschaler Unterhaltsabzug: 10 % bei Gebäuden bis 10 Jahre, sonst 20 % (Bund und die meisten Kantone)."""
+    from datetime import date
+    bj = int(_z(((k.get("wohnen") or {}).get("liegenschaft") or {}).get("baujahr")))
+    return 10.0 if bj and (jahr or date.today().year) - bj <= 10 else 20.0
+
+
+def liegenschaft_steuer(k: dict, person: str | None = None) -> dict:
+    """Steuerwerte der Liegenschaft bei gemischter Nutzung (selbst bewohnt / vermietet).
+
+    Eigenmietwert und Mieteinnahmen gelten für die ganze Liegenschaft; der Eigenmietwert wird auf den selbst bewohnten
+    Teil reduziert, die Mieteinnahmen sind voll steuerbar. Mit `person` werden alle Werte auf deren Eigentumsanteil
+    umgerechnet (getrennte Steuererklärungen, z. B. im Konkubinat oder bei Miteigentum).
+    """
+    w = k.get("wohnen") or {}
+    vermietet = min(100.0, max(0.0, _z(w.get("vermietet_anteil"))))
+    selbst = 100 - vermietet
+    emw_voll = _z(w.get("eigenmietwert"))
+    miete_voll = _z(w.get("mieteinnahmen_jahr"))
+    hyp = max(0.0, _z(w.get("kaufpreis")) - _z(w.get("eigenmittel")))
+    zinsen_voll = hyp * _z(w.get("hypothek_zins")) / 100 if w.get("schuldzinsen_abzug", True) else 0.0
+    anteil = eigentum_anteile(k).get(person, 100.0) if person else 100.0
+    f = anteil / 100
+    satz = pauschalsatz(k)
+    emw = emw_voll * selbst / 100 * f
+    miete = miete_voll * f
+    zinsen = zinsen_voll * f
+    unterhalt = (emw + miete) * satz / 100
     return {
-        "eigenmietwert": round(emw), "schuldzinsen": round(zinsen), "unterhalt": round(unterhalt),
-        "netto_heute": round(heute_netto), "steuereffekt": round(effekt),
+        "vermietet": vermietet, "selbst": selbst, "anteil": anteil, "pauschal": satz,
+        "emw_voll": round(emw_voll), "emw_selbst_voll": round(emw_voll * selbst / 100), "miete_voll": round(miete_voll),
+        "zinsen_voll": round(zinsen_voll), "eigenmietwert": round(emw), "mieteinnahmen": round(miete),
+        "schuldzinsen": round(zinsen), "unterhalt": round(unterhalt),
+        "netto": round(emw + miete - zinsen - unterhalt),
+    }
+
+
+def eigenmietwert_wegfall(k: dict, aktiven_uebrig: float | None = None) -> dict:
+    """Steuerliche Wirkung des Systemwechsels (Wegfall Eigenmietwert und Abzüge) für den ganzen Haushalt.
+
+    Selbst bewohnter Teil: Eigenmietwert, Unterhalt und Schuldzinsen fallen weg. Vermieteter Teil: Mieteinnahmen bleiben
+    steuerbar, Unterhalt bleibt abziehbar, Schuldzinsen nur noch im Verhältnis der vermieteten Liegenschaft zum
+    Gesamtvermögen (`aktiven_uebrig` = übrige Aktiven ohne Liegenschaft; ohne Angabe: vermieteter Anteil).
+    """
+    w = k["wohnen"]
+    s = liegenschaft_steuer(k)
+    wert = _z((w.get("liegenschaft") or {}).get("marktwert")) or _z(w.get("kaufpreis"))
+    vermietet_wert = wert * s["vermietet"] / 100
+    if aktiven_uebrig is None or not wert:
+        quote = s["vermietet"] / 100
+    else:
+        quote = vermietet_wert / (wert + max(0.0, aktiven_uebrig)) if vermietet_wert else 0.0
+    zinsen_nachher = s["schuldzinsen"] * quote
+    unterhalt_nachher = s["mieteinnahmen"] * s["pauschal"] / 100
+    nachher = s["mieteinnahmen"] - zinsen_nachher - unterhalt_nachher
+    grenz = steuern_heute(k)["grenz_total"] / 100
+    effekt = (nachher - s["netto"]) * grenz  # positiv = mehr Steuern nach dem Wechsel
+    return s | {
+        "netto_heute": s["netto"], "zinsen_nachher": round(zinsen_nachher), "unterhalt_nachher": round(unterhalt_nachher),
+        "netto_nachher": round(nachher), "zins_quote": round(quote * 100, 1), "steuereffekt": round(effekt),
         "ab": k["kennzahlen"]["eigenmietwert_abschaffung"],
     }

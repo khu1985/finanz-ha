@@ -123,7 +123,8 @@ def nachlass_von(k: dict, db, person: str) -> tuple[float, float]:
     w = k.get("wohnen") or {}
     haus = 0.0
     if w.get("aktiv"):
-        anteile = cfg.get("anteil_immobilie") or {}
+        import wohnen as wo
+        anteile = wo.eigentum_anteile(k)
         anteil = float(next((v for kk, v in anteile.items() if vi.gleiche_person(kk, person)), 100 / n)) / 100
         hypothek = max(0.0, float(w.get("kaufpreis", 0)) - float(w.get("eigenmittel", 0)))
         haus = (float(w.get("kaufpreis", 0)) - hypothek) * anteil

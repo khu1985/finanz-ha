@@ -173,8 +173,9 @@ def fakten(k: dict, db, heute: date | None = None) -> str:
     if w.get("aktiv"):
         hyp = max(0.0, float(w.get("kaufpreis", 0)) - float(w.get("eigenmittel", 0)))
         z.append(f"Liegenschaft: Wert {_chf(w.get('kaufpreis', 0))}, Hypothek {_chf(hyp)} zu {w.get('hypothek_zins')} %, "
-                 f"fällig {w.get('hypothek_faellig') or 'unbekannt'}, Mieteinnahmen {_chf(w.get('mieteinnahmen_jahr', 0))}/Jahr, "
-                 f"Eigenmietwert {_chf(w.get('eigenmietwert', 0))} (Abschaffung ab 2029).")
+                 f"fällig {w.get('hypothek_faellig') or 'unbekannt'}, Mieteinnahmen {_chf(w.get('mieteinnahmen_jahr', 0))}/Jahr "
+                 f"({w.get('vermietet_anteil') or 0} % vermietet), Eigenmietwert {_chf(w.get('eigenmietwert', 0))} für die ganze "
+                 "Liegenschaft, steuerbar nur auf den selbst bewohnten Teil (Abschaffung ab 2029).")
         a = amortisation(k, db, heute)
         if a:
             z.append(f"Amortisations-Szenario bis {a.faellig.strftime('%d.%m.%Y')} ({a.monate} Monate): heute liquide "
