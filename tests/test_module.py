@@ -969,7 +969,7 @@ def test_waehrung_konten(k, db):
     assert zz.rente_ausland(p) == round(10_000 * wg.STANDARD["EUR"], 6)
 
 
-def test_jahresbericht(k, db):
+def test_jahresbericht(k, db, daten):
     import bericht as br
     import vermoegen as vm
     a = vm.konto_anlegen(db, "Konto", "bank")
