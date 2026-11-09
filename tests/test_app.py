@@ -110,7 +110,10 @@ def test_uploads_und_detailseiten(server):
     from policen import HAUSRAT, PK_AUSWEIS, pdf
     code, ziel = _upload(f"{server}/versicherungen/hochladen", "datei", "police.pdf", pdf(HAUSRAT))
     assert code == 303 and ziel.startswith("/versicherungen/1")
+    uebersicht = urllib.request.urlopen(f"{server}/versicherungen").read().decode()
+    assert 'href="versicherungen/1/datei"' in uebersicht and "PDF öffnen" in uebersicht
     html = urllib.request.urlopen(f"{server}/versicherungen/1").read().decode()
+    assert "Ausgelesener Text" in html
     assert "Mobiliar" in html and "HR-998877" in html
     assert urllib.request.urlopen(f"{server}/versicherungen/1/datei").read()[:5] == b"%PDF-"
     code, ziel = _upload(f"{server}/vorsorge/hochladen", "datei", "ausweis.pdf", pdf(PK_AUSWEIS))

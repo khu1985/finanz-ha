@@ -172,7 +172,7 @@ code.entitaet{font-size:12px;word-break:break-all;white-space:normal}
 .fortschritt{height:8px;border-radius:4px;background:var(--linie);overflow:hidden;margin:4px 0 12px}
 .fortschritt i{display:block;height:100%;background:var(--gut)}
 .druck-kopf,.nur-druck{display:none}
-form.inline{display:inline;margin:0}form.inline select{width:auto;min-width:72px;padding:4px 6px;font-size:13px}
+.hinweis-text{margin:0 0 10px}.text-original{white-space:nowrap}form.inline{display:inline;margin:0}form.inline select{width:auto;min-width:72px;padding:4px 6px;font-size:13px}
 @media print{
 .side,#nav,footer,#status,#lade,.nicht-drucken,form .zeile,button{display:none!important}
 body,.inhalt,main{background:#fff!important;color:#000!important}main{max-width:none;padding:0}
@@ -937,14 +937,25 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
     zeilen = []
     for v in vertraege:
         t = vi.naechster_termin(v, heute)
+        if v["datei"]:
+            ts, tt = text_status(v["text"])
+            original = f'<a href="versicherungen/{v["id"]}/datei" title="{escape(v["dateiname"])}">PDF öffnen</a>'
+        else:
+            ts, tt, original = am.GRAU, "kein Dokument (aus Liste erfasst)", '<span class="leise">kein PDF</span>'
+        original = f'<span class="text-original">{licht(ts, tt)} {original}</span>'
         zeilen.append([
             f'<a href="versicherungen/{v["id"]}">{escape(v["versicherer"] or v["dateiname"])}</a>',
             escape(vi.SPARTEN.get(v["sparte"], v["sparte"])), escape(v["person"] or "–"),
             (licht(am.termin_status((t.kuendigen_bis - heute).days)) + t.kuendigen_bis.strftime("%d.%m.%Y")) if t else "–",
             chf(v["praemie_jahr"]),
+            original,
         ])
-    zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>"])
-    liste = tabelle(["Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr"], zeilen, zahlen_ab=4)
+    zeilen.append(["<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>", ""])
+    liste = tabelle(["Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr", "Text · Original"], zeilen, zahlen_ab=4)
+    ohne_text = [v for v in vertraege if v["datei"] and text_status(v["text"])[0] == am.ROT]
+    if ohne_text:
+        liste += (f'<p class="leise">{licht(am.ROT, "kein Text")} Bei {len(ohne_text)} Vertrag/Verträgen wurde kein Text '
+                  'gefunden (gescanntes PDF) – Werte dort von Hand prüfen oder ein PDF mit Texterkennung hochladen.</p>')
     termin_zeilen = [[licht(am.termin_status((t.kuendigen_bis - heute).days), f"noch {(t.kuendigen_bis - heute).days} Tage")
                       + t.kuendigen_bis.strftime("%d.%m.%Y"), t.wirksam_auf.strftime("%d.%m.%Y"),
                       escape(t.vertrag["versicherer"] or t.vertrag["dateiname"]), escape(t.grund)] for t in termine[:8]]
@@ -1011,7 +1022,7 @@ def versicherung(k: dict, db, vid: int) -> str:
                 '<button class="zweit">Vertrag löschen</button></form>')
     return (karte(f"{v['versicherer'] or v['dateiname']} · {vi.SPARTEN.get(v['sparte'], v['sparte'])}",
                   f'<p class="leise">{escape(v["dateiname"])} · {escape(quelle)}</p>' + termin + formular + ki)
-            + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{text}</pre></details>')
+            + text_karte(v["text"], bool(k.get("ki", {}).get("aktiv")))
             + '<p><a href="versicherungen">← alle Verträge</a></p>' + loeschen)
 
 
@@ -1026,11 +1037,38 @@ def _personen_optionen(k: dict, aktuell: str) -> str:
     return "".join(opts)
 
 
+# ---------------------------------------------------------------- Ausgelesener Text
+
+def text_status(text: str | None) -> tuple[str, str]:
+    """Ampel für den aus der Datei gelesenen Text: rot ohne Text (gescannt), gelb bei sehr wenig Text."""
+    n = len((text or "").strip())
+    if n == 0:
+        return am.ROT, "kein Text gefunden"
+    if n < 200:
+        return am.GELB, f"nur {n} Zeichen Text"
+    return am.GRUEN, f"{n:,} Zeichen Text".replace(",", "'")
+
+
+def text_karte(text: str | None, ki_aktiv: bool) -> str:
+    s_, t = text_status(text)
+    hinweis = ""
+    if s_ != am.GRUEN:
+        hinweis = ('<p class="hinweis-text">' + licht(s_, t) + " "
+                   + ("Kein Text in der Datei gefunden – " if s_ == am.ROT else "Sehr wenig Text gefunden – ")
+                   + "vermutlich ein gescanntes Bild. Werte oben von Hand eintragen, "
+                   + ("mit KI auslesen lassen " if ki_aktiv else "")
+                   + "oder die Datei mit Texterkennung (OCR, z. B. «Als PDF mit Text sichern» im Scanner) neu hochladen.</p>")
+    inhalt = escape((text or "")[:20000]) or "Kein Text gefunden."
+    return (f'<section class="karte"><h2>{licht(s_, t)} Ausgelesener Text</h2>{hinweis}'
+            f'<details><summary>anzeigen ({escape(t)})</summary><pre class="text">{inhalt}</pre></details></section>')
+
+
 # ---------------------------------------------------------------- Vorsorgedokumente
 
 def vorsorge_dokumente_karte(k: dict, db) -> str:
     doks = dk.alle(db)
-    zeilen = [[f'<a href="vorsorge/dokument/{d["id"]}">{escape(d["dateiname"])}</a>', escape(dk.TYPEN.get(d["typ"], d["typ"])),
+    zeilen = [[f'{licht(*text_status(d.get("text")))} <a href="vorsorge/dokument/{d["id"]}">{escape(d["dateiname"])}</a>',
+               escape(dk.TYPEN.get(d["typ"], d["typ"])),
                escape(d["person"] or "–"), escape(d["stichtag"] or "–"), str(len(d["werte"])),
                licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
     liste = tabelle(["Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen"], zeilen, zahlen_ab=4) if doks else ""
@@ -1094,7 +1132,7 @@ def vorsorge_dokument(k: dict, db, did: int) -> str:
                   f'<p class="leise">{escape(d["dateiname"])} · Stichtag {escape(d["stichtag"] or "unbekannt")} · {escape(quelle)}</p>'
                   + form + ki)
             + (karte("Einschätzung", hinweisliste(analyse)) if analyse else "")
-            + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{escape(d["text"][:20000]) or "Kein Text."}</pre></details>')
+            + text_karte(d["text"], bool(k.get("ki", {}).get("aktiv")))
             + '<p><a href="vorsorge">← Vorsorge</a></p>' + loeschen)
 
 
@@ -1311,7 +1349,8 @@ und übernimmt die Werte auf Wunsch in die Steuer-Einstellungen.</p>
 <button>Hochladen und analysieren</button></div></form>"""
     if not doks:
         return karte("Steuerdokumente", form)
-    zeilen = [[f'<a href="steuern/dokument/{d["id"]}">{d["jahr"] or "?"} · {escape(d["person"] or "Haushalt")}</a>',
+    zeilen = [[f'{licht(*text_status(d.get("text")))} <a href="steuern/dokument/{d["id"]}">{d["jahr"] or "?"} · '
+               f'{escape(d["person"] or "Haushalt")}</a>',
                escape(sd.TYPEN.get(d["typ"], d["typ"])), chf(d["werte"].get("steuerbar_kanton", 0)),
                chf(d["werte"].get("steuer_kanton_gemeinde", 0) + d["werte"].get("bundessteuer", 0)),
                licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen")] for d in doks]
@@ -1393,7 +1432,7 @@ def steuer_dokument(k: dict, db, did: int) -> str:
     return (karte(f"{sd.TYPEN.get(d['typ'], d['typ'])} {d['jahr'] or ''}",
                   f'<p class="leise">{escape(d["dateiname"])} · {escape(quelle)}</p>' + form + ki)
             + (karte("Einschätzung", hinweisliste(tipps)) if tipps else "")
-            + karte("Ausgelesener Text", f'<details><summary>anzeigen</summary><pre class="text">{escape(d["text"][:20000]) or "Kein Text."}</pre></details>')
+            + text_karte(d["text"], bool(k.get("ki", {}).get("aktiv")))
             + '<p><a href="steuern">← Steuern</a></p>' + loeschen)
 
 

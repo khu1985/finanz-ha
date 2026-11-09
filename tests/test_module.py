@@ -1028,3 +1028,12 @@ def test_vorsorgedokument_3b(k, db):
     konto = next(x for x in vm.konten(db) if x["art"] == "vorsorge")
     assert konto["name"] == f"3b Mobiliar {name}" and konto["betrag"] == 39748 and konto["datum"] == "2025-12-31"
     assert k["wohnen"]["verpfaendet"][0]["guthaben"] == 39748 and "3b" in txt
+
+
+def test_text_status():
+    import ampel as am
+    import seiten
+    assert seiten.text_status("")[0] == am.ROT and seiten.text_status(None)[0] == am.ROT
+    assert seiten.text_status("kurz")[0] == am.GELB
+    assert seiten.text_status("x" * 500)[0] == am.GRUEN
+    assert "Kein Text in der Datei gefunden" in seiten.text_karte("", False)

@@ -10,6 +10,11 @@
   Rückkaufswert bzw. Guthaben, Prämie, Erlebensfall- und Todesfallkapital. Das Guthaben wird als Saldo eines
   Vorsorge-Kontos unter «Vermögen» übernommen (Konto wählbar; eine gleichnamige verpfändete 3b unter Wohnen wird
   nachgeführt), die Todesfallleistung als Todesfallkapital der Policen; Hinweise zu Vermögenssteuer und Begünstigung
+- **Versicherungen:** in der Vertragsliste ein Direktlink «PDF öffnen» zum Original und eine Ampel für den
+  ausgelesenen Text (rot: kein Text gefunden, z. B. gescanntes PDF; gelb: sehr wenig Text; grau: aus einer Liste
+  erfasst, ohne Dokument)
+- Ampel und Hinweis beim ausgelesenen Text auch auf den Detailseiten und in den Listen der Vorsorge- und
+  Steuerdokumente
 ## 0.17.0 – 2026-11-09
 
 - **Jahresbericht** (neue Seite unter Überblick): die App speichert jeden Monat einen Stand (Nettovermögen, freies

@@ -537,6 +537,11 @@ Home Assistant leitet pro Anfrage höchstens 16 MB an die App weiter. Wählt man
 sie einzeln (Fortschritt im Statusfenster, am Schluss eine gemeinsame Meldung). Eine einzelne Datei über 16 MB lässt
 sich nicht hochladen – solche Dateien in den Import-Ordner kopieren (siehe unten) oder als PDF verkleinern.
 
+Jedes hochgeladene Dokument zeigt eine Ampel für den ausgelesenen Text: **rot** = kein Text gefunden (meist ein
+gescanntes Bild – Werte von Hand eintragen, mit KI auslesen oder ein PDF mit Texterkennung hochladen), **gelb** = sehr
+wenig Text, **grün** = Text vorhanden. In der Vertragsliste der Versicherungen führt «PDF öffnen» direkt zum Original;
+grau heisst dort: aus einer Liste erfasst, ohne Dokument.
+
 ## Persönliche Daten und Import-Ordner
 
 ![Dokumentverarbeitung](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/dokumente.svg)
