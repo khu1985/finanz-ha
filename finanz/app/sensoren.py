@@ -89,7 +89,8 @@ def berechnen(k: dict, db, heute: date | None = None) -> list[Sensor]:
         l = vs.pensionsluecke(k, nv["frei"], heute.year)
         s.append(_chf("Einkommen im Ruhestand", "einkommen_ruhestand", l.einkommen, "mdi:beach",
                       ab_jahr=l.jahr, ahv=l.ahv, pk_rente=l.pk_rente, kapitalverzehr=l.kapitalverzehr, bedarf=l.bedarf))
-        s.append(_chf("Pensionslücke", "pensionsluecke", l.luecke, "mdi:chart-bell-curve", ab_jahr=l.jahr))
+        s.append(_chf("Pensionslücke", "pensionsluecke", l.luecke, "mdi:chart-bell-curve", ab_jahr=l.jahr,
+                      mittel=l.luecke_mittel, nach_20_jahren=l.luecke_spaeter, teuerung=l.teuerung))
         s.append(Sensor("ersatzquote", "Ersatzquote", l.ersatzquote, "%", "", "measurement", "mdi:percent"))
     sicher(ruhestand)
 
@@ -139,6 +140,20 @@ def berechnen(k: dict, db, heute: date | None = None) -> list[Sensor]:
             s.append(_chf("Ohne Zweck auf Konten", "ungenutzt", max(0, c.anlegbar - c.depot), "mdi:piggy-bank-outline",
                           mehrertrag_jahr=c.opportunitaet, krypto_anteil=c.krypto_anteil))
     sicher(anlage)
+
+    def budget():
+        import budget as bu
+        b = bu.auswerten(k, db, heute=heute)
+        if b is None:
+            return
+        gespart = (b.ueberschuss + b.sparen_konto) / 12
+        s.append(_chf("Ausgaben pro Monat", "ausgaben_monat", b.ausgaben / 12, "mdi:cart-outline",
+                      einnahmen=round(b.einnahmen / 12), monate=b.monate, bis=b.bis,
+                      kategorien={n: round(j / 12) for n, j, _ in b.kategorien[:8]}))
+        s.append(_chf("Gespart pro Monat", "gespart_monat", gespart, "mdi:piggy-bank", plan=round(b.sparen_plan / 12)))
+        s.append(Sensor("sparquote", "Sparquote", round(gespart * 12 / b.einnahmen * 100, 1) if b.einnahmen else 0, "%", "",
+                        "measurement", "mdi:percent-outline"))
+    sicher(budget)
 
     def ampeln():
         liste = am.bewerten(k, db, heute)

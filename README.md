@@ -12,10 +12,11 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Bereich | Inhalt |
 |---|---|
 | Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
-| Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke; Vorsorgeausweis, 3a- und IK-Auszug hochladen |
+| Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung; Vorsorgeausweis, 3a- und IK-Auszug hochladen |
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029 |
 | Vermögen | Konten und Saldi, Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
+| Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial |
 | Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell), Risiko Invalidität und Tod |
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
 | Nachlass | Was der Partner im Todesfall erhält (Erbteil, Erbschaftssteuer, AHV/PK, Liegenschaft), Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
@@ -109,6 +110,7 @@ flowchart TB
 | `finanz/app/anlage.py` | Anlage-Check |
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
+| `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
 | `finanz/app/tausender.py` | Tausendertrennzeichen |
 | `finanz/app/kantone.py` | Fristen der Steuererklärung aller Kantone |
 | `finanz/app/erinnerungen.py` | Erinnerungen, erledigt-Status, Benachrichtigung über Home Assistant |

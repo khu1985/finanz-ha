@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.13.0 – 2026-11-09
+
+- **Budget und Cashflow** (neue Seite unter Bestand): der Bank-Import übernimmt neben den Monatssaldi die einzelnen
+  Buchungen (doppelte werden erkannt). Kategorien über Stichworte (Händler, Krankenkassen, Versicherer, Steuerämter,
+  Energieversorger …) und eigene Regeln; Umbuchungen zwischen eigenen Konten werden erkannt, Einzahlungen in 3a, PK
+  und Depot zählen als Sparen. Einnahmen, Ausgaben, Sparquote und Ausgaben pro Kategorie und Monat (Diagramm), Buchungen
+  ohne Kategorie mit Zuordnung per Klick, Vergleich mit dem Sparpotenzial der Planung und Übernahme per Knopf;
+  Ampel «Budget», Sensoren `ausgaben_monat`, `gespart_monat`, `sparquote`; Angaben für die Berater
+- **Teuerung im Rechenmodell** (`annahmen.teuerung`, Standard 1 %): nominale Prognosen (Vorsorgeausweis, 3a,
+  Kapitalbezug) werden in heutige Franken umgerechnet, der Kapitalverzehr rechnet mit realer Rendite, PK-Renten verlieren
+  im Ruhestand Kaufkraft, die AHV folgt dem Mischindex. Pensionslücke zusätzlich im Durchschnitt und nach 20 Jahren
+  (Diagramm, Ampel, Sensor-Attribute); gilt auch für die Frühpensionierung
 ## 0.12.0 – 2026-11-09
 
 - **Nachlass und Absicherung** (neue Seite unter Planung): was der Partner bzw. die Partnerin bei einem Todesfall

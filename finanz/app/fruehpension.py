@@ -1,6 +1,6 @@
 """Frühpensionierung: Pensionierungsalter 58 bis 65 für den ganzen Haushalt vergleichen.
 
-Annahmen (heutige Franken):
+Annahmen (heutige Franken; nominale Prognosen mit der Teuerung abgezinst, Verzehr mit realer Rendite):
 - Pensionskasse: Altersleistung frühestens ab 58; Guthaben bis zum Rücktritt (bei einer Prognose der Kasse anteilig
   gekürzt), Umwandlungssatz pro Jahr vor 65 um `pk_kuerzung_uws` Prozentpunkte tiefer.
 - AHV: Vorbezug höchstens 2 Jahre (ab 63, −6,8 % pro Jahr); wer früher aufhört, bezieht die AHV ab 63.
@@ -93,12 +93,14 @@ def variante(k: dict, alter: int, vermoegen_frei: float, heute: date | None = No
     ahv = sum(r.rente_jahr for r in vs.ahv(k_ahv, heute.year))
     pks = [vs.pk(p, k2) for p in personen]
     drei = [vs.saeule3a(p, k2, heute.year) for p in personen]
-    pk_rente = sum(x.rente_jahr for x in pks)
-    pk_kapital = sum(x.kapital for x in pks)
-    steuer = st.kapitalbezug_varianten(k2, pks, drei)["gestaffelt"]["steuer_total"]
     jahr = max(vs.pensionsjahr(p) for p in personen)
+    kk = vs.kaufkraft(k, jahr - heute.year)          # nominal → heutige Franken
+    ahv = ahv * vs.ahv_real_faktor(k, jahr - heute.year)
+    pk_rente = sum(x.rente_jahr for x in pks) * kk
+    pk_kapital = sum(x.kapital for x in pks) * kk
+    steuer = st.kapitalbezug_varianten(k2, pks, drei)["gestaffelt"]["steuer_total"] * kk
     sparen = sum(float(p.get("sparen_monat", 0) or 0) * 12 * max(0, vs.pensionsjahr(p) - heute.year) for p in personen)
-    netto = sum(d.kapital for d in drei) + pk_kapital - steuer + max(0.0, vermoegen_frei) + sparen
+    netto = sum(d.kapital for d in drei) * kk + pk_kapital - steuer + max(0.0, vermoegen_frei) + sparen
     bedarf = float(hh.get("bedarf_ruhestand", 0))
     jahre_ueber = max(0, ahv_ab - alter)
     renteneinkommen = pk_rente
@@ -108,7 +110,7 @@ def variante(k: dict, alter: int, vermoegen_frei: float, heute: date | None = No
     rest = max(0.0, netto - ueber)
     # Lebenserwartung fix: wer die AHV früher bezieht, verzehrt das Kapital über entsprechend mehr Jahre
     jahre_verzehr = int(hh.get("entnahme_jahre", 25)) + max(0, 65 - ahv_ab)
-    verzehr = vs.annuitaet(rest, jahre_verzehr, float(hh.get("entnahme_rendite", 0)))
+    verzehr = vs.annuitaet(rest, jahre_verzehr, float(hh.get("entnahme_rendite", 0)) - vs.teuerung(k))
     einkommen = ahv + pk_rente + verzehr
     hinw = []
     if netto < ueber:

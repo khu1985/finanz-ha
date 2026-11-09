@@ -218,3 +218,36 @@ def aus_datei(db, inhalt: bytes, dateiname: str, konto: str = "", art: str = "",
             raise ValueError("Der Auszug enthält keinen Saldo. Bitte den aktuellen Kontostand als Endsaldo angeben.")
         monats = rueckrechnen(inhalt, endsaldo)
     return a, importieren(db, a, konto, art, person, monats)
+
+
+def buchungen_lesen(inhalt: bytes) -> list[tuple[str, float, str]]:
+    """Einzelbuchungen (Datum, Betrag, Text) für die Budget-Auswertung; leer, wenn der Auszug keine Beträge hat."""
+    text = _dekodieren(inhalt)
+    zeilen = list(csv.reader(io.StringIO(text), delimiter=_trennzeichen(text.splitlines())))
+    i = _kopfzeile(zeilen)
+    kopf = zeilen[i]
+    sp = {art: _spalte(kopf, art) for art in SPALTEN}
+    if sp["datum"] is None or (sp["betrag"] is None and sp["gutschrift"] is None and sp["belastung"] is None):
+        return []
+    # weitere Textspalten (z. B. Zahlungsempfänger, Mitteilung) anhängen
+    textspalten = [j for j, n in enumerate(kopf) if any(w in _norm(n) for w in
+                   ("text", "beschreibung", "mitteilung", "empfänger", "auftraggeber", "zahlungs", "details",
+                    "description", "händler", "merchant", "verwendungszweck"))]
+    erg = []
+    for z in zeilen[i + 1:]:
+        if len(z) <= sp["datum"]:
+            continue
+        tag = _datum(z[sp["datum"]])
+        if not tag:
+            continue
+        if sp["betrag"] is not None and len(z) > sp["betrag"]:
+            b = _zahl(z[sp["betrag"]])
+        else:
+            gut = _zahl(z[sp["gutschrift"]]) if sp["gutschrift"] is not None and len(z) > sp["gutschrift"] else None
+            bel = _zahl(z[sp["belastung"]]) if sp["belastung"] is not None and len(z) > sp["belastung"] else None
+            b = None if gut is None and bel is None else (gut or 0) - abs(bel or 0)
+        if b is None or b == 0:
+            continue
+        t = " ".join(dict.fromkeys(z[j].strip() for j in textspalten if j < len(z) and z[j].strip()))
+        erg.append((tag, round(b, 2), re.sub(r"\s+", " ", t)[:200]))
+    return erg

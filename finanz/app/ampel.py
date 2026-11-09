@@ -88,9 +88,27 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
 
     # Vorsorge: Pensionslücke
     l = vs.pensionsluecke(k, nv["frei"], heute.year)
-    s = luecke_status(l.luecke, l.bedarf)
-    erg.append(Ampel("Ruhestand", s, "keine Pensionslücke" if s == GRUEN else f"Lücke CHF {chf(l.luecke)}/Jahr ab {l.jahr}",
-                     "vorsorge"))
+    lm = max(l.luecke, l.luecke_mittel)
+    s = luecke_status(lm, l.bedarf)
+    if s == GRUEN:
+        txt = "keine Pensionslücke"
+    elif l.luecke:
+        txt = f"Lücke CHF {chf(l.luecke)}/Jahr ab {l.jahr}"
+    else:
+        txt = f"Lücke im Mittel CHF {chf(lm)}/Jahr (Teuerung)"
+    erg.append(Ampel("Ruhestand", s, txt, "vorsorge"))
+
+    # Budget aus den Kontoauszügen
+    try:
+        import budget as bu
+        b = bu.auswerten(k, db, heute=heute)
+        if b is not None:
+            bs = bu.status(b)
+            g = (b.ueberschuss + b.sparen_konto) / 12
+            erg.append(Ampel("Budget", bs, f"gespart CHF {chf(g)}/Monat" + (f", Plan {chf(b.sparen_plan / 12)}" if b.sparen_plan else ""),
+                             "budget"))
+    except Exception:  # noqa: BLE001
+        pass
 
     # Liquidität / Notreserve
     konten = vm.konten(db)

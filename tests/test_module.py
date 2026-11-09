@@ -490,6 +490,7 @@ def test_fruehpension(k):
     p["geburtsdatum"] = "1970-01-01"
     p["ahv"]["beitragsjahre_bisher"] = 44
     p["pk"].update(ausweis_alterskapital=800_000, ausweis_altersrente=48_000, kapitalbezug_anteil=0)
+    k["annahmen"]["teuerung"] = 0
     v = {x.alter: x for x in fp.vergleich(k, 300_000, heute=date(2026, 11, 9))}
     assert v[65].pk_rente == 48_000 and v[65].ueberbrueckung == 0 and v[65].ahv_ab == 65
     assert v[60].ahv_ab == 63 and v[60].ueberbrueckung > 0 and v[60].pk_rente < v[65].pk_rente
@@ -650,3 +651,87 @@ def test_tausender_nur_zahlen():
     from tausender import TS
     assert f"Damit A kann, wären CHF {555000:,.0f} und {1234.5:,.2f}" >> TS == "Damit A kann, wären CHF 555'000 und 1'234.50"
     assert "1,5 Jahre, 12,345" >> TS == "1,5 Jahre, 12'345"
+
+
+def test_teuerung_pensionsluecke(k):
+    import vorsorge as vs
+    k0 = copy.deepcopy(k)
+    k0["annahmen"]["teuerung"] = 0
+    k["annahmen"]["teuerung"] = 2.0
+    l0, l2 = vs.pensionsluecke(k0, 100_000, 2026), vs.pensionsluecke(k, 100_000, 2026)
+    jahre = l2.jahr - 2026
+    assert l2.kaufkraft == round(1 / 1.02 ** jahre, 4)
+    assert l2.pk_rente == round(l0.pk_rente * 1 / 1.02 ** jahre) and l2.pk_rente_nominal == l0.pk_rente
+    assert l2.ahv == l0.ahv                                   # Mischindex hält die Kaufkraft (ohne Reallohnwachstum)
+    assert l2.kapitalverzehr < l0.kapitalverzehr              # reale Rendite tiefer, Kapital abgezinst
+    assert l2.luecke_spaeter >= l2.luecke and l2.luecke_mittel >= l2.luecke
+    assert l0.luecke_mittel == l0.luecke and len(l2.verlauf) == k["haushalt"]["entnahme_jahre"]
+    assert abs(l2.verlauf[1][2] - l2.pk_rente / 1.02) <= 1      # PK-Rente verliert jedes Jahr Kaufkraft
+
+
+# ---------------------------------------------------------------- Budget
+
+def _auszug(konto_text: str, zeilen: list[tuple[str, str, float]]) -> bytes:
+    kopf = f"Konto;{konto_text}\n\nBuchungsdatum;Buchungstext;Betrag;Saldo\n"
+    saldo, rumpf = 10_000.0, []
+    for tag, text, betrag in zeilen:
+        saldo += betrag
+        rumpf.append(f"{tag};{text};{betrag:.2f};{saldo:.2f}")
+    return (kopf + "\n".join(rumpf) + "\n").encode("utf-8")
+
+
+def _jahr_buchungen():
+    z = []
+    for m in range(1, 13):
+        z += [(f"25.{m:02d}.2025", "Lohnzahlung Arbeitgeber AG", 8000.0),
+              (f"01.{m:02d}.2025", "Hypothekarzins Migros Bank", -900.0),
+              (f"05.{m:02d}.2025", "Einkauf MIGROS Filiale", -600.0),
+              (f"06.{m:02d}.2025", "CSS Kranken-Versicherung", -500.0),
+              (f"07.{m:02d}.2025", "Zahlung an Muster GmbH", -400.0),
+              (f"10.{m:02d}.2025", "Übertrag auf Sparkonto", -1000.0),
+              (f"12.{m:02d}.2025", "VIAC Säule 3a", -600.0),
+              (f"28.{m:02d}.2025", "Coop Pronto Tankstelle", -100.0)]
+    z.append(("31.12.2025", "Kontoführung", -5.0))
+    return z
+
+
+def test_budget_kategorien():
+    import budget as bu
+    assert bu.kategorie("Einkauf MIGROS Basel", -50) == "Lebensmittel"
+    assert bu.kategorie("Lohnzahlung März", 8000) == bu.LOHN
+    assert bu.kategorie("Rückerstattung CSS", 120) == bu.EINNAHMEN
+    assert bu.kategorie("VIAC 3a Einzahlung", -600) == bu.SPAREN
+    assert bu.kategorie("Steuerverwaltung BL Rate", -1500) == "Steuern"
+    assert bu.kategorie("Zahlung an Muster GmbH", -400) == bu.UEBRIGES
+    assert bu.kategorie("Zahlung an Muster GmbH", -400, {"muster gmbh": "Wohnen"}) == "Wohnen"
+
+
+def test_budget_auswertung(k, db):
+    import bankimport as bi
+    import budget as bu
+    inhalt = _auszug("CH93 0076 2011 6238 5295 7", _jahr_buchungen())
+    b = bi.buchungen_lesen(inhalt)
+    assert len(b) == 97 and b[0] == ("2025-01-25", 8000.0, "Lohnzahlung Arbeitgeber AG")
+    assert bu.speichern(db, "Privatkonto", b, k) == 97
+    assert bu.speichern(db, "Privatkonto", b, k) == 0                 # doppelter Import erkannt
+    # Gegenbuchung auf dem Sparkonto → Umbuchung
+    bu.speichern(db, "Sparkonto", [(f"2025-{m:02d}-10", 1000.0, "Gutschrift")
+                                   for m in range(1, 13)], k)
+    k["personen"][0]["sparen_monat"] = 3000
+    for p in k["personen"][1:]:
+        p["sparen_monat"] = 0
+    a = bu.auswerten(k, db, heute=date(2026, 1, 15))
+    assert a.monate == 12 and a.einnahmen == 96_000
+    assert a.ausgaben == 12 * (900 + 600 + 500 + 400 + 100) + 5
+    assert a.sparen_konto == 12 * 600 and a.umbuchungen == 24
+    kat = {n: j for n, j, _ in a.kategorien}
+    assert kat["Wohnen"] == 10_800 and kat["Krankenkasse"] == 6000 and kat[bu.UEBRIGES] == 4800
+    assert a.unbekannt[0][0].lower().startswith("zahlung an muster")
+    assert any("mehr gespart" in h for h in a.hinweise)                 # rund 6'100 pro Monat statt 3'000 geplant
+    import ampel as am
+    assert bu.status(a) in (am.GRUEN, am.GELB)
+    erg = bu.sparen_uebernehmen(k, a)
+    assert sum(erg.values()) == pytest.approx((a.ueberschuss + a.sparen_konto) / 12, abs=100)
+    k.setdefault("budget", {})["regeln"] = {"muster gmbh": "Wohnen"}
+    assert bu.neu_kategorisieren(db, k) == 12
+    assert bu.auswerten(k, db, heute=date(2026, 1, 15)).unbekannt == []

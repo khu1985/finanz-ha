@@ -24,7 +24,7 @@ NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("berater", "Berater")]),
     ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("szenarien", "Szenarien"),
                  ("nachlass", "Nachlass")]),
-    ("Bestand", [("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen")]),
+    ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")]),
 ]
 NAV = [e for _, gruppe in NAVIGATION for e in gruppe]
@@ -363,6 +363,12 @@ def uebersicht(k: dict, db) -> str:
 
 
 def _luecke_diagramm(l: vs.Luecke) -> str:
+    if l.teuerung and l.verlauf:
+        sp = l.verlauf[min(l.spaeter_jahre, len(l.verlauf) - 1)]
+        return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}", f"nach {l.spaeter_jahre} J. ({sp[0]})"],
+                          {"AHV": [0, l.ahv, sp[1]], "Pensionskasse": [0, l.pk_rente, sp[2]],
+                           "Kapitalverzehr": [0, l.kapitalverzehr, sp[3]], "Lohn": [l.lohn_heute, 0, 0]},
+                          linie_bei=l.bedarf, linie_text=f"Bedarf {chf(l.bedarf)}")
     return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}"],
                       {"AHV": [0, l.ahv], "Pensionskasse": [0, l.pk_rente],
                        "Kapitalverzehr": [0, l.kapitalverzehr], "Lohn": [l.lohn_heute, 0]},
@@ -408,12 +414,22 @@ def vorsorge(k: dict, db) -> str:
     luecke_html = tabelle(["Position", f"CHF/Jahr ab {lk.jahr}"], [
         ["AHV" + (" (plafoniert)" if st.einheiten(k)[0].verheiratet and len(k["personen"]) > 1 else ""), chf(lk.ahv)],
         ["Pensionskassen-Renten", chf(lk.pk_rente)],
-        [f"Kapitalverzehr ({k['haushalt']['entnahme_jahre']} Jahre, {k['haushalt']['entnahme_rendite']} %) "
+        [f"Kapitalverzehr ({k['haushalt']['entnahme_jahre']} Jahre, {k['haushalt']['entnahme_rendite']} %"
+         + (f", real {float(k['haushalt']['entnahme_rendite']) - lk.teuerung:g} %" if lk.teuerung else "") + ") "
          f"aus CHF {chf(lk.kapital_netto)} netto", chf(lk.kapitalverzehr)],
         ["<b>Einkommen total</b>", f"<b>{chf(lk.einkommen)}</b>"],
         ["Bedarf", chf(lk.bedarf)],
         [licht(am.luecke_status(lk.luecke, lk.bedarf)) + "<b>Lücke</b>", f'<b class="{"schlecht" if lk.luecke else "gut"}">{chf(lk.luecke)}</b>'],
-    ]) + f'<p class="leise">Kapital nach Kapitalbezugssteuer von CHF {chf(lk.kapitalsteuer)} (gestaffelt), inkl. freiem Vermögen.</p>'
+    ] + ([
+        [f"Lücke im Durchschnitt über {k['haushalt']['entnahme_jahre']} Jahre", chf(lk.luecke_mittel)],
+        [f"Lücke nach {lk.spaeter_jahre} Jahren ({lk.jahr + lk.spaeter_jahre})", chf(lk.luecke_spaeter)],
+    ] if lk.teuerung else [])) + f'<p class="leise">Kapital nach Kapitalbezugssteuer von CHF {chf(lk.kapitalsteuer)} (gestaffelt), inkl. freiem Vermögen.</p>'
+    if lk.teuerung:
+        luecke_html += (f'<p class="leise">Alle Beträge in heutigen Franken bei {lk.teuerung:g} % Teuerung: die nominalen '
+                        f'Prognosen (Vorsorgeausweis, 3a) sind bis {lk.jahr} auf {lk.kaufkraft * 100:.0f} % abgezinst '
+                        f'(PK-Rente nominal CHF {chf(lk.pk_rente_nominal)}). PK-Renten sind meist nicht der Teuerung '
+                        'angepasst und verlieren im Ruhestand jedes Jahr Kaufkraft; die AHV folgt dem Mischindex. '
+                        'Einstellbar unter <code>annahmen.teuerung</code>.</p>')
 
     return (karte("Pensionslücke", _luecke_diagramm(lk) + luecke_html)
             + karte("1. Säule – AHV", ahv_html)
@@ -602,7 +618,7 @@ def _felder_person(i: int) -> list[tuple]:
 FELDER_HAUSHALT = [
     ("haushalt.name", "Name"), ("haushalt.zivilstand", "Zivilstand (verheiratet/ledig)"), ("haushalt.kanton", "Kanton"),
     ("haushalt.bedarf_ruhestand", "Bedarf im Ruhestand/Jahr"), ("haushalt.entnahme_jahre", "Kapitalverzehr Jahre"),
-    ("haushalt.entnahme_rendite", "Rendite im Ruhestand %"), ("annahmen.lohnentwicklung", "Reale Lohnentwicklung %"),
+    ("haushalt.entnahme_rendite", "Rendite im Ruhestand %"), ("annahmen.lohnentwicklung", "Reale Lohnentwicklung %"), ("annahmen.teuerung", "Teuerung %"),
 ]
 FELDER_STEUERN = [
     ("steuern.steuerbar_bund", "Steuerbares Einkommen Bund"), ("steuern.steuerbar_kanton", "Steuerbares Einkommen Kanton"),
@@ -1574,6 +1590,7 @@ entities:
   - sensor.{praefix}_naechste_frist
   - sensor.{praefix}_erinnerungen
   - sensor.{praefix}_pensionsluecke
+  - sensor.{praefix}_gespart_monat
   - sensor.{praefix}_krankenkasse_ersparnis
 
 # Automation: Hinweis, wenn eine Ampel auf Rot geht
@@ -1660,3 +1677,83 @@ def nachlass(k: dict, db) -> str:
             + '<div class="zeile"><button>Speichern</button></div></form>')
     teile.append(karte(f"Checkliste ({offen} offen)", form))
     return "".join(teile)
+
+
+# ---------------------------------------------------------------- Budget
+
+def budget(k: dict, db) -> str:
+    import budget as bu
+    a = bu.auswerten(k, db)
+    import_form = f"""<form method="post" action="vermoegen/bank" enctype="multipart/form-data">
+<input type="hidden" name="zurueck" value="budget">
+<p class="leise">Kontoauszüge als CSV aus dem E-Banking – am besten 12 Monate aller Konten, über die Einnahmen und Ausgaben
+laufen. Die App übernimmt die Monatssaldi (Vermögen) und die einzelnen Buchungen (Budget); bereits importierte Buchungen
+werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>konto*.csv</code>).</p>
+<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt" multiple required style="max-width:360px">
+<button>Auszüge importieren</button></div></form>"""
+    if a is None:
+        return karte("Budget und Cashflow", '<p class="leer">Noch keine Buchungen. Kontoauszug importieren:</p>' + import_form)
+    status = bu.status(a)
+    gespart = a.ueberschuss + a.sparen_konto
+    kpis = ('<div class="kpis">'
+            + kpi(chf(a.einnahmen / 12), "Einnahmen pro Monat")
+            + kpi(chf(a.ausgaben / 12), "Ausgaben pro Monat")
+            + kpi(chf(gespart / 12), "Gespart pro Monat", "gut" if gespart > 0 else "schlecht", status)
+            + kpi(f"{(gespart / a.einnahmen * 100 if a.einnahmen else 0):.0f} %", "Sparquote")
+            + kpi(chf(a.sparen_plan / 12) if a.sparen_plan else "–", "Sparpotenzial laut Planung")
+            + "</div>")
+    # Diagramm: Ausgaben pro Monat nach den grössten Kategorien
+    top = [n for n, _, _ in a.kategorien[:5]]
+    serien = {n: [m[3].get(n, 0) for m in a.monatlich] for n in top}
+    rest = [m[2] - sum(m[3].get(n, 0) for n in top) for m in a.monatlich]
+    if any(rest):
+        serien["Weitere"] = rest
+    monate_lbl = [m[0][5:7] + "." + m[0][2:4] for m in a.monatlich]
+    mittel = a.einnahmen / 12
+    diagramm = dg.saeulen(monate_lbl, serien, linie_bei=mittel, linie_text=f"Ø Einnahmen {chf(mittel)}")
+    zeilen = [[escape(n), chf(j / 12), chf(j), f"{p:.0f} %"] for n, j, p in a.kategorien]
+    zeilen.append(["<b>Ausgaben total</b>", f"<b>{chf(a.ausgaben / 12)}</b>", f"<b>{chf(a.ausgaben)}</b>", "100 %"])
+    if a.sparen_konto:
+        zeilen.append(["Einzahlungen 3a, PK, Depot (Sparen)", chf(a.sparen_konto / 12), chf(a.sparen_konto), ""])
+    kat_html = tabelle(["Kategorie", "Ø pro Monat", "pro Jahr", "Anteil"], zeilen)
+    monat_zeilen = [[f"{m[0][5:7]}.{m[0][:4]}", chf(m[1]), chf(m[2]),
+                     f'<span class="{"gut" if m[1] >= m[2] else "schlecht"}">{chf(m[1] - m[2], True)}</span>']
+                    for m in reversed(a.monatlich)]
+    monat_html = tabelle(["Monat", "Einnahmen", "Ausgaben", "Saldo"], monat_zeilen)
+    sparen_form = ""
+    if gespart > 0:
+        sparen_form = (f'<form method="post" action="budget/sparen"><p class="leise">Gespart laut Konten: CHF {chf(gespart / 12)} '
+                       'pro Monat (Überschuss plus Einzahlungen in 3a, PK und Depot). Übernehmen setzt das Sparpotenzial der '
+                       'Personen im Verhältnis der Bruttolöhne – es fliesst in Amortisation, PK-Einkauf und Pensionslücke ein.</p>'
+                       '<div class="zeile"><button class="zweit">Als Sparpotenzial übernehmen</button></div></form>')
+    reihenfolge = bu.AUSGABE_KATEGORIEN + [n for n in bu.ALLE if n not in bu.AUSGABE_KATEGORIEN]
+    opts = ('<option value="" disabled selected>Kategorie wählen …</option>'
+            + "".join(f"<option>{escape(n)}</option>" for n in reihenfolge))
+    unb_zeilen = []
+    for t, n, summe in a.unbekannt:
+        stich = escape(t.lower()[:30])
+        unb_zeilen.append([escape(t), str(n), chf(summe),
+                           f'<form method="post" action="budget/regel" class="zeile"><input type="hidden" name="stichwort" value="{stich}">'
+                           f'<select name="kategorie" required>{opts}</select><button class="zweit klein">Zuordnen</button></form>'])
+    unb_html = (tabelle(["Buchungstext", "Anzahl", "Summe", "Kategorie"], unb_zeilen, zahlen_ab=1) if unb_zeilen
+                else '<p class="gut">Alle Ausgaben haben eine Kategorie.</p>')
+    regeln = bu.regeln(k)
+    regel_zeilen = [[escape(s_), escape(kat),
+                     f'<form method="post" action="budget/regel/loeschen"><input type="hidden" name="stichwort" value="{escape(s_)}">'
+                     f'<button class="zweit klein">Löschen</button></form>'] for s_, kat in regeln.items()]
+    regel_form = f"""<form method="post" action="budget/regel"><div class="felder">
+<label>Stichwort im Buchungstext<input name="stichwort" required placeholder="z. B. bäckerei muster"></label>
+<label>Kategorie<select name="kategorie" required>{opts}</select></label></div>
+<div class="zeile"><button>Regel speichern</button></div></form>"""
+    regel_html = (tabelle(["Stichwort", "Kategorie", ""], regel_zeilen, zahlen_ab=3) if regel_zeilen else "") + regel_form
+    konten_html = ('<p class="leise">' + f"{a.anzahl} Buchungen von {a.von[8:10]}.{a.von[5:7]}.{a.von[:4]} bis "
+                   f"{a.bis[8:10]}.{a.bis[5:7]}.{a.bis[:4]} ({a.monate} Monate), {a.umbuchungen} Umbuchungen zwischen eigenen "
+                   "Konten nicht gezählt. Konten: " + escape(", ".join(a.konten)) + "</p>"
+                   '<form method="post" action="budget/loeschen" onsubmit="return confirm(\'Alle Buchungen löschen? Saldi bleiben.\')">'
+                   '<div class="zeile"><button class="zweit klein">Alle Buchungen löschen</button></div></form>')
+    return (kpis
+            + karte("Ausgaben pro Monat", diagramm + hinweisliste(a.hinweise) + sparen_form)
+            + '<div class="raster">' + karte("Nach Kategorie", kat_html) + karte("Monate", monat_html) + "</div>"
+            + karte("Ohne Kategorie", unb_html)
+            + '<div class="raster">' + karte("Eigene Regeln", regel_html)
+            + karte("Kontoauszüge", konten_html + import_form) + "</div>")

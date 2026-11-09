@@ -175,7 +175,15 @@ def fakten(k: dict, db, heute: date | None = None) -> str:
                   f"PK-Einkauf {_chf(w.get('abzug_pk_einkauf', 0))}" for j, w in sorted(jahre.items())]
         z.append(f"Steuerhistorie {person}: " + "; ".join(teile_))
     l = vs.pensionsluecke(k, nv["frei"], heute.year)
-    z.append(f"Ruhestand ab {l.jahr}: Einkommen {_chf(l.einkommen)}/Jahr, Bedarf {_chf(l.bedarf)}, Lücke {_chf(l.luecke)}.")
+    z.append(f"Ruhestand ab {l.jahr}: Einkommen {_chf(l.einkommen)}/Jahr, Bedarf {_chf(l.bedarf)}, Lücke {_chf(l.luecke)}"
+             + (f" (heutige Franken, Teuerung {l.teuerung:g} %; Lücke im Mittel {_chf(l.luecke_mittel)}, nach "
+                f"{l.spaeter_jahre} Jahren {_chf(l.luecke_spaeter)})" if l.teuerung else "") + ".")
+    import budget as bu
+    b = bu.auswerten(k, db, heute=heute)
+    if b:
+        z.append(f"Budget aus {b.monate} Monaten Kontoauszügen: Einnahmen {_chf(b.einnahmen / 12)}/Monat, Ausgaben "
+                 f"{_chf(b.ausgaben / 12)}/Monat, gespart {_chf((b.ueberschuss + b.sparen_konto) / 12)}/Monat; grösste Ausgaben: "
+                 + ", ".join(f"{n} {_chf(j / 12)}" for n, j, _ in b.kategorien[:5]) + ".")
     vertraege = vi.alle(db)
     if vertraege:
         z.append(f"Versicherungsprämien {_chf(vi.praemien(vertraege)['total'])}/Jahr. Deckungscheck: "

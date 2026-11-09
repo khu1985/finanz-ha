@@ -172,7 +172,12 @@ berater:
 
 annahmen:
   lohnentwicklung: 0.0             # reale Lohnsteigerung pro Jahr bis zur Pensionierung
+  teuerung: 1.0                    # Teuerung pro Jahr in %: rechnet nominale Prognosen (PK, 3a) in heutige Franken um;
+                                   # PK-Renten verlieren im Ruhestand Kaufkraft, die AHV folgt dem Mischindex
   rendite_vermoegen: 3.0
+
+budget:
+  regeln: {}                       # eigene Zuordnungen: Stichwort im Buchungstext → Kategorie, z. B. "bäckerei muster": Lebensmittel
 
 kennzahlen:
   # Stand 2026 (BSV). Werden alle zwei Jahre angepasst – bitte prüfen.

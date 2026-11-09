@@ -241,6 +241,23 @@ def annuitaet(kapital: float, jahre: int, rendite: float) -> float:
     return kapital * r / (1 - (1 + r) ** -jahre)
 
 
+def teuerung(k: dict) -> float:
+    """Angenommene Teuerung in % pro Jahr (annahmen.teuerung)."""
+    return float((k.get("annahmen") or {}).get("teuerung", 0) or 0)
+
+
+def kaufkraft(k: dict, jahre: float) -> float:
+    """Faktor, mit dem ein nominaler Betrag in `jahre` Jahren in heutige Franken umgerechnet wird."""
+    return 1 / (1 + teuerung(k) / 100) ** max(0.0, jahre)
+
+
+def ahv_real_faktor(k: dict, jahre: float) -> float:
+    """AHV-Renten folgen dem Mischindex (Mittel aus Preisen und Nominallöhnen) – real wächst die Rente um die
+    Hälfte des Reallohnwachstums (annahmen.lohnentwicklung)."""
+    real = float((k.get("annahmen") or {}).get("lohnentwicklung", 0) or 0) / 2 / 100
+    return (1 + real) ** max(0.0, jahre)
+
+
 @dataclass
 class Luecke:
     jahr: int
@@ -254,26 +271,55 @@ class Luecke:
     luecke: float
     ersatzquote: float
     lohn_heute: float
+    teuerung: float = 0.0
+    kaufkraft: float = 1.0                 # Faktor nominal → heutige Franken bei Pensionierung
+    pk_rente_nominal: float = 0.0
+    kapital_nominal: float = 0.0
+    luecke_mittel: float = 0.0             # Durchschnitt über die Entnahmejahre (PK-Renten verlieren Kaufkraft)
+    luecke_spaeter: float = 0.0            # nach `spaeter_jahre`
+    einkommen_spaeter: float = 0.0
+    spaeter_jahre: int = 20
+    verlauf: list = field(default_factory=list)   # [(Jahr, AHV, PK, Verzehr)] in heutigen Franken
 
 
 def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = None) -> Luecke:
+    """Alles in heutigen Franken. Nominal prognostizierte Kapitalien und PK-Renten werden mit der Teuerung bis zur
+    Pensionierung abgezinst; PK-Renten sind danach meist nicht indexiert und verlieren jedes Jahr Kaufkraft, die AHV
+    folgt dem Mischindex; der Kapitalverzehr rechnet mit der realen Rendite (Entnahmerendite − Teuerung)."""
     from steuern import kapitalbezug_varianten  # vermeidet Zirkelimport
 
+    jetzt = jetzt or date.today().year
     ahv_e = ahv(k, jetzt)
     pks = [pk(p, k) for p in k["personen"]]
     drei = [saeule3a(p, k, jetzt) for p in k["personen"]]
     hh = k["haushalt"]
     jahr = max(pensionsjahr(p) for p in k["personen"])
+    t = teuerung(k)
+    kk = kaufkraft(k, jahr - jetzt)
     kap = kapitalbezug_varianten(k, pks, drei)
     steuer = kap["gestaffelt"]["steuer_total"]
     brutto = sum(x.kapital for x in drei) + sum(x.kapital for x in pks)
-    netto = brutto - steuer + max(0.0, vermoegen_frei)
-    verzehr = annuitaet(netto, int(hh.get("entnahme_jahre", 25)), float(hh.get("entnahme_rendite", 0)))
-    a = sum(r.rente_jahr for r in ahv_e)
-    p = sum(x.rente_jahr for x in pks)
+    netto_nominal = brutto - steuer
+    netto = netto_nominal * kk + max(0.0, vermoegen_frei)
+    jahre = int(hh.get("entnahme_jahre", 25))
+    rendite_real = float(hh.get("entnahme_rendite", 0)) - t
+    verzehr = annuitaet(netto, jahre, rendite_real)
+    a = sum(r.rente_jahr for r in ahv_e) * ahv_real_faktor(k, jahr - jetzt)
+    p_nom = sum(x.rente_jahr for x in pks)
+    p = p_nom * kk
     einkommen = a + p + verzehr
     bedarf = float(hh.get("bedarf_ruhestand", 0))
     lohn = sum(float(x.get("lohn_brutto", 0)) for x in k["personen"])
-    return Luecke(jahr, round(a), round(p), round(verzehr), round(netto), round(steuer), round(einkommen),
+    verlauf, luecken = [], []
+    for j in range(max(1, jahre)):
+        p_j = p / (1 + t / 100) ** j
+        verlauf.append((jahr + j, round(a), round(p_j), round(verzehr)))
+        luecken.append(max(0.0, bedarf - (a + p_j + verzehr)))
+    spaeter = min(20, max(0, jahre - 1))
+    einkommen_sp = a + p / (1 + t / 100) ** spaeter + verzehr
+    return Luecke(jahr, round(a), round(p), round(verzehr), round(netto), round(steuer * kk), round(einkommen),
                   round(bedarf), round(max(0.0, bedarf - einkommen)),
-                  round(einkommen / lohn * 100, 1) if lohn else 0.0, round(lohn))
+                  round(einkommen / lohn * 100, 1) if lohn else 0.0, round(lohn),
+                  t, round(kk, 4), round(p_nom), round(netto_nominal),
+                  round(sum(luecken) / len(luecken)) if luecken else 0, round(max(0.0, bedarf - einkommen_sp)),
+                  round(einkommen_sp), spaeter, verlauf)

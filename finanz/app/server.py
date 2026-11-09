@@ -36,6 +36,7 @@ SEITEN = {
     "versicherungen": ("Versicherungen", seiten.versicherungen),
     "berater": ("Anlageberater", seiten.berater),
     "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
+    "budget": ("Budget und Cashflow", seiten.budget),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -254,11 +255,50 @@ class Handler(BaseHTTPRequestHandler):
             teile = []
             with db() as v:
                 for name, inhalt in dateien:
-                    a, n = bi.aus_datei(v, inhalt, name, form.get("konto", "") if len(dateien) == 1 else "",
-                                        form.get("art", ""), form.get("person", ""), endsaldo)
-                    teile.append(f"{a.konto_vorschlag if not form.get('konto') or len(dateien) > 1 else form['konto']}: "
-                                 f"{n} Monatssaldi" + (f" ({a.zeitraum[0][:7]} bis {a.zeitraum[1][:7]})" if a.zeitraum else ""))
-            return "Importiert – " + "; ".join(teile)
+                    import budget as bu
+                    konto = form.get("konto", "").strip() if len(dateien) == 1 else ""
+                    a, n = bi.aus_datei(v, inhalt, name, konto, form.get("art", ""), form.get("person", ""), endsaldo)
+                    konto = konto or a.konto_vorschlag
+                    nb = bu.speichern(v, konto, bi.buchungen_lesen(inhalt), konfig.laden())
+                    teile.append(f"{konto}: {n} Monatssaldi" + (f", {nb} neue Buchungen" if nb else "")
+                                 + (f" ({a.zeitraum[0][:7]} bis {a.zeitraum[1][:7]})" if a.zeitraum else ""))
+            return "Importiert – " + "; ".join(teile), ("budget" if form.get("zurueck") == "budget" else "vermoegen")
+        if pfad == "budget/regel":
+            import budget as bu
+            stichwort = str(form.get("stichwort", "")).strip().lower()
+            kat = str(form.get("kategorie", "")).strip()
+            if not stichwort or not kat:
+                raise ValueError("Stichwort und Kategorie angeben.")
+            k = konfig.laden()
+            k.setdefault("budget", {}).setdefault("regeln", {})
+            k["budget"]["regeln"] = {**(k["budget"]["regeln"] or {}), stichwort: kat}
+            konfig.speichern(k)
+            with db() as v:
+                n = bu.neu_kategorisieren(v, k)
+            return f"Regel «{stichwort}» → {kat} gespeichert, {n} Buchungen neu zugeordnet.", "budget"
+        if pfad == "budget/regel/loeschen":
+            import budget as bu
+            k = konfig.laden()
+            (k.get("budget") or {}).get("regeln", {}).pop(str(form.get("stichwort", "")), None)
+            konfig.speichern(k)
+            with db() as v:
+                bu.neu_kategorisieren(v, k)
+            return "Regel gelöscht.", "budget"
+        if pfad == "budget/sparen":
+            import budget as bu
+            k = konfig.laden()
+            with db() as v:
+                a = bu.auswerten(k, v)
+            if not a:
+                raise ValueError("Noch keine Buchungen.")
+            erg = bu.sparen_uebernehmen(k, a)
+            konfig.speichern(k)
+            return "Sparpotenzial übernommen: " + ", ".join(f"{n} {seiten.chf(b)}/Monat" for n, b in erg.items()), "budget"
+        if pfad == "budget/loeschen":
+            import budget as bu
+            with db() as v:
+                n = bu.loeschen(v, form.get("konto") or None)
+            return f"{n} Buchungen gelöscht.", "budget"
         if pfad == "vermoegen/anlage":
             k = konfig.laden()
             a = k.setdefault("anlage", {})

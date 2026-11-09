@@ -13,7 +13,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 1. [Erste Schritte](#erste-schritte)
 2. [Bedienung](#bedienung)
 3. [Seiten](#seiten)
-4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) ·
+4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
@@ -81,6 +81,7 @@ personen:
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit |
 | Vermögen | Konten, Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
+| Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
 | Szenarien | PK-Einkauf optimieren, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
@@ -154,6 +155,25 @@ Saldo, Betrag oder Gutschrift/Belastung) und übernimmt den letzten Saldo jedes 
 automatisch (z. B. «Raiffeisen …7890») oder wird angegeben. Fehlt die Saldo-Spalte, den heutigen Kontostand als
 Endsaldo angeben; die App rechnet die Monatssaldi aus den Beträgen zurück. Hypotheken und Kredite zählen
 negativ. Das freie Vermögen (ohne Immobilie und Hypothek) fliesst in den Kapitalverzehr im Ruhestand.
+
+## Budget und Cashflow
+
+Der Bank-Import (Seite Budget, Vermögen oder Import-Ordner) speichert neben den Monatssaldi die einzelnen Buchungen;
+ein erneuter Import desselben Auszugs fügt nichts doppelt ein. Am besten 12 Monate aller Konten importieren, über die
+Einnahmen und Ausgaben laufen.
+
+- **Kategorien** über Stichworte im Buchungstext: Lohn, Wohnen (Hypothek, Miete, Energie, Gebühren), Krankenkasse,
+  Versicherungen, Steuern, Lebensmittel, Mobilität, Kinder und Betreuung, Gesundheit, Telekom und Abos, Einkäufe,
+  Freizeit und Ferien, Bargeld, Kreditkarte, Spenden, Gebühren. Eigene Regeln (`budget.regeln`: Stichwort →
+  Kategorie) gehen vor; häufige Buchungen ohne Kategorie lassen sich direkt zuordnen.
+- **Umbuchungen** zwischen eigenen Konten (Stichwort oder gleicher Betrag mit Gegenbuchung auf einem anderen Konto
+  innert 4 Tagen) zählen nicht. Einzahlungen in 3a, PK-Einkauf und Depot zählen als **Sparen**.
+- **Auswertung** über die letzten vollständigen Monate (höchstens 12): Einnahmen, Ausgaben und Ersparnis pro Monat,
+  Sparquote, Ausgaben nach Kategorie und Monat. Hinweise, wenn weniger oder mehr gespart wird als in der Planung
+  (`personen[].sparen_monat`) oder die heutigen Ausgaben über dem Bedarf im Ruhestand liegen. «Als Sparpotenzial
+  übernehmen» verteilt den gesparten Betrag nach Bruttolohn auf die Personen.
+- Ampel: grün = gespart wie geplant, gelb = weniger als 90 % des Plans oder unter 6 Monaten Daten, rot = mehr
+  ausgegeben als eingenommen.
 
 ## Versicherungen
 
@@ -300,13 +320,14 @@ Die App liefert ihre Kennzahlen als Sensoren an Home Assistant – für Dashboar
 |---|---|
 | `sensor.finanz_nettovermoegen`, `_freies_vermoegen`, `_liquiditaet` | CHF; Aufteilung nach Art als Attribut |
 | `sensor.finanz_saldi_alter` | Tage seit den letzten Saldi |
-| `sensor.finanz_einkommen_ruhestand`, `_pensionsluecke`, `_ersatzquote` | Ruhestand (AHV, PK, Kapitalverzehr als Attribute) |
+| `sensor.finanz_einkommen_ruhestand`, `_pensionsluecke`, `_ersatzquote` | Ruhestand (AHV, PK, Kapitalverzehr, Lücke im Mittel und nach 20 Jahren, Teuerung als Attribute) |
 | `sensor.finanz_fruehestes_pensionsalter` | frühestes Alter ohne Lücke; Einkommen je Alter als Attribut |
 | `sensor.finanz_steuern_jahr`, `_grenzsteuersatz` | Steuern heute; pro Person als Attribut |
 | `sensor.finanz_steuererklaerung_frist` | Datum der nächsten Frist (Kanton, Erstreckung) |
 | `sensor.finanz_amortisation_verfuegbar` | bei Fälligkeit verfügbar; Ziel und Fälligkeit als Attribute |
 | `sensor.finanz_versicherungspraemien`, `_krankenkasse_ersparnis` | Prämien; optimale Franchise je Person |
 | `sensor.finanz_ungenutzt` | Geld ohne Zweck auf Konten; Mehrertrag und Krypto-Anteil |
+| `sensor.finanz_ausgaben_monat`, `gespart_monat`, `sparquote` | Budget aus den Kontoauszügen; Einnahmen, Kategorien, Plan als Attribute |
 | `sensor.finanz_ampel` | `gruen` / `gelb` / `rot`; Bereiche und Texte als Attribute |
 | `sensor.finanz_handeln` | Anzahl roter Bereiche |
 | `sensor.finanz_erinnerungen`, `_naechste_frist` | anstehende Erinnerungen; nächste mit Titel und Tagen |
@@ -336,7 +357,7 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 
 | Bereich | Grün | Gelb | Rot |
 |---|---|---|---|
-| Ruhestand | keine Lücke | Lücke bis 10 % des Bedarfs | grössere Lücke |
+| Ruhestand | keine Lücke | Lücke bis 10 % des Bedarfs (Durchschnitt über die Entnahmejahre) | grössere Lücke |
 | Liquidität | Konten ≥ Reserve | ≥ halbe Reserve | darunter |
 | Tragbarkeit | ≤ 33 % | bis 38 % | darüber |
 | Amortisation | Ziel erreicht | ≥ 80 % des Ziels | darunter |
@@ -347,6 +368,7 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Invalidität | ≥ 70 % des Lohns | ≥ 55 % | darunter |
 | Todesfall | Kapital ≥ Richtwert | ≥ 50 % oder Partnerrente nicht gemeldet | darunter |
 | Krankenkasse | Franchisen passen | Optimierung spart ≥ 200 pro Jahr | – |
+| Budget | gespart wie geplant | unter 90 % des Plans oder unter 6 Monaten Daten | mehr ausgegeben als eingenommen |
 | Anlage | Aufteilung passt | über 20'000 ohne Zweck auf Konten oder Krypto über dem Richtwert | – |
 | Nachlass | Checkliste erledigt | Punkte offen | Konkubinat ohne Testament beider Personen |
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
@@ -390,7 +412,8 @@ oder **Einstellungen → Experte**.
 | `sensoren` | `aktiv`, `praefix` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
-| `annahmen` | Lohnentwicklung, Rendite |
+| `annahmen` | Lohnentwicklung (real), `teuerung`, Rendite |
+| `budget` | `regeln` (Stichwort → Kategorie) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
 
 Die Kennzahlen werden in der Regel alle zwei Jahre (AHV/BVG) bzw. jährlich (3a, Steuertarif, Abzüge) angepasst
@@ -398,7 +421,13 @@ und lassen sich im YAML-Editor überschreiben.
 
 ## Rechenmodell
 
-Alle Beträge in heutigen Franken (keine Teuerung).
+Alle Beträge in heutigen Franken. **Teuerung** (`annahmen.teuerung`, Standard 1 % pro Jahr; 0 = ohne): Prognosen,
+die nominal sind (Altersguthaben laut Vorsorgeausweis bzw. Hochrechnung, 3a, Kapitalbezugssteuer), werden bis zur
+Pensionierung mit der Teuerung abgezinst. Der Kapitalverzehr rechnet mit der realen Rendite (Entnahmerendite minus
+Teuerung). PK-Renten werden meist nicht angepasst und verlieren im Ruhestand jedes Jahr Kaufkraft; die AHV folgt dem
+Mischindex (Mittel aus Preisen und Löhnen) und wächst real um die Hälfte der realen Lohnentwicklung. Die
+Pensionslücke steht deshalb für den Beginn, im Durchschnitt über die Entnahmejahre und nach 20 Jahren; die Ampel
+nimmt den Durchschnitt.
 
 **AHV.** Monatliche Vollrente nach Rentenskala 44 als stetige Formel (bis 15'120: Minimalrente, bis 45'360: 74 %
 der Minimalrente + 13/600 des Einkommens, darüber 104 % + 8/600, höchstens Maximalrente). Teilrente = Vollrente ×
