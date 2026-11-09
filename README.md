@@ -19,7 +19,7 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Vermögen | Konten und Saldi, Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial |
 | Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell), Risiko Invalidität und Tod |
-| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
+| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen, Werten aus der App und Saldi per 31.12. |
 | Notfallordner | Druckbare Übersicht für Angehörige mit Konten, Vorsorge, Policen, Kontakten, Ablageorten und ersten Schritten |
 | Nachlass | Was der Partner im Todesfall erhält (Erbteil, Erbschaftssteuer, AHV/PK, Liegenschaft), Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
@@ -270,9 +270,9 @@ flowchart TD
     M["monatlich<br/>Kontoauszüge importieren (Bank-Import)"] --> UE["Übersicht und Ampeln aktuell"]
     J["Januar<br/>Kennzahlen prüfen (AHV, BVG, 3a, Tarif)"] --> F
     F["Februar–März<br/>Vorsorgeausweise hochladen und übernehmen"] --> SE
-    SE["bis Frist (Standard 31. März)<br/>Steuererklärung einreichen und hochladen"] --> VE
+    SE["bis Frist (Standard 31. März)<br/>Checkliste Steuererklärung, einreichen und hochladen"] --> VE
     VE["nach Veranlagung<br/>Veranlagung hochladen: Abgleich, Grenzsteuersatz"] --> SZ
-    SZ["Szenarien<br/>PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Plan übernehmen"] --> KV
+    SZ["Szenarien<br/>PK-Einkauf optimieren, Plan übernehmen"] --> KV
     KV["September–November<br/>Krankenkasse vergleichen, bis 30.11. kündigen"] --> DZ
     DZ["Oktober–Dezember<br/>3a einzahlen (bis 20.12.), PK-Einkauf überweisen (bis 10.12.)"] --> J
     VT["laufend<br/>Kündigungsfristen 60 Tage vorher"] -.-> UE
