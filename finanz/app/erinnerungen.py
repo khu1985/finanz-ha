@@ -90,8 +90,13 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
 
     # Krankenkasse
     if date(j, 9, 20) <= heute <= date(j, 11, 30):
+        import krankenkasse as kk
+        spar = sum(e.ersparnis for e in kk.haushalt(k, vi.alle(db)))
+        zusatz = (f" Franchise-Optimierung spart rund CHF {_chf(spar)} pro Jahr." if spar >= 50 else
+                  " Prämien und Gesundheitskosten unter «Versicherungen» eintragen, um die beste Franchise zu berechnen.")
         erg.append(Erinnerung(f"kvg-{j}", "Krankenkasse vergleichen", date(j, 11, 30),
-                              "Neue Prämien sind bekannt; Grundversicherung bis 30. November eingeschrieben kündigen.", "versicherungen"))
+                              "Neue Prämien sind bekannt; Grundversicherung bis 30. November eingeschrieben kündigen, Franchise "
+                              "oder Modell wechseln." + zusatz, "versicherungen"))
 
     # Kündigungsfristen der Verträge
     for t in vi.kuendigungstermine(vi.alle(db), heute):

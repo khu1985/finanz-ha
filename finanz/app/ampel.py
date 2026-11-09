@@ -169,6 +169,23 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         erg.append(Ampel("Todesfall", schlechteste(stati),
                          ", ".join(f"{r.name} CHF {chf(r.tod_kapital)}" for r in rs) + " Kapital", "versicherungen"))
 
+    # Krankenkasse
+    import krankenkasse as kk
+    ergebnisse = kk.haushalt(k, vi.alle(db))
+    if ergebnisse:
+        spar = sum(e.ersparnis for e in ergebnisse)
+        erg.append(Ampel("Krankenkasse", GELB if spar >= 200 else GRUEN,
+                         f"Franchise-Optimierung spart rund CHF {chf(spar)}/Jahr" if spar >= 200 else "Franchisen passen",
+                         "versicherungen"))
+
+    # Anlage
+    import anlage as an
+    c = an.pruefen(k, db, heute)
+    if c.finanz_total:
+        brach = max(0, c.anlegbar - c.depot)
+        erg.append(Ampel("Anlage", GELB if brach > 20000 or c.krypto_anteil > float(an.konfiguration(k)["krypto_max"]) else GRUEN,
+                         f"CHF {chf(brach)} ohne Zweck auf Konten" if brach > 20000 else "Aufteilung passt", "vermoegen"))
+
     # Erinnerungen
     import erinnerungen as er
     offen = er.alle(k, db, heute)

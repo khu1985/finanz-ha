@@ -561,7 +561,7 @@ Saldo-Spalte, den heutigen Kontostand als Endsaldo angeben.</p>
 <button>Auszug importieren</button></div></form>"""
     arten_zeilen = [[vm.ARTEN.get(a, a), chf(v)] for a, v in sorted(nv["nach_art"].items(), key=lambda x: -x[1])]
     return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["frei"]), "Freies Vermögen (ohne Immobilie/Hypothek)") + "</div>"
-            + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
+            + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)})) + anlage_karte(k, db)
             + karte("Konten", liste)
             + '<div class="raster">' + karte("Bank-Import", bank) + karte("Saldo erfassen", erfassen)
             + karte("CSV importieren (eigene Liste)", importieren)
@@ -725,7 +725,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px"><button>Importieren</button></div></form>"""
     if not vertraege:
         return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte(
-            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + risiko_karte(k)
+            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + krankenkasse_karte(k, db) + risiko_karte(k)
     zeilen = []
     for v in vertraege:
         t = vi.naechster_termin(v, heute)
@@ -748,7 +748,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
     return (f'<div class="kpis">{kpis}</div>' + karte("Verträge", liste)
             + '<div class="raster">' + karte("Deckungscheck", _deckung(k, vertraege))
             + karte("Kündigungstermine", termin_html) + "</div>"
-            + risiko_karte(k) + karte("Prämien nach Sparte", sparten)
+            + krankenkasse_karte(k, db) + risiko_karte(k) + karte("Prämien nach Sparte", sparten)
             + '<div class="raster">' + karte("Weitere Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>")
 
 
@@ -1192,7 +1192,7 @@ def ampel_karte(k: dict, db) -> str:
 
 def szenarien(k: dict, db, q: dict | None = None) -> str:
     q = q or {}
-    return einkauf_karte(k, db, q) + hypothek_karte(k, db, q) + heirat_karte(k, db)
+    return einkauf_karte(k, db, q) + fruehpension_karte(k, db) + hypothek_karte(k, db, q) + heirat_karte(k, db)
 
 
 def einkauf_karte(k: dict, db, q: dict) -> str:
@@ -1395,3 +1395,133 @@ def fristen_karte(k: dict) -> str:
     return karte(f"Frist Steuererklärung {j - 1 if frist.year == j else j}", tabelle(["", ""], zeilen, zahlen_ab=9)
                  + (hinweisliste(hinweise) if hinweise else "")
                  + '<p class="leise">Eigene Frist oder gewährte Erstreckung unter Einstellungen → Erinnerungen eintragen.</p>')
+
+
+
+# ---------------------------------------------------------------- Krankenkasse
+
+def krankenkasse_karte(k: dict, db) -> str:
+    import krankenkasse as kk
+    vertraege = vi.alle(db)
+    personen = kk.personen(k, vertraege)
+    ergebnisse = {e.person.name: e for e in kk.haushalt(k, vertraege)}
+    zeilen = []
+    for i, p in enumerate(personen):
+        liste = kk.FRANCHISEN_KINDER if p.kind else kk.FRANCHISEN_ERWACHSENE
+        fr = "".join(f'<option{" selected" if f == p.franchise else ""}>{f}</option>' for f in liste)
+        mo = "".join(f'<option value="{m}"{" selected" if m == p.modell else ""}>{escape(t)}</option>' for m, t in kk.MODELLE.items())
+        un = (f'<option value="ja"{" selected" if p.unfall else ""}>ja</option>'
+              f'<option value="nein"{"" if p.unfall else " selected"}>nein</option>')
+        zeilen.append([
+            f'<input type="hidden" name="name_{i}" value="{escape(p.name)}"><b>{escape(p.name)}</b>' + (" (Kind)" if p.kind else ""),
+            f'<input name="praemie_{i}" value="{p.praemie_monat:g}" inputmode="decimal" style="min-width:90px">',
+            f'<select name="franchise_{i}">{fr}</select>',
+            f'<input name="kosten_{i}" value="{p.kosten_jahr:g}" inputmode="decimal" style="min-width:90px">',
+            f'<select name="modell_{i}">{mo}</select>', f'<select name="unfall_{i}">{un}</select>'])
+    form = (f'<form method="post" action="versicherungen/krankenkasse" data-status="Franchisen werden berechnet …">'
+            + tabelle(["Person", "Prämie/Monat 2027", "Franchise", "Gesundheitskosten/Jahr", "Modell", "Unfall"], zeilen, zahlen_ab=9)
+            + '<div class="zeile"><button>Speichern und rechnen</button></div></form>')
+    if not ergebnisse:
+        return karte("Krankenkasse: Franchise und Modell", '<p class="leise">Prämie pro Monat und erwartete Gesundheitskosten '
+                     '(Arzt, Medikamente, Therapien – was die Grundversicherung bezahlt) eintragen.</p>' + form)
+    total_heute = sum(e.kosten.get(e.person.franchise, 0) for e in ergebnisse.values())
+    total_best = sum(e.kosten[e.beste] for e in ergebnisse.values())
+    kpis = "".join([
+        kpi(chf(total_heute), "Kosten pro Jahr heute (Prämie + Kostenbeteiligung)"),
+        kpi(chf(total_best), "mit optimaler Franchise", "gut" if total_best < total_heute else ""),
+        kpi(chf(total_heute - total_best), "Ersparnis pro Jahr", "", am.GELB if total_heute - total_best >= 200 else am.GRUEN),
+    ])
+    teile = []
+    for e in ergebnisse.values():
+        z = [[licht(am.GRUEN if f == e.beste else am.GRAU, "optimal" if f == e.beste else "") + str(f)
+              + (" (heute)" if f == e.person.franchise else ""), chf(e.praemien[f]),
+              chf(e.kosten[f] - e.praemien[f]), f"<b>{chf(e.kosten[f])}</b>" if f == e.beste else chf(e.kosten[f])]
+             for f in e.franchisen]
+        stufen = [0, 1000, 2000, 5000, 10000]
+        z2 = [[f"bei Kosten {chf(s)}"] + [chf(e.tabelle[s][f]) for f in (e.franchisen[0], e.franchisen[-1])]
+              + [str(min(e.franchisen, key=lambda f: e.tabelle[s][f]))] for s in stufen]
+        teile.append(f'<h2>{escape(e.person.name)}</h2>'
+                     + tabelle(["Franchise", "Prämie/Jahr", "Kostenbeteiligung", "Total/Jahr"], z)
+                     + tabelle(["Szenario", f"Franchise {e.franchisen[0]}", f"Franchise {e.franchisen[-1]}", "beste"], z2))
+    hinweise = [h for e in ergebnisse.values() for h in e.hinweise]
+    geschaetzt = any(e.geschaetzt for e in ergebnisse.values())
+    fuss = ('<p class="leise">Prämien anderer Franchisen geschätzt mit dem gesetzlichen Höchstrabatt (70 % des Risikounterschieds, '
+            'höchstens 50 % der Prämie). Genaue Prämien und Kassenvergleich: priminfo.admin.ch; eigene Offerten unter '
+            '<code>krankenkasse.personen[].angebote</code> (Franchise: Prämie/Monat) eintragen. Wechsel oder Franchise-Änderung '
+            'bis 30. November eingeschrieben, Erhöhung der Franchise auch bei der eigenen Kasse.</p>' if geschaetzt else "")
+    return karte("Krankenkasse: Franchise und Modell", f'<div class="kpis">{kpis}</div>' + hinweisliste(hinweise)
+                 + "".join(teile) + fuss + "<details><summary>Angaben bearbeiten</summary>" + form + "</details>")
+
+
+
+# ---------------------------------------------------------------- Frühpensionierung
+
+def fruehpension_karte(k: dict, db) -> str:
+    import fruehpension as fp
+    frei = vm.nettovermoegen(db)["frei"]
+    varianten = fp.vergleich(k, frei)
+    frueh = fp.fruehestes_ohne_luecke(varianten)
+    v65 = varianten[-1]
+    kpis = "".join([
+        kpi(str(frueh) if frueh is not None else "–", "Frühestes Alter ohne Pensionslücke", "",
+            am.GRUEN if frueh is not None and frueh <= 62 else am.GELB if frueh is not None else am.ROT),
+        kpi(chf(v65.einkommen), "Einkommen pro Jahr bei Pension mit 65"),
+        kpi(chf(v65.bedarf), "Bedarf im Ruhestand pro Jahr"),
+    ])
+    zeilen = []
+    for v in varianten:
+        zeilen.append([licht(am.luecke_status(v.luecke, v.bedarf)) + f"<b>{v.alter}</b> ({v.jahr})",
+                       f"{v.ahv_ab}", chf(v.ueberbrueckung), chf(v.ahv), chf(v.pk_rente), chf(v.kapital_rest), chf(v.verzehr),
+                       f"<b>{chf(v.einkommen)}</b>", chf(-v.luecke) if v.luecke else "–"])
+    tab = tabelle(["Rücktritt mit", "AHV ab", "Überbrückung", "AHV/Jahr", "PK-Rente/Jahr", "Kapital danach",
+                   "Kapitalverzehr/Jahr", "Einkommen/Jahr", "Lücke"], zeilen)
+    diagramm = dg.saeulen([str(v.alter) for v in varianten],
+                          {"AHV": [v.ahv for v in varianten], "Pensionskasse": [v.pk_rente for v in varianten],
+                           "Kapitalverzehr": [v.verzehr for v in varianten]},
+                          linie_bei=v65.bedarf, linie_text=f"Bedarf {chf(v65.bedarf)}")
+    hinweise = sorted({h for v in varianten for h in v.hinweise})
+    erklaerung = ('<p class="leise">Alle Personen gehen im gleichen Alter in Pension. Pensionskasse: Guthaben bis zum Rücktritt '
+                  '(Prognose der Kasse anteilig gekürzt), Umwandlungssatz pro Jahr vor 65 um '
+                  f'{float((k.get("fruehpension") or {}).get("pk_kuerzung_uws", 0.2)):g} Prozentpunkte tiefer. AHV frühestens mit 63 '
+                  '(−6,8 % pro Jahr); bis 65 Beiträge als Nichterwerbstätige (geschätzt). Überbrückung bis zur AHV = Bedarf minus PK-Renten, '
+                  'aus dem Kapital. Das Sparen endet mit dem Rücktritt; das restliche Kapital wird bis zum gleichen Lebensende verzehrt. '
+                  'Für die genaue Kürzung den Vorsorgeausweis bzw. die Kasse fragen.</p>')
+    return karte("Frühpensionierung", f'<div class="kpis">{kpis}</div>' + diagramm + tab
+                 + (hinweisliste(hinweise) if hinweise else "") + erklaerung)
+
+
+
+# ---------------------------------------------------------------- Anlage-Check
+
+def anlage_karte(k: dict, db) -> str:
+    import anlage as an
+    c = an.pruefen(k, db)
+    cfg = an.konfiguration(k)
+    if not c.finanz_total:
+        return karte("Anlage-Check", '<p class="leise">Saldi erfassen oder Kontoauszüge importieren.</p>')
+    nicht_angelegt = max(0, c.anlegbar - c.depot)
+    kpis = "".join([
+        kpi(chf(c.finanz_total), "Finanzvermögen (Konten, Depot, Krypto)"),
+        kpi(f"{c.cash_anteil:.0f} %", "auf Konten", "", am.GELB if nicht_angelegt > 20000 else am.GRUEN),
+        kpi(f"{c.aktien_ist:.0f} %", f"in Aktien/Krypto (Ziel langfristiger Topf {c.aktien_soll:.0f} %)"),
+        kpi(chf(c.opportunitaet), "möglicher Mehrertrag pro Jahr", "", am.GELB if c.opportunitaet > 2000 else am.GRUEN),
+    ])
+    zeilen = [[escape(t.name), chf(t.betrag), escape(t.horizont), escape(t.empfehlung)] for t in c.toepfe]
+    zeilen.append(["<b>Total</b>", f"<b>{chf(sum(t.betrag for t in c.toepfe))}</b>", "", ""])
+    tab = tabelle(["Topf", "Betrag", "Horizont", "Umsetzung"], zeilen, zahlen_ab=1)
+    kurz = sum(t.betrag for t in c.toepfe if t.horizont not in ("offen", "über 10 Jahre"))
+    uebrig = sum(t.betrag for t in c.toepfe if t.horizont == "offen" and not t.name.startswith("Krypto"))
+    toepfe = dg.saeulen(["Soll", "Ist"],
+                        {"Reserve und zweckgebunden": [kurz, 0], "Langfristig angelegt": [c.toepfe[-1].betrag, c.depot],
+                         "Konten": [0, c.liquide], "Krypto": [c.krypto, c.krypto], "Übriges": [uebrig, uebrig]})
+    risiko = "".join(f'<option value="{r}"{" selected" if r == cfg["risiko"] else ""}>{r} ({cfg["aktienquote"][r]} % Aktien, '
+                     f'{cfg["rendite"][r]:g} % Rendite)</option>' for r in ("tief", "mittel", "hoch"))
+    form = f"""<form method="post" action="vermoegen/anlage"><div class="felder">
+<label>Risikoprofil langfristiger Topf<select name="risiko">{risiko}</select></label>
+<label>Zins Konto %<input name="zins_konto" value="{cfg['zins_konto']:g}" inputmode="decimal"></label>
+<label>Zins sichere Anlage %<input name="zins_sicher" value="{cfg['zins_sicher']:g}" inputmode="decimal"></label></div>
+<div class="zeile"><button class="zweit">Speichern</button></div></form>"""
+    fuss = ('<p class="leise">Vorsorge 3b (verpfändet), Immobilie und Hypothek zählen nicht zum Finanzvermögen. Renditen sind '
+            'langfristige Annahmen, keine Prognosen; keine Produktempfehlung. Das Risikoprofil hängt von Horizont, '
+            'Verlusttoleranz und Einkommenssicherheit ab.</p>')
+    return karte("Anlage-Check", f'<div class="kpis">{kpis}</div>' + tab + toepfe + hinweisliste(c.hinweise) + form + fuss)

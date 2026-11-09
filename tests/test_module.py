@@ -441,3 +441,83 @@ def test_erinnerungen_steueroptimierung(konkubinat, db, tmp_path):
     liste = {e.titel for e in er.alle(k, db, date(2026, 11, 9))}
     assert "PK-Einkauf überweisen – Person 1" in liste and "PK-Einkauf 2026 prüfen – Person 1" not in liste
     assert "Liegenschaftsunterhalt planen" not in {e.titel for e in er.alle(k, db, date(2029, 11, 9))}
+
+
+# ---------------------------------------------------------------- Krankenkasse
+
+def test_kostenbeteiligung():
+    import krankenkasse as kk
+    assert kk.kostenbeteiligung(0, 2500, False) == 0
+    assert kk.kostenbeteiligung(1000, 2500, False) == 1000
+    assert kk.kostenbeteiligung(5000, 300, False) == 300 + 470
+    assert kk.kostenbeteiligung(50_000, 2500, False) == 2500 + 700
+    assert kk.kostenbeteiligung(50_000, 0, True) == 350
+
+
+def test_franchise_optimierung():
+    import krankenkasse as kk
+    p = kk.Person("A", False, 300, 500.0, 500.0, "standard", True, True)
+    pr, geschaetzt = kk.praemien(p)
+    assert geschaetzt and pr[300] == 6000 and pr[2500] == 6000 - 0.7 * 2200          # Höchstrabatt
+    e = kk.rechnen(p)
+    assert e.beste == 2500 and e.ersparnis == round((6000 + 300 + 20) - (6000 - 1540 + 500))  # inkl. Selbstbehalt 10 %
+    assert 1500 < e.break_even[0][2] < 3000                                             # tiefe Franchise lohnt sich erst ab …
+    assert any("Telmed" in h for h in e.hinweise) and any("sistieren" in h for h in e.hinweise)
+    krank = kk.rechnen(kk.Person("B", False, 2500, 371.67, 8000.0, "hausarzt", False, True))
+    assert krank.beste == 300
+    offerte = kk.Person("C", False, 300, 500.0, 0, "hausarzt", False, True, angebote={2500: 420})
+    assert kk.praemien(offerte)[0][2500] == 420 * 12
+
+
+def test_krankenkasse_aus_police(k, db, tmp_path):
+    import krankenkasse as kk
+    from policen import KVG
+    vi.hochladen(db, tmp_path, "kvg.pdf", pdf(KVG))
+    personen = kk.personen(k, vi.alle(db))
+    p1 = next(p for p in personen if p.name == "Person 1")
+    assert p1.franchise == 300 and p1.praemie_monat == pytest.approx(412.5) and p1.unfall
+    assert any(p.kind for p in personen)
+    assert [e.person.name for e in kk.haushalt(k, vi.alle(db))] == ["Person 1"]
+
+
+# ---------------------------------------------------------------- Frühpensionierung
+
+def test_fruehpension(k):
+    import fruehpension as fp
+    k["personen"] = k["personen"][:1]
+    k["haushalt"]["zivilstand"] = "ledig"
+    p = k["personen"][0]
+    p["geburtsdatum"] = "1970-01-01"
+    p["ahv"]["beitragsjahre_bisher"] = 44
+    p["pk"].update(ausweis_alterskapital=800_000, ausweis_altersrente=48_000, kapitalbezug_anteil=0)
+    v = {x.alter: x for x in fp.vergleich(k, 300_000, heute=date(2026, 11, 9))}
+    assert v[65].pk_rente == 48_000 and v[65].ueberbrueckung == 0 and v[65].ahv_ab == 65
+    assert v[60].ahv_ab == 63 and v[60].ueberbrueckung > 0 and v[60].pk_rente < v[65].pk_rente
+    assert v[63].ahv == round(v[65].ahv * (1 - 2 * 0.068))                               # 2 Jahre Vorbezug
+    assert v[58].einkommen < v[62].einkommen < v[65].einkommen
+    assert fp.ahv_ne_beitrag(100_000, 0, k["kennzahlen"]) == 530
+    assert fp.ahv_ne_beitrag(20_000_000, 0, k["kennzahlen"]) == 26_500
+    k["haushalt"]["bedarf_ruhestand"] = v[62].einkommen
+    assert fp.fruehestes_ohne_luecke(fp.vergleich(k, 300_000, heute=date(2026, 11, 9))) == 62
+
+
+# ---------------------------------------------------------------- Anlage-Check
+
+def test_anlage_check(k, db):
+    import anlage as an
+    k["wohnen"].update(aktiv=True, kaufpreis=2_000_000, eigenmittel=1_000_000, hypothek_faellig="2030-07-01",
+                       amortisation_ziel=300_000, amortisation_max=300_000, reserve=50_000, verpfaendet=[],
+                       steuer_bezug_verpfaendet=0)
+    for p in k["personen"]:
+        p["sparen_monat"] = 0
+        p["pk"]["einkauf_geplant"] = []
+    for name, art, betrag in (("Konto", "bank", 600_000), ("Depot", "depot", 50_000), ("Krypto", "krypto", 60_000)):
+        vm.saldo_setzen(db, vm.konto_anlegen(db, name, art), "2026-11-01", betrag)
+    c = an.pruefen(k, db, date(2026, 11, 9))
+    namen = [t.name for t in c.toepfe]
+    assert namen[0] == "Notreserve" and namen[-1] == "Langfristig" and "Amortisation 07.2030" in namen
+    assert c.toepfe[1].betrag == 300_000 and c.anlegbar == 600_000 + 50_000 - 50_000 - 300_000
+    assert sum(t.betrag for t in c.toepfe) == c.finanz_total
+    assert c.krypto_anteil == pytest.approx(60 / 710 * 100, abs=0.1)
+    assert any("Krypto" in h for h in c.hinweise) and any("ohne Zweck" in h for h in c.hinweise)
+    assert c.opportunitaet == round((300_000 - 50_000) * (3.5 - 0.3) / 100)

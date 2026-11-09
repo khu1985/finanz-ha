@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.10.0 – 2026-11-09
+
+- **Krankenkasse: Franchise und Modell** (Versicherungen): pro Person und Kind Prämie, Franchise, erwartete
+  Gesundheitskosten, Modell und Unfalldeckung erfassen; Gesamtkosten je Franchise, optimale Franchise, Ersparnis,
+  Kosten-Szenarien und Break-even; Hinweise zu Hausarzt/Telmed und Unfall sistieren. Prämien anderer Franchisen
+  geschätzt mit dem gesetzlichen Höchstrabatt oder aus eigenen Offerten. Ampel und Krankenkassen-Erinnerung mit Ersparnis
+- **Frühpensionierung** (Szenarien): Rücktritt mit 58 bis 65 für den Haushalt – AHV frühestens mit 63, gekürzter
+  Umwandlungssatz, Überbrückung bis zur AHV inkl. Beiträge als Nichterwerbstätige, Kapitalverzehr bis zum gleichen
+  Lebensende; frühestes Alter ohne Pensionslücke
+- **Anlage-Check** (Vermögen): Aufteilung in Notreserve, zweckgebundene Amortisation, PK-Einkäufe und langfristigen Topf;
+  Aktienquote nach Risikoprofil, Krypto-Anteil, Klumpenrisiko, Mehrertrag bei Anlage statt Konto; Ampel
+
 ## 0.9.0 – 2026-11-09
 
 - **Frist der Steuererklärung nach Wohnkanton** (alle 26 Kantone, Stand Steuerjahr 2025): ordentliche Frist und

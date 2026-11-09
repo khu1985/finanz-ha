@@ -129,6 +129,20 @@ wohnen:
   verpfaendet: []                  # indirekte Amortisation, z. B. [{name: 3a Mobiliar P1, guthaben: 40000, beitrag_monat: 625, rendite: 1.0}]
   steuer_bezug_verpfaendet: 0      # geschätzte Steuer beim Bezug der verpfändeten Vorsorge
 
+anlage:
+  risiko: mittel                   # tief | mittel | hoch – für den langfristigen Topf
+  zins_konto: 0.3
+  zins_sicher: 1.0                 # Festgeld, Kassenobligation, Geldmarkt
+  krypto_max: 5                    # Richtwert Anteil am Finanzvermögen in %
+
+fruehpension:
+  pk_kuerzung_uws: 0.2             # Umwandlungssatz pro Jahr vor 65 tiefer (Prozentpunkte)
+
+krankenkasse:
+  personen: []                     # [{name, praemie_monat, franchise, kosten_jahr, modell, unfall, angebote: {2500: 380.5}}]
+  rabatt_modell: 12                # typischer Rabatt Hausarzt/Telmed gegenüber Standard in %
+  unfall_anteil: 7                 # Anteil Unfalldeckung an der Prämie in %
+
 erinnerungen:
   benachrichtigung: ""             # leer = aus; «persistent» = Meldung in HA; sonst Notify-Dienst, z. B. notify.mobile_app_iphone
   steuererklaerung_frist: ""       # leer = Frist des Wohnkantons (haushalt.kanton); sonst MM-TT laut Formular
@@ -157,6 +171,10 @@ kennzahlen:
   ahv_13_rente: true               # 13. AHV-Rente ab Dezember 2026
   ahv_vollbeitragsjahre: 44
   ahv_vorbezug_kuerzung: 6.8       # % pro Vorbezugsjahr
+  ahv_ne_min: 530                  # AHV/IV/EO-Beitrag Nichterwerbstätige (Schätzung, linear)
+  ahv_ne_max: 26500
+  ahv_ne_vermoegen_min: 350000     # Vermögen + 20 × Renteneinkommen, bis zu dem der Minimalbeitrag gilt
+  ahv_ne_vermoegen_max: 8950000    # ab hier Maximalbeitrag
   bvg_eintrittsschwelle: 22680
   bvg_koordinationsabzug: 26460
   bvg_max_lohn: 90720

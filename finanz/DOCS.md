@@ -80,9 +80,9 @@ personen:
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit |
-| Vermögen | Konten, Saldi, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
-| Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Risiko Invalidität und Tod, Prämien |
-| Szenarien | PK-Einkauf optimieren, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat |
+| Vermögen | Konten, Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
+| Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
+| Szenarien | PK-Einkauf optimieren, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
 | Protokoll, Änderungen | Protokoll der App, Changelog |
@@ -134,6 +134,14 @@ Maximal-Amortisation.
 ## Vermögen
 
 Konten mit Art (Bank, Wertschriften, Krypto, Vorsorge 3b, Immobilie, Hypothek, Kredit, Sonstiges) und Person.
+**Anlage-Check.** Teilt das Finanzvermögen (Konten, Depot, Krypto, Übriges) in Töpfe: Notreserve (`wohnen.reserve`,
+sonst ein halber Jahresbedarf), Amortisation bei Fälligkeit (Ziel bzw. Maximum, soweit nicht aus Sparen und
+verpfändeter Vorsorge gedeckt; sicher und terminiert anlegen), geplante PK-Einkäufe und den langfristigen Topf mit
+Aktienquote nach Risikoprofil (tief 25 %, mittel 50 %, hoch 75 %; Renditeannahmen 2 / 3,5 / 5 %). Dazu der Anteil auf
+Konten, in Aktien und Krypto (Richtwert höchstens 5 %), der mögliche Mehrertrag pro Jahr und bis zur Pensionierung,
+Hinweise zu Klumpenrisiko (Arbeitgeberaktien) und Hypothekarzins. Risikoprofil und Zinsen auf der Karte einstellbar
+(`anlage`). Keine Produktempfehlungen.
+
 Saldi von Hand, als eigene Liste oder per **Bank-Import**; ein Saldo pro Konto und Tag, neuere ersetzen ältere.
 
 **Bank-Import.** Kontoauszug im E-Banking als CSV exportieren (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken,
@@ -154,6 +162,13 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
   bei Angestellten, Franchise, Sparversicherungen, Erwerbsunfähigkeit
 - **Kündigungstermine:** Grundversicherung bis 30. November auf 1. Januar, sonst auf Ablauf bzw. nach 3 Jahren
   (Art. 35a VVG)
+- **Krankenkasse: Franchise und Modell:** Pro Person und Kind Prämie pro Monat, Franchise, erwartete
+  Gesundheitskosten (was die Grundversicherung bezahlt), Modell und Unfalldeckung eintragen (vorbelegt aus den
+  KVG-Policen). Gesamtkosten = Prämie + Franchise + 10 % Selbstbehalt (höchstens 700, Kinder 350). Ohne eigene Offerten
+  schätzt die App die Prämien anderer Franchisen mit dem gesetzlichen Höchstrabatt (70 % des Risikounterschieds,
+  höchstens 50 % der Prämie). Ergebnis: optimale Franchise, Ersparnis, Kosten bei 0 bis 10'000 Franken
+  Gesundheitskosten, ab welchen Kosten die tiefste Franchise lohnt, Hinweise zu Hausarzt/Telmed (`rabatt_modell`) und
+  Unfall sistieren. Eigene Offerten unter `krankenkasse.personen[].angebote` (`{2500: 380.50}`). Wechsel bis 30. November.
 - **Risiko Invalidität und Tod** pro Person: IV-Rente der AHV, PK und externe Policen gegenüber dem Lohn; Renten für
   Hinterbliebene und Todesfallkapital gegenüber dem Richtwert
 
@@ -170,6 +185,13 @@ zusätzlichen Kapitalbezugssteuer) und die Kurve der Grenz-Ersparnis. «Plan üb
 `pk.einkauf_geplant` ein; ein erneuter Lauf rechnet nur noch mit dem verbleibenden Potenzial.
 
 ![Amortisation und Hypothek](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/hypothek.svg)
+
+**Frühpensionierung.** Vergleicht den Rücktritt des ganzen Haushalts mit 58 bis 65: Pensionskasse mit Guthaben bis
+zum Rücktritt (Prognose der Kasse anteilig gekürzt) und einem pro Jahr vor 65 um `fruehpension.pk_kuerzung_uws`
+Prozentpunkte tieferen Umwandlungssatz; AHV frühestens mit 63 (−6,8 % pro Jahr Vorbezug); bis 65 AHV-Beiträge als
+Nichterwerbstätige (Schätzung aus Vermögen und Renten); Überbrückung bis zur AHV = Bedarf minus PK-Renten aus dem
+Kapital; das Sparen endet mit dem Rücktritt; das restliche Kapital wird bis zum gleichen Lebensende verzehrt. Ergebnis:
+Einkommen und Lücke pro Alter (Diagramm mit Bedarf) und das früheste Alter ohne Lücke.
 
 **Hypothekar-Strategie.** Vergleicht für die Hypothek ab Fälligkeit (nach dem Amortisations-Szenario) SARON,
 Festhypotheken und Mischungen bzw. Staffelungen über drei SARON-Szenarien (tief, basis, stress; Zielniveau und
@@ -276,6 +298,8 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Kündigungsfristen | > 45 Tage | ≤ 45 Tage | ≤ 14 Tage |
 | Invalidität | ≥ 70 % des Lohns | ≥ 55 % | darunter |
 | Todesfall | Kapital ≥ Richtwert | ≥ 50 % oder Partnerrente nicht gemeldet | darunter |
+| Krankenkasse | Franchisen passen | Optimierung spart ≥ 200 pro Jahr | – |
+| Anlage | Aufteilung passt | über 20'000 ohne Zweck auf Konten oder Krypto über dem Richtwert | – |
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
 
@@ -310,6 +334,9 @@ oder **Einstellungen → Experte**.
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
+| `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
+| `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |
+| `fruehpension` | `pk_kuerzung_uws` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung, Rendite |

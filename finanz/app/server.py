@@ -254,6 +254,16 @@ class Handler(BaseHTTPRequestHandler):
                     teile.append(f"{a.konto_vorschlag if not form.get('konto') or len(dateien) > 1 else form['konto']}: "
                                  f"{n} Monatssaldi" + (f" ({a.zeitraum[0][:7]} bis {a.zeitraum[1][:7]})" if a.zeitraum else ""))
             return "Importiert – " + "; ".join(teile)
+        if pfad == "vermoegen/anlage":
+            k = konfig.laden()
+            a = k.setdefault("anlage", {})
+            if form.get("risiko") in ("tief", "mittel", "hoch"):
+                a["risiko"] = form["risiko"]
+            for f in ("zins_konto", "zins_sicher"):
+                if str(form.get(f, "")).strip():
+                    a[f] = vm.zahl(form[f])
+            konfig.speichern(k)
+            return "Anlage-Check gespeichert.", "vermoegen"
         if pfad == "vermoegen/loeschen":
             with db() as v:
                 vm.konto_loeschen(v, int(form["id"]))
@@ -300,6 +310,23 @@ class Handler(BaseHTTPRequestHandler):
                 if len(ids) == 1:
                     return "Vertrag analysiert – bitte die erkannten Werte prüfen.", f"versicherungen/{ids[0]}"
                 return f"{len(ids)} Verträge analysiert."
+            if pfad == "versicherungen/krankenkasse":
+                k = konfig.laden()
+                liste = []
+                i = 0
+                while f"name_{i}" in form:
+                    liste.append({"name": form[f"name_{i}"], "praemie_monat": vm.zahl(form.get(f"praemie_{i}") or "0"),
+                                  "franchise": int(form.get(f"franchise_{i}") or 300),
+                                  "kosten_jahr": vm.zahl(form.get(f"kosten_{i}") or "0"),
+                                  "modell": form.get(f"modell_{i}", "standard"), "unfall": form.get(f"unfall_{i}") == "ja"})
+                    i += 1
+                alt = {e.get("name"): e for e in (k.get("krankenkasse") or {}).get("personen") or []}
+                for e in liste:
+                    if alt.get(e["name"], {}).get("angebote"):
+                        e["angebote"] = alt[e["name"]]["angebote"]
+                k.setdefault("krankenkasse", {})["personen"] = liste
+                konfig.speichern(k)
+                return "Krankenkasse gespeichert.", "versicherungen"
             if pfad == "versicherungen/liste":
                 n, fehler = vi.csv_import(v, form.get("datei") or b"")
                 return f"{n} Verträge importiert." + (" Übersprungen: " + "; ".join(fehler[:5]) if fehler else "")
