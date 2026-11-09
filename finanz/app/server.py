@@ -37,6 +37,7 @@ SEITEN = {
     "berater": ("Anlageberater", seiten.berater),
     "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
     "budget": ("Budget und Cashflow", seiten.budget),
+    "kinder": ("Kinder", seiten.kinder),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -321,6 +322,31 @@ class Handler(BaseHTTPRequestHandler):
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
             return f"{len(werte)} Sensoren geschrieben.", "einstellungen"
+        if pfad == "kinder":
+            k = konfig.laden()
+            alt = k["haushalt"].get("kinder") or []
+            neu = []
+            for i in range(int(form.get("anzahl", 0) or 0)):
+                name = str(form.get(f"name_{i}", "")).strip()
+                if not name or form.get(f"loeschen_{i}"):
+                    continue
+                c = dict(alt[i]) if i < len(alt) else {}
+                c.pop("geburtsjahr", None)
+                c["name"] = name
+                c["geburtsdatum"] = str(form.get(f"geburtsdatum_{i}", "")).strip()
+                for f in ("eltern", "obhut", "gutschrift"):
+                    if f"{f}_{i}" in form:
+                        c[f] = str(form[f"{f}_{i}"]).strip()
+                for f in ("ausbildung_bis", "betreuung_bis"):
+                    c[f] = int(round(vm.zahl(str(form.get(f"{f}_{i}") or "0")))) if str(form.get(f"{f}_{i}", "")).strip() else 0
+                for f in ("betreuung_jahr", "zulage_monat"):
+                    c[f] = vm.zahl(str(form.get(f"{f}_{i}") or "0")) if str(form.get(f"{f}_{i}", "")).strip() else 0.0
+                c["ausbildung_bis"] = min(25, max(18, c["ausbildung_bis"] or 18))
+                c["betreuung_bis"] = c["betreuung_bis"] or 12
+                neu.append(c)
+            k["haushalt"]["kinder"] = neu
+            konfig.speichern(k)
+            return f"{len(neu)} Kind(er) gespeichert.", "kinder"
         if pfad == "nachlass/checkliste":
             import nachlass as nl
             k = konfig.laden()

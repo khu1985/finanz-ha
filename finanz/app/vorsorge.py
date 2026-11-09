@@ -57,21 +57,26 @@ def ahv_beitragsjahre(person: dict, jetzt: int, kz: dict) -> int:
     return max(0, jahre - int(person["ahv"].get("fehlende_jahre", 0)))
 
 
-def erziehungsjahre(person: dict, kinder: list[dict]) -> int:
-    """Jahre mit mindestens einem Kind unter 16, ab dem 21. Altersjahr bis zum Referenzalter."""
+def erziehungsjahre(person: dict, kinder: list[dict], k: dict | None = None) -> float:
+    """Jahre mit mindestens einem Kind unter 16, ab dem 21. Altersjahr bis zum Referenzalter. Mit `k` gewichtet nach dem
+    Anteil der Gutschrift (hälftig, ganz oder keine – nur eigene bzw. gemeinsame Kinder)."""
+    import kinder as ki
     import zuzug as zz
     gj = geburtsjahr(person)
     z = zz.datum(person)
     ab = max(gj + 21, z.year) if z else gj + 21            # Gutschriften nur mit Wohnsitz in der Schweiz
-    jahre = set()
+    jahre: dict[int, float] = {}
     for kind in kinder or []:
-        kj = int(kind.get("geburtsjahr", 0))
+        kj = ki.geburtsjahr(kind)
         if not kj:
+            continue
+        anteil = ki.gutschrift_anteil(k, kind, person["name"]) if k else 1.0
+        if anteil <= 0:
             continue
         for j in range(kj + 1, kj + 17):
             if ab <= j < gj + 65:
-                jahre.add(j)
-    return len(jahre)
+                jahre[j] = max(jahre.get(j, 0.0), anteil)
+    return sum(jahre.values())
 
 
 @dataclass
@@ -103,9 +108,8 @@ def ahv(k: dict, jetzt: int | None = None) -> list[AhvErgebnis]:
     erg = []
     for p, e in zip(personen, einkommen):
         jahre = ahv_beitragsjahre(p, jetzt, kz)
-        ej = erziehungsjahre(p, k["haushalt"].get("kinder", []))
-        anteil = 0.5 if verh else 1.0
-        e_mit = e + (ej * gutschrift * anteil / jahre if jahre else 0)
+        ej = erziehungsjahre(p, k["haushalt"].get("kinder", []), k)     # bereits mit Anteil gewichtet
+        e_mit = e + (ej * gutschrift / jahre if jahre else 0)
         voll = ahv_vollrente_monat(e_mit, kz)
         rente = voll * jahre / kz["ahv_vollbeitragsjahre"]
         alter = int(p.get("pensionierung_alter", 65))
@@ -114,7 +118,7 @@ def ahv(k: dict, jetzt: int | None = None) -> list[AhvErgebnis]:
         elif alter > 65:
             zuschlag = {1: 5.2, 2: 10.8, 3: 17.1, 4: 24.0, 5: 31.5}[min(alter - 65, 5)]
             rente *= 1 + zuschlag / 100
-        erg.append(AhvErgebnis(p["name"], jahre, round(e_mit), ej, voll, round(rente, 2), alter=alter))
+        erg.append(AhvErgebnis(p["name"], jahre, round(e_mit), round(ej, 1), voll, round(rente, 2), alter=alter))
     # Plafonierung Ehepaar: Summe höchstens 150 % der Maximalrente
     plafond = kz["ahv_max"] * kz["ahv_plafond_ehepaar"] / 100
     summe = sum(r.rente_monat for r in erg[:2])
@@ -297,6 +301,7 @@ class Luecke:
     spaeter_jahre: int = 20
     verlauf: list = field(default_factory=list)   # [(Jahr, AHV, PK, Verzehr, Ausland)] in heutigen Franken
     ausland: float = 0.0                   # Altersrenten aus dem Ausland (heutige Franken)
+    kinderrenten: float = 0.0              # AHV-Kinderrenten zur Altersrente (Kinder bis 18 bzw. in Ausbildung)
 
 
 def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = None) -> Luecke:
@@ -329,20 +334,30 @@ def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = Non
     def ausland_im(jahr_: int) -> float:
         return sum(zz.rente_ausland(x) for x in k["personen"] if jahr_ >= geburtsjahr(x) + zz.rente_ausland_alter(x))
     aus = ausland_im(jahr)
-    einkommen = a + p + verzehr + aus
+    import kinder as ki
+    ahv_person = {r.name: r.rente_jahr * ahv_real_faktor(k, jahr - jetzt) for r in ahv_e}
+
+    def kinderrenten_im(jahr_: int) -> float:
+        """AHV-Kinderrente 40 % der Altersrente pro Kind des pensionierten Elternteils (vereinfacht, ohne Plafond)."""
+        return sum(0.4 * ahv_person.get(x["name"], 0) * sum(1 for c in ki.eigene(k, x["name"]) if ki.unterhalt(c, jahr_))
+                   for x in k["personen"] if jahr_ >= geburtsjahr(x) + 65)
+    kr = kinderrenten_im(jahr)
+    einkommen = a + p + verzehr + aus + kr
     bedarf = float(hh.get("bedarf_ruhestand", 0))
     lohn = sum(float(x.get("lohn_brutto", 0)) for x in k["personen"])
     verlauf, luecken = [], []
     for j in range(max(1, jahre)):
         p_j = p / (1 + t / 100) ** j
         aus_j = ausland_im(jahr + j)
-        verlauf.append((jahr + j, round(a), round(p_j), round(verzehr), round(aus_j)))
-        luecken.append(max(0.0, bedarf - (a + p_j + verzehr + aus_j)))
+        kr_j = kinderrenten_im(jahr + j)
+        verlauf.append((jahr + j, round(a + kr_j), round(p_j), round(verzehr), round(aus_j)))
+        luecken.append(max(0.0, bedarf - (a + kr_j + p_j + verzehr + aus_j)))
     spaeter = min(20, max(0, jahre - 1))
-    einkommen_sp = a + p / (1 + t / 100) ** spaeter + verzehr + ausland_im(jahr + spaeter)
+    einkommen_sp = (a + p / (1 + t / 100) ** spaeter + verzehr + ausland_im(jahr + spaeter)
+                    + kinderrenten_im(jahr + spaeter))
     return Luecke(jahr, round(a), round(p), round(verzehr), round(netto), round(steuer * kk), round(einkommen),
                   round(bedarf), round(max(0.0, bedarf - einkommen)),
                   round(einkommen / lohn * 100, 1) if lohn else 0.0, round(lohn),
                   t, round(kk, 4), round(p_nom), round(netto_nominal),
                   round(sum(luecken) / len(luecken)) if luecken else 0, round(max(0.0, bedarf - einkommen_sp)),
-                  round(einkommen_sp), spaeter, verlauf, round(aus))
+                  round(einkommen_sp), spaeter, verlauf, round(aus), round(kr))

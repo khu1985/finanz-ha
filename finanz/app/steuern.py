@@ -56,8 +56,10 @@ def kantonssteuer(einkommen: float, st: dict) -> float:
     return round(ref_s * (einkommen / ref_e) ** exponent, 2)
 
 
-def anzahl_kinder(k: dict) -> int:
-    return len(k["haushalt"].get("kinder") or [])
+def anzahl_kinder(k: dict, jahr: int | None = None) -> int:
+    """Kinder mit Kinderabzug (minderjährig oder in Ausbildung) im Jahr."""
+    import kinder as ki
+    return ki.anzahl(k, jahr)
 
 
 @dataclass
@@ -81,7 +83,10 @@ def einheiten(k: dict) -> list[Einheit]:
         merged = {"steuerbar_bund": 0, "steuerbar_kanton": 0, "steuer_kanton_gemeinde": 0, "steuerbar_vermoegen": 0,
                   "vermoegenssteuer": 0,
                   "grenzsteuersatz_kanton": st.get("grenzsteuersatz_kanton", 0)} | e
-        erg.append(Einheit(name, [name], merged, False, int(e.get("kinder", 0) or 0)))
+        # Erfasste Kinder gehen vor: Elterntarif bei der Person mit der Obhut (Kinder-Seite)
+        import kinder as ki
+        n_kinder = ki.anzahl_obhut(k, name) if ki.liste(k) else int(e.get("kinder", 0) or 0)
+        erg.append(Einheit(name, [name], merged, False, n_kinder))
     return erg
 
 

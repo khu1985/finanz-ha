@@ -22,8 +22,8 @@ import wohnen as wo
 
 NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("berater", "Berater")]),
-    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("szenarien", "Szenarien"),
-                 ("nachlass", "Nachlass")]),
+    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("kinder", "Kinder"),
+                 ("szenarien", "Szenarien"), ("nachlass", "Nachlass")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")]),
 ]
@@ -118,6 +118,10 @@ td.z,th.z{text-align:right}th{color:var(--leise);font-weight:600;font-size:13px}
 .diagramm{margin:0}.diagramm svg{width:100%;height:auto;display:block}
 .gitter{stroke:var(--linie)}.achse{fill:var(--leise);font-size:11px}
 .ziel{stroke:var(--schlecht);stroke-dasharray:5 4;stroke-width:1.5}.ziel-text{fill:var(--schlecht)}
+fieldset.kind{border:1px solid var(--linie);border-radius:10px;padding:10px 14px 12px;margin:0 0 14px}
+fieldset.kind legend{font-weight:600;padding:0 6px}
+label.entfernen{display:inline-flex;flex-direction:row;align-items:center;gap:8px;margin-top:8px;font-size:14px;color:var(--leise)}
+label.entfernen input{width:auto;margin:0}
 .legende{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--leise);margin-top:6px}
 .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
 .hinweise{margin:0;padding-left:18px}.hinweise li{margin:4px 0}
@@ -367,14 +371,14 @@ def uebersicht(k: dict, db) -> str:
 def _luecke_diagramm(l: vs.Luecke) -> str:
     if l.teuerung and l.verlauf:
         sp = l.verlauf[min(l.spaeter_jahre, len(l.verlauf) - 1)]
-        serien = {"AHV": [0, l.ahv, sp[1]], "Pensionskasse": [0, l.pk_rente, sp[2]],
+        serien = {"AHV": [0, l.ahv + l.kinderrenten, sp[1]], "Pensionskasse": [0, l.pk_rente, sp[2]],
                   "Kapitalverzehr": [0, l.kapitalverzehr, sp[3]]}
         if any(v[4] for v in l.verlauf):
             serien["Rente Ausland"] = [0, l.ausland, sp[4]]
         serien["Lohn"] = [l.lohn_heute, 0, 0]
         return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}", f"nach {l.spaeter_jahre} J. ({sp[0]})"], serien,
                           linie_bei=l.bedarf, linie_text=f"Bedarf {chf(l.bedarf)}")
-    serien = {"AHV": [0, l.ahv], "Pensionskasse": [0, l.pk_rente], "Kapitalverzehr": [0, l.kapitalverzehr]}
+    serien = {"AHV": [0, l.ahv + l.kinderrenten], "Pensionskasse": [0, l.pk_rente], "Kapitalverzehr": [0, l.kapitalverzehr]}
     if l.ausland:
         serien["Rente Ausland"] = [0, l.ausland]
     serien["Lohn"] = [l.lohn_heute, 0]
@@ -443,6 +447,7 @@ def vorsorge(k: dict, db) -> str:
         ["AHV" + (" (plafoniert)" if st.einheiten(k)[0].verheiratet and len(k["personen"]) > 1 else ""), chf(lk.ahv)],
         ["Pensionskassen-Renten", chf(lk.pk_rente)],
         *([["Renten aus dem Ausland", chf(lk.ausland)]] if lk.ausland else []),
+        *([["AHV-Kinderrenten (Kinder bis 18 bzw. in Ausbildung)", chf(lk.kinderrenten)]] if lk.kinderrenten else []),
         [f"Kapitalverzehr ({k['haushalt']['entnahme_jahre']} Jahre, {k['haushalt']['entnahme_rendite']} %"
          + (f", real {float(k['haushalt']['entnahme_rendite']) - lk.teuerung:g} %" if lk.teuerung else "") + ") "
          f"aus CHF {chf(lk.kapital_netto)} netto", chf(lk.kapitalverzehr)],
@@ -1795,3 +1800,80 @@ werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>kont
             + karte("Ohne Kategorie", unb_html)
             + '<div class="raster">' + karte("Eigene Regeln", regel_html)
             + karte("Kontoauszüge", konten_html + import_form) + "</div>")
+
+
+# ---------------------------------------------------------------- Kinder
+
+def kinder(k: dict, db) -> str:
+    import kinder as ki
+    jahr = date.today().year
+    liste_ = ki.liste(k)
+    personen = [p["name"] for p in k["personen"]]
+    verheiratet = k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet"
+
+    def auswahl(name, wert, optionen):
+        return (f'<select name="{name}">' + "".join(
+            f'<option value="{escape(v)}"{" selected" if str(wert) == v else ""}>{escape(t)}</option>' for v, t in optionen)
+            + "</select>")
+
+    def z(v):
+        try:
+            f = float(v)
+            return str(int(f)) if f == int(f) else str(f)
+        except (TypeError, ValueError):
+            return str(v)
+
+    def block(i, c, neu=False):
+        eltern = [("gemeinsam", "gemeinsam")] + [(p, f"nur {p}") for p in personen]
+        obhut = [("", "automatisch (höheres Einkommen)")] + [(p, p) for p in personen]
+        gutschr = [("hälftig", "hälftig")] + [(p, f"ganz {p}") for p in personen]
+        a = ki.alter(c, jahr) if not neu else -1
+        titel = "Neues Kind" if neu else f"{escape(c['name'])} – {a} Jahre" if a >= 0 else escape(c["name"])
+        felder = [
+            f'<label>Name<input name="name_{i}" value="{escape("" if neu else str(c["name"]))}"{"" if neu else " required"}></label>',
+            f'<label>Geburtsdatum<input type="date" name="geburtsdatum_{i}" value="{escape("" if neu else str(ki.geburt(c) or ""))}"></label>',
+            f'<label>Kind von{auswahl(f"eltern_{i}", c.get("eltern", "gemeinsam"), eltern)}</label>',
+        ]
+        if not verheiratet and len(personen) > 1:
+            felder += [f'<label>Elterntarif / Obhut{auswahl(f"obhut_{i}", c.get("obhut", ""), obhut)}</label>',
+                       f'<label>AHV-Erziehungsgutschrift{auswahl(f"gutschrift_{i}", c.get("gutschrift", "hälftig"), gutschr)}</label>']
+        felder += [
+            f'<label>Unterhaltsberechtigt bis Alter (18–25)<input name="ausbildung_bis_{i}" inputmode="numeric" value="{escape(z(c.get("ausbildung_bis", 18)))}"></label>',
+            f'<label>Betreuungskosten/Jahr (Kita, Tagesstruktur)<input name="betreuung_jahr_{i}" inputmode="decimal" value="{escape(z(c.get("betreuung_jahr", 0)))}"></label>',
+            f'<label>Betreuung bis Alter<input name="betreuung_bis_{i}" inputmode="numeric" value="{escape(z(c.get("betreuung_bis", 12)))}"></label>',
+            f'<label>Zulage/Monat (0 = Mindestansatz)<input name="zulage_monat_{i}" inputmode="decimal" value="{escape(z(c.get("zulage_monat", 0)))}"></label>',
+        ]
+        loeschen = "" if neu else f'<label class="entfernen"><input type="checkbox" name="loeschen_{i}" value="1">Kind entfernen</label>'
+        return f'<fieldset class="kind"><legend>{titel}</legend><div class="felder">{"".join(felder)}</div>{loeschen}</fieldset>'
+
+    bloecke = [block(i, c) for i, c in enumerate(liste_)] + [block(len(liste_), dict(ki.STANDARD), neu=True)]
+    form = (f'<form method="post" action="kinder"><input type="hidden" name="anzahl" value="{len(liste_) + 1}">'
+            + "".join(bloecke) + '<div class="zeile"><button>Kinder speichern</button></div></form>'
+            '<p class="leise">Die Kinder fliessen in Steuern (Kinderabzug, Elterntarif, Betreuung), AHV '
+            '(Erziehungsgutschriften, Kinder- und Waisenrenten), Risikoschutz, Nachlass (Pflichtteil), Krankenkasse und '
+            'Erinnerungen ein. Bei «nur …» zählt das Kind nur bei dieser Person (z. B. aus einer früheren Beziehung).</p>')
+    if not liste_:
+        return karte("Kinder erfassen", form)
+    u = ki.uebersicht(k)
+    h = u.jahre[0] if u.jahre else None
+    kpis = '<div class="kpis">' + "".join([
+        kpi(str(h.kinder if h else 0), f"Kinder mit Kinderabzug {jahr}"),
+        kpi(chf(h.zulagen if h else 0), "Kinder- und Ausbildungszulagen/Jahr"),
+        kpi(chf(h.betreuung if h else 0), "Betreuungskosten/Jahr"),
+        kpi(chf(u.steuer_heute), "Steuerwirkung/Jahr (Schätzung)", "gut"),
+        kpi(str(u.ende_jahr) if u.ende_jahr else "–", "Letzter Kinderabzug"),
+    ]) + "</div>"
+    zeilen = []
+    for j in u.jahre:
+        alter_ = ", ".join(f"{escape(n)} {a}" for n, a in j.alter.items())
+        zeilen.append([str(j.jahr), alter_, str(j.kinder), chf(j.zulagen), chf(j.betreuung), chf(j.steuer_kinder)])
+    diagramm = dg.saeulen([str(j.jahr)[2:] for j in u.jahre],
+                          {"Zulagen": [j.zulagen for j in u.jahre], "Steuerwirkung": [j.steuer_kinder for j in u.jahre]})
+    zeit = (diagramm + tabelle(["Jahr", "Alter", "mit Abzug", "Zulagen", "Betreuung", "Steuerwirkung"], zeilen)
+            + '<p class="leise">Steuerwirkung = Kinderabzug Bund (' + chf(float(k["kennzahlen"].get("bund_kinderabzug", 6800)))
+            + ') und Kanton (' + chf(float(k["kennzahlen"].get("kanton_kinderabzug", 0) or 0)) + ') mit dem Grenzsteuersatz, '
+            'Elterntarif ' + chf(float(k["kennzahlen"].get("bund_elterntarif_kind", 263))) + ' pro Kind und Abzug der '
+            'Drittbetreuung bis 14 (höchstens ' + chf(float(k["kennzahlen"].get("bund_betreuung_max", 25800))) + '). '
+            'Zulagen: Mindestansätze 215 bzw. 268 pro Monat, sofern nicht erfasst.</p>')
+    return (kpis + karte("Hinweise", hinweisliste(u.hinweise)) + karte("Zeitachse bis zur Selbständigkeit", zeit)
+            + karte("Kinder erfassen", form))

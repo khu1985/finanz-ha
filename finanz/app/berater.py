@@ -133,12 +133,28 @@ def _chf(v) -> str:
     return f"CHF {float(v):,.0f}" >> TS
 
 
+def _kinder_liste(k: dict) -> list[dict]:
+    import kinder as ki
+    return ki.liste(k)
+
+
+def _kind_text(k: dict, c: dict, heute: date) -> str:
+    import kinder as ki
+    teile = [f"Jg. {ki.geburtsjahr(c)}", f"{ki.alter(c, heute.year)} Jahre"]
+    if str(c.get("eltern") or "gemeinsam") not in ("gemeinsam", ""):
+        teile.append(f"Kind von {c['eltern']}")
+    if ki.betreuung_jahr(c, heute.year):
+        teile.append(f"Betreuung {_chf(ki.betreuung_jahr(c, heute.year))}/Jahr")
+    teile.append(f"unterhaltsberechtigt bis {ki.ausbildung_bis(c)}")
+    return ", ".join(teile)
+
+
 def fakten(k: dict, db, heute: date | None = None) -> str:
     heute = heute or date.today()
     hh = k["haushalt"]
     z = [f"Stand: {heute.strftime('%d.%m.%Y')}",
          f"Haushalt: {hh.get('zivilstand')}, Kanton {hh.get('kanton')}, Kinder: "
-         + (", ".join(f"{c.get('name', 'Kind')} (Jg. {c.get('geburtsjahr')})" for c in hh.get("kinder") or []) or "keine")]
+         + (", ".join(f"{c['name']} ({_kind_text(k, c, heute)})" for c in _kinder_liste(k)) or "keine")]
     ahv = {r.name: r for r in vs.ahv(k, heute.year)}
     for p in k["personen"]:
         pk = vs.pk(p, k)
@@ -178,6 +194,12 @@ def fakten(k: dict, db, heute: date | None = None) -> str:
     z.append(f"Ruhestand ab {l.jahr}: Einkommen {_chf(l.einkommen)}/Jahr, Bedarf {_chf(l.bedarf)}, Lücke {_chf(l.luecke)}"
              + (f" (heutige Franken, Teuerung {l.teuerung:g} %; Lücke im Mittel {_chf(l.luecke_mittel)}, nach "
                 f"{l.spaeter_jahre} Jahren {_chf(l.luecke_spaeter)})" if l.teuerung else "") + ".")
+    import kinder as ki
+    if ki.liste(k):
+        u = ki.uebersicht(k, heute)
+        z.append(f"Kinder: Steuerwirkung heute rund {_chf(u.steuer_heute)}/Jahr"
+                 + (f", letzter Kinderabzug {u.ende_jahr}" if u.ende_jahr else "") + "; "
+                 + "; ".join(u.hinweise))
     import zuzug as zz
     z.extend("Zuzug: " + h for h in zz.hinweise(k, heute))
     if any(zz.rente_ausland(p) for p in k["personen"]):

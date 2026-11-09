@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from tausender import TS  # noqa: E402
 
+from datetime import date
 from dataclasses import dataclass, field
 
 FRANCHISEN_ERWACHSENE = [300, 500, 1000, 1500, 2000, 2500]
@@ -111,8 +112,11 @@ def personen(k: dict, vertraege: list[dict]) -> list[Person]:
 
     cfg = (k.get("krankenkasse") or {}).get("personen") or []
     loehne = {p["name"]: float(p.get("lohn_brutto", 0)) for p in k["personen"]}
-    kinder = {c.get("name", "Kind") for c in k["haushalt"].get("kinder") or []}
-    namen = [p["name"] for p in k["personen"]] + list(kinder)
+    import kinder as ki
+    alle_kinder = ki.liste(k)
+    jahr = date.today().year
+    kinder = {c["name"] for c in alle_kinder if ki.alter(c, jahr) < 19}          # Kinderprämie und -franchisen bis 18
+    namen = [p["name"] for p in k["personen"]] + [c["name"] for c in alle_kinder]
     erg = []
     for name in namen:
         eintrag = next((e for e in cfg if vi.gleiche_person(str(e.get("name", "")), name)), None)

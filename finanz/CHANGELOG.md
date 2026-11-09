@@ -1,5 +1,22 @@
 # Änderungen
 
+## 0.15.0 – 2026-11-09
+
+- **Kinder** (neue Seite unter Planung): Kinder erfassen mit Geburtsdatum, gemeinsam oder aus einer früheren
+  Beziehung, Obhut bzw. Elterntarif und AHV-Erziehungsgutschrift (Konkubinat), Ausbildung bis (18–25),
+  Betreuungskosten und Zulagen. Zeitachse bis zur Selbständigkeit mit Zulagen, Betreuung und Steuerwirkung
+  (Kinderabzug Bund 6'800, Elterntarif 263, Drittbetreuung bis 25'800, kantonaler Abzug einstellbar)
+- Angepasst:
+  - Steuern: Kinder mit Kinderabzug nur bis 18 bzw. Ende Ausbildung; im Konkubinat Elterntarif bei der Person mit
+    der Obhut (erfasste Kinder gehen `steuern.personen[].kinder` vor); Heiratsvergleich entsprechend
+  - AHV: Erziehungsgutschriften pro Kind und Person (Ehe hälftig, Konkubinat nach Vereinbarung, nur eigene Kinder);
+    AHV-Kinderrenten zur Altersrente in der Pensionslücke
+  - Risiko: IV-Kinder- und Waisenrenten nur für eigene, unterhaltsberechtigte Kinder; Todesfall-Richtwert
+  - Nachlass: Pflichtteil nur für Nachkommen der verstorbenen Person
+  - Krankenkasse: Kinder aus der Liste, Kinderfranchisen bis 18, ab 19 Erwachsenenfranchisen
+  - Erinnerungen: Ausbildungszulage mit 16, Ausbildungsbestätigung mit 18, Krankenkasse mit 19, Ende Kinderabzug
+  - Berater: Kinder mit Alter, Betreuung und Steuerwirkung
+- Bestehende Einträge mit `geburtsjahr` funktionieren weiter
 ## 0.14.0 – 2026-11-09
 
 - **Zuzug in die Schweiz** pro Person in den Stammdaten (Datum, Herkunftsland, Bewilligung, Eintritt in die Schweizer

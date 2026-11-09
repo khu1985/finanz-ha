@@ -5,9 +5,16 @@ haushalt:
   name: Haushalt Muster
   zivilstand: verheiratet        # verheiratet | ledig
   kanton: ZH
-  kinder:
+  kinder:                        # Seite «Kinder»; Felder siehe Dokumentation
     - name: Kind 1
-      geburtsjahr: 2018
+      geburtsdatum: "2018-05-01"
+      eltern: gemeinsam            # gemeinsam | Name einer Person (Kind aus früherer Beziehung)
+      obhut: ""                    # Konkubinat: Person mit Elterntarif (leer = höheres Einkommen)
+      gutschrift: hälftig          # AHV-Erziehungsgutschrift: hälftig | Name einer Person
+      ausbildung_bis: 18           # unterhaltsberechtigt bis (18, in Ausbildung höchstens 25)
+      betreuung_jahr: 0            # Kita, Tagesstruktur pro Jahr
+      betreuung_bis: 12
+      zulage_monat: 0              # Kinder-/Ausbildungszulage pro Monat (0 = Mindestansatz)
   bedarf_ruhestand: 96000        # gewünschtes Netto-Ausgabenbudget im Ruhestand (heutige Franken)
   entnahme_jahre: 25             # über wie viele Jahre Kapital (3a, PK-Kapital, Vermögen) verzehrt wird
   entnahme_rendite: 2.0          # Rendite auf dem Kapital während der Entnahme
@@ -254,6 +261,10 @@ kennzahlen:
   bund_versicherungsabzug_ehe: 3700
   bund_versicherungsabzug_einzel: 1800
   bund_elterntarif_kind: 263
+  bund_kinderabzug: 6800           # pro Kind bis 18 bzw. in Ausbildung (2025/2026)
+  bund_betreuung_max: 25800        # Abzug Drittbetreuung pro Kind (2025/2026)
+  bund_betreuung_alter: 14         # Drittbetreuung abziehbar bis zu diesem Alter
+  kanton_kinderabzug: 0            # Kinderabzug des Wohnkantons (Wegleitung) – für die Steuerwirkung
   eigenmietwert_abschaffung: 2029
   vermoegen_promille: 0            # Schätzung der Vermögenssteuer in ‰ des steuerbaren Vermögens, wenn kein Betrag erfasst ist
   individualbesteuerung_ab: 2032   # angenommen am 8.3.2026; spätestens 2032, Bundesrat kann früher in Kraft setzen

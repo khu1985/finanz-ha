@@ -16,7 +16,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
-5. [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
+5. [Kinder](#kinder) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
@@ -80,6 +80,7 @@ personen:
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit |
+| Kinder | Kinder erfassen, Zeitachse mit Zulagen, Betreuung und Steuerwirkung, Hinweise |
 | Vermögen | Konten, Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
@@ -336,6 +337,37 @@ Die Werte werden beim Start, alle 15 Minuten und nach jeder Änderung geschriebe
 überstehen keinen Neustart von Home Assistant; sie erscheinen danach spätestens nach 15 Minuten wieder. Unter
 Einstellungen → Sensoren stehen Status, alle Werte und Beispiele für eine Dashboard-Karte und eine Automation.
 
+## Kinder
+
+Auf der Seite **Kinder** (bzw. `haushalt.kinder[]`) pro Kind erfassen:
+
+| Feld | Bedeutung |
+|---|---|
+| `name`, `geburtsdatum` | ältere Einträge mit `geburtsjahr` gelten weiter (Jahresmitte) |
+| `eltern` | `gemeinsam` oder Name einer Person (Kind aus einer früheren Beziehung) |
+| `obhut` | Konkubinat: Person mit Elterntarif und Kinderabzug; leer = höheres Einkommen |
+| `gutschrift` | Konkubinat: AHV-Erziehungsgutschrift `hälftig` oder ganz bei einer Person (Ehe immer hälftig) |
+| `ausbildung_bis` | unterhaltsberechtigt bis zu diesem Alter (18, in Ausbildung höchstens 25) |
+| `betreuung_jahr`, `betreuung_bis` | Kita, Tagesstruktur o. Ä. pro Jahr und bis zu welchem Alter |
+| `zulage_monat` | Kinder- bzw. Ausbildungszulage; 0 = Mindestansatz 215 bzw. 268 |
+
+Wirkung:
+
+- **Steuern:** Kinderabzug und Elterntarif nur für Kinder bis 18 bzw. bis zum Ende der Ausbildung. Im Konkubinat
+  zählt das Kind bei der Person mit der Obhut; erfasste Kinder gehen `steuern.personen[].kinder` vor. Die Zeitachse
+  schätzt die Steuerwirkung pro Jahr: Kinderabzug Bund (`kennzahlen.bund_kinderabzug`, 6'800) und Kanton
+  (`kennzahlen.kanton_kinderabzug`, aus der Wegleitung eintragen) mit dem Grenzsteuersatz, Elterntarif (263) und
+  Drittbetreuung bis 14 Jahre (höchstens 25'800). Ab dem Jahr nach dem letzten Kinderabzug steigen die Steuern.
+- **AHV:** Erziehungsgutschriften für Jahre mit Kindern unter 16 – verheiratet hälftig, im Konkubinat nach
+  `gutschrift`, nur für eigene bzw. gemeinsame Kinder und Jahre in der Schweiz. Kinderrenten zur Altersrente (40 %
+  pro Kind) fliessen in die Pensionslücke ein, solange ein Kind unterhaltsberechtigt ist.
+- **Risiko:** IV-Kinderrenten und Waisenrenten pro Person nur für ihre unterhaltsberechtigten Kinder;
+  Todesfall-Richtwert 100'000 pro unterhaltsberechtigtes Kind.
+- **Nachlass:** Pflichtteil nur für Nachkommen der verstorbenen Person.
+- **Krankenkasse:** Kinder erscheinen automatisch; Kinderfranchisen bis 18, ab 19 Erwachsenenfranchisen.
+- **Erinnerungen:** Ausbildungszulage mit 16, Ausbildungsbestätigung mit 18, Krankenkasse mit 19, Ende von
+  Kinderabzug und Zulagen.
+
 ## Zuzug in die Schweiz
 
 Pro Person unter **Einstellungen** (bzw. `personen[].zuzug`) erfassen, wer wann in die Schweiz gezogen ist. Leer =
@@ -418,7 +450,7 @@ oder **Einstellungen → Experte**.
 
 | Abschnitt | Inhalt |
 |---|---|
-| `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, Kinder, Bedarf im Ruhestand, Kapitalverzehr |
+| `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder)), Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
@@ -432,7 +464,7 @@ oder **Einstellungen → Experte**.
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung (real), `teuerung`, Rendite |
 | `budget` | `regeln` (Stichwort → Kategorie) |
-| `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
+| `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
 
 Die Kennzahlen werden in der Regel alle zwei Jahre (AHV/BVG) bzw. jährlich (3a, Steuertarif, Abzüge) angepasst
 und lassen sich im YAML-Editor überschreiben.

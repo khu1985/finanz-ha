@@ -811,3 +811,77 @@ def test_zuzug_rente_ausland(k):
         assert mit.ausland == 6000
     else:
         assert mit.ausland == 0 and mit.luecke_mittel <= ohne.luecke_mittel + 10_000
+
+
+# ---------------------------------------------------------------- Kinder
+
+def _kinder(k, *kinder):
+    k["haushalt"]["kinder"] = list(kinder)
+    return k
+
+
+def test_kinder_grundlagen(k):
+    import kinder as ki
+    _kinder(k, {"name": "A", "geburtsdatum": "2010-03-01"},
+            {"name": "B", "geburtsdatum": "2020-08-15", "ausbildung_bis": 25, "betreuung_jahr": 18000, "betreuung_bis": 12},
+            {"name": "C", "geburtsjahr": 2004})                 # alte Form
+    assert [ki.alter(c, 2026) for c in ki.liste(k)] == [16, 6, 22]
+    assert ki.anzahl(k, 2026) == 2                               # C über 18 ohne Ausbildung
+    assert ki.anzahl(k, 2028) == 1 and ki.anzahl(k, 2045) == 0 and ki.anzahl(k, 2044) == 1
+    a, b, _ = ki.liste(k)
+    assert ki.zulage_jahr(a, 2026) == 268 * 12 and ki.zulage_jahr(b, 2026) == 215 * 12
+    assert ki.betreuung_jahr(b, 2026) == 18000 and ki.betreuung_jahr(b, 2032) == 0
+    u = ki.uebersicht(k, date(2026, 11, 9))
+    assert u.ende_jahr == 2044 and u.jahre[0].steuer_kinder > 2 * 263
+    assert u.jahre[0].abzug_betreuung_bund == 18000
+    import steuern as st
+    assert st.anzahl_kinder(k, 2026) == 2
+
+
+def test_kinder_konkubinat_und_ahv(konkubinat):
+    import kinder as ki
+    import steuern as st
+    import vorsorge as vs
+    k = konkubinat
+    p1, p2 = (p["name"] for p in k["personen"][:2])
+    _kinder(k, {"name": "A", "geburtsdatum": "2018-01-01", "obhut": p2, "gutschrift": p2},
+            {"name": "B", "geburtsdatum": "2016-01-01", "eltern": p1})
+    e = {x.name: x.kinder for x in st.einheiten(k)}
+    assert e[p2] == 1 and e[p1] == 1                             # B: eigenes Kind von p1 → Elterntarif bei p1
+    assert ki.gutschrift_anteil(k, ki.liste(k)[0], p1) == 0 and ki.gutschrift_anteil(k, ki.liste(k)[0], p2) == 1
+    assert ki.gutschrift_anteil(k, ki.liste(k)[1], p2) == 0
+    ej1 = vs.erziehungsjahre(k["personen"][0], k["haushalt"]["kinder"], k)
+    ej2 = vs.erziehungsjahre(k["personen"][1], k["haushalt"]["kinder"], k)
+    assert ej1 == 16 and ej2 == 16
+    # Nachlass: Pflichtteil nur für eigene Nachkommen
+    assert len(ki.eigene(k, p1)) == 2 and len(ki.eigene(k, p2)) == 1
+
+
+def test_kinder_risiko_kk_erinnerungen(k, db):
+    import kinder as ki
+    import krankenkasse as kk
+    import versicherungen as vi
+    import vorsorge as vs
+    p1 = k["personen"][0]["name"]
+    jahr = date.today().year
+    _kinder(k, {"name": "Klein", "geburtsdatum": f"{jahr - 3}-01-01"}, {"name": "Gross", "geburtsdatum": f"{jahr - 21}-01-01"})
+    r = vi.risiko(k, vs.ahv(k, jahr))[0]
+    assert r.iv_kinder_ahv > 0
+    namen = {p.name: p.kind for p in kk.personen(k, [])}
+    assert namen["Klein"] is True and namen["Gross"] is False
+    g = ki.liste(k)[0]
+    titel = [e.titel for e in ki.erinnerungen(k, date(ki.geburtsjahr(g) + 16, 1, 1) - __import__("datetime").timedelta(days=30))]
+    assert any("Ausbildungszulage" in t for t in titel)
+    assert ki.anzahl(k, person=p1) == 1
+
+
+def test_kinderrente_pensionsluecke(k):
+    import vorsorge as vs
+    k["annahmen"]["teuerung"] = 0
+    gj = int(str(k["personen"][0]["geburtsdatum"])[:4])
+    pj = max(vs.pensionsjahr(p) for p in k["personen"])
+    _kinder(k, {"name": "Spät", "geburtsdatum": f"{pj - 10}-01-01"})
+    l = vs.pensionsluecke(k, 0, 2026)
+    assert l.kinderrenten > 0 and gj
+    _kinder(k)
+    assert vs.pensionsluecke(k, 0, 2026).kinderrenten == 0

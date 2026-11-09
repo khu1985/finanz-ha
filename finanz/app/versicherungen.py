@@ -473,7 +473,8 @@ def deckungscheck(k: dict, vertraege: list[dict]) -> list[tuple[str, str, str]]:
     # Todesfall: Hypothek oder Kinder
     hypothek = max(0.0, float(k["wohnen"].get("kaufpreis", 0)) - float(k["wohnen"].get("eigenmittel", 0))) \
         if k["wohnen"].get("aktiv") else 0.0
-    kinder = len(k["haushalt"].get("kinder") or [])
+    import kinder as ki
+    kinder = ki.anzahl(k)                     # unterhaltsberechtigte Kinder
     risiko = sum(float(v["summe"] or 0) for v in nach.get("risiko_leben", []) + nach.get("leben_3b", []))
     if hypothek or kinder:
         bedarf = hypothek * 0.5 + kinder * 100_000
@@ -616,8 +617,8 @@ class Risiko:
 
 
 def risiko(k: dict, ahv_ergebnisse) -> list[Risiko]:
+    import kinder as ki
     verheiratet = k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet"
-    kinder = len(k["haushalt"].get("kinder") or [])
     w = k["wohnen"]
     hypothek = max(0.0, float(w.get("kaufpreis", 0)) - float(w.get("eigenmittel", 0))) if w.get("aktiv") else 0.0
     anteil_hyp = hypothek / max(1, len(k["personen"]))
@@ -625,6 +626,7 @@ def risiko(k: dict, ahv_ergebnisse) -> list[Risiko]:
     for p, a in zip(k["personen"], ahv_ergebnisse):
         r = p.get("risiko", {})
         lohn = float(p.get("lohn_brutto", 0))
+        kinder = ki.anzahl(k, person=p["name"])    # eigene und gemeinsame Kinder bis 18 bzw. in Ausbildung
         # IV-Rente ≈ Altersrente ohne Vorbezug/Plafond, ohne 13. Rente (12 Monate); Kinderrente 40 %
         iv = a.vollrente * a.beitragsjahre / k["kennzahlen"]["ahv_vollbeitragsjahre"] * 12
         iv_kind = iv * 0.4 * kinder

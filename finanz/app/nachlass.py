@@ -139,13 +139,14 @@ def faelle(k: dict, db, heute: date | None = None) -> list[Fall]:
     if len(k["personen"]) < 2:
         return []
     verheiratet = k["haushalt"].get("zivilstand") == "verheiratet"
-    kinder = len(k["haushalt"].get("kinder") or [])
+    import kinder as ki
     cfg = k.get("nachlass") or {}
     testament = ((cfg.get("checkliste") or {}).get("testament") or {})
     risiko = {r.name: r for r in vi.risiko(k, vs.ahv(k, heute.year))}
     erg = []
     for p, partner in ((k["personen"][0], k["personen"][1]), (k["personen"][1], k["personen"][0])):
         nachlass, haus = nachlass_von(k, db, p["name"])
+        kinder = len(ki.eigene(k, p["name"]))            # Nachkommen des Verstorbenen (jeden Alters)
         # Gesetzliche Erbfolge
         if verheiratet:
             ohne = nachlass * (0.5 if kinder else 1.0)          # Ehegatte neben Nachkommen 1/2 (ohne Güterrecht)

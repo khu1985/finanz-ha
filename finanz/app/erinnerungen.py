@@ -136,6 +136,8 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     # Steueroptimierung
     erg.extend(_steueroptimierung(k, db, heute))
     erg.extend(_zuzug(k, heute))
+    import kinder as ki
+    erg.extend(ki.erinnerungen(k, heute))
 
     # Vorsorgeausweise
     if date(j, 2, 1) <= heute <= date(j, 4, 30):
