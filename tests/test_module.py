@@ -933,3 +933,14 @@ def test_notfall(k):
     assert nf.vollstaendigkeit(k) == (3, len(nf.ABLAGE) + 3)
     k["haushalt"]["zivilstand"] = "ledig"
     assert any("Konkubinat" in s.was for s in nf.erste_schritte(k))
+
+
+def test_dokumentation_aktuell():
+    """Diagramme gerendert und im README, Changelog zur Version, alle Module und Seiten dokumentiert."""
+    import importlib.util
+    from pathlib import Path
+    pfad = Path(__file__).resolve().parent.parent / "tools" / "doku.py"
+    spec = importlib.util.spec_from_file_location("doku", pfad)
+    doku = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(doku)
+    assert doku.pruefen() == []

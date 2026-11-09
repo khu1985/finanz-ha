@@ -1,15 +1,20 @@
 flowchart TD
     SD["Steuerdokumente<br/>Erklärung, Veranlagung"] -. übernommen .-> REF
-    REF["Letzte Veranlagung je Steuereinheit<br/>steuerbares Einkommen, Steuer, Grenzsteuersatz"] --> KT
+    REF["Letzte Veranlagung je Steuereinheit<br/>steuerbares Einkommen und Vermögen,<br/>Steuer, Grenzsteuersatz"] --> KT
     REF --> BU
+    REF --> VS["Vermögenssteuer<br/>Veranlagung oder Promillesatz"]
     EH{"Zivilstand"} -- verheiratet --> E1["eine Steuereinheit<br/>Haushalt"]
-    EH -- Konkubinat --> E2["je Person eine Steuereinheit<br/>Elterntarif für die Person mit Kind"]
+    EH -- Konkubinat --> E2["je Person eine Steuereinheit<br/>Elterntarif bei der Person mit Obhut"]
+    KI["Kinder<br/>Kinderabzug bis 18 bzw. Ausbildung,<br/>Drittbetreuung bis 14"] --> E1 & E2
     E1 & E2 --> REF
     BU["Bundessteuer<br/>Tarif, Elterntarif −263/Kind, max. 11,5 %"] --> T["Steuer heute"]
     KT["Kanton und Gemeinde<br/>S × (x ÷ E)^e – trifft Steuer und Grenzsatz"] --> T
+    VS --> T
     T --> AB["Abzug simulieren<br/>Steuer(x) − Steuer(x − Abzug)"]
     AB --> OPT["PK-Einkauf optimieren<br/>Schritt für Schritt ins Jahr mit der<br/>höchsten Ersparnis pro Franken"]
-    SP["Sperrfrist<br/>3 Jahre vor Kapitalbezug"] --> OPT
+    SP["Sperrfrist 3 Jahre vor Kapitalbezug,<br/>Einkaufsgrenze nach Zuzug"] --> OPT
     OPT --> PLAN["Plan pro Jahr<br/>Ersparnis, letzter Franken, Netto-Vorteil"]
     PLAN -. übernehmen .-> EK[("pk.einkauf_geplant")]
-    T --> HV["Vergleich verheiratet ↔ Konkubinat<br/>Bund: Summe − Abzüge · Kanton: Splitting"]
+    AB --> TZ["Teilzeit-Rechner<br/>Nettolohn, Steuern, Kita"]
+    T --> HV["Vergleich verheiratet ↔ Konkubinat<br/>mit und ohne Individualbesteuerung"]
+    T --> CL["Checkliste Steuererklärung<br/>Belege, Saldi per 31.12., Vorjahr"]

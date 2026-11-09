@@ -1,16 +1,21 @@
 flowchart TD
-    P["Personen<br/>Geburtsdatum, Lohn, Pensionierungsalter"] --> AHV
+    P["Personen<br/>Geburtsdatum, Lohn, Pensum, Pensionierungsalter"] --> AHV
     P --> PK
     P --> A3
+    ZU["Zuzug in die Schweiz<br/>Beitragsjahre ab Zuzug,<br/>Einkaufsgrenze 5 Jahre"] -.-> AHV & PK
+    KI["Kinder<br/>Erziehungsgutschriften,<br/>Kinderrenten"] -.-> AHV
     VA["Vorsorgeausweis<br/>Prognose mit 65"] -. übernommen .-> PK
     IK["IK-Auszug<br/>Beitragsjahre"] -. übernommen .-> AHV
-    AHV["AHV<br/>Skala 44 × Beitragsjahre ÷ 44<br/>Ehe: Splitting, Plafond 150 %<br/>× 13 Monatsrenten"] --> E
-    PK["Pensionskasse<br/>Guthaben × (1 + Zins) + Sparbeitrag + Einkauf<br/>Rente = Guthaben ohne Kapital × Umwandlungssatz"] --> E
-    PK -- Kapitalanteil --> KAP
-    A3["Säule 3a<br/>Guthaben × (1 + Rendite) + Beitrag"] --> KAP
+    AHV["AHV<br/>Skala 44 × Beitragsjahre ÷ 44<br/>Ehe: Splitting, Plafond 150 %<br/>× 13 Monatsrenten, Mischindex"] --> E
+    PK["Pensionskasse<br/>Guthaben × (1 + Zins) + Sparbeitrag + Einkauf<br/>Rente = Guthaben ohne Kapital × Umwandlungssatz"] --> TE
+    PK -- Kapitalanteil --> TE
+    A3["Säule 3a<br/>Guthaben × (1 + Rendite) + Beitrag"] --> TE
+    TE["Teuerung<br/>nominal → heutige Franken"] --> KAP
+    TE --> E
     VM["Freies Vermögen<br/>ohne Immobilie und Hypothek"] --> KAP
-    KAP["Kapital bei Pensionierung<br/>− Kapitalbezugssteuer (gestaffelt)"] --> AN["Kapitalverzehr<br/>Annuität über Jahre und Rendite"]
-    AN --> E["Einkommen im Ruhestand<br/>AHV + PK-Renten + Kapitalverzehr"]
+    KAP["Kapital bei Pensionierung<br/>− Kapitalbezugssteuer (gestaffelt)"] --> AN["Kapitalverzehr<br/>Annuität mit realer Rendite"]
+    AU["Renten aus dem Ausland<br/>ab Bezugsalter"] --> E
+    AN --> E["Einkommen im Ruhestand<br/>AHV + PK-Renten + Kapitalverzehr + Ausland<br/>PK-Renten verlieren Kaufkraft"]
     B["Bedarf im Ruhestand"] --> L
-    E --> L{"Pensionslücke<br/>Bedarf − Einkommen"}
+    E --> L{"Pensionslücke<br/>bei Beginn, im Mittel, nach 20 Jahren"}
     L --> AMP["Ampel Ruhestand<br/>grün: keine Lücke · gelb: ≤ 10 % · rot: mehr"]

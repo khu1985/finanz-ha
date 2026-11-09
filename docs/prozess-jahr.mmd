@@ -1,11 +1,13 @@
 flowchart TD
-    M["monatlich<br/>Kontoauszüge importieren (Bank-Import)"] --> UE["Übersicht und Ampeln aktuell"]
-    J["Januar<br/>Kennzahlen prüfen (AHV, BVG, 3a, Tarif)"] --> F
+    M["monatlich<br/>Kontoauszüge importieren: Saldi und Buchungen"] --> UE["Übersicht, Budget und Ampeln aktuell"]
+    J["Januar<br/>Kennzahlen prüfen (AHV, BVG, 3a, Tarif, Kinderabzug)"] --> F
     F["Februar–März<br/>Vorsorgeausweise hochladen und übernehmen"] --> SE
-    SE["bis Frist (Standard 31. März)<br/>Steuererklärung einreichen und hochladen"] --> VE
+    SE["bis Frist (Standard 31. März)<br/>Checkliste Steuererklärung, einreichen und hochladen"] --> VE
     VE["nach Veranlagung<br/>Veranlagung hochladen: Abgleich, Grenzsteuersatz"] --> SZ
     SZ["Szenarien<br/>PK-Einkauf optimieren, Plan übernehmen"] --> KV
     KV["September–November<br/>Krankenkasse vergleichen, bis 30.11. kündigen"] --> DZ
     DZ["Oktober–Dezember<br/>3a einzahlen (bis 20.12.), PK-Einkauf überweisen (bis 10.12.)"] --> J
     VT["laufend<br/>Kündigungsfristen 60 Tage vorher"] -.-> UE
     HY["36–12 Monate vor Fälligkeit<br/>Hypothekar-Strategie, Offerten, Forward"] -.-> UE
+    KD["Kinder mit 16, 18, 19 und Ende Ausbildung<br/>Zulagen, Bestätigung, Krankenkasse"] -.-> UE
+    NO["jährlich<br/>Notfallordner und Nachlass-Checkliste prüfen"] -.-> UE

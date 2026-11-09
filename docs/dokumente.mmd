@@ -1,12 +1,12 @@
 flowchart LR
     U["PDF oder CSV<br/>Upload oder Import-Ordner"] --> T["Text auslesen<br/>pypdf, Kodierung"]
     T --> E{"Art erkennen"}
-    E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat"]
+    E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat,<br/>Buchungen mit Kategorie"]
     E -- Police --> V["Versicherer, Sparte, Prämie,<br/>Daten, Fristen, Summen"]
     E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen"]
-    E -- Steuern --> S["Periode, steuerbares Einkommen,<br/>Steuern, Abzüge"]
+    E -- Steuern --> S["Periode, steuerbares Einkommen<br/>und Vermögen, Steuern, Abzüge"]
     T -. optional .-> KI["KI-Aufgabe<br/>Home Assistant"] -. Werte .-> P
-    B --> DB[("Saldi")]
+    B --> DB[("Saldi und Buchungen")]
     V & VO & S --> P["Prüfen<br/>erkannt ↔ heute"]
     P -- übernehmen --> K[("finanz.yaml")]
-    DB & K --> A["Ampeln, Hinweise,<br/>Szenarien, Berater"]
+    DB & K --> A["Ampeln, Hinweise, Budget,<br/>Szenarien, Berater, Checklisten"]

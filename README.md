@@ -58,34 +58,36 @@ Ohne KI braucht sie kein Internet; mit KI geht der Auftrag über die KI-Aufgabe 
 flowchart TB
     subgraph Quellen
         direction LR
-        F["Formulare<br/>Einstellungen"]
+        F["Formulare<br/>Einstellungen, Kinder, Notfallordner"]
         I["Import-Ordner<br/>finanz.yaml, CSV, PDF"]
         U["Uploads<br/>Kontoauszüge, Policen,<br/>Vorsorge- und Steuerdokumente"]
     end
     subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
-        D["Dokumente<br/>bankimport, versicherungen,<br/>dokumente, steuerdokumente"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen"]
-        Z["Szenarien<br/>szenarien, hypothek, berater"]
-        A["ampel.py, erinnerungen.py<br/>Bewertung und Aufgaben"]
-        SE["seiten.py<br/>Seiten, Diagramme, Statusanzeige"]
+        D["Dokumente<br/>bankimport, budget, versicherungen,<br/>dokumente, steuerdokumente"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen,<br/>kinder, zuzug"]
+        Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
+        C["Checklisten<br/>nachlass, steuererklaerung, notfall"]
+        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
+        SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
         direction LR
         Y[("finanz.yaml")]
-        DB[("finanz.sqlite")]
+        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente")]
         P[("PDFs")]
         L[("finanz.log")]
     end
-    HA["Home Assistant<br/>KI-Aufgabe, Benachrichtigung"]
+    HA["Home Assistant<br/>KI-Aufgabe, Benachrichtigung,<br/>sensor.finanz_*"]
     F & I & U --> S
     S --> D --> DB & P
     S --> Y
     Y & DB --> K --> Z
-    K & Z --> A --> SE
+    K --> C
+    K & Z & C --> A --> SE
     Z -. optional .-> HA
-    A -. stündlich .-> HA
+    A -. stündlich und alle 15 Minuten .-> HA
     S --> L
 ```
 
@@ -125,7 +127,7 @@ flowchart TB
 | `finanz/app/szenarien.py` | PK-Einkauf-Optimierung, Vergleich verheiratet ↔ Konkubinat |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Beratungen |
 | `finanz/app/importordner.py` | Import-Ordner für persönliche Dateien |
-| `finanz/app/konfig.py`, `meta.py` | Konfiguration laden/speichern, Version, Changelog, Protokoll |
+| `finanz/app/konfig.py`, `finanz/app/meta.py` | Konfiguration laden/speichern, Version, Changelog, Protokoll |
 | `finanz/app/diagramme.py` | Linien- und Säulendiagramme als SVG |
 | `finanz/app/default_config.yaml` | Vorlage mit Musterhaushalt und Kennzahlen 2026 |
 
@@ -139,20 +141,25 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    P["Personen<br/>Geburtsdatum, Lohn, Pensionierungsalter"] --> AHV
+    P["Personen<br/>Geburtsdatum, Lohn, Pensum, Pensionierungsalter"] --> AHV
     P --> PK
     P --> A3
+    ZU["Zuzug in die Schweiz<br/>Beitragsjahre ab Zuzug,<br/>Einkaufsgrenze 5 Jahre"] -.-> AHV & PK
+    KI["Kinder<br/>Erziehungsgutschriften,<br/>Kinderrenten"] -.-> AHV
     VA["Vorsorgeausweis<br/>Prognose mit 65"] -. übernommen .-> PK
     IK["IK-Auszug<br/>Beitragsjahre"] -. übernommen .-> AHV
-    AHV["AHV<br/>Skala 44 × Beitragsjahre ÷ 44<br/>Ehe: Splitting, Plafond 150 %<br/>× 13 Monatsrenten"] --> E
-    PK["Pensionskasse<br/>Guthaben × (1 + Zins) + Sparbeitrag + Einkauf<br/>Rente = Guthaben ohne Kapital × Umwandlungssatz"] --> E
-    PK -- Kapitalanteil --> KAP
-    A3["Säule 3a<br/>Guthaben × (1 + Rendite) + Beitrag"] --> KAP
+    AHV["AHV<br/>Skala 44 × Beitragsjahre ÷ 44<br/>Ehe: Splitting, Plafond 150 %<br/>× 13 Monatsrenten, Mischindex"] --> E
+    PK["Pensionskasse<br/>Guthaben × (1 + Zins) + Sparbeitrag + Einkauf<br/>Rente = Guthaben ohne Kapital × Umwandlungssatz"] --> TE
+    PK -- Kapitalanteil --> TE
+    A3["Säule 3a<br/>Guthaben × (1 + Rendite) + Beitrag"] --> TE
+    TE["Teuerung<br/>nominal → heutige Franken"] --> KAP
+    TE --> E
     VM["Freies Vermögen<br/>ohne Immobilie und Hypothek"] --> KAP
-    KAP["Kapital bei Pensionierung<br/>− Kapitalbezugssteuer (gestaffelt)"] --> AN["Kapitalverzehr<br/>Annuität über Jahre und Rendite"]
-    AN --> E["Einkommen im Ruhestand<br/>AHV + PK-Renten + Kapitalverzehr"]
+    KAP["Kapital bei Pensionierung<br/>− Kapitalbezugssteuer (gestaffelt)"] --> AN["Kapitalverzehr<br/>Annuität mit realer Rendite"]
+    AU["Renten aus dem Ausland<br/>ab Bezugsalter"] --> E
+    AN --> E["Einkommen im Ruhestand<br/>AHV + PK-Renten + Kapitalverzehr + Ausland<br/>PK-Renten verlieren Kaufkraft"]
     B["Bedarf im Ruhestand"] --> L
-    E --> L{"Pensionslücke<br/>Bedarf − Einkommen"}
+    E --> L{"Pensionslücke<br/>bei Beginn, im Mittel, nach 20 Jahren"}
     L --> AMP["Ampel Ruhestand<br/>grün: keine Lücke · gelb: ≤ 10 % · rot: mehr"]
 ```
 
@@ -167,19 +174,24 @@ flowchart TD
 ```mermaid
 flowchart TD
     SD["Steuerdokumente<br/>Erklärung, Veranlagung"] -. übernommen .-> REF
-    REF["Letzte Veranlagung je Steuereinheit<br/>steuerbares Einkommen, Steuer, Grenzsteuersatz"] --> KT
+    REF["Letzte Veranlagung je Steuereinheit<br/>steuerbares Einkommen und Vermögen,<br/>Steuer, Grenzsteuersatz"] --> KT
     REF --> BU
+    REF --> VS["Vermögenssteuer<br/>Veranlagung oder Promillesatz"]
     EH{"Zivilstand"} -- verheiratet --> E1["eine Steuereinheit<br/>Haushalt"]
-    EH -- Konkubinat --> E2["je Person eine Steuereinheit<br/>Elterntarif für die Person mit Kind"]
+    EH -- Konkubinat --> E2["je Person eine Steuereinheit<br/>Elterntarif bei der Person mit Obhut"]
+    KI["Kinder<br/>Kinderabzug bis 18 bzw. Ausbildung,<br/>Drittbetreuung bis 14"] --> E1 & E2
     E1 & E2 --> REF
     BU["Bundessteuer<br/>Tarif, Elterntarif −263/Kind, max. 11,5 %"] --> T["Steuer heute"]
     KT["Kanton und Gemeinde<br/>S × (x ÷ E)^e – trifft Steuer und Grenzsatz"] --> T
+    VS --> T
     T --> AB["Abzug simulieren<br/>Steuer(x) − Steuer(x − Abzug)"]
     AB --> OPT["PK-Einkauf optimieren<br/>Schritt für Schritt ins Jahr mit der<br/>höchsten Ersparnis pro Franken"]
-    SP["Sperrfrist<br/>3 Jahre vor Kapitalbezug"] --> OPT
+    SP["Sperrfrist 3 Jahre vor Kapitalbezug,<br/>Einkaufsgrenze nach Zuzug"] --> OPT
     OPT --> PLAN["Plan pro Jahr<br/>Ersparnis, letzter Franken, Netto-Vorteil"]
     PLAN -. übernehmen .-> EK[("pk.einkauf_geplant")]
-    T --> HV["Vergleich verheiratet ↔ Konkubinat<br/>Bund: Summe − Abzüge · Kanton: Splitting"]
+    AB --> TZ["Teilzeit-Rechner<br/>Nettolohn, Steuern, Kita"]
+    T --> HV["Vergleich verheiratet ↔ Konkubinat<br/>mit und ohne Individualbesteuerung"]
+    T --> CL["Checkliste Steuererklärung<br/>Belege, Saldi per 31.12., Vorjahr"]
 ```
 
 </details>
@@ -222,15 +234,15 @@ Details zu Formeln und Annahmen: [finanz/DOCS.md → Rechenmodell](finanz/DOCS.m
 flowchart LR
     U["PDF oder CSV<br/>Upload oder Import-Ordner"] --> T["Text auslesen<br/>pypdf, Kodierung"]
     T --> E{"Art erkennen"}
-    E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat"]
+    E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat,<br/>Buchungen mit Kategorie"]
     E -- Police --> V["Versicherer, Sparte, Prämie,<br/>Daten, Fristen, Summen"]
     E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen"]
-    E -- Steuern --> S["Periode, steuerbares Einkommen,<br/>Steuern, Abzüge"]
+    E -- Steuern --> S["Periode, steuerbares Einkommen<br/>und Vermögen, Steuern, Abzüge"]
     T -. optional .-> KI["KI-Aufgabe<br/>Home Assistant"] -. Werte .-> P
-    B --> DB[("Saldi")]
+    B --> DB[("Saldi und Buchungen")]
     V & VO & S --> P["Prüfen<br/>erkannt ↔ heute"]
     P -- übernehmen --> K[("finanz.yaml")]
-    DB & K --> A["Ampeln, Hinweise,<br/>Szenarien, Berater"]
+    DB & K --> A["Ampeln, Hinweise, Budget,<br/>Szenarien, Berater, Checklisten"]
 ```
 
 </details>
@@ -267,8 +279,8 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    M["monatlich<br/>Kontoauszüge importieren (Bank-Import)"] --> UE["Übersicht und Ampeln aktuell"]
-    J["Januar<br/>Kennzahlen prüfen (AHV, BVG, 3a, Tarif)"] --> F
+    M["monatlich<br/>Kontoauszüge importieren: Saldi und Buchungen"] --> UE["Übersicht, Budget und Ampeln aktuell"]
+    J["Januar<br/>Kennzahlen prüfen (AHV, BVG, 3a, Tarif, Kinderabzug)"] --> F
     F["Februar–März<br/>Vorsorgeausweise hochladen und übernehmen"] --> SE
     SE["bis Frist (Standard 31. März)<br/>Checkliste Steuererklärung, einreichen und hochladen"] --> VE
     VE["nach Veranlagung<br/>Veranlagung hochladen: Abgleich, Grenzsteuersatz"] --> SZ
@@ -277,6 +289,8 @@ flowchart TD
     DZ["Oktober–Dezember<br/>3a einzahlen (bis 20.12.), PK-Einkauf überweisen (bis 10.12.)"] --> J
     VT["laufend<br/>Kündigungsfristen 60 Tage vorher"] -.-> UE
     HY["36–12 Monate vor Fälligkeit<br/>Hypothekar-Strategie, Offerten, Forward"] -.-> UE
+    KD["Kinder mit 16, 18, 19 und Ende Ausbildung<br/>Zulagen, Bestätigung, Krankenkasse"] -.-> UE
+    NO["jährlich<br/>Notfallordner und Nachlass-Checkliste prüfen"] -.-> UE
 ```
 
 </details>
@@ -298,8 +312,13 @@ Ablauf für Änderungen:
 
 Home Assistant bietet ein Update nur an, wenn die Version in `finanz/config.yaml` höher ist.
 
-Diagramme: Quellen als Mermaid in `docs/*.mmd`, daraus die SVGs mit
-`for f in docs/*.mmd; do mmdc -i "$f" -o "${f%.mmd}.svg" -b white -t neutral; done` erzeugen.
+Diagramme: Quellen als Mermaid in `docs/*.mmd`. `python3 tools/doku.py` rendert geänderte SVGs (Mermaid CLI `mmdc`)
+und übernimmt die Quellen in die Mermaid-Blöcke dieses README.
+
+Die Dokumentation wird mit jeder Version nachgeführt; ein Test (`test_dokumentation_aktuell`, auch einzeln mit
+`python3 tools/doku.py --pruefen`) bricht ab, wenn ein Diagramm nicht aus der aktuellen Quelle gerendert ist, ein
+Mermaid-Block im README abweicht, der Changelog keinen Eintrag zur Version hat oder ein Modul bzw. eine Seite in
+README und DOCS.md fehlt.
 
 ## Tests
 

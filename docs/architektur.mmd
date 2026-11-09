@@ -1,32 +1,34 @@
 flowchart TB
     subgraph Quellen
         direction LR
-        F["Formulare<br/>Einstellungen"]
+        F["Formulare<br/>Einstellungen, Kinder, Notfallordner"]
         I["Import-Ordner<br/>finanz.yaml, CSV, PDF"]
         U["Uploads<br/>Kontoauszüge, Policen,<br/>Vorsorge- und Steuerdokumente"]
     end
     subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
-        D["Dokumente<br/>bankimport, versicherungen,<br/>dokumente, steuerdokumente"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen"]
-        Z["Szenarien<br/>szenarien, hypothek, berater"]
-        A["ampel.py, erinnerungen.py<br/>Bewertung und Aufgaben"]
-        SE["seiten.py<br/>Seiten, Diagramme, Statusanzeige"]
+        D["Dokumente<br/>bankimport, budget, versicherungen,<br/>dokumente, steuerdokumente"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, vermoegen,<br/>kinder, zuzug"]
+        Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
+        C["Checklisten<br/>nachlass, steuererklaerung, notfall"]
+        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
+        SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
         direction LR
         Y[("finanz.yaml")]
-        DB[("finanz.sqlite")]
+        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente")]
         P[("PDFs")]
         L[("finanz.log")]
     end
-    HA["Home Assistant<br/>KI-Aufgabe, Benachrichtigung"]
+    HA["Home Assistant<br/>KI-Aufgabe, Benachrichtigung,<br/>sensor.finanz_*"]
     F & I & U --> S
     S --> D --> DB & P
     S --> Y
     Y & DB --> K --> Z
-    K & Z --> A --> SE
+    K --> C
+    K & Z & C --> A --> SE
     Z -. optional .-> HA
-    A -. stündlich .-> HA
+    A -. stündlich und alle 15 Minuten .-> HA
     S --> L

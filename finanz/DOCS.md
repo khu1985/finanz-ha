@@ -90,7 +90,8 @@ personen:
 | Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
-| Protokoll, Änderungen | Protokoll der App, Changelog |
+| Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
+| Änderungen | Changelog der installierten Version |
 
 ## Vorsorge
 
