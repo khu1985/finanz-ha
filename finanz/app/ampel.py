@@ -98,6 +98,19 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         txt = f"Lücke im Mittel CHF {chf(lm)}/Jahr (Teuerung)"
     erg.append(Ampel("Ruhestand", s, txt, "vorsorge"))
 
+    # Steuererklärung: in den Monaten vor der Frist
+    try:
+        import steuererklaerung as se
+        c = se.erstellen(k, db, heute.year - 1 if heute.month < 10 else heute.year, heute)
+        if se.sichtbar(heute, c.frist):
+            tage = (c.frist - heute).days
+            fehlt = len(se.offene_fehlende(c))
+            s_ = GRUEN if not c.offen else (ROT if tage <= 14 else GELB)
+            erg.append(Ampel("Steuererklärung", s_, f"{c.total - c.offen}/{c.total} bereit, Frist {c.frist:%d.%m.%Y}"
+                             + (f", {fehlt} Werte fehlen" if fehlt else ""), "steuererklaerung"))
+    except Exception:  # noqa: BLE001
+        pass
+
     # Budget aus den Kontoauszügen
     try:
         import budget as bu

@@ -26,6 +26,7 @@ personen:
     geschlecht: m                # m | w
     pensionierung_alter: 65
     lohn_brutto: 110000
+    pensum: 100                  # Arbeitspensum in % zum Bruttolohn
     sparen_monat: 0
     ahv:
       beitragsjahre_bisher: 18   # laut individuellem Konto (IK-Auszug)
@@ -72,6 +73,7 @@ personen:
     geschlecht: w
     pensionierung_alter: 65
     lohn_brutto: 70000
+    pensum: 80
     sparen_monat: 0
     ahv:
       beitragsjahre_bisher: 16
@@ -218,6 +220,7 @@ kennzahlen:
   ahv_ne_max: 26500
   ahv_ne_vermoegen_min: 350000     # Vermögen + 20 × Renteneinkommen, bis zu dem der Minimalbeitrag gilt
   ahv_ne_vermoegen_max: 8950000    # ab hier Maximalbeitrag
+  sozialabzug: 6.4                 # AHV/IV/EO 5,3 % + ALV 1,1 % (Arbeitnehmeranteil)
   bvg_eintrittsschwelle: 22680
   bvg_koordinationsabzug: 26460
   bvg_max_lohn: 90720

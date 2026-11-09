@@ -1,5 +1,22 @@
 # Änderungen
 
+## 0.16.0 – 2026-11-09
+
+- **Teilzeit und Kinderbetreuung** (Szenarien): Pensum einer Person für einen Zeitraum reduzieren und sehen, was es
+  kostet – weniger Nettolohn (nach Sozialabzügen und PK-Beitrag), weniger Steuern (inkl. wegfallendem
+  Betreuungsabzug), eingesparte Kita-Kosten, Saldo pro Jahr und was ein Arbeitstag netto bringt. Langfristig:
+  AHV-Rente (mit Plafond und Splitting), PK-Kapital und -Rente, Summe über den Ruhestand, IV-Leistungen. Hinweise zu
+  BVG-Eintrittsschwelle, Koordinationsabzug und Konkubinat. Neues Feld «Pensum» pro Person, Kennzahl `sozialabzug`
+- **Steuererklärung vorbereiten** (neue Seite unter Planung): Checkliste pro Steuerjahr aus den Daten der App –
+  Frist, Quellensteuer, Kinder, Lohnausweise, 3a, PK-Einkäufe, Kinderbetreuung, Krankheitskosten, Prämien, Spenden
+  (aus dem Budget), Eigenmietwert, Schuldzinsen, Unterhalt, Saldi aller Konten per 31.12. (fehlende werden markiert),
+  Lebensversicherungen, Vorjahreswerte aus der Veranlagung. Punkte abhaken, Fortschritt, Drucken; Ampel in den
+  Monaten vor der Frist; die Erinnerung zur Frist führt auf die Checkliste
+- **Notfallordner** (neue Seite unter Planung): Personen, erste Schritte im Todesfall (mit Hinweisen fürs
+  Konkubinat), Konten mit letztem Saldo, Vorsorge und Leistungen im Todesfall, Versicherungen, Liegenschaft, offene
+  Punkte der Nachlass-Checkliste; wichtige Kontakte und Ablageorte erfassen; Druckansicht bzw. PDF ohne Menü und
+  Formulare; Abhaken in der Nachlass-Checkliste per Knopf
+- Teilzeit-Tabelle fasst gleiche Jahre zusammen; Druckansicht für alle Seiten (ohne Menü, Tabellen als Tabellen)
 ## 0.15.1 – 2026-11-09
 
 - **iPhone-Ansicht geprüft** (iPhone 15 hoch und quer, hell und dunkel): kein seitlicher Überlauf auf allen Seiten

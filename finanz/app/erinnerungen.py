@@ -118,7 +118,7 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     ordentlich = _datum(j, *(int(x) for x in f.frist.split("-")))
     sichtbar_ab = _monate_zurueck(ordentlich, 2)
     if sichtbar_ab <= heute <= frist + timedelta(days=7):
-        tipps = ["Belege: Lohnausweise, 3a-Bescheinigungen, PK-Einkauf, Schuldzinsen, Unterhalt, Kinderbetreuung."]
+        tipps = ["Checkliste mit Belegen und Werten aus der App unter «Steuererklärung»."]
         if (k.get("wohnen") or {}).get("aktiv") and float(k["wohnen"].get("eigenmietwert", 0) or 0):
             tipps.append("Liegenschaftsunterhalt effektiv abziehen, wenn höher als die Pauschale.")
         if k["haushalt"].get("zivilstand") != "verheiratet" and k["haushalt"].get("kinder"):
@@ -131,7 +131,7 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
         if f.pruefen:
             tipps.append("Datum auf der zugestellten Steuererklärung prüfen.")
         erg.append(Erinnerung(f"steuererklaerung-{j}", f"Steuererklärung {j - 1} einreichen ({quelle})", frist,
-                              " ".join(tipps) + " Danach die Erklärung unter «Steuern» hochladen.", "steuern"))
+                              " ".join(tipps) + " Danach die Erklärung unter «Steuern» hochladen.", "steuererklaerung"))
 
     # Steueroptimierung
     erg.extend(_steueroptimierung(k, db, heute))

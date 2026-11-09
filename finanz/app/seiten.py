@@ -22,8 +22,9 @@ import wohnen as wo
 
 NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("berater", "Berater")]),
-    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("kinder", "Kinder"),
-                 ("szenarien", "Szenarien"), ("nachlass", "Nachlass")]),
+    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
+                 ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
+                 ("notfall", "Notfallordner")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")]),
 ]
@@ -159,6 +160,26 @@ table.log td{display:inline;border:0;padding:0 8px 0 0}table.log td:last-child{d
 }
 .hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung .ampel{margin-right:8px}
 code.entitaet{font-size:12px;word-break:break-all;white-space:normal}
+.status-stb{font-size:12px;padding:1px 7px;border-radius:9px;white-space:nowrap}
+.status-stb.daten{background:color-mix(in srgb,var(--gut) 15%,transparent);color:var(--gut)}
+.status-stb.fehlt{background:color-mix(in srgb,var(--schlecht) 15%,transparent);color:var(--schlecht)}
+.status-stb.beleg{background:color-mix(in srgb,var(--leise) 15%,transparent);color:var(--leise)}
+.stb-punkt{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--linie)}
+.stb-punkt:last-child{border-bottom:0}.stb-punkt input{width:22px;height:22px;margin:1px 0 0;flex:0 0 auto}
+.stb-punkt .text{flex:1;min-width:0}.stb-punkt .text b{font-weight:600}.stb-punkt .text small{display:block;color:var(--leise)}
+.stb-punkt.erledigt .text{opacity:.55}.stb-punkt.info{padding-left:32px}
+.fortschritt{height:8px;border-radius:4px;background:var(--linie);overflow:hidden;margin:4px 0 12px}
+.fortschritt i{display:block;height:100%;background:var(--gut)}
+.druck-kopf,.nur-druck{display:none}
+@media print{
+.side,#nav,footer,#status,#lade,.nicht-drucken,form .zeile,button{display:none!important}
+body,.inhalt,main{background:#fff!important;color:#000!important}main{max-width:none;padding:0}
+.karte{break-inside:avoid;box-shadow:none;border:1px solid #bbb}.druck-kopf,.nur-druck{display:block}
+.kpis.nicht-drucken,form.nicht-drucken{display:none!important}
+table.responsiv thead{display:table-header-group!important}table.responsiv tr{display:table-row!important}
+table.responsiv td{display:table-cell!important;text-align:left!important}table.responsiv td::before{content:none!important}
+a{color:#000;text-decoration:none}input,textarea{border:0!important;background:none!important;padding:0!important;color:#000}
+}
 .erinnerung{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--linie)}
 .erinnerung>div{flex:1}.erinnerung .ampel{margin-top:6px}.erinnerung form{margin-left:8px}
 .antwort h3{font-size:15px;margin:14px 0 6px}.antwort p{margin:6px 0}.antwort ul{margin:6px 0;padding-left:20px}
@@ -649,6 +670,7 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "risiko.partner_bei_pk_gemeldet", "Partner bei PK gemeldet"),
         (p + "saeule3a.guthaben", "3a-Guthaben"), (p + "saeule3a.beitrag_jahr", "3a-Beitrag/Jahr"),
         (p + "saeule3a.rendite", "3a-Rendite %"), (p + "saeule3a.konten", "Anzahl 3a-Konten"),
+        (p + "pensum", "Pensum % (zum Bruttolohn)"),
         (p + "pk.versicherter_lohn", "Versicherter Lohn PK (0 = Bruttolohn)"),
         (p + "zuzug.datum", "Zuzug in die Schweiz (JJJJ-MM-TT, leer = immer hier)"), (p + "zuzug.land", "Herkunftsland"),
         (p + "zuzug.bewilligung", "Bewilligung (leer/CH, C, B, L)"),
@@ -1262,7 +1284,72 @@ def ampel_karte(k: dict, db) -> str:
 
 def szenarien(k: dict, db, q: dict | None = None) -> str:
     q = q or {}
-    return einkauf_karte(k, db, q) + fruehpension_karte(k, db) + hypothek_karte(k, db, q) + heirat_karte(k, db)
+    return (einkauf_karte(k, db, q) + teilzeit_karte(k, q) + fruehpension_karte(k, db) + hypothek_karte(k, db, q)
+            + heirat_karte(k, db))
+
+
+def teilzeit_karte(k: dict, q: dict) -> str:
+    import teilzeit as tz
+    heute = date.today()
+    namen = [p["name"] for p in k["personen"]]
+
+    def wert(name, standard):
+        return (q.get(name) or [str(standard)])[0]
+
+    person = wert("tz_person", namen[-1])
+    if person not in namen:
+        person = namen[-1]
+    p = next(x for x in k["personen"] if x["name"] == person)
+    alt = vm.zahl(str(p.get("pensum", 100) or 100))
+    neu = vm.zahl(wert("tz_pensum", max(0, alt - 20)) or "0")
+    von = int(vm.zahl(wert("tz_von", heute.year + 1)))
+    import kinder as ki
+    jung = [ki.geburtsjahr(c) for c in ki.liste(k) if ki.geburtsjahr(c)]
+    bis_std = (max(jung) + 12) if jung else von + 4
+    bis = int(vm.zahl(wert("tz_bis", bis_std)))
+    bet_txt = wert("tz_betreuung", "")
+    betreuung = vm.zahl(bet_txt) if bet_txt.strip() else None
+    opts = "".join(f'<option{" selected" if n == person else ""}>{escape(n)}</option>' for n in namen)
+    form = f"""<form method="get" action="szenarien#teilzeit" data-status="Teilzeit wird gerechnet …"><div class="felder">
+<label>Person<select name="tz_person">{opts}</select></label>
+<label>Neues Pensum % (heute {alt:g} %)<input name="tz_pensum" value="{neu:g}" inputmode="decimal"></label>
+<label>Ab Jahr<input name="tz_von" value="{von}" inputmode="numeric"></label>
+<label>Bis Jahr<input name="tz_bis" value="{bis}" inputmode="numeric"></label>
+<label>Weniger Betreuungskosten/Jahr (leer = anteilig Kinder-Seite)<input name="tz_betreuung" value="{escape(bet_txt)}" inputmode="decimal"></label>
+</div><div class="zeile"><button>Rechnen</button></div></form>"""
+    if neu >= alt or bis < von:
+        return '<div id="teilzeit"></div>' + karte("Teilzeit und Kinderbetreuung", form + '<p class="leer">Tieferes Pensum und gültigen Zeitraum wählen.</p>')
+    e = tz.rechnen(k, person, neu, von, bis, betreuung)
+    kpis = '<div class="kpis">' + "".join([
+        kpi(chf(e.saldo_total / max(1, len(e.jahre)), True), "pro Jahr im Portemonnaie", "gut" if e.saldo_total >= 0 else "schlecht"),
+        kpi(chf(e.pro_tag), "bringt ein Arbeitstag netto (nach Steuern und Kita)"),
+        kpi(chf(-e.ahv_rente_weniger, True), "AHV-Rente pro Jahr (Haushalt)", "schlecht" if e.ahv_rente_weniger > 0 else ""),
+        kpi(chf(-e.pk_kapital_weniger, True), f"PK-Kapital bei Pensionierung (Rente {chf(-e.pk_rente_weniger, True)}/Jahr)",
+            "schlecht" if e.pk_kapital_weniger > 0 else ""),
+        kpi(chf(-e.ruhestand_total, True), f"im Ruhestand über {k['haushalt'].get('entnahme_jahre', 25)} Jahre", "schlecht"),
+    ]) + "</div>"
+    # gleiche aufeinanderfolgende Jahre zusammenfassen
+    gruppen = []
+    for j in e.jahre:
+        if gruppen and (gruppen[-1][-1].netto, gruppen[-1][-1].steuern, gruppen[-1][-1].betreuung) == (j.netto, j.steuern, j.betreuung):
+            gruppen[-1].append(j)
+        else:
+            gruppen.append([j])
+    zeilen = []
+    for g in gruppen:
+        j = g[0]
+        jahre_txt = str(j.jahr) if len(g) == 1 else f"{g[0].jahr}–{g[-1].jahr} (je Jahr)"
+        zeilen.append([jahre_txt, chf(-j.netto, True), chf(j.steuern, True), chf(j.betreuung, True),
+                       f'<b class="{"gut" if j.saldo >= 0 else "schlecht"}">{chf(j.saldo, True)}</b>'])
+    zeilen.append(["<b>Total</b>", f"<b>{chf(-e.netto_total, True)}</b>", f"<b>{chf(e.steuern_total, True)}</b>",
+                   f"<b>{chf(e.betreuung_total, True)}</b>", f"<b>{chf(e.saldo_total, True)}</b>"])
+    tab = tabelle(["Jahr", "Nettolohn", "Steuern", "Betreuung", "Saldo"], zeilen)
+    return '<div id="teilzeit"></div>' + karte(f"Teilzeit und Kinderbetreuung – {person} {e.pensum_alt:g} % → {e.pensum_neu:g} %",
+                 form + kpis + tab + hinweisliste(e.hinweise)
+                 + '<p class="leise">Heutige Franken, gleiches Einkommen jedes Jahr. Nettolohn nach Sozialabzügen '
+                   f'({k["kennzahlen"].get("sozialabzug", 6.4)} %) und PK-Arbeitnehmeranteil; Steuern mit wegfallendem '
+                   'Betreuungsabzug; AHV über das tiefere Durchschnittseinkommen; PK über fehlende Sparbeiträge mit Zins. '
+                   'Pensum und Bruttolohn unter Einstellungen bei der Person.</p>')
 
 
 def einkauf_karte(k: dict, db, q: dict) -> str:
@@ -1878,5 +1965,177 @@ def kinder(k: dict, db) -> str:
             'Elterntarif ' + chf(float(k["kennzahlen"].get("bund_elterntarif_kind", 263))) + ' pro Kind und Abzug der '
             'Drittbetreuung bis 14 (höchstens ' + chf(float(k["kennzahlen"].get("bund_betreuung_max", 25800))) + '). '
             'Zulagen: Mindestansätze 215 bzw. 268 pro Monat, sofern nicht erfasst.</p>')
-    return (kpis + karte("Hinweise", hinweisliste(u.hinweise)) + karte("Zeitachse bis zur Selbständigkeit", zeit)
+    link = '<p class="leise">Was ein tieferes Pensum statt Kita kostet: <a href="szenarien#teilzeit">Teilzeit-Rechner unter Szenarien</a>.</p>'
+    return (kpis + karte("Hinweise", hinweisliste(u.hinweise) + link) + karte("Zeitachse bis zur Selbständigkeit", zeit)
             + karte("Kinder erfassen", form))
+
+
+# ---------------------------------------------------------------- Steuererklärung
+
+def steuererklaerung(k: dict, db, q: dict | None = None) -> str:
+    import steuererklaerung as se
+    q = q or {}
+    heute = date.today()
+    std = se.standard_jahr(heute)
+    try:
+        jahr = int((q.get("jahr") or [std])[0])
+    except ValueError:
+        jahr = std
+    c = se.erstellen(k, db, jahr, heute)
+    erledigt = c.total - c.offen
+    fehlt = se.offene_fehlende(c)
+    tage = (c.frist - heute).days
+    jahre = "".join(f'<option{" selected" if j == jahr else ""}>{j}</option>' for j in range(std - 3, std + 2))
+    kopf = (f'<form method="get" action="steuererklaerung" class="nicht-drucken"><div class="zeile">'
+            f'<label>Steuerjahr<select name="jahr" onchange="this.form.submit()">{jahre}</select></label></div></form>')
+    kpis = '<div class="kpis">' + "".join([
+        kpi(f"{erledigt}/{c.total}", "Punkte bereit", "gut" if not c.offen else "", am.GRUEN if not c.offen else am.GELB),
+        kpi(f"{c.frist:%d.%m.%Y}", f"Frist ({tage} Tage)" if tage >= 0 else "Frist vorbei",
+            "schlecht" if 0 <= tage <= 30 and c.offen else "", am.ROT if 0 <= tage <= 14 and c.offen else ""),
+        kpi(str(len(fehlt)), "Werte fehlen in der App", "schlecht" if fehlt else "gut", am.GELB if fehlt else am.GRUEN),
+    ]) + "</div>"
+    balken = f'<div class="fortschritt"><i style="width:{erledigt / c.total * 100 if c.total else 0:.0f}%"></i></div>'
+    teile = []
+    alle = []
+    for g in se.GRUPPEN:
+        punkte = [p for p in c.punkte if p.gruppe == g]
+        if not punkte:
+            continue
+        zeilen = []
+        for p in punkte:
+            label = {"daten": "aus der App", "fehlt": "fehlt", "beleg": "Beleg"}.get(p.status, "")
+            marke = f' <span class="status-stb {p.status}">{label}</span>' if label else ""
+            detail = " · ".join(x for x in (p.wert, p.beleg) if x)
+            if p.status == "info":
+                zeilen.append(f'<div class="stb-punkt info"><div class="text"><b>{escape(p.titel)}</b>'
+                              f'<small>{escape(detail)}</small></div></div>')
+                continue
+            alle.append(p.schluessel)
+            zeilen.append(f'<label class="stb-punkt{" erledigt" if p.erledigt else ""}"><input type="checkbox" name="ok_{escape(p.schluessel)}" '
+                          f'value="1"{" checked" if p.erledigt else ""}><span class="text"><b>{escape(p.titel)}</b>'
+                          f'{marke}<small>{escape(detail)}</small></span></label>')
+        teile.append(karte(g, "".join(zeilen)))
+    form = (f'<form method="post" action="steuererklaerung"><input type="hidden" name="jahr" value="{jahr}">'
+            f'<input type="hidden" name="alle" value="{escape(",".join(alle))}">' + "".join(teile)
+            + '<div class="zeile"><button>Stand speichern</button>'
+              '<button type="button" class="zweit" onclick="window.print()">Drucken</button></div></form>')
+    hinweis = ('<p class="leise">Die Liste entsteht aus den Daten der App (Personen, Kinder, Konten, Budget, Versicherungen, '
+               'Wohnen, Steuerdokumente). «fehlt» heisst: ein Wert wäre zu erwarten, ist aber nicht erfasst – z. B. Saldo '
+               'per 31.12. unter «Vermögen». Nach dem Einreichen die Erklärung unter «Steuern» hochladen.</p>')
+    return kopf + kpis + balken + form + hinweis
+
+
+# ---------------------------------------------------------------- Notfallordner
+
+def notfall(k: dict, db) -> str:
+    import dokumente as dk
+    import nachlass as nl
+    import notfall as nf
+    import versicherungen as vi
+    import kinder as ki
+    cfg = nf.konfiguration(k)
+    heute = date.today()
+    erfasst, total = nf.vollstaendigkeit(k)
+    druck = (f'<div class="druck-kopf"><b>Notfallordner – {escape(str(k["haushalt"].get("name") or ""))}</b> · Stand '
+             f'{heute:%d.%m.%Y} · vertraulich</div>')
+    knoepfe = ('<div class="zeile nicht-drucken"><button type="button" onclick="window.print()">Drucken bzw. als PDF '
+               'sichern</button></div>')
+    kpis = '<div class="kpis nicht-drucken">' + "".join([
+        kpi(f"{erfasst}/{total}", "Kontakte und Ablageorte erfasst", "", am.GRUEN if erfasst >= total - 2 else am.GELB),
+        kpi(cfg["stand"] or "–", "zuletzt bearbeitet"),
+    ]) + "</div>"
+    # Personen und Kinder
+    zeilen = [[escape(p["name"]), escape(str(p.get("geburtsdatum", ""))), escape(str(k["haushalt"].get("zivilstand", "")))]
+              for p in k["personen"]]
+    zeilen += [[escape(c["name"]) + " (Kind)", escape(str(ki.geburt(c) or "")), ""] for c in ki.liste(k)]
+    personen_html = tabelle(["Name", "Geburtsdatum", "Zivilstand"], zeilen, zahlen_ab=9)
+    # Schritte
+    schritte = "".join(f'<div class="stb-punkt"><div class="text"><b>{escape(s_.was)}</b> '
+                       f'<span class="status-stb beleg">{escape(s_.wann)}</span><small>{escape(s_.detail)}</small></div></div>'
+                       for s_ in nf.erste_schritte(k))
+    # Konten
+    konten = vm.konten(db)
+    kz = [[escape(x["name"]), escape(vm.ARTEN.get(x["art"], x["art"])), escape(x["person"] or "gemeinsam"),
+           chf(abs(x["betrag"] or 0)) + (f' <small class="leise">{x["datum"][8:10]}.{x["datum"][5:7]}.{x["datum"][:4]}</small>'
+                                          if x["datum"] else "")] for x in konten]
+    konten_html = tabelle(["Konto", "Art", "Inhaber", "Letzter Saldo"], kz, zahlen_ab=3) if kz else '<p class="leer">Keine Konten erfasst.</p>'
+    # Vorsorge
+    vz = []
+    try:
+        dk.tabellen(db)
+        for d in dk.alle(db):
+            if d["typ"] in ("pk_ausweis", "saeule3a"):
+                vz.append([escape(d["person"] or "–"), escape(dk.TYPEN.get(d["typ"], d["typ"])), escape(d["anbieter"] or d["dateiname"]),
+                           escape(d["stichtag"] or "")])
+    except Exception:  # noqa: BLE001
+        pass
+    risiko = []
+    for p in k["personen"]:
+        r = p.get("risiko") or {}
+        teile = [f"{lbl} CHF {chf(float(r.get(s_) or 0))}" for s_, lbl in (("partnerrente_pk", "Partnerrente PK/Jahr"),
+                 ("waisenrente_pk", "Waisenrente PK/Jahr"), ("todesfallkapital_pk", "Todesfallkapital PK"),
+                 ("todesfallkapital_extern", "Todesfallkapital Policen")) if float(r.get(s_) or 0)]
+        if teile:
+            risiko.append(f"<li><b>{escape(p['name'])}:</b> {escape(', '.join(teile))}</li>")
+    vorsorge_html = ((tabelle(["Person", "Dokument", "Anbieter", "Stand"], vz, zahlen_ab=9) if vz else
+                      '<p class="leise">Keine Vorsorgeausweise hochgeladen (Seite Vorsorge).</p>')
+                     + (f'<p><b>Leistungen im Todesfall</b></p><ul>{"".join(risiko)}</ul>' if risiko else ""))
+    # Versicherungen
+    vertraege = vi.alle(db)
+    vt = [[escape(vi.SPARTEN.get(v["sparte"], v["sparte"])), escape(v["versicherer"]), escape(v["police"]),
+           escape(v["person"] or "–"), chf(v["praemie_jahr"] or 0)] for v in vertraege]
+    vers_html = tabelle(["Sparte", "Versicherer", "Police", "Person", "Prämie/Jahr"], vt, zahlen_ab=4) if vt else \
+        '<p class="leise">Keine Policen hochgeladen (Seite Versicherungen).</p>'
+    # Liegenschaft
+    w = k.get("wohnen") or {}
+    lieg = ""
+    if w.get("aktiv"):
+        hyp = [x for x in konten if x["art"] == "hypothek"]
+        lieg = karte("Liegenschaft", "<ul>" + "".join([
+            f"<li>Kaufpreis CHF {chf(float(w.get('kaufpreis', 0) or 0))}, Hypothek fällig "
+            f"{escape(str(w.get('hypothek_faellig') or '–'))}</li>",
+            *[f"<li>{escape(x['name'])}: CHF {chf(abs(x['betrag'] or 0))}</li>" for x in hyp],
+            f"<li>Anteil im Todesfall siehe <a href=\"nachlass\">Nachlass</a></li>",
+        ]) + "</ul>")
+    # Kontakte (Formular)
+    kontakte = cfg["kontakte"] + [{"rolle": r, "name": "", "telefon": "", "notiz": ""}
+                                  for r in nf.KONTAKT_ROLLEN if r not in {c.get("rolle") for c in cfg["kontakte"]}][:max(0, 9 - len(cfg["kontakte"]))]
+    kontakte.append({"rolle": "", "name": "", "telefon": "", "notiz": ""})
+    k_zeilen = []
+    for i, c in enumerate(kontakte):
+        k_zeilen.append(f'<fieldset class="kind"><div class="felder">'
+                        f'<label>Rolle<input name="k_rolle_{i}" value="{escape(str(c.get("rolle", "")))}"></label>'
+                        f'<label>Name<input name="k_name_{i}" value="{escape(str(c.get("name", "")))}"></label>'
+                        f'<label>Telefon / E-Mail<input name="k_telefon_{i}" value="{escape(str(c.get("telefon", "")))}"></label>'
+                        f'<label>Notiz<input name="k_notiz_{i}" value="{escape(str(c.get("notiz", "")))}"></label></div></fieldset>')
+    ablage = "".join(f'<label>{escape(t)}{f" <small class=\"leise\">{escape(h)}</small>" if h else ""}'
+                     f'<input name="a_{s_}" value="{escape(str(cfg["ablage"].get(s_, "")))}" placeholder="wo liegt es?"></label>'
+                     for s_, t, h in nf.ABLAGE)
+    # Druckfassung: nur ausgefüllte Kontakte und Ablageorte
+    druck_k = [[escape(c.get("rolle", "")), escape(c.get("name", "")), escape(c.get("telefon", "")), escape(c.get("notiz", ""))]
+               for c in cfg["kontakte"] if c.get("name") or c.get("telefon")]
+    druck_a = [[escape(t), escape(str(cfg["ablage"].get(s_, "")))] for s_, t, _ in nf.ABLAGE if cfg["ablage"].get(s_)]
+    nur_druck = ('<div class="nur-druck">'
+                 + karte("Wichtige Kontakte", tabelle(["Rolle", "Name", "Telefon / E-Mail", "Notiz"], druck_k, zahlen_ab=9)
+                         if druck_k else "<p>–</p>")
+                 + karte("Wo liegt was?", tabelle(["Was", "Wo"], druck_a, zahlen_ab=9) if druck_a else "<p>–</p>")
+                 + (karte("Weitere Hinweise", f"<p>{escape(cfg['notizen'])}</p>") if cfg["notizen"] else "") + "</div>")
+    form = nur_druck + (f'<form method="post" action="notfall" class="nicht-drucken"><input type="hidden" name="anzahl" value="{len(kontakte)}">'
+            + karte("Wichtige Kontakte", "".join(k_zeilen))
+            + karte("Wo liegt was?", f'<div class="felder">{ablage}</div>')
+            + karte("Weitere Hinweise", f'<textarea name="notizen" rows="4" placeholder="z. B. Wünsche zur Bestattung, '
+                    f'Haustiere, laufende Zahlungen">{escape(cfg["notizen"])}</textarea>')
+            + '<div class="zeile"><button>Notfallordner speichern</button>'
+              '<button class="zweit" name="erledigt" value="1">Speichern und in der Nachlass-Checkliste abhaken</button></div></form>')
+    offen = [t for s_, t, _, st in nl.checkliste(k) if not all(st.values())]
+    nachlass_html = ("<p>Offene Punkte der Nachlass-Checkliste: " + escape(", ".join(offen)) + ' – <a href="nachlass">Nachlass</a></p>'
+                     if offen else '<p class="gut">Nachlass-Checkliste erledigt.</p>')
+    return (druck + kpis + knoepfe
+            + karte("Personen", personen_html)
+            + karte("Erste Schritte im Todesfall", schritte)
+            + karte("Konten und Vermögen", konten_html)
+            + karte("Vorsorge", vorsorge_html)
+            + karte("Versicherungen", vers_html)
+            + lieg
+            + karte("Testament, Vorsorgeauftrag, Begünstigungen", nachlass_html)
+            + form)

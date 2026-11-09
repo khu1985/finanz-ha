@@ -16,7 +16,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
-5. [Kinder](#kinder) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
+5. [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [Steuererklärung](#steuererklärung-vorbereiten) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
@@ -84,8 +84,10 @@ personen:
 | Vermögen | Konten, Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
-| Szenarien | PK-Einkauf optimieren, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
+| Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
+| Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
+| Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
 | Protokoll, Änderungen | Protokoll der App, Changelog |
@@ -368,6 +370,51 @@ Wirkung:
 - **Erinnerungen:** Ausbildungszulage mit 16, Ausbildungsbestätigung mit 18, Krankenkasse mit 19, Ende von
   Kinderabzug und Zulagen.
 
+## Teilzeit und Kinderbetreuung
+
+Unter **Szenarien**: Person, neues Pensum, Zeitraum und – optional – die eingesparten Betreuungskosten (leer =
+Betreuungskosten der Kinder × Anteil der Reduktion). Pensum und Bruttolohn stehen unter Einstellungen bei der Person
+(`personen[].pensum`).
+
+| Grösse | Rechnung |
+|---|---|
+| Nettolohn | Bruttolohn × Reduktion, abzüglich Sozialabzüge (`kennzahlen.sozialabzug`, 6,4 %) und PK-Arbeitnehmeranteil |
+| PK-Sparbeiträge | mit Sparbeitrag laut Ausweis proportional zum Pensum; sonst BVG-Minimum (voller Koordinationsabzug, Eintrittsschwelle) |
+| Steuern | Ersparnis auf dem tieferen Nettolohn, abzüglich des wegfallenden Betreuungsabzugs |
+| Saldo pro Jahr | − Nettolohn + Steuern + Betreuung; «ein Arbeitstag bringt» = Saldo pro aufgegebenen Arbeitstag (220 pro 100 %) |
+| AHV | tieferes Durchschnittseinkommen über die Beitragsjahre; Haushalt mit Plafond (verheiratet) |
+| PK | fehlende Sparbeiträge mit Zins bis zur Pensionierung, Rente mit Umwandlungssatz |
+
+Gleiche aufeinanderfolgende Jahre werden zusammengefasst. Hinweise zu BVG-Eintrittsschwelle (unter 22'680 entfällt die
+PK), Koordinationsabzug, Splitting bzw. Konkubinat und Risikoschutz.
+
+## Steuererklärung vorbereiten
+
+Die Seite **Steuererklärung** erstellt pro Steuerjahr (ab Oktober das laufende, sonst das Vorjahr) eine Checkliste aus
+den Daten der App. Jeder Punkt ist markiert als «aus der App» (Wert vorhanden), «Beleg» (Dokument bereitlegen) oder
+«fehlt» (Wert wäre zu erwarten, z. B. Saldo per 31.12. eines Kontos).
+
+| Gruppe | Inhalt |
+|---|---|
+| Formales | Frist des Wohnkantons, Konkubinat (zwei Erklärungen), Quellensteuer, Kinder per 31.12. (Ausbildungsbestätigung ab 18) |
+| Einkommen | Lohnausweise bzw. Rentenbescheinigungen, Zins- und Wertschriftenerträge |
+| Abzüge | Säule 3a, PK-Einkäufe im Jahr, Kinderbetreuung, Prämien, Krankheitskosten, Spenden (Budget), Berufskosten |
+| Liegenschaft | Eigenmietwert, Hypothekarzinsen (Budget oder Schätzung), Unterhalt |
+| Vermögen per 31.12. | jedes Konto mit dem Saldo am nächsten zum 31.12. (höchstens 31 Tage daneben), Lebensversicherungen (Rückkaufswert) |
+| Vorjahr | Werte der letzten Veranlagung aus den Steuerdokumenten |
+
+Abgehakte Punkte werden pro Jahr gespeichert. Ampel «Steuererklärung» in den 5 Monaten vor der Frist (rot in den
+letzten 14 Tagen mit offenen Punkten).
+
+## Notfallordner
+
+Die Seite **Notfallordner** fasst zusammen, was Angehörige brauchen: Personen und Kinder, erste Schritte im Todesfall
+(Zivilstandsamt, Testament einreichen, Banken, Hinterlassenenleistungen; im Konkubinat Ansprüche aktiv anmelden),
+Konten mit letztem Saldo, Vorsorgeausweise und Leistungen im Todesfall, Versicherungen, Liegenschaft und offene Punkte
+der Nachlass-Checkliste. Selbst erfasst (`notfall`): wichtige Kontakte (Rolle, Name, Telefon, Notiz), Ablageorte
+(Testament, Vorsorgeauftrag, Passwort-Manager, Schlüssel …) und Hinweise. «Drucken» erzeugt eine Fassung ohne Menü
+und Formulare (auch als PDF). Der Ordner enthält vertrauliche Angaben – ausgedruckt sicher aufbewahren.
+
 ## Zuzug in die Schweiz
 
 Pro Person unter **Einstellungen** (bzw. `personen[].zuzug`) erfassen, wer wann in die Schweiz gezogen ist. Leer =
@@ -458,6 +505,7 @@ oder **Einstellungen → Experte**.
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |
 | `fruehpension` | `pk_kuerzung_uws` |
+| `notfall` | `kontakte[]`, `ablage`, `notizen` (Seite Notfallordner) |
 | `nachlass` | `zusammen_seit`, `anteil_immobilie`, `erbschaftssteuer` (überschreibt den Kanton), `checkliste` |
 | `sensoren` | `aktiv`, `praefix` |
 | `ki` | `aktiv`, `entity` |

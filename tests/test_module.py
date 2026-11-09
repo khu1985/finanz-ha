@@ -885,3 +885,51 @@ def test_kinderrente_pensionsluecke(k):
     assert l.kinderrenten > 0 and gj
     _kinder(k)
     assert vs.pensionsluecke(k, 0, 2026).kinderrenten == 0
+
+
+# ---------------------------------------------------------------- Teilzeit, Steuererklärung, Notfallordner
+
+def test_teilzeit(k):
+    import teilzeit as tz
+    p = k["personen"][1]
+    p["pensum"], p["lohn_brutto"] = 100, 100_000
+    _kinder(k, {"name": "A", "geburtsdatum": "2024-03-01", "betreuung_jahr": 24000})
+    e = tz.rechnen(k, p["name"], 60, 2027, 2030, heute=date(2026, 11, 9))
+    assert len(e.jahre) == 4 and e.jahre[0].brutto == 40_000
+    j = e.jahre[0]
+    assert 30_000 < j.netto < 40_000 and j.betreuung == round(24000 * 0.4) and j.steuern > 0
+    assert j.saldo == -j.netto + j.steuern + j.betreuung
+    assert e.pk_kapital_weniger > 0 and e.pro_tag > 0
+    # unter die BVG-Eintrittsschwelle
+    e2 = tz.rechnen(k, p["name"], 20, 2027, 2027, betreuung=0, heute=date(2026, 11, 9))
+    assert any("Eintrittsschwelle" in h for h in e2.hinweise) and e2.jahre[0].betreuung == 0
+
+
+def test_steuererklaerung(k, db):
+    import steuererklaerung as se
+    import vermoegen as vm
+    a = vm.konto_anlegen(db, "Privatkonto", "bank")
+    b = vm.konto_anlegen(db, "Depot", "depot")
+    vm.saldo_setzen(db, a, "2025-12-31", 12_000)
+    vm.saldo_setzen(db, b, "2025-06-30", 50_000)
+    k["personen"][0]["pk"]["einkauf_geplant"] = [{"jahr": 2025, "betrag": 10_000}]
+    _kinder(k, {"name": "A", "geburtsdatum": "2006-05-01", "ausbildung_bis": 25, "betreuung_jahr": 0})
+    c = se.erstellen(k, db, 2025, date(2026, 2, 1))
+    p = {x.schluessel: x for x in c.punkte}
+    assert p[f"konto_{a}"].status == "daten" and p[f"konto_{b}"].status == "fehlt"
+    assert "10'000" in p[f"pk_{k['personen'][0]['name']}"].wert
+    assert "Ausbildungsbestätigung" in p["kind_A"].beleg
+    assert c.frist.year == 2026 and c.offen == c.total
+    se.erledigt_setzen(db, 2025, [f"konto_{a}"], [x.schluessel for x in c.punkte])
+    assert se.erstellen(k, db, 2025, date(2026, 2, 1)).offen == c.total - 1
+    assert se.standard_jahr(date(2026, 11, 9)) == 2026 and se.standard_jahr(date(2026, 3, 1)) == 2025
+
+
+def test_notfall(k):
+    import notfall as nf
+    assert nf.vollstaendigkeit(k)[0] == 0
+    k["notfall"] = {"kontakte": [{"rolle": "Hausarzt", "name": "Dr. Muster", "telefon": "061"}],
+                    "ablage": {"testament": "Notar", "passwoerter": "Umschlag im Safe"}}
+    assert nf.vollstaendigkeit(k) == (3, len(nf.ABLAGE) + 3)
+    k["haushalt"]["zivilstand"] = "ledig"
+    assert any("Konkubinat" in s.was for s in nf.erste_schritte(k))

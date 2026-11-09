@@ -27,6 +27,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 40 * 1024 * 1024
 
+MIT_ABFRAGE = {"steuererklaerung"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -38,6 +39,8 @@ SEITEN = {
     "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
     "budget": ("Budget und Cashflow", seiten.budget),
     "kinder": ("Kinder", seiten.kinder),
+    "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
+    "notfall": ("Notfallordner", seiten.notfall),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -95,7 +98,7 @@ class Handler(BaseHTTPRequestHandler):
     def weiter(self, pfad: str, meldung: str = "", fehler: bool = False):
         ziel = f"{self.basis}/{pfad}"
         if meldung:
-            ziel += f"?m={quote(meldung)}" + ("&f=1" if fehler else "")
+            ziel += ("&" if "?" in ziel else "?") + f"m={quote(meldung)}" + ("&f=1" if fehler else "")
         self.send_response(303)
         self.send_header("Location", ziel)
         self.send_header("Content-Length", "0")
@@ -155,7 +158,7 @@ class Handler(BaseHTTPRequestHandler):
             titel, funktion = SEITEN[pfad]
             k = konfig.laden()
             with db() as verbindung:
-                inhalt = funktion(k, verbindung)
+                inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
             meldung = unquote(q.get("m", [""])[0])
             html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
             self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
@@ -322,6 +325,30 @@ class Handler(BaseHTTPRequestHandler):
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
             return f"{len(werte)} Sensoren geschrieben.", "einstellungen"
+        if pfad == "steuererklaerung":
+            import steuererklaerung as se
+            jahr = int(form.get("jahr") or datetime.now().year)
+            alle = [x for x in str(form.get("alle", "")).split(",") if x]
+            ok = [x for x in alle if form.get(f"ok_{x}")]
+            with db() as v:
+                se.erledigt_setzen(v, jahr, ok, alle)
+            return f"Stand für {jahr} gespeichert ({len(ok)} von {len(alle)} bereit).", f"steuererklaerung?jahr={jahr}"
+        if pfad == "notfall":
+            k = konfig.laden()
+            kontakte = []
+            for i in range(int(form.get("anzahl", 0) or 0)):
+                c = {f: str(form.get(f"k_{f}_{i}", "")).strip() for f in ("rolle", "name", "telefon", "notiz")}
+                if c["name"] or c["telefon"]:
+                    kontakte.append(c)
+            import notfall as nf
+            ablage = {s_: str(form.get(f"a_{s_}", "")).strip() for s_, _, _ in nf.ABLAGE if str(form.get(f"a_{s_}", "")).strip()}
+            k["notfall"] = {"kontakte": kontakte, "ablage": ablage, "notizen": str(form.get("notizen", "")).strip(),
+                            "stand": datetime.now().strftime("%d.%m.%Y")}
+            if form.get("erledigt"):
+                cl = k.setdefault("nachlass", {}).setdefault("checkliste", {})
+                cl["notfallordner"] = {p["name"]: True for p in k["personen"]}
+            konfig.speichern(k)
+            return "Notfallordner gespeichert." + (" In der Nachlass-Checkliste abgehakt." if form.get("erledigt") else ""), "notfall"
         if pfad == "kinder":
             k = konfig.laden()
             alt = k["haushalt"].get("kinder") or []
