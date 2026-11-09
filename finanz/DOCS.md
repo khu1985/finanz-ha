@@ -148,14 +148,23 @@ Maximal-Amortisation.
 
 | Einstellung | Bedeutung |
 |---|---|
-| Wohnen → Eigenmietwert | Eigenmietwert der **ganzen** Liegenschaft, wie wenn alles selbst bewohnt wäre |
+| Wohnen → Eigenmietwert Staat | Eigenmietwert der **ganzen** Liegenschaft, wie wenn alles selbst bewohnt wäre |
+| Wohnen → Eigenmietwert Bund | 0 = Staat × Kantonsfaktor (BL: 1,2); sonst eigener Wert |
+| Wohnen → Zimmer / davon dauernd nicht genutzt | Unternutzungsabzug: Eigenmietwert × ungenutzte Zimmer ÷ (Zimmer + 2 Nebenräume beim Haus bzw. + 1 bei Stockwerkeigentum) |
+| Wohnen → Selbstnutzung seit | Datum für die Steuererklärung |
 | Wohnen → Vermieteter Anteil % | z. B. 38 für eine Einliegerwohnung; der Eigenmietwert gilt nur für den Rest (62 %) |
 | Wohnen → Mieteinnahmen/Jahr | brutto für die ganze Liegenschaft |
 | Person → Anteil an der Liegenschaft % | Eigentumsanteil für getrennte Erklärungen (Konkubinat, Miteigentum); 0 = Rest zu gleichen Teilen |
 
 Beispiel: Eigenmietwert 40'000, 38 % vermietet, Mieteinnahmen 29'760, Miteigentum je 50 % → jede Person deklariert
 Eigenmietwert 12'400 (40'000 × 62 % × 50 %), Mieteinnahmen 14'880 und die Hälfte der Schuldzinsen; die
-Unterhaltspauschale (10 % bei Gebäuden bis 10 Jahre, sonst 20 %) gilt auf Eigenmietwert und Mieteinnahmen.
+Unterhaltspauschale gilt auf Eigenmietwert und Mieteinnahmen (ohne überwälzte Nebenkosten): Bund 10 % bei Gebäuden bis
+10 Jahre, sonst 20 %; BL Staat 20 % bzw. 25 %; ohne Baujahr gilt «älter als 10 Jahre». Staat und Bund werden getrennt
+gerechnet (eigener Eigenmietwert und eigene Pauschale).
+
+Unternutzung gilt nur für Zimmer, die dauernd nicht genutzt werden – nicht für Gäste-, Arbeits- oder Bastelzimmer,
+nicht für Zimmer, die für ausgezogene Kinder bereitgehalten werden, und nicht für Ferien- und Zweitwohnungen; den
+Nachweis erbringt die steuerpflichtige Person.
 Die Seite Wohnen zeigt das heute und ab 2029: Für den vermieteten Teil bleiben Mieteinnahmen steuerbar und
 Unterhalt abziehbar, Schuldzinsen nur noch im Verhältnis der vermieteten Liegenschaft zum Gesamtvermögen. Die
 Steuererklärungs-Checkliste und der Nachlass rechnen mit denselben Anteilen. Beim Übernehmen aus einem
@@ -655,7 +664,7 @@ oder **Einstellungen → Experte**.
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder)), Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
-| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (ganze Liegenschaft), `vermietet_anteil`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
+| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |

@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.22.0 – 2026-11-09
+
+- **Eigenmietwert Staat und Bund getrennt:** Bund = Staat × Kantonsfaktor (BL 1,2) oder eigener Wert; Wohnen,
+  Steuererklärungs-Checkliste und Deklaration je Person zeigen beide Werte
+- **Unternutzungsabzug:** Zimmer und dauernd ungenutzte Zimmer erfassen; Abzug = Eigenmietwert × ungenutzte Zimmer ÷
+  (Zimmer + 2 Nebenräume beim Haus bzw. + 1 bei Stockwerkeigentum), mit Hinweis auf die Voraussetzungen
+- **Unterhaltspauschale nach Kanton:** BL Staat 20 % / 25 %, Bund 10 % / 20 % (bis bzw. über 10 Jahre); Steuereffekt
+  des Wegfalls ab 2029 mit Grenzsätzen von Staat und Bund getrennt
+- «Selbstnutzung seit» in den Einstellungen und in der Checkliste
+
 ## 0.21.0 – 2026-11-09
 
 - **Teilweise vermietete Liegenschaft:** neue Einstellung «Vermieteter Anteil %»; der Eigenmietwert (ganze

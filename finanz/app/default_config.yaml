@@ -150,7 +150,11 @@ wohnen:
   eigenmittel: 260000
   davon_pk_vorbezug: 0
   hypothek_zins: 1.8
-  eigenmietwert: 26000             # ganze Liegenschaft, wie wenn alles selbst bewohnt (vor Reduktion)
+  eigenmietwert: 26000             # Staat, ganze Liegenschaft, wie wenn alles selbst bewohnt (vor Reduktionen)
+  eigenmietwert_bund: 0            # 0 = Staat × Kantonsfaktor (BL 1,2)
+  selbstnutzung_seit: ""           # JJJJ-MM-TT
+  zimmer: 0                        # Zimmer der selbst genutzten Wohnung (ohne Küche, Bad, Keller …)
+  zimmer_ungenutzt: 0              # dauernd nicht genutzte Zimmer (Unternutzungsabzug)
   vermietet_anteil: 0              # % der Liegenschaft vermietet (z. B. Einliegerwohnung); EMW nur auf den Rest
   schuldzinsen_abzug: true
   unterhalt_pauschal: 1.0          # % des Kaufpreises pro Jahr (Unterhalt + Nebenkosten)

@@ -86,3 +86,23 @@ def test_liegenschaft_teilweise_vermietet(k):
     assert pruefung.pruefen(k, "wohnen.vermietet_anteil")[0] == "gelb"
     k["personen"][1]["eigentum_anteil"] = 50
     assert pruefung.pruefen(k, "personen.0.eigentum_anteil")[0] == "rot"  # 120 %
+
+
+def test_liegenschaft_bl_bund_und_unternutzung(k):
+    import pruefung
+    k["haushalt"]["kanton"] = "BL"
+    k["wohnen"].update(aktiv=True, eigenmietwert=20_000, vermietet_anteil=0, mieteinnahmen_jahr=0, zimmer=6,
+                       zimmer_ungenutzt=2, kaufpreis=1_000_000, eigenmittel=1_000_000)
+    k["wohnen"]["liegenschaft"]["baujahr"] = 1990
+    s = wo.liegenschaft_steuer(k)
+    assert s["unternutzung"] == 25                                 # 2 ÷ (6 + 2 Nebenräume beim Haus)
+    assert s["eigenmietwert"] == 15_000 and s["eigenmietwert_bund"] == 18_000   # Bund = Staat × 1,2
+    assert (s["pauschal"], s["pauschal_bund"]) == (25, 20)        # BL Staat 25 %, Bund 20 % (älter als 10 Jahre)
+    assert s["netto"] == 11_250 and s["netto_bund"] == 14_400
+    k["wohnen"]["liegenschaft"]["art"] = "wohnung"
+    assert wo.unternutzung(k) == 2 / 7                            # Stockwerkeigentum: + 1 Nebenraum
+    assert pruefung.pruefen(k, "wohnen.eigenmietwert_bund")[0] == "grau"   # automatisch
+    k["wohnen"]["eigenmietwert_bund"] = 20_000
+    assert pruefung.pruefen(k, "wohnen.eigenmietwert_bund")[0] == "gelb"   # gleich wie Staat
+    k["wohnen"]["zimmer_ungenutzt"] = 6
+    assert pruefung.pruefen(k, "wohnen.zimmer_ungenutzt")[0] == "rot"

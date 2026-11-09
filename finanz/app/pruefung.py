@@ -120,6 +120,26 @@ def pruefen(k: dict, pfad: str, heute: date | None = None) -> tuple[str, str]:
         return GELB, "fehlt – aus der Veranlagung"
     if pfad == "wohnen.eigenmietwert" and z and _zahl(w.get("kaufpreis")) and z > 0.06 * _zahl(w["kaufpreis"]):
         return GELB, "über 6 % des Kaufpreises – Mietwert pro Jahr?"
+    if pfad == "wohnen.eigenmietwert_bund":
+        import kantone
+        f = kantone.emw_bund_faktor(k)
+        staat = _zahl(w.get("eigenmietwert")) or 0
+        if not z:
+            return GRAU, f"automatisch: Staat × {f:g} = {staat * f:,.0f}".replace(",", "'")
+        if staat and f != 1 and abs(z - staat * f) > 0.02 * staat * f and abs(z - staat) > 1:
+            return GELB, f"weicht von Staat × {f:g} ab – Wert prüfen"
+        if staat and abs(z - staat) <= 1 and f != 1:
+            return GELB, f"gleich wie Staat – im Kanton gilt Staat × {f:g}"
+    if pfad == "wohnen.selbstnutzung_seit" and not leer:
+        d = _datum(wert)
+        if d is False:
+            return ROT, "Datum ungültig (JJJJ-MM-TT)"
+        if d and d > heute:
+            return GELB, "liegt in der Zukunft"
+    if pfad == "wohnen.zimmer_ungenutzt" and z:
+        if z >= (_zahl(w.get("zimmer")) or 0):
+            return ROT, "mindestens so viele wie Zimmer – Anzahl Zimmer erfassen"
+        return GELB, "nur dauernd ungenutzte Räume (nicht Gäste-, Arbeits- oder Kinderzimmer für Besuche) – Nachweis nötig"
     if pfad == "wohnen.vermietet_anteil":
         if z is not None and not 0 <= z < 100:
             return ROT, "zwischen 0 und 99 % (ganz vermietet = keine Selbstnutzung)"

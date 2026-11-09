@@ -621,22 +621,33 @@ def steuern(k: dict, db) -> str:
 def liegenschaft_steuer_html(k: dict, e: dict) -> tuple[str, str]:
     """Steuerwerte der Liegenschaft heute und nach dem Wegfall des Eigenmietwerts (gemischte Nutzung, Anteile)."""
     gemischt = e["vermietet"] > 0 or e["mieteinnahmen"]
+    bund_anders = e["eigenmietwert_bund"] != e["eigenmietwert"] or e["pauschal_bund"] != e["pauschal"]
+    p = "&nbsp;%"
     z = []
+    if e["vermietet"] or e["unternutzung"]:
+        z.append(["Eigenmietwert ganze Liegenschaft", chf(e["emw_voll"]), chf(e["emw_bund_voll"]), ""])
     if e["vermietet"]:
-        z += [["Eigenmietwert ganze Liegenschaft", chf(e["emw_voll"]), ""],
-              [f"Eigenmietwert selbst bewohnt ({e['selbst']:g}&nbsp;%)", chf(e["eigenmietwert"]), "–"]]
-    else:
-        z.append(["Eigenmietwert", chf(e["eigenmietwert"]), "–"])
+        z.append([f"× selbst bewohnt {e['selbst']:g}{p}", "", "", ""])
+    if e["unternutzung"]:
+        z.append([f"− Unternutzung {e['unternutzung']:g}{p}", chf(-e["unternutzung_betrag"]),
+                  chf(-round(e["unternutzung_betrag"] * e["emw_bund_voll"] / e["emw_voll"])) if e["emw_voll"] else "", ""])
+    z.append(["Eigenmietwert steuerbar", chf(e["eigenmietwert"]), chf(e["eigenmietwert_bund"]), "–"])
     if e["mieteinnahmen"]:
-        z.append([f"+ Mieteinnahmen ({e['vermietet']:g}&nbsp;% vermietet)", chf(e["mieteinnahmen"]), chf(e["mieteinnahmen"])])
-    zq = f" ({e['zins_quote']:g}&nbsp;% abziehbar)" if gemischt else ""
-    z.append([f"− Schuldzinsen{zq}", chf(-e["schuldzinsen"]), chf(-e["zinsen_nachher"]) if gemischt else "–"])
-    z.append([f"− Unterhalt (Pauschale {e['pauschal']:g}&nbsp;%)", chf(-e["unterhalt"]),
-              chf(-e["unterhalt_nachher"]) if gemischt else "–"])
-    z.append(["<b>Netto versteuert</b>", f"<b>{chf(e['netto_heute'])}</b>", f"<b>{chf(e['netto_nachher'])}</b>"])
-    z.append([f"Steuereffekt ab {e['ab']} (Grenzsatz)", "",
+        z.append([f"+ Mieteinnahmen ({e['vermietet']:g}{p} vermietet)", chf(e["mieteinnahmen"]), chf(e["mieteinnahmen"]),
+                  chf(e["mieteinnahmen"])])
+    zq = f" ({e['zins_quote']:g}{p} abziehbar ab {e['ab']})" if gemischt else ""
+    z.append([f"− Schuldzinsen{zq}", chf(-e["schuldzinsen"]), chf(-e["schuldzinsen"]),
+              chf(-e["zinsen_nachher"]) if gemischt else "–"])
+    z.append([f"− Unterhalt pauschal ({e['pauschal']:g}{p} / {e['pauschal_bund']:g}{p})", chf(-e["unterhalt"]),
+              chf(-e["unterhalt_bund"]), chf(-e["unterhalt_nachher"]) if gemischt else "–"])
+    z.append(["<b>Netto versteuert</b>", f"<b>{chf(e['netto_heute'])}</b>", f"<b>{chf(e['netto_bund'])}</b>",
+              f"<b>{chf(e['netto_nachher'])}</b>"])
+    z.append([f"Steuereffekt ab {e['ab']} (Grenzsätze)", "", "",
               f'<b class="{"schlecht" if e["steuereffekt"] > 0 else "gut"}">{chf(e["steuereffekt"], True)}</b>'])
-    html = tabelle(["Position", "heute", f"ab {e['ab']}"], z)
+    html = tabelle(["Position", "Staat", "Bund", f"Staat ab {e['ab']}"], z)
+    if bund_anders:
+        html += ('<p class="leise">Bund: Eigenmietwert ' + (f"= Staat × {e['emw_bund_voll'] / e['emw_voll']:.2g}"
+                 if e["emw_voll"] else "") + f", Pauschale {e['pauschal_bund']:g} %.</p>")
     html += (f'<p class="leise">Ab {e["ab"]} entfallen Eigenmietwert, Schuldzins- und Unterhaltsabzug für selbst '
              'bewohntes Eigentum (Volksabstimmung vom 28.9.2025). Positiv = mehr Steuern.'
              + (" Vermieteter Teil: Mieteinnahmen bleiben steuerbar und Unterhalt abziehbar; Schuldzinsen nur noch im "
@@ -648,10 +659,12 @@ def liegenschaft_steuer_html(k: dict, e: dict) -> tuple[str, str]:
         zeilen = []
         for p in k["personen"]:
             s = wo.liegenschaft_steuer(k, p.get("name"))
-            zeilen.append([escape(p.get("name") or ""), f"{s['anteil']:g}&nbsp;%", chf(s["eigenmietwert"]), chf(s["mieteinnahmen"]),
-                           chf(s["schuldzinsen"]), chf(s["unterhalt"]), chf(s["netto"])])
+            zeilen.append([escape(p.get("name") or ""), f"{s['anteil']:g}&nbsp;%", chf(s["eigenmietwert"]),
+                           chf(s["eigenmietwert_bund"]), chf(s["mieteinnahmen"]), chf(s["schuldzinsen"]),
+                           f'{chf(s["unterhalt"])} / {chf(s["unterhalt_bund"])}'])
         je_person = karte("Liegenschaft: Deklaration je Person", tabelle(
-            ["Person", "Anteil", "Eigenmietwert", "Mieteinnahmen", "Schuldzinsen", "Unterhalt pauschal", "Netto"], zeilen)
+            ["Person", "Anteil", "Eigenmietwert Staat", "Eigenmietwert Bund", "Mieteinnahmen", "Schuldzinsen",
+             "Unterhalt pauschal Staat / Bund"], zeilen)
             + '<p class="leise">Jede Person deklariert ihren Eigentumsanteil (Einstellungen → Person → «Anteil an der '
               'Liegenschaft»); Schuldzinsen nach Anteil an der Hypothek – bei solidarischer Haftung nach effektiver Zahlung.</p>')
     return html, je_person
@@ -867,7 +880,11 @@ FELDER_STEUERN = [
 FELDER_WOHNEN = [
     ("wohnen.aktiv", "Wohneigentum rechnen"), ("wohnen.kaufpreis", "Kaufpreis bzw. Verkehrswert"), ("wohnen.eigenmittel", "Eigenmittel"),
     ("wohnen.davon_pk_vorbezug", "davon PK-Vorbezug"), ("wohnen.hypothek_zins", "Hypothekarzins %"),
-    ("wohnen.eigenmietwert", "Eigenmietwert ganze Liegenschaft (vor Reduktion)"),
+    ("wohnen.eigenmietwert", "Eigenmietwert Staat, ganze Liegenschaft (vor Reduktion)"),
+    ("wohnen.eigenmietwert_bund", "Eigenmietwert Bund (0 = Staat × Kantonsfaktor)"),
+    ("wohnen.selbstnutzung_seit", "Selbstnutzung seit (JJJJ-MM-TT)"),
+    ("wohnen.zimmer", "Zimmer selbst genutzt (ohne Nebenräume)"),
+    ("wohnen.zimmer_ungenutzt", "davon dauernd nicht genutzt (Unternutzung)"),
     ("wohnen.vermietet_anteil", "Vermieteter Anteil % (Rest selbst bewohnt)"),
     ("wohnen.mieteinnahmen_jahr", "Mieteinnahmen/Jahr (brutto, ganze Liegenschaft)"),
     ("wohnen.unterhalt_pauschal", "Unterhalt+Nebenkosten % vom Preis"), ("wohnen.hypothek_faellig", "Hypothek fällig (JJJJ-MM-TT)"),

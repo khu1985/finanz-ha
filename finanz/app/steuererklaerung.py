@@ -207,24 +207,36 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
         je_person = not verheiratet and len(personen) > 1
         teile = [wo.liegenschaft_steuer(k, p["name"]) | {"name": p["name"]} for p in personen] if je_person else []
 
-        def _je(feld: str) -> str:
-            return " · ".join(f"{t['name']} ({t['anteil']:g} %) CHF {_chf(t[feld])}" for t in teile)
+        def _je(feld: str, bund: str = "") -> str:
+            return " · ".join(f"{t['name']} ({t['anteil']:g} %) CHF {_chf(t[feld])}"
+                              + (f" / Bund {_chf(t[bund])}" if bund and t[bund] != t[feld] else "") for t in teile)
         emw = ls["eigenmietwert"]
         if emw:
-            wert = (f"CHF {_chf(ls['emw_voll'])}, selbst bewohnt {ls['selbst']:g} % = CHF {_chf(emw)}" if ls["vermietet"]
-                    else f"CHF {_chf(emw)}") + (f" – {_je('eigenmietwert')}" if je_person else "")
+            teile_w = []
+            if ls["vermietet"]:
+                teile_w.append(f"ganze Liegenschaft CHF {_chf(ls['emw_voll'])} × {ls['selbst']:g} % selbst bewohnt")
+            if ls["unternutzung"]:
+                teile_w.append(f"− Unternutzung {ls['unternutzung']:g} %")
+            wert = (", ".join(teile_w) + " = " if teile_w else "") + f"Staat CHF {_chf(emw)}"
+            if ls["eigenmietwert_bund"] != emw:
+                wert += f", Bund CHF {_chf(ls['eigenmietwert_bund'])}"
+            if je_person:
+                wert += f" – {_je('eigenmietwert', 'eigenmietwert_bund')}"
         else:
             wert = ""
+        seit = str(w.get("selbstnutzung_seit") or "").strip()
         pkt.append(Punkt("eigenmietwert", "Liegenschaft", "Eigenmietwert und Vermögenssteuerwert",
                          "Letzte Veranlagung bzw. Schätzung der Liegenschaft"
-                         + ("; Eigenmietwert nur auf den selbst bewohnten Teil" if ls["vermietet"] else ""), wert,
+                         + ("; Eigenmietwert nur auf den selbst bewohnten Teil" if ls["vermietet"] else "")
+                         + ("; Unternutzung nur für dauernd ungenutzte Zimmer, mit Nachweis" if ls["unternutzung"] else "")
+                         + (f"; selbst genutzt seit {seit}" if seit else ""), wert,
                          "daten" if emw else "fehlt"))
         if ls["mieteinnahmen"] or ls["vermietet"]:
             mw = (f"CHF {_chf(ls['mieteinnahmen'])} ({ls['vermietet']:g} % vermietet)"
                   + (f" – {_je('mieteinnahmen')}" if je_person else "")) if ls["mieteinnahmen"] else ""
             pkt.append(Punkt("mietertrag", "Liegenschaft", "Mieteinnahmen",
-                             "Mietverträge und Mietzinseingänge (brutto, inkl. Nebenkosten-Pauschalen; "
-                             "Nebenkosten-Akonto mit Abrechnung)", mw, "daten" if mw else "fehlt"))
+                             "Mietverträge und Mietzinseingänge (Nettomiete; überwälzte Nebenkosten gehören nicht "
+                             "zur Basis der Unterhaltspauschale)", mw, "daten" if mw else "fehlt"))
         zinsen_budget = _budget_summe(db, jahr, "Wohnen", "hypothek")
         hyp = sum(-x["wert"] for x in konten if x["art"] == "hypothek")
         geschaetzt = hyp * _zahl(w.get("hypothek_zins")) / 100 if hyp else 0
@@ -236,8 +248,9 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
                          "daten" if wert else "beleg"))
         pkt.append(Punkt("unterhalt", "Liegenschaft", "Unterhaltskosten",
                          "Rechnungen für Reparaturen und Unterhalt; effektiv abziehen, wenn höher als die Pauschale "
-                         f"(hier {ls['pauschal']:g} % von Eigenmietwert"
-                         + (" und Mieteinnahmen" if ls["mieteinnahmen"] else "") + ")", status="beleg"))
+                         f"(hier Staat {ls['pauschal']:g} %, Bund {ls['pauschal_bund']:g} % von Eigenmietwert"
+                         + (" und Mieteinnahmen" if ls["mieteinnahmen"] else "") + "; Wahl pro Jahr, Staat und Bund "
+                         "getrennt)", status="beleg"))
 
     # Vermögen per 31.12.
     for x in konten:

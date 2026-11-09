@@ -80,40 +80,61 @@ def eigentum_anteile(k: dict) -> dict[str, float]:
     return {n: (v if v else rest / len(offen)) for n, v in eigen.items()}
 
 
-def pauschalsatz(k: dict, jahr: int | None = None) -> float:
-    """Pauschaler Unterhaltsabzug: 10 % bei Gebäuden bis 10 Jahre, sonst 20 % (Bund und die meisten Kantone)."""
+def pauschalsatz(k: dict, jahr: int | None = None) -> tuple[float, float]:
+    """Pauschaler Unterhaltsabzug (Staat, Bund) in %: je nach Kanton und Alter des Gebäudes (bis 10 Jahre / älter)."""
     from datetime import date
+    import kantone
     bj = int(_z(((k.get("wohnen") or {}).get("liegenschaft") or {}).get("baujahr")))
-    return 10.0 if bj and (jahr or date.today().year) - bj <= 10 else 20.0
+    return kantone.pauschale(k, bool(bj) and (jahr or date.today().year) - bj <= 10)
+
+
+def unternutzung(k: dict) -> float:
+    """Anteil Unternutzung: nicht genutzte Zimmer ÷ (Zimmer + Nebenräume: 2 beim Haus, 1 bei Stockwerkeigentum)."""
+    w = k.get("wohnen") or {}
+    zimmer, leer = _z(w.get("zimmer")), _z(w.get("zimmer_ungenutzt"))
+    if not zimmer or not leer:
+        return 0.0
+    neben = 1 if str((w.get("liegenschaft") or {}).get("art")) == "wohnung" else 2
+    return min(1.0, leer / (zimmer + neben))
 
 
 def liegenschaft_steuer(k: dict, person: str | None = None) -> dict:
-    """Steuerwerte der Liegenschaft bei gemischter Nutzung (selbst bewohnt / vermietet).
+    """Steuerwerte der Liegenschaft bei gemischter Nutzung (selbst bewohnt / vermietet), Staat und Bund.
 
-    Eigenmietwert und Mieteinnahmen gelten für die ganze Liegenschaft; der Eigenmietwert wird auf den selbst bewohnten
-    Teil reduziert, die Mieteinnahmen sind voll steuerbar. Mit `person` werden alle Werte auf deren Eigentumsanteil
+    Eigenmietwert (Staat, ganze Liegenschaft) und Mieteinnahmen gelten für die ganze Liegenschaft; der Eigenmietwert
+    wird auf den selbst bewohnten Teil und um die Unternutzung reduziert, die Mieteinnahmen sind voll steuerbar.
+    Bund: eigener Wert oder Staat × Kantonsfaktor (BL 1,2). Mit `person` werden alle Werte auf deren Eigentumsanteil
     umgerechnet (getrennte Steuererklärungen, z. B. im Konkubinat oder bei Miteigentum).
     """
+    import kantone
     w = k.get("wohnen") or {}
     vermietet = min(100.0, max(0.0, _z(w.get("vermietet_anteil"))))
     selbst = 100 - vermietet
     emw_voll = _z(w.get("eigenmietwert"))
+    emw_bund_voll = _z(w.get("eigenmietwert_bund")) or emw_voll * kantone.emw_bund_faktor(k)
     miete_voll = _z(w.get("mieteinnahmen_jahr"))
     hyp = max(0.0, _z(w.get("kaufpreis")) - _z(w.get("eigenmittel")))
     zinsen_voll = hyp * _z(w.get("hypothek_zins")) / 100 if w.get("schuldzinsen_abzug", True) else 0.0
     anteil = eigentum_anteile(k).get(person, 100.0) if person else 100.0
     f = anteil / 100
-    satz = pauschalsatz(k)
-    emw = emw_voll * selbst / 100 * f
+    satz, satz_bund = pauschalsatz(k)
+    u = unternutzung(k)
+    emw_selbst = emw_voll * selbst / 100
+    emw = emw_selbst * (1 - u) * f
+    emw_bund = emw_bund_voll * selbst / 100 * (1 - u) * f
     miete = miete_voll * f
     zinsen = zinsen_voll * f
     unterhalt = (emw + miete) * satz / 100
+    unterhalt_bund = (emw_bund + miete) * satz_bund / 100
     return {
-        "vermietet": vermietet, "selbst": selbst, "anteil": anteil, "pauschal": satz,
-        "emw_voll": round(emw_voll), "emw_selbst_voll": round(emw_voll * selbst / 100), "miete_voll": round(miete_voll),
-        "zinsen_voll": round(zinsen_voll), "eigenmietwert": round(emw), "mieteinnahmen": round(miete),
-        "schuldzinsen": round(zinsen), "unterhalt": round(unterhalt),
+        "vermietet": vermietet, "selbst": selbst, "anteil": anteil, "pauschal": satz, "pauschal_bund": satz_bund,
+        "unternutzung": round(u * 100, 1), "unternutzung_betrag": round(emw_selbst * u * f),
+        "emw_voll": round(emw_voll), "emw_bund_voll": round(emw_bund_voll), "emw_selbst_voll": round(emw_selbst),
+        "miete_voll": round(miete_voll), "zinsen_voll": round(zinsen_voll),
+        "eigenmietwert": round(emw), "eigenmietwert_bund": round(emw_bund), "mieteinnahmen": round(miete),
+        "schuldzinsen": round(zinsen), "unterhalt": round(unterhalt), "unterhalt_bund": round(unterhalt_bund),
         "netto": round(emw + miete - zinsen - unterhalt),
+        "netto_bund": round(emw_bund + miete - zinsen - unterhalt_bund),
     }
 
 
@@ -135,10 +156,14 @@ def eigenmietwert_wegfall(k: dict, aktiven_uebrig: float | None = None) -> dict:
     zinsen_nachher = s["schuldzinsen"] * quote
     unterhalt_nachher = s["mieteinnahmen"] * s["pauschal"] / 100
     nachher = s["mieteinnahmen"] - zinsen_nachher - unterhalt_nachher
-    grenz = steuern_heute(k)["grenz_total"] / 100
-    effekt = (nachher - s["netto"]) * grenz  # positiv = mehr Steuern nach dem Wechsel
+    nachher_bund = s["mieteinnahmen"] * (1 - s["pauschal_bund"] / 100) - zinsen_nachher
+    t = steuern_heute(k)
+    g_bund = t["grenz_bund"] / 100
+    g_staat = t["grenz_total"] / 100 - g_bund
+    # positiv = mehr Steuern nach dem Wechsel (Staat und Bund mit eigenem Eigenmietwert und eigener Pauschale)
+    effekt = (nachher - s["netto"]) * g_staat + (nachher_bund - s["netto_bund"]) * g_bund
     return s | {
         "netto_heute": s["netto"], "zinsen_nachher": round(zinsen_nachher), "unterhalt_nachher": round(unterhalt_nachher),
-        "netto_nachher": round(nachher), "zins_quote": round(quote * 100, 1), "steuereffekt": round(effekt),
+        "netto_nachher": round(nachher), "netto_bund_nachher": round(nachher_bund), "zins_quote": round(quote * 100, 1), "steuereffekt": round(effekt),
         "ab": k["kennzahlen"]["eigenmietwert_abschaffung"],
     }

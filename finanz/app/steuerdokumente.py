@@ -345,7 +345,7 @@ def uebernehmen(k: dict, d: dict, person_name: str, schluessel: list[str], grenz
     # in der Konfiguration stehen die Werte der ganzen Liegenschaft
     import wohnen as wo
     anteil = 1.0 if verheiratet else wo.eigentum_anteile(k).get(person_name, 100.0) / 100
-    selbst = (100 - min(99.0, max(0.0, wo._z(k["wohnen"].get("vermietet_anteil"))))) / 100
+    selbst = (100 - min(99.0, max(0.0, wo._z(k["wohnen"].get("vermietet_anteil"))))) / 100 * (1 - wo.unternutzung(k))
     for s, faktor in (("eigenmietwert", anteil * selbst), ("mietertrag", anteil)):
         if s in werte and faktor:
             werte[s] = float(werte[s]) / faktor

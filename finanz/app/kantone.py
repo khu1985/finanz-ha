@@ -98,3 +98,27 @@ def steuererklaerung(k: dict) -> Frist:
     if erstreckt:
         gewaehlt, quelle = erstreckt, "erstreckt"
     return Frist(kanton, frist, erstreckung, gewaehlt, quelle, pruefen, hinweis)
+
+
+# ---------------------------------------------------------------- Liegenschaft
+
+# Eigenmietwert Bund = Eigenmietwert Staat × Faktor (BL: Zuschlag 1,2 laut Wegleitung eTax BL)
+EMW_BUND_FAKTOR = {"BL": 1.2}
+# Pauschaler Unterhaltsabzug Staatssteuer in % (Gebäude bis 10 Jahre, älter); Bund: 10 % / 20 %
+PAUSCHAL_STAAT = {"BL": (20.0, 25.0)}
+PAUSCHAL_BUND = (10.0, 20.0)
+
+
+def _kanton(k: dict) -> str:
+    return str(k["haushalt"].get("kanton", "") or "").strip().upper()
+
+
+def emw_bund_faktor(k: dict) -> float:
+    return EMW_BUND_FAKTOR.get(_kanton(k), 1.0)
+
+
+def pauschale(k: dict, neu: bool) -> tuple[float, float]:
+    """Unterhaltspauschale (Staat, Bund) in % – `neu` = Gebäude bis 10 Jahre alt."""
+    staat = PAUSCHAL_STAAT.get(_kanton(k), PAUSCHAL_BUND)
+    i = 0 if neu else 1
+    return staat[i], PAUSCHAL_BUND[i]
