@@ -104,9 +104,12 @@ personen:
   Alterskapital laut Vorsorgeausweis erfasst, rechnet die App mit dieser Prognose (plus geplante Einkäufe).
 - **Säule 3a:** Kapital bei Pensionierung und Steuerersparnis der Beiträge.
 - **Pensionslücke:** AHV + PK-Renten + Kapitalverzehr gegenüber dem Bedarf im Ruhestand.
-- **Vorsorgedokumente:** Vorsorgeausweis, 3a- und IK-Auszug als PDF hochladen. Erkannt werden u. a.
-  Altersguthaben, Einkaufspotenzial, Prognose mit 65, Sparbeitrag, Umwandlungssatz, Invaliden-, Partner- und
-  Waisenrenten, Todesfallkapital, Jahreslohn, 3a-Saldo und AHV-Beitragsjahre. Auf der Dokumentseite stehen
+- **Vorsorgedokumente:** Vorsorgeausweis, 3a-Auszug, 3b-Police bzw. 3b-Konto und IK-Auszug als PDF hochladen
+  (mehrere Dateien auf einmal möglich). Erkannt werden u. a. Altersguthaben, Einkaufspotenzial, Prognose mit 65,
+  Sparbeitrag, Umwandlungssatz, Invaliden-, Partner- und Waisenrenten, Todesfallkapital, Jahreslohn, 3a-Saldo,
+  3b-Rückkaufswert bzw. -Guthaben, Prämie, Erlebensfall- und Todesfallkapital sowie AHV-Beitragsjahre. Das
+  3b-Guthaben wird als Saldo eines Vorsorge-Kontos unter «Vermögen» übernommen (Konto wählbar; eine gleichnamige
+  verpfändete 3b unter Wohnen wird nachgeführt), die 3b-Todesfallleistung als «Todesfallkapital Policen». Auf der Dokumentseite stehen
   erkannte und heutige Werte nebeneinander; Person wählen, Werte prüfen, übernehmen. Dazu eine Einschätzung
   (Ersparnis eines Einkaufs, Umwandlungssatz, Beitragslücken, Partnerrente im Konkubinat).
 
@@ -551,7 +554,7 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 | `versicherungen*.csv` | Versicherungsliste (`Versicherung;Anbieter;Betrag;Person;Summe;Notiz`) |
 | `versicherung*.pdf`, `police*.pdf` | Versicherungsvertrag analysieren |
 | `steuer*.pdf`, `veranlagung*.pdf` | Steuerdokument analysieren |
-| übrige `*.pdf` | Vorsorgedokument (Vorsorgeausweis, 3a-, IK-Auszug) analysieren |
+| übrige `*.pdf` | Vorsorgedokument (Vorsorgeausweis, 3a-, 3b-, IK-Auszug) analysieren |
 
 ## Konfiguration
 

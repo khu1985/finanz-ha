@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import versicherungen as vi
@@ -14,6 +14,7 @@ import versicherungen as vi
 TYPEN = {
     "pk_ausweis": "Vorsorgeausweis Pensionskasse",
     "saeule3a": "Säule-3a-Auszug",
+    "saeule3b": "Säule 3b (freie Vorsorge: Police oder Konto)",
     "ik_auszug": "IK-Auszug / Rentenvorausberechnung AHV",
     "sonstiges": "Sonstiges",
 }
@@ -83,6 +84,8 @@ def typ_erkennen(text: str) -> str:
                                                 "bvg", "invalidenrente", "einkauf")),
         "saeule3a": sum(t.count(w) for w in ("säule 3a", "saeule 3a", "3a-konto", "vorsorgekonto", "vorsorgefonds",
                                               "gebundene vorsorge", "vorsorgestiftung 3a")) * 2,
+        "saeule3b": sum(t.count(w) for w in ("säule 3b", "saeule 3b", "säule-3b", "3b-konto", "3b-police", "freie vorsorge",
+                                              "rückkaufswert", "erlebensfallkapital", "erlebensfall")) * 2,
         "ik_auszug": sum(t.count(w) for w in ("individuelles konto", "ik-auszug", "kontoauszug ahv",
                                                "ausgleichskasse", "beitragsjahre", "rentenvorausberechnung")) * 2,
     }
@@ -161,6 +164,16 @@ def erkennen(text: str) -> dict:
         if w is not None and w <= 40000:
             erg["werte"]["beitrag_3a"] = w
         erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
+    elif erg["typ"] == "saeule3b":
+        for schluessel, muster in (
+                ("guthaben_3b", r"(?:rückkaufswert|vertragswert|policenwert|saldo|kontostand|guthaben|depotwert|vermögen total)"),
+                ("praemie_3b", r"(?:jahresprämie|prämie pro jahr|jährliche prämie|prämie|einzahlungen|einzahlung|beiträge)"),
+                ("erlebensfall_3b", r"(?:garantiertes |voraussichtliches )?erlebensfall(?:kapital|leistung|summe)?"),
+                ("todesfall_3b", r"(?:todesfallkapital|todesfallsumme|todesfallleistung|leistung im todesfall|bei tod)")):
+            w = _wert_nach(text, muster)
+            if w is not None:
+                erg["werte"][schluessel] = w
+        erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
     elif erg["typ"] == "ik_auszug":
         jahre = {}
         for zeile in text.splitlines():
@@ -182,6 +195,10 @@ ZIELE = {
     **{s: (b, z) for s, (b, z, _) in WERTE_PK.items()},
     "guthaben_3a": ("3a-Guthaben", "saeule3a.guthaben"),
     "beitrag_3a": ("3a-Beitrag pro Jahr", "saeule3a.beitrag_jahr"),
+    "guthaben_3b": ("3b-Guthaben bzw. Rückkaufswert → Saldo unter Vermögen", "vermoegen"),
+    "praemie_3b": ("3b-Prämie bzw. Einzahlung pro Jahr (nur Info)", ""),
+    "erlebensfall_3b": ("Erlebensfallkapital (nur Info)", ""),
+    "todesfall_3b": ("Todesfallleistung → Todesfallkapital Policen (ersetzt)", "risiko.todesfallkapital_extern"),
     "beitragsjahre": ("AHV-Beitragsjahre bisher", "ahv.beitragsjahre_bisher"),
     "einkommen_durchschnitt": ("Ø AHV-Einkommen", "ahv.einkommen_durchschnitt"),
     "ahv_rente_monat": ("AHV-Rente pro Monat (nur Info)", ""),
@@ -244,7 +261,7 @@ def uebernehmen(k: dict, dok: dict, person_index: int, schluessel: list[str]) ->
     p = k["personen"][person_index]
     erledigt = []
     for s in schluessel:
-        if s not in dok["werte"] or s not in ZIELE or not ZIELE[s][1]:
+        if s not in dok["werte"] or s not in ZIELE or not ZIELE[s][1] or ZIELE[s][1] == "vermoegen":
             continue
         ziel = ZIELE[s][1].split(".")
         obj = p
@@ -257,6 +274,32 @@ def uebernehmen(k: dict, dok: dict, person_index: int, schluessel: list[str]) ->
     if dok["typ"] == "pk_ausweis" and dok.get("stichtag") and "altersguthaben" in schluessel:
         p["pk"]["stand"] = dok["stichtag"]
     return erledigt
+
+
+WERTE_JE_TYP = {
+    "pk_ausweis": list(WERTE_PK),
+    "saeule3a": ["guthaben_3a", "beitrag_3a"],
+    "saeule3b": ["guthaben_3b", "praemie_3b", "erlebensfall_3b", "todesfall_3b"],
+    "ik_auszug": ["beitragsjahre", "einkommen_durchschnitt", "ahv_rente_monat"],
+}
+
+
+def konto_3b_vorschlag(dok: dict, person: str) -> str:
+    return " ".join(x for x in ("3b", dok.get("anbieter") or "", person) if x).strip()
+
+
+def guthaben_3b_uebernehmen(k: dict, db, dok: dict, person: str, konto: str) -> str:
+    """3b-Guthaben als Saldo eines Vorsorge-Kontos unter «Vermögen»; verpfändete 3b unter Wohnen gleich nachführen."""
+    import vermoegen as vm
+    wert = float(dok["werte"]["guthaben_3b"])
+    konto = (konto or konto_3b_vorschlag(dok, person)).strip()
+    kid = vm.konto_anlegen(db, konto, "vorsorge", person)
+    tag = dok.get("stichtag") or date.today().isoformat()
+    vm.saldo_setzen(db, kid, tag, wert)
+    for e in (k.get("wohnen") or {}).get("verpfaendet") or []:
+        if str(e.get("name", "")).strip().lower() == konto.lower():
+            e["guthaben"] = int(round(wert))
+    return f"3b-Guthaben als Saldo «{konto}»"
 
 
 KI_ANWEISUNG = """Lies dieses Schweizer Vorsorgedokument ({typ}) und antworte NUR mit einem JSON-Objekt.

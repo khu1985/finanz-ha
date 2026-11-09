@@ -6,6 +6,10 @@
   16777216 exceeded»). Der Browser lädt mehrere Dateien jetzt einzeln hoch – mit Fortschritt «Datei 2 von 5» und
   einer gemeinsamen Meldung. Einzelne Dateien über 16 MB werden übersprungen mit dem Hinweis auf den Import-Ordner.
   Gilt für Vorsorge-, Steuer- und Versicherungsdokumente sowie Kontoauszüge
+- **Säule 3b bei den Vorsorgedokumenten:** neue Art «Säule 3b (freie Vorsorge: Police oder Konto)» mit Erkennung von
+  Rückkaufswert bzw. Guthaben, Prämie, Erlebensfall- und Todesfallkapital. Das Guthaben wird als Saldo eines
+  Vorsorge-Kontos unter «Vermögen» übernommen (Konto wählbar; eine gleichnamige verpfändete 3b unter Wohnen wird
+  nachgeführt), die Todesfallleistung als Todesfallkapital der Policen; Hinweise zu Vermögenssteuer und Begünstigung
 ## 0.17.0 – 2026-11-09
 
 - **Jahresbericht** (neue Seite unter Überblick): die App speichert jeden Monat einen Stand (Nettovermögen, freies

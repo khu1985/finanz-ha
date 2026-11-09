@@ -12,7 +12,7 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Bereich | Inhalt |
 |---|---|
 | Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
-| Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a- und IK-Auszug hochladen |
+| Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Kinder | Kinder erfassen (auch aus früheren Beziehungen), Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse und Erinnerungen |
@@ -108,7 +108,7 @@ flowchart TB
 | `finanz/app/wohnen.py` | Tragbarkeit, maximaler Kaufpreis, Eigenmietwert |
 | `finanz/app/vermoegen.py` | Konten, Saldi, CSV-Import, Verlauf |
 | `finanz/app/versicherungen.py` | Policen, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
-| `finanz/app/dokumente.py` | Vorsorgeausweis, 3a- und IK-Auszug |
+| `finanz/app/dokumente.py` | Vorsorgeausweis, 3a-, 3b- und IK-Auszug |
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
 | `finanz/app/hypothek.py` | Hypothekar-Strategie über Zinsszenarien |
 | `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen |
@@ -244,7 +244,7 @@ flowchart LR
     T --> E{"Art erkennen"}
     E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat,<br/>Buchungen mit Kategorie"]
     E -- Police --> V["Versicherer, Sparte, Prämie,<br/>Daten, Fristen, Summen"]
-    E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen"]
+    E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen,<br/>3a, 3b-Rückkaufswert"]
     E -- Steuern --> S["Periode, steuerbares Einkommen<br/>und Vermögen, Steuern, Abzüge"]
     T -. optional .-> KI["KI-Aufgabe<br/>Home Assistant"] -. Werte .-> P
     B --> DB[("Saldi und Buchungen")]

@@ -559,6 +559,8 @@ class Handler(BaseHTTPRequestHandler):
                     gewaehlt = [s_ for s_ in werte if form.get("nimm_" + s_)]
                     dok = dk.einer(v, did)
                     erledigt = dk.uebernehmen(k, dok, namen.index(form["person"]), gewaehlt)
+                    if "guthaben_3b" in gewaehlt and "guthaben_3b" in dok["werte"]:
+                        erledigt.append(dk.guthaben_3b_uebernehmen(k, v, dok, form["person"], form.get("konto_3b", "")))
                     konfig.speichern(k)
                     v.execute("UPDATE vorsorge_dok SET uebernommen = ? WHERE id = ?",
                               (datetime.now().isoformat(timespec="seconds"), did))

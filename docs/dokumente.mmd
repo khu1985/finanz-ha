@@ -3,7 +3,7 @@ flowchart LR
     T --> E{"Art erkennen"}
     E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat,<br/>Buchungen mit Kategorie"]
     E -- Police --> V["Versicherer, Sparte, Prämie,<br/>Daten, Fristen, Summen"]
-    E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen"]
+    E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen,<br/>3a, 3b-Rückkaufswert"]
     E -- Steuern --> S["Periode, steuerbares Einkommen<br/>und Vermögen, Steuern, Abzüge"]
     T -. optional .-> KI["KI-Aufgabe<br/>Home Assistant"] -. Werte .-> P
     B --> DB[("Saldi und Buchungen")]

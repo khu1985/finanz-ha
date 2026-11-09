@@ -1054,17 +1054,13 @@ def vorsorge_dokument(k: dict, db, did: int) -> str:
     relevante = [s for s in dk.ZIELE if s in d["werte"]] + [s for s in dk.ZIELE if s not in d["werte"]]
     zeilen = []
     for s in relevante:
-        if d["typ"] == "pk_ausweis" and s in ("guthaben_3a", "beitrag_3a", "beitragsjahre", "einkommen_durchschnitt", "ahv_rente_monat"):
-            continue
-        if d["typ"] == "saeule3a" and s not in ("guthaben_3a", "beitrag_3a"):
-            continue
-        if d["typ"] == "ik_auszug" and s not in ("beitragsjahre", "einkommen_durchschnitt", "ahv_rente_monat"):
+        if d["typ"] in dk.WERTE_JE_TYP and s not in dk.WERTE_JE_TYP[d["typ"]]:
             continue
         beschr, ziel = dk.ZIELE[s]
         wert = d["werte"].get(s)
         aktuell = ""
         person = next((p for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), None)
-        if person and ziel:
+        if person and ziel and ziel != "vermoegen":
             alt = pfad_lesen(person, ziel)
             aktuell = chf(alt) if isinstance(alt, (int, float)) and not isinstance(alt, bool) else ""
         haken = (f'<input type="checkbox" name="nimm_{s}" value="1" checked style="width:auto">'
@@ -1075,8 +1071,16 @@ def vorsorge_dokument(k: dict, db, did: int) -> str:
     quelle = {"muster": "automatisch erkannt – bitte mit dem Dokument vergleichen", "ki": "per KI ausgelesen – bitte prüfen",
               "hand": "von Hand bearbeitet", "ohne Text": "kein Text im PDF (gescannt?) – Werte von Hand eintragen"}.get(d["quelle"], d["quelle"])
     tab = tabelle(["", "Wert", "Erkannt", "Heute in den Einstellungen"], zeilen, zahlen_ab=9)
+    konto_3b = ""
+    if d["typ"] == "saeule3b":
+        pname = next((p["name"] for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), d["person"] or "")
+        vorschlag = dk.konto_3b_vorschlag(d, pname)
+        bestehend = [x["name"] for x in vm.konten(db) if x["art"] == "vorsorge"]
+        opts = "".join(f'<option value="{escape(n)}">' for n in bestehend)
+        konto_3b = (f'<label>Konto unter «Vermögen» (Art Vorsorge 3b)<input name="konto_3b" list="konten3b" '
+                    f'value="{escape(vorschlag)}"><datalist id="konten3b">{opts}</datalist></label>')
     form = f"""<form method="post" action="vorsorge/dokument/{did}"><div class="felder">
-<label>Art<select name="typ">{typen}</select></label><label>Person<select name="person">{pers}</select></label></div>
+<label>Art<select name="typ">{typen}</select></label><label>Person<select name="person">{pers}</select></label>{konto_3b}</div>
 {tab}<div class="zeile"><button formaction="vorsorge/dokument/{did}/uebernehmen">Ausgewählte Werte übernehmen</button>
 <button class="zweit">Nur speichern</button><a class="knopf zweit" href="vorsorge/dokument/{did}/datei">Original öffnen</a></div></form>"""
     ki = ""
@@ -1116,6 +1120,15 @@ def _dokument_analyse(k: dict, d: dict) -> list[str]:
         soll = max(0, min(44, alter - 20))
         if w["beitragsjahre"] < soll:
             h.append(f"{int(soll - w['beitragsjahre'])} mögliche Beitragslücke(n) – Lücken der letzten 5 Jahre lassen sich nachzahlen.")
+    elif d["typ"] == "saeule3b":
+        h.append("Säule 3b: Das Guthaben bzw. der Rückkaufswert ist als Vermögen zu versteuern (Steuerbescheinigung per 31.12.). "
+                 "Prämien zählen meist nur zum allgemeinen Versicherungsabzug, der oft schon durch die Krankenkasse ausgeschöpft ist.")
+        if k["haushalt"].get("zivilstand") != "verheiratet":
+            h.append("Begünstigung: Bei 3b-Policen ist der Lebenspartner frei als Begünstigter einsetzbar – im Konkubinat "
+                     "prüfen, ob er namentlich eingetragen ist (Nachlass-Checkliste).")
+        if w.get("todesfall_3b"):
+            h.append("Die Todesfallleistung ersetzt beim Übernehmen das «Todesfallkapital Policen» der Person – bei mehreren "
+                     "Policen die Summe von Hand eintragen.")
     elif d["typ"] == "saeule3a" and w.get("beitrag_3a", 0) > k["kennzahlen"]["saeule3a_max"]:
         h.append("Einzahlungen über dem 3a-Maximum – Überschuss zurückfordern, er ist nicht abzugsfähig.")
     return h
@@ -2182,7 +2195,7 @@ def notfall(k: dict, db) -> str:
     try:
         dk.tabellen(db)
         for d in dk.alle(db):
-            if d["typ"] in ("pk_ausweis", "saeule3a"):
+            if d["typ"] in ("pk_ausweis", "saeule3a", "saeule3b"):
                 vz.append([escape(d["person"] or "–"), escape(dk.TYPEN.get(d["typ"], d["typ"])), escape(d["anbieter"] or d["dateiname"]),
                            escape(d["stichtag"] or "")])
     except Exception:  # noqa: BLE001

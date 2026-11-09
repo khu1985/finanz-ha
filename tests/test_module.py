@@ -1007,3 +1007,24 @@ def test_liegenschaft(k, db):
     k["wohnen"]["liegenschaft"]["bauteile"] = [{"name": "Dach", "letzte": 2020, "lebensdauer": 30, "kosten": 60_000}]
     e = im.erinnerungen(k, date(2049, 1, 1))
     assert e and "Dach" in e[0].titel
+
+
+def test_vorsorgedokument_3b(k, db):
+    import dokumente as dk
+    import vermoegen as vm
+    text = ("Mobiliar Versicherung\nFreie Vorsorge Säule 3b – Police 12.345.678\nVersicherte Person: Muster Anna\n"
+            "Stand 31.12.2025\nRückkaufswert CHF 39'748.00\nJahresprämie CHF 3'000.00\n"
+            "Erlebensfallkapital CHF 60'000.00\nTodesfallkapital CHF 100'000.00\n")
+    e = dk.erkennen(text)
+    assert e["typ"] == "saeule3b" and e["anbieter"] == "Mobiliar"
+    assert e["werte"] == {"guthaben_3b": 39748, "praemie_3b": 3000, "erlebensfall_3b": 60000, "todesfall_3b": 100000}
+    dok = {"typ": "saeule3b", "werte": e["werte"], "stichtag": "2025-12-31", "anbieter": "Mobiliar"}
+    name = k["personen"][0]["name"]
+    k["wohnen"]["verpfaendet"] = [{"name": f"3b Mobiliar {name}", "guthaben": 1}]
+    erledigt = dk.uebernehmen(k, dok, 0, list(e["werte"]))
+    assert k["personen"][0]["risiko"]["todesfallkapital_extern"] == 100000
+    assert "3b-Guthaben" not in " ".join(erledigt)
+    txt = dk.guthaben_3b_uebernehmen(k, db, dok, name, "")
+    konto = next(x for x in vm.konten(db) if x["art"] == "vorsorge")
+    assert konto["name"] == f"3b Mobiliar {name}" and konto["betrag"] == 39748 and konto["datum"] == "2025-12-31"
+    assert k["wohnen"]["verpfaendet"][0]["guthaben"] == 39748 and "3b" in txt
