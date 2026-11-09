@@ -57,9 +57,13 @@ personen:
 
 ## Bedienung
 
-- **Kopfzeile:** Version (Tipp öffnet die Änderungen), Symbol mit Linien für das **Protokoll**, Zahnrad für die
-  **Einstellungen**.
-- **Navigation:** wischbar; ein farbiger Punkt markiert Seiten mit gelber oder roter Ampel.
+- **Menü** in Gruppen – Überblick (Übersicht, Berater), Planung (Vorsorge, Steuern, Wohnen, Szenarien), Bestand
+  (Vermögen, Versicherungen), App (Einstellungen, Protokoll, Änderungen). Auf grossen Bildschirmen als Seitenleiste,
+  auf Tablets als wischbare Leiste, auf dem Handy hinter dem Knopf «Menü». Ein farbiger Punkt markiert Seiten mit
+  gelber oder roter Ampel; beim Protokoll steht die Zahl der Warnungen von heute.
+- **Version** neben «Finanzen» öffnet die Änderungen.
+- **Darstellung:** Der Knopf daneben wechselt zwischen Auto (wie das Gerät), Hell und Dunkel; die Wahl bleibt im
+  Browser gespeichert.
 - **Statusanzeige:** Ladebalken beim Seitenwechsel; bei Uploads, Importen, KI und Beratern ein Hinweisfenster mit
   Spinner, Anzahl und Grösse der Dateien. Knöpfe sind während der Verarbeitung gesperrt.
 - **Statuszeile** auf der Übersicht: Stand der Saldi, Anzahl Verträge und Dokumente, offene TODO, wartende Dateien im

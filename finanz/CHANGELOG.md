@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.8.0 – 2026-11-09
+
+- **Menü wie in der vZEV-App:** Seiten in Gruppen (Überblick, Planung, Bestand, App); auf grossen Bildschirmen als
+  Seitenleiste, auf Tablets als Leiste mit Trennern, auf dem Handy hinter dem Knopf «Menü» als zweispaltige Liste;
+  Ampelpunkte bleiben, beim Protokoll die Zahl der Warnungen von heute
+- **Darstellung umschalten:** Knopf neben der Version wechselt Auto (wie das Gerät) → Hell → Dunkel; die Wahl bleibt
+  im Browser gespeichert, ohne Aufblitzen beim Laden
+
 ## 0.7.0 – 2026-11-08
 
 - **Hypothekar-Strategie** (Szenarien): SARON, Festhypotheken und Mischungen bzw. Staffelungen über drei

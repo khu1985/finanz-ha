@@ -18,31 +18,53 @@ import szenarien as sz
 import vorsorge as vs
 import wohnen as wo
 
-NAV = [("", "Übersicht"), ("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"),
-       ("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen"), ("szenarien", "Szenarien"),
-       ("berater", "Berater")]
+NAVIGATION = [
+    ("Überblick", [("", "Übersicht"), ("berater", "Berater")]),
+    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("wohnen", "Wohnen"), ("szenarien", "Szenarien")]),
+    ("Bestand", [("vermoegen", "Vermögen"), ("versicherungen", "Versicherungen")]),
+    ("App", [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")]),
+]
+NAV = [e for _, gruppe in NAVIGATION for e in gruppe]
 
 CSS = """
 :root{--bg:#f6f7f9;--karte:#fff;--text:#1c2430;--leise:#5d6b7a;--linie:#e3e7ec;--akzent:#0a708f;
 --gut:#2e7d4f;--warn:#b26a00;--schlecht:#b3261e;--c1:#0a708f;--c2:#e08a2e;--c3:#6b8f3a;--c4:#8a5bb5;--c5:#c2457a}
-@media (prefers-color-scheme:dark){:root{--bg:#111418;--karte:#1b2027;--text:#e7ebef;--leise:#9aa7b4;
+:root{color-scheme:light}
+html[data-theme=dark]{--bg:#111418;--karte:#1b2027;--text:#e7ebef;--leise:#9aa7b4;
 --linie:#2b323b;--akzent:#4fb3d4;--gut:#6cc58f;--warn:#e7a948;--schlecht:#f08a82;--c1:#4fb3d4;--c2:#f0a75a;
---c3:#9cc46a;--c4:#b48be0;--c5:#e57aa8}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
+--c3:#9cc46a;--c4:#b48be0;--c5:#e57aa8;color-scheme:dark}
+a{color:var(--akzent)}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
 font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{position:sticky;top:0;z-index:5;background:var(--karte);border-bottom:1px solid var(--linie);
-padding-top:env(safe-area-inset-top)}
-.kopf{display:flex;align-items:center;gap:8px;max-width:1100px;margin:0 auto;padding:8px 16px 0}
-.marke{font-weight:700;font-size:17px;color:var(--text);text-decoration:none}
+.side{background:var(--karte)}
+.top{display:flex;align-items:center;gap:8px}
+.marke{font-weight:700;font-size:17px;color:var(--text);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .version{font-size:12px;color:var(--leise);background:var(--bg);border:1px solid var(--linie);border-radius:999px;
-padding:1px 8px;text-decoration:none}.frei{flex:1}
-.symbol{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;color:var(--leise)}
-.symbol.aktiv,.symbol:hover{background:var(--bg);color:var(--akzent)}
-nav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1100px;margin:0 auto;scrollbar-width:none;
--webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
-nav::-webkit-scrollbar{display:none}
-nav a{padding:7px 14px;border-radius:999px;color:var(--leise);text-decoration:none;white-space:nowrap;scroll-snap-align:center}
-nav a.aktiv{background:var(--akzent);color:#fff}
+padding:1px 8px;text-decoration:none;flex-shrink:0}.version:hover{color:var(--text)}
+#thema{min-height:30px;padding:0 10px;font-size:12px;font-weight:600;border-radius:999px;background:var(--bg);
+color:var(--text);border:1px solid var(--linie);flex-shrink:0}
+#menu{display:none;min-height:40px;margin-left:auto;flex-shrink:0;background:var(--bg);color:var(--text);border:1px solid var(--linie)}
+nav a{display:inline-flex;align-items:center;padding:8px 10px;border-radius:8px;color:var(--leise);text-decoration:none;
+white-space:nowrap;font-weight:500}
+nav a:hover{background:var(--bg);color:var(--text)}
+nav a.aktiv{background:color-mix(in srgb,var(--akzent) 16%,transparent);color:var(--text)}
+nav .gl{display:none;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--leise);font-weight:600}
+nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+@media (min-width:1200px){
+ .app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+ .side{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--linie);padding:20px 12px}
+ .top{padding:0 10px;flex-wrap:wrap;gap:6px 8px}.marke{white-space:normal;flex-basis:100%}
+ nav .gl{display:block;margin:18px 10px 4px}nav a{display:flex}
+ main{padding:24px 32px}}
+@media (max-width:1199px){
+ .side{position:sticky;top:0;z-index:5;border-bottom:1px solid var(--linie);padding:10px 16px 0;padding-top:calc(10px + env(safe-area-inset-top))}
+ nav{display:flex;overflow-x:auto;scrollbar-width:none;padding:6px 0 8px;-webkit-overflow-scrolling:touch}nav::-webkit-scrollbar{display:none}
+ nav .grp{display:flex;flex-shrink:0}nav .grp+.grp{border-left:1px solid var(--linie);margin-left:6px;padding-left:6px}}
+@media (max-width:759px){
+ #menu{display:inline-flex}.marke{flex:1 1 0}nav{display:none}
+ .side{padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
+ .side.offen nav{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;padding:8px 0 12px;max-height:calc(100vh - 70px);overflow-y:auto}
+ .side.offen nav .grp{display:block;border:0;margin:0;padding:0}.side.offen nav .gl{display:block;margin:10px 10px 2px}
+ .side.offen nav a{display:flex}}
 footer{max-width:1100px;margin:8px auto 0;padding:16px 16px calc(24px + env(safe-area-inset-bottom));
 color:var(--leise);font-size:12px;text-align:center}footer a{color:var(--leise)}
 #lade{position:fixed;top:0;left:0;height:3px;width:0;background:var(--akzent);z-index:20;opacity:0}
@@ -69,7 +91,7 @@ background:var(--leise);opacity:.45}
 .ampel.gruen{background:#2fa35b;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#2fa35b 20%,transparent)}
 .ampel.gelb{background:#e6a817;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#e6a817 22%,transparent)}
 .ampel.rot{background:#d93b30;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#d93b30 20%,transparent)}
-nav a .ampel{width:8px;height:8px;margin-right:6px;box-shadow:none}nav a.aktiv .ampel{outline:2px solid #fff}
+nav a .ampel{width:8px;height:8px;margin-right:6px;box-shadow:none}
 .kpi{position:relative}.kpi>.ampel{position:absolute;top:12px;right:10px;margin:0}
 .ampeln{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin-bottom:16px}
 .ampel-kachel{display:flex;gap:10px;align-items:flex-start;background:var(--karte);border:1px solid var(--linie);
@@ -78,7 +100,7 @@ border-radius:12px;padding:10px 12px;text-decoration:none;color:var(--text)}
 .ampel-kachel.rot{border-color:color-mix(in srgb,#d93b30 45%,var(--linie))}
 .ampel-kachel.gelb{border-color:color-mix(in srgb,#e6a817 45%,var(--linie))}
 .ampel-legende{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--leise);margin:-8px 0 14px}
-main{max-width:1100px;margin:0 auto;padding:16px}
+.inhalt{min-width:0}main{max-width:1100px;margin:0 auto;padding:16px}
 h1{font-size:22px;margin:4px 0 16px}h2{font-size:17px;margin:0 0 12px}
 .raster{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
 .karte{background:var(--karte);border:1px solid var(--linie);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -125,7 +147,6 @@ table.responsiv td:first-child{font-weight:600;text-align:left}table.responsiv t
 table.responsiv td:empty{display:none}
 table.log thead{display:none}table.log tr{display:block;padding:6px 0;border-bottom:1px solid var(--linie)}
 table.log td{display:inline;border:0;padding:0 8px 0 0}table.log td:last-child{display:block;padding-top:2px}.zeile input[type=file]{max-width:none!important}
-.kopf{padding:6px 12px 0}nav{padding:6px 12px}
 }
 .hinweise.ohne{list-style:none;padding:0}.deckung{margin:8px 0}.deckung .ampel{margin-right:8px}
 .erinnerung{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--linie)}
@@ -181,17 +202,39 @@ JS = """
   });
   window.addEventListener('pageshow', function(){ ov.classList.remove('an'); bar.classList.remove('an');
     document.querySelectorAll('button').forEach(function(b){ b.disabled = false; }); });
-  var aktiv = document.querySelector('nav a.aktiv'); if (aktiv) aktiv.scrollIntoView({inline: 'center', block: 'nearest'});
   var m = document.querySelector('.meldung:not(.fehler)');
   if (m) setTimeout(function(){ m.classList.add('weg'); }, 6000);
   if (location.search.indexOf('m=') >= 0 && history.replaceState) history.replaceState(null, '', location.pathname);
 })();
 """
 
-SYMBOL = {
-    "protokoll": '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/></svg>',
-    "einstellungen": '<svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>',
-}
+THEMA_KOPF = """<script>(function(){var t='auto';try{t=localStorage.getItem('finanz-theme')||'auto'}catch(e){}
+var d=t==='dark'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
+document.documentElement.setAttribute('data-theme',d?'dark':'light');document.documentElement.setAttribute('data-wahl',t)})();</script>"""
+
+THEMA_JS = """(function(){var b=document.getElementById('thema');if(!b)return;var h=document.documentElement,folge=['auto','light','dark'],
+txt={auto:'Auto',light:'Hell',dark:'Dunkel'};function zeigen(){b.textContent=txt[h.getAttribute('data-wahl')||'auto']}
+function setzen(t){try{localStorage.setItem('finanz-theme',t)}catch(e){}h.setAttribute('data-wahl',t);
+var d=t==='dark'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);h.setAttribute('data-theme',d?'dark':'light');
+var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',d?'#1b2027':'#ffffff');zeigen()}
+b.addEventListener('click',function(){var t=h.getAttribute('data-wahl')||'auto';setzen(folge[(folge.indexOf(t)+1)%3])});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){if((h.getAttribute('data-wahl')||'auto')==='auto')setzen('auto')});
+setzen(h.getAttribute('data-wahl')||'auto')})();
+(function(){var a=document.querySelector('nav a.aktiv');if(a&&innerWidth<1200&&innerWidth>=760)a.scrollIntoView({block:'nearest',inline:'center'})})();"""
+
+MENU_KNOPF = ("<button id=\"menu\" type=\"button\" aria-expanded=\"false\" aria-controls=\"nav\" "
+              "onclick=\"var s=document.getElementById('side');var o=s.classList.toggle('offen');"
+              "this.setAttribute('aria-expanded',o);this.textContent=o?'Schliessen':'Menü'\">Menü</button>")
+
+
+def _warnungen_heute() -> int:
+    try:
+        import konfig
+        import meta
+        heute = date.today().isoformat()
+        return sum(1 for e in meta.protokoll(konfig.datenordner() / "finanz.log", "WARNING", 200) if e[0][:10] == heute)
+    except Exception:  # noqa: BLE001
+        return 0
 
 
 def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = "", fehler: bool = False,
@@ -200,25 +243,32 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
 
     import meta
     ampeln = ampeln or {}
-    nav = "".join(
-        f'<a href="{p or "./"}" class="{"aktiv" if p == pfad else ""}">'
-        f'{licht(ampeln[p]) if ampeln.get(p) in (am.GELB, am.ROT) else ""}{n}</a>' for p, n in NAV)
-    werkzeuge = "".join(
-        f'<a href="{p}" class="symbol{" aktiv" if p == pfad else ""}" title="{n}" aria-label="{n}">{SYMBOL[p]}</a>'
-        for p, n in (("protokoll", "Protokoll"), ("einstellungen", "Einstellungen")))
+    warnungen = _warnungen_heute()
+    gruppen = []
+    for gruppe, eintraege in NAVIGATION:
+        links = []
+        for p, n in eintraege:
+            aktiv = p == pfad
+            punkt = licht(ampeln[p]) if ampeln.get(p) in (am.GELB, am.ROT) else ""
+            zahl = f'<span class="zahl" title="Warnungen heute">{warnungen}</span>' if p == "protokoll" and warnungen else ""
+            aktuell = ' aria-current="page"' if aktiv else ""
+            links.append(f'<a href="{p or "./"}" class="{"aktiv" if aktiv else ""}"{aktuell}>{punkt}{n}{zahl}</a>')
+        gruppen.append(f'<div class="grp"><span class="gl">{gruppe}</span>{"".join(links)}</div>')
     m = f'<div class="meldung{" fehler" if fehler else ""}" role="status">{escape(meldung)}</div>' if meldung else ""
     v = meta.version()
     return f"""<!doctype html><html lang="de-CH"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><base href="{escape(basis)}/">
-<meta name="theme-color" content="#0a708f"><title>{escape(titel)} – Finanzplanung</title><style>{CSS}</style></head>
-<body><div id="lade"></div><header><div class="kopf"><a class="marke" href="./">Finanzen</a>
-<a class="version" href="aenderungen" title="Änderungen">v{escape(v)}</a><span class="frei"></span>{werkzeuge}</div>
-<nav>{nav}</nav></header>
-<main><h1>{escape(titel)}</h1>{m}{inhalt}</main>
+<meta name="theme-color" content="#ffffff"><title>{escape(titel)} – Finanzplanung</title>{THEMA_KOPF}<style>{CSS}</style></head>
+<body><div id="lade"></div><div class="app"><aside class="side" id="side"><div class="top">
+<a class="marke" href="./">💰 Finanzen</a><a class="version" href="aenderungen" title="Was ist neu in dieser Version">v{escape(v)}</a>
+<button id="thema" type="button" title="Darstellung umstellen: Auto (wie das Gerät) → Hell → Dunkel" aria-label="Darstellung umstellen">Auto</button>
+{MENU_KNOPF}</div>
+<nav id="nav" aria-label="Hauptmenü">{"".join(gruppen)}</nav></aside>
+<div class="inhalt"><main><h1>{escape(titel)}</h1>{m}{inhalt}</main>
 <footer>Finanzplanung v{escape(v)} · <a href="aenderungen">Änderungen</a> · <a href="protokoll">Protokoll</a>
-<br>Keine Anlage-, Steuer- oder Rechtsberatung.</footer>
+<br>Keine Anlage-, Steuer- oder Rechtsberatung.</footer></div></div>
 <div id="status" aria-live="polite"><div class="status-box"><div class="spinner"></div><p id="status-text">Bitte warten …</p></div></div>
-<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script></body></html>"""
+<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script><script>{THEMA_JS}</script></body></html>"""
 
 
 def licht(status: str, titel: str = "") -> str:
