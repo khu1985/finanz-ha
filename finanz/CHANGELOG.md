@@ -9,6 +9,8 @@
 - Alles anonymisiert (Namen, Orte, Policen-/Kontonummern, Dateinamen, E-Mail, IBAN, AHV-Nr., Daten, Beträge) und
   nach Wichtigkeit sortiert; Weitergeben nur von Hand: kopieren, als .md herunterladen oder als GitHub-Issue
   vorbefüllt öffnen; Vorschläge ausblenden oder als gemeldet markieren
+- **Sicherheit:** pypdf 5.1 → 7.0.1 (behebt die von Dependabot gemeldeten Lücken: präparierte PDFs konnten die
+  App mit Endlosschleifen oder Speicherverbrauch blockieren), PyYAML 6.0.3
 
 ## 0.23.0 – 2026-11-10
 
