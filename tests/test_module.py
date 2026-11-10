@@ -1212,3 +1212,26 @@ def test_vorschlaege_aus_daten_anonymisiert(k, db, tmp_path):
     assert any(v.bereich == "Eigene Ideen" and v.titel == "Export für ‹…› als Excel" for v in vs.sammeln(k, db, tmp_path))
     link = vs.issue_link("https://github.com/x/y", "a" * 9000, "1.0")
     assert link.startswith("https://github.com/x/y/issues/new?title=") and len(link) < 20000
+
+
+def test_ocr_fuer_gescannte_pdfs():
+    import io
+    import shutil
+    import ocr
+    from PIL import Image, ImageDraw, ImageFont
+    if not ocr.verfuegbar():
+        pytest.skip("tesseract/pdftoppm nicht installiert")
+    bild = Image.new("L", (1700, 700), 255)
+    zeichnen = ImageDraw.Draw(bild)
+    schrift = ImageFont.load_default(size=48)
+    for i, zeile in enumerate(["Hausratversicherung", "Versicherungsnehmer Max Muster", "Jahresprämie CHF 245.00"]):
+        zeichnen.text((80, 80 + i * 110), zeile, fill=0, font=schrift)
+    puffer = io.BytesIO()
+    bild.save(puffer, format="PDF", resolution=150)
+    inhalt = puffer.getvalue()
+    from pypdf import PdfReader
+    assert not (PdfReader(io.BytesIO(inhalt)).pages[0].extract_text() or "").strip()     # wirklich nur ein Bild
+    text = vi.text_auslesen("scan.pdf", inhalt)
+    assert "Hausrat" in text and "245" in text
+    assert vi.erkennen(text)["sparte"] == "hausrat"
+    assert shutil.which("tesseract")

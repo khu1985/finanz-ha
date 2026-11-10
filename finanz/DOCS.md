@@ -591,7 +591,7 @@ Entwicklung weitergeben kannst.
 | Quelle | Beispiel | Wichtigkeit |
 |---|---|---|
 | von Hand korrigierte Dokumente | «Hausrat (Mobiliar): «Prämie pro Jahr» falsch erkannt» | hoch |
-| gescannte PDFs ohne Text | «Policen ohne Text – Texterkennung (OCR) fehlt» | hoch |
+| PDFs ohne Text (auch OCR erfolglos) | «Policen ohne Text – auch die Texterkennung (OCR) fand nichts» | hoch |
 | Fehler im Protokoll (30 Tage) | «ERROR: Seite ‹…› fehlgeschlagen – KeyError in seiten.py:wohnen» | hoch |
 | nicht erkannte Felder, Arten, Sparten | «Veranlagung Kanton BL: «Direkte Bundessteuer» nicht erkannt» | mittel |
 | Warnungen im Protokoll | gruppiert mit Anzahl | mittel |
@@ -657,8 +657,12 @@ Home Assistant leitet pro Anfrage höchstens 16 MB an die App weiter. Wählt man
 sie einzeln (Fortschritt im Statusfenster, am Schluss eine gemeinsame Meldung). Eine einzelne Datei über 16 MB lässt
 sich nicht hochladen – solche Dateien in den Import-Ordner kopieren (siehe unten) oder als PDF verkleinern.
 
-Jedes hochgeladene Dokument zeigt eine Ampel für den ausgelesenen Text: **rot** = kein Text gefunden (meist ein
-gescanntes Bild – Werte von Hand eintragen, mit KI auslesen oder ein PDF mit Texterkennung hochladen), **gelb** = sehr
+Gescannte PDFs (nur Bilder, kein Text) liest die App mit Texterkennung (OCR, tesseract: Deutsch, Französisch,
+Italienisch; die ersten 10 Seiten, auf dem Raspberry Pi einige Sekunden pro Seite). Bereits hochgeladene Scans werden
+nach dem Update beim automatischen Neu-Sichten erkannt.
+
+Jedes hochgeladene Dokument zeigt eine Ampel für den ausgelesenen Text: **rot** = kein Text gefunden (auch die
+Texterkennung fand nichts – Werte von Hand eintragen, mit KI auslesen oder besser scannen), **gelb** = sehr
 wenig Text, **grün** = Text vorhanden. In der Vertragsliste der Versicherungen führt «PDF öffnen» direkt zum Original;
 grau heisst dort: aus einer Liste erfasst, ohne Dokument.
 
@@ -793,7 +797,8 @@ Empfehlungen:
   AppArmor-Profil – bitte melden.
 - **Seite zeigt «Fehler»:** meist ein Wert im falschen Format (z. B. Text statt Zahl, Datum nicht `JJJJ-MM-TT`).
   Details im Protokoll der App; Konfiguration im YAML-Editor korrigieren oder `finanz.yaml.bak` zurückholen.
-- **Dokument erkennt nichts:** «Ausgelesener Text» auf der Dokumentseite prüfen. Ist er leer, ist das PDF gescannt.
+- **Dokument erkennt nichts:** «Ausgelesener Text» auf der Dokumentseite prüfen. Ist er leer, fand auch die
+  Texterkennung nichts (unscharfer oder schräger Scan) – neu scannen (300 dpi, gerade) und nochmals hochladen.
 - **Bank-Import meldet «Keine Kopfzeile»:** Den Auszug als CSV (nicht PDF/Excel) exportieren; die Kopfzeile muss
   eine Datums- und eine Betrags- oder Saldo-Spalte enthalten.
 - **Keine Benachrichtigung:** Namen des Notify-Dienstes in Home Assistant unter Entwicklerwerkzeuge → Aktionen prüfen;

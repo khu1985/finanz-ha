@@ -30,6 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-deu poppler-utils
       - run: pip install --upgrade pyyaml pypdf pytest reportlab
       - run: python -m pytest -q tests
 
@@ -48,4 +49,5 @@ jobs:
           curl -fs localhost:8099/ | grep -q "Nettovermögen"
           curl -fs localhost:8099/aenderungen | grep -q "Version [0-9]"
           curl -fs localhost:8099/protokoll | grep -q "startet"
+          docker exec finanz python3 -c "import ocr; assert ocr.verfuegbar(); print('OCR', ocr.sprachen()); assert 'deu' in ocr.sprachen()"
           docker logs finanz

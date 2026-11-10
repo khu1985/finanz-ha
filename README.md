@@ -119,6 +119,7 @@ flowchart TB
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
 | `finanz/app/verwaltung.py` | Übersicht, Duplikate und Löschen aller Dokumente |
+| `finanz/app/ocr.py` | Texterkennung (tesseract) für gescannte PDFs |
 | `finanz/app/vorschlaege.py` | Verbesserungsvorschläge aus den eigenen Daten, anonymisiert zum Weitergeben |
 | `finanz/app/pruefung.py` | Plausibilität der Einstellungen (Ampel pro Feld) |
 | `finanz/app/sichtung.py` | Gespeicherte Dokumente nach Updates neu sichten |

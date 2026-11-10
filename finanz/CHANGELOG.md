@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.25.0 – 2026-11-10
+
+Umgesetzt aus den ersten Vorschlägen (App → Vorschläge):
+
+- **Texterkennung (OCR) für gescannte PDFs** mit tesseract (Deutsch, Französisch, Italienisch); bereits
+  hochgeladene Scans werden nach dem Update beim automatischen Neu-Sichten ausgelesen
+- **smile** wird als Versicherer erkannt (bisher Helvetia, weil smile zu Helvetia gehört)
+- **Grundversicherung:** Kündigungsfrist 1 Monat (Ende Jahr, Eingang bis 30.11.) statt 3 Monate
+- Protokoll ohne Rauschen: abgebrochene Verbindungen (Broken pipe, Connection reset) sind keine Fehler mehr,
+  harmlose pypdf-Warnungen zu defekten PDFs werden nicht mehr protokolliert
+
 ## 0.24.0 – 2026-11-10
 
 - **Vorschläge (App → Vorschläge):** leitet aus den eigenen Daten ab, wo die App besser werden kann – von Hand

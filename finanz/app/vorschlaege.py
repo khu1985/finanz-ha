@@ -173,7 +173,7 @@ def _vorsorge(db, erg: dict) -> None:
     for d in alle:
         text = d.get("text") or ""
         if d.get("datei") and not text.strip():
-            _zaehlen(erg, ("Dokumente erkennen", "Vorsorgedokumente ohne Text (gescannt) – Texterkennung (OCR) fehlt",
+            _zaehlen(erg, ("Dokumente erkennen", "Vorsorgedokumente ohne Text – auch die Texterkennung (OCR) fand nichts",
                            ""), HOCH)
             continue
         if not text.strip():
@@ -213,7 +213,7 @@ def _steuern(k: dict, db, erg: dict) -> None:
     for d in alle:
         text = d.get("text") or ""
         if d.get("datei") and not text.strip():
-            _zaehlen(erg, ("Dokumente erkennen", "Steuerdokumente ohne Text (gescannt) – Texterkennung (OCR) fehlt", ""),
+            _zaehlen(erg, ("Dokumente erkennen", "Steuerdokumente ohne Text – auch die Texterkennung (OCR) fand nichts", ""),
                      HOCH)
             continue
         if not text.strip():
@@ -255,7 +255,7 @@ def _versicherungen(db, erg: dict) -> None:
             continue
         text = v.get("text") or ""
         if not text.strip():
-            _zaehlen(erg, ("Dokumente erkennen", "Policen ohne Text (gescannt) – Texterkennung (OCR) fehlt", ""), HOCH)
+            _zaehlen(erg, ("Dokumente erkennen", "Policen ohne Text – auch die Texterkennung (OCR) fand nichts", ""), HOCH)
             continue
         versicherer = v.get("versicherer") or "unbekannter Versicherer"
         sparte = vi.SPARTEN.get(v["sparte"], v["sparte"])

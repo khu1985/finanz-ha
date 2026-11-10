@@ -64,8 +64,8 @@ STICHWORTE = {
 }
 
 VERSICHERER = [
-    "Helvetia Baloise", "Helvetia", "Baloise", "Basler", "AXA", "Allianz", "Mobiliar", "Zurich", "Generali",
-    "Vaudoise", "Smile", "TCS", "Swiss Life", "Pax", "Elvia", "Protekta", "Coop Rechtsschutz", "Dextra",
+    "Smile", "Helvetia Baloise", "Helvetia", "Baloise", "Basler", "AXA", "Allianz", "Mobiliar", "Zurich", "Generali",
+    "Vaudoise", "TCS", "Swiss Life", "Pax", "Elvia", "Protekta", "Coop Rechtsschutz", "Dextra",
     "Simpego", "Wefox", "Emmental Versicherung", "GVB", "Gebäudeversicherung", "CSS", "Helsana", "Swica",
     "Sanitas", "Concordia", "Visana", "KPT", "Groupe Mutuel", "Assura", "Atupri", "Sympany", "ÖKK", "EGK",
     "Aquilana", "Sumiswalder", "Agrisano", "Galenos", "Vivao", "Luzerner Hinterland", "Rhenusana",
@@ -192,10 +192,14 @@ def text_auslesen(dateiname: str, inhalt: bytes) -> str:
         try:
             from pypdf import PdfReader
             leser = PdfReader(io.BytesIO(inhalt))
-            return "\n\f\n".join((s.extract_text() or "") for s in leser.pages[:40])
+            text = "\n\f\n".join((s.extract_text() or "") for s in leser.pages[:40])
         except Exception as e:  # noqa: BLE001
             LOG.warning("PDF %s nicht lesbar: %s", dateiname, e)
-            return ""
+            text = ""
+        import ocr
+        if ocr.braucht_ocr(text) and ocr.verfuegbar():
+            text = ocr.pdf_text(inhalt, dateiname) or text
+        return text
     return inhalt.decode("utf-8", errors="replace")
 
 
@@ -315,6 +319,8 @@ def kk_police(text: str) -> dict | None:
     k = kvg[0]
     erg = {"sparte": "kvg", "versicherer": versicherer, **_kk_seite(k)}
     erg["beginn"] = erg.pop("gueltig_ab", "")
+    # Grundversicherung: gesetzlich auf Ende Jahr kündbar, Eingang bis 30.11. (nach Prämienmitteilung) → 1 Monat
+    erg["kuendigungsfrist_monate"] = 1
     m = re.search(r"Obligatorische Krankenpflege,?\s*([^\n]+)", k, re.I)
     produkt = m.group(1).strip() if m else ""
     for quelle in (produkt, k):

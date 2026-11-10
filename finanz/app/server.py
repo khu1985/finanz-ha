@@ -196,6 +196,8 @@ class Handler(BaseHTTPRequestHandler):
             meldung = unquote(q.get("m", [""])[0])
             html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
             self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
+        except (BrokenPipeError, ConnectionResetError):
+            return    # Browser hat die Seite vorher verlassen – kein Fehler der App
         except Exception as e:  # noqa: BLE001
             LOG.error("Fehler auf %s: %s\n%s", pfad, e, traceback.format_exc())
             html = seiten.seite("Fehler", pfad, f"<pre>{seiten.escape(str(e))}</pre>"
@@ -751,6 +753,8 @@ def main():
         handlers=[logging.StreamHandler(),
                   RotatingFileHandler(ordner / "finanz.log", maxBytes=1_000_000, backupCount=1, encoding="utf-8")],
     )
+    # pypdf meldet bei leicht defekten PDFs Hunderte harmlose Warnungen – nur echte Fehler protokollieren
+    logging.getLogger("pypdf").setLevel(logging.ERROR)
     import meta
     LOG.info("Finanzplanung %s startet", meta.version())
     konfig.laden()
