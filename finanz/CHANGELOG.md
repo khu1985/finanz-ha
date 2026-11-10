@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.23.0 – 2026-11-10
+
+- **Sicherheit:** Die App beantwortet im Home Assistant nur noch Anfragen über Ingress – andere Apps im internen
+  Netz können sie nicht mehr direkt aufrufen (403)
+- Repository: Tests nur mit Leserechten, Dependabot für Pakete und GitHub Actions, lokale Werkzeug-Einstellungen und
+  Zugangsdaten (`.claude/settings.local.json`, `.mcp.json`, `.env`, Schlüssel) in `.gitignore`
+- Doku: Empfehlungen zu Backup, Konten, Samba, KI und Fernzugriff
+
 ## 0.22.0 – 2026-11-09
 
 - **Eigenmietwert Staat und Bund getrennt:** Bund = Staat × Kantonsfaktor (BL 1,2) oder eigener Wert; Wohnen,

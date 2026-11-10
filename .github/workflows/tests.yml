@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Nur lesen: die Tests brauchen keine Schreibrechte am Repository
+permissions:
+  contents: read
+
 jobs:
   wie-im-home-assistant:
     name: Wie im Home Assistant (Python 3.12, gleiche Pakete)

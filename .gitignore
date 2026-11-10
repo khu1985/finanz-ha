@@ -9,3 +9,11 @@ finanz.log
 *.csv
 !tests/*.csv
 !tests/bank/*.csv
+# Lokale Werkzeug-Einstellungen und Zugangsdaten nie einchecken
+.claude/settings.local.json
+.mcp.json
+.env
+.env.*
+*.pem
+*.key
+secrets.yaml

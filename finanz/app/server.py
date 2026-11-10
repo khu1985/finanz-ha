@@ -76,8 +76,29 @@ DETAIL = {
 }
 
 
+# Nur der Ingress-Proxy von Home Assistant darf zugreifen – andere Apps im internen Netz nicht.
+# Gilt nur in Home Assistant (SUPERVISOR_TOKEN gesetzt); lokal zum Entwickeln ist alles offen.
+INGRESS_PROXY = "172.30.32.2"
+
+
+def zugriff_erlaubt(adresse: str) -> bool:
+    if not os.environ.get("SUPERVISOR_TOKEN"):
+        return True
+    return adresse in (INGRESS_PROXY, "127.0.0.1", "::1")
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "Finanzplanung"
+    sys_version = ""
+
+    def parse_request(self):
+        if not super().parse_request():
+            return False
+        if not zugriff_erlaubt(self.client_address[0]):
+            LOG.warning("Zugriff von %s abgelehnt – nur über Home Assistant (Ingress)", self.client_address[0])
+            self.send_error(403, "Nur über Home Assistant erreichbar")
+            return False
+        return True
 
     # ------------------------------------------------------------ Hilfen
     @property

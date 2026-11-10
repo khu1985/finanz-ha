@@ -176,3 +176,15 @@ def test_upload_einzeln_als_json(server):
                                  {"Content-Type": f"multipart/form-data; boundary={grenze}", "X-Einzeln": "1"})
     antwort = json.loads(urllib.request.urlopen(req).read().decode())
     assert antwort["fehler"] is False and antwort["ziel"].startswith("vorsorge")
+
+
+def test_nur_ingress_in_home_assistant(server, monkeypatch):
+    import server as srv
+    assert srv.zugriff_erlaubt("172.30.33.7")                         # lokal: offen
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "x")
+    assert srv.zugriff_erlaubt("172.30.32.2") and srv.zugriff_erlaubt("127.0.0.1")
+    assert not srv.zugriff_erlaubt("172.30.33.7")
+    monkeypatch.setattr(srv, "zugriff_erlaubt", lambda a: False)        # Test-Client gilt als fremde App
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(server + "/")
+    assert e.value.code == 403

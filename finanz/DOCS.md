@@ -749,6 +749,17 @@ kein Internet. Sie läuft nur über Ingress (kein offener Port) und mit eigenem 
 zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe und die
 Benachrichtigungen und Sensoren genutzt.
 
+Im Home Assistant beantwortet die App nur Anfragen des Ingress-Proxys (172.30.32.2); andere Apps im internen Netz
+erhalten «403 – Nur über Home Assistant erreichbar». Lokal zum Entwickeln (ohne `SUPERVISOR_TOKEN`) ist sie offen.
+
+Empfehlungen:
+
+- Backups verschlüsselt lassen und den Schlüssel getrennt aufbewahren – sie enthalten alle Dokumente im Klartext.
+- Zwei-Faktor-Anmeldung für alle Admin-Konten; die App sehen nur Admins.
+- Samba/File editor nur bei Bedarf und mit starkem Passwort; `import/erledigt/` ab und zu leeren.
+- KI nur mit einem Anbieter, dem man Policen und Steuerdokumente anvertraut (oder lokal, z. B. Ollama).
+- Fernzugriff über Nabu Casa oder VPN, keine Portweiterleitung.
+
 ## Fehlersuche
 
 - **App startet nicht:** App-Protokoll in Home Assistant ansehen; bei «Permission denied» betrifft es meist das
