@@ -17,7 +17,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [Steuererklärung](#steuererklärung-vorbereiten) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
-6. [Ampeln](#ampeln) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen)
+6. [Ampeln](#ampeln) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen) · [Vorschläge](#vorschläge-für-die-weiterentwicklung)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
 9. [Rechenmodell](#rechenmodell)
@@ -92,6 +92,7 @@ personen:
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
+| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App; kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
 | Änderungen | Changelog der installierten Version |
 
@@ -581,6 +582,32 @@ fehlt oder ist unmöglich, **grau** = optional bzw. leer (Standard). Oben stehen
 | Vorsorgeausweis älter als ein Jahr, Sparbeitrag fehlt (BVG-Minimum angenommen), Ausweis-Rente ÷ Kapital unplausibel | gelb |
 | Jahreslohn unter 12'000 (Monatslohn?), kein 3a-Beitrag, Partner im Konkubinat nicht bei der PK gemeldet | gelb |
 | Steuerwerte fehlen (verheiratet) bzw. pro Person im Konkubinat, Fälligkeit der Hypothek vorbei | rot bzw. grau, gelb |
+
+## Vorschläge für die Weiterentwicklung
+
+**App → Vorschläge** zeigt, wo die App mit deinen Daten an Grenzen stösst – als Liste, die du anonymisiert an die
+Entwicklung weitergeben kannst.
+
+| Quelle | Beispiel | Wichtigkeit |
+|---|---|---|
+| von Hand korrigierte Dokumente | «Hausrat (Mobiliar): «Prämie pro Jahr» falsch erkannt» | hoch |
+| gescannte PDFs ohne Text | «Policen ohne Text – Texterkennung (OCR) fehlt» | hoch |
+| Fehler im Protokoll (30 Tage) | «ERROR: Seite ‹…› fehlgeschlagen – KeyError in seiten.py:wohnen» | hoch |
+| nicht erkannte Felder, Arten, Sparten | «Veranlagung Kanton BL: «Direkte Bundessteuer» nicht erkannt» | mittel |
+| Warnungen im Protokoll | gruppiert mit Anzahl | mittel |
+| fehlende kantonale Werte | «Kanton ZG: Unterhaltspauschale Staatssteuer nicht hinterlegt» | mittel/tief |
+| Einstellungen mit roter Ampel | nur Feldname, ohne Wert | tief |
+| eigene Ideen | freier Text | mittel |
+
+**Anonymisiert** werden Namen (Personen, Kinder, Kontakte, Arbeitgeber), Orte und Adressen, Policen- und
+Kontonummern, Dateinamen, E-Mail, Telefon, IBAN, AHV-Nummer, Datumsangaben und Beträge (‹…›, ‹Datum›, ‹Betrag›).
+Anbieter und Versicherer (z. B. «Mobiliar») und der Kanton bleiben stehen, weil die Erkennung je Anbieter und
+Kanton angepasst wird.
+
+**Weitergeben** geschieht nie automatisch: Den Text unten kannst du prüfen, kopieren, als `.md` herunterladen oder
+mit «Als GitHub-Issue öffnen» auf GitHub vorbefüllt öffnen (abgeschickt wird erst mit «Submit»; Issues sind
+öffentlich). Was du nicht weitergeben willst, blendest du aus; Weitergegebenes markierst du als gemeldet – beides
+kommt nicht mehr in den Text und lässt sich wieder einblenden.
 
 ## Dokumente verwalten und löschen
 

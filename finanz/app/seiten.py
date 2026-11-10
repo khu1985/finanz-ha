@@ -27,7 +27,8 @@ NAVIGATION = [
                  ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
                  ("notfall", "Notfallordner")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
-    ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("protokoll", "Protokoll"),
+    ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("vorschlaege", "Vorschläge"),
+             ("protokoll", "Protokoll"),
              ("aenderungen", "Änderungen")]),
 ]
 NAV = [e for _, gruppe in NAVIGATION for e in gruppe]
@@ -134,6 +135,9 @@ label{display:flex;flex-direction:column;font-size:13px;color:var(--leise);gap:4
 input,select,textarea{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--linie);
 border-radius:8px;padding:8px 10px;width:100%}
 textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:420px}
+textarea.kurz{min-height:0;font-family:inherit}textarea.mittel{min-height:240px}
+.vorschlag{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-size:inherit;color:inherit;padding:8px 0;border-bottom:1px solid var(--linie)}
+.vorschlag input{margin-top:3px;flex:none;width:auto!important}.vorschlag>span{flex:1;min-width:0}.vorschlag span.leise{display:block;font-size:.9em}
 button,.knopf{font:inherit;background:var(--akzent);color:#fff;border:0;border-radius:8px;padding:8px 16px;
 cursor:pointer;text-decoration:none;display:inline-block}
 .knopf.zweit,button.zweit{background:transparent;color:var(--akzent);border:1px solid var(--akzent)}
@@ -2631,3 +2635,82 @@ def dokumente(k: dict, db, q: dict | None = None) -> str:
                                     'die Einstellungen übernommene Werte bleiben erhalten. Buchungen: löscht alle Buchungen '
                                     'des Kontos (Saldi unter «Vermögen» bleiben).</p>')
             + sichtung_knopf("dokumente", "Alle Dokumente neu sichten"))
+
+
+# ---------------------------------------------------------------- Vorschläge
+
+def vorschlaege(k: dict, db) -> str:
+    import konfig
+    import meta
+    import vorschlaege as vs
+    alle = vs.sammeln(k, db, konfig.datenordner())
+    st = vs.status(db)
+    sichtbar = [v for v in alle if v.schluessel not in st]
+    weg = [v for v in alle if v.schluessel in st]
+    hoch = sum(1 for v in sichtbar if v.gewicht == vs.HOCH)
+    kpis = '<div class="kpis">' + "".join([
+        kpi(str(len(sichtbar)), "Vorschläge offen", "", am.GELB if sichtbar else am.GRUEN),
+        kpi(str(hoch), "davon wichtig", "", am.ROT if hoch else am.GRUEN),
+        kpi(str(sum(1 for v in weg if st[v.schluessel] == "gemeldet")), "gemeldet"),
+        kpi(str(sum(1 for v in weg if st[v.schluessel] == "ausgeblendet")), "ausgeblendet"),
+    ]) + "</div>"
+    intro = ('<p>Die App leitet aus deinen Daten ab, wo sie besser werden kann: Werte, die du in Dokumenten von Hand '
+             'korrigieren musstest, Felder, die sie nicht erkennt, Fehler im Protokoll, fehlende kantonale Werte und '
+             'Einstellungen mit roter Ampel. Alles ist <b>anonymisiert</b> – Namen, Orte, Policen- und Kontonummern, '
+             'Dateinamen, Datumsangaben und Beträge sind ersetzt. <b>Nichts wird automatisch gesendet:</b> du siehst unten '
+             'genau den Text, den du kopieren, herunterladen oder als GitHub-Issue öffnen kannst.</p>')
+    farbe = {vs.HOCH: am.ROT, vs.MITTEL: am.GELB, vs.TIEF: am.GRAU}
+
+    def zeilen(liste, mit_status=False):
+        z = []
+        for v in liste:
+            n = f" ({v.anzahl}×)" if v.anzahl > 1 else ""
+            unten = " · ".join(x for x in (v.bereich, st.get(v.schluessel, "") if mit_status else "", v.detail) if x)
+            z.append(f'<label class="vorschlag">{auswahl_zelle(v.schluessel)}<span>'
+                     f'{licht(farbe[v.gewicht], vs.PRIO_TEXT[v.gewicht])} {escape(v.titel)}{n}'
+                     f'<span class="leise">{escape(unten)}</span></span></label>')
+        return "".join(z)
+
+    if sichtbar:
+        liste = (zeilen(sichtbar)
+                 + '<div class="zeile nicht-drucken"><label class="entfernen"><input type="checkbox" data-alle>alle '
+                   'auswählen</label><button class="zweit klein" name="aktion" value="ausblenden">Ausgewählte ausblenden'
+                   '</button><button class="zweit klein" name="aktion" value="gemeldet">Ausgewählte als gemeldet '
+                   'markieren</button></div>')
+    else:
+        liste = '<p class="leer">Keine offenen Vorschläge – die App findet in deinen Daten nichts zu verbessern.</p>'
+    teil_liste = karte("Vorschläge aus deinen Daten",
+                       f'<form method="post" action="vorschlaege">{liste}</form>'
+                       '<p class="leise">Ausgeblendete und gemeldete Vorschläge kommen nicht in den Text zum Weitergeben. '
+                       'Rot = wichtig (z. B. von Hand korrigierte Werte), gelb = mittel, grau = tief.</p>')
+    idee_liste = "".join(
+        f'<li>{escape(i["text"])} <button class="zweit klein loeschen" name="aktion" value="idee_loeschen_{i["id"]}" '
+        f'onclick="return confirm(\'Idee löschen?\')">Löschen</button></li>' for i in vs.ideen(db))
+    teil_idee = karte("Eigene Idee", '<form method="post" action="vorschlaege">'
+                      + (f"<ul>{idee_liste}</ul>" if idee_liste else "")
+                      + '<textarea name="idee" rows="3" class="kurz" placeholder="Was fehlt dir, was stört dich?"></textarea>'
+                        '<div class="zeile"><button name="aktion" value="idee">Hinzufügen</button></div></form>'
+                        '<p class="leise">Namen, Beträge und Daten werden beim Weitergeben ersetzt – schreib trotzdem '
+                        'nichts Persönliches hinein.</p>')
+    kanton = str(k["haushalt"].get("kanton") or "").upper()
+    text = vs.bericht(sichtbar, meta.version(), kanton)
+    link = vs.issue_link(meta.repository(), text, meta.version())
+    teil_text = karte("Weitergeben", (
+        f'<textarea id="vorschlaege-text" class="mittel" readonly>{escape(text)}</textarea>'
+        '<div class="zeile nicht-drucken">'
+        '<button type="button" class="zweit" onclick="navigator.clipboard.writeText('
+        'document.getElementById(\'vorschlaege-text\').value);this.textContent=\'Kopiert\'">Kopieren</button>'
+        '<a class="knopf zweit" href="vorschlaege.md">Herunterladen (.md)</a>'
+        f'<a class="knopf" href="{escape(link)}" target="_blank" rel="noopener noreferrer">Als GitHub-Issue öffnen</a></div>'
+        '<p class="leise">«Als GitHub-Issue öffnen» füllt auf GitHub ein neues Issue mit diesem Text vor – abgeschickt wird '
+        'erst, wenn du dort auf «Submit» klickst (GitHub-Konto nötig; das Issue ist öffentlich). Danach die Vorschläge '
+        'oben als gemeldet markieren.</p>') if sichtbar else '<p class="leer">Nichts weiterzugeben.</p>')
+    teil_weg = ""
+    if weg:
+        teil_weg = ('<details class="karte"><summary>Ausgeblendet und gemeldet (' + str(len(weg)) + ")</summary>"
+                    '<form method="post" action="vorschlaege">'
+                    + zeilen(weg, True)
+                    + '<div class="zeile"><button class="zweit klein" name="aktion" value="einblenden">Ausgewählte '
+                      'wieder einblenden</button><button class="zweit klein" name="aktion" value="alle_einblenden">Alle '
+                      'wieder einblenden</button></div></form></details>')
+    return kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_weg

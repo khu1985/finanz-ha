@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.24.0 – 2026-11-10
+
+- **Vorschläge (App → Vorschläge):** leitet aus den eigenen Daten ab, wo die App besser werden kann – von Hand
+  korrigierte Werte in Policen, Vorsorge- und Steuerdokumenten (Erkennung lag falsch), nicht erkannte Felder,
+  Arten und Sparten, gescannte PDFs ohne Text, Fehler und Warnungen im Protokoll (30 Tage, gruppiert), fehlende
+  kantonale Werte und Einstellungen mit roter Ampel; dazu eigene Ideen
+- Alles anonymisiert (Namen, Orte, Policen-/Kontonummern, Dateinamen, E-Mail, IBAN, AHV-Nr., Daten, Beträge) und
+  nach Wichtigkeit sortiert; Weitergeben nur von Hand: kopieren, als .md herunterladen oder als GitHub-Issue
+  vorbefüllt öffnen; Vorschläge ausblenden oder als gemeldet markieren
+
 ## 0.23.0 – 2026-11-10
 
 - **Sicherheit:** Die App beantwortet im Home Assistant nur noch Anfragen über Ingress – andere Apps im internen

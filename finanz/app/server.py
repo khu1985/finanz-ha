@@ -43,6 +43,7 @@ SEITEN = {
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
     "dokumente": ("Dokumente", seiten.dokumente),
+    "vorschlaege": ("Vorschläge", seiten.vorschlaege),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -155,6 +156,16 @@ class Handler(BaseHTTPRequestHandler):
             if pfad == "vorlage.csv":
                 return self.senden(200, VORLAGE_CSV.encode("utf-8-sig"), "text/csv; charset=utf-8",
                                    {"Content-Disposition": 'attachment; filename="vermoegen-vorlage.csv"'})
+            if pfad == "vorschlaege.md":
+                import meta
+                import vorschlaege as vs
+                with db() as v:
+                    k = konfig.laden()
+                    st = vs.status(v)
+                    liste = [x for x in vs.sammeln(k, v, konfig.datenordner()) if x.schluessel not in st]
+                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper())
+                return self.senden(200, text.encode("utf-8"), "text/markdown; charset=utf-8",
+                                   {"Content-Disposition": 'attachment; filename="finanz-vorschlaege.md"'})
             if pfad == "protokoll.log":
                 log = konfig.datenordner() / "finanz.log"
                 return self.senden(200, log.read_bytes() if log.exists() else b"", "text/plain; charset=utf-8",
@@ -420,6 +431,27 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Nichts ausgewählt.")
                 n = vw.loeschen(v, konfig.datenordner(), auswahl)
             return f"{n} Eintrag/Einträge gelöscht.", ziel
+        if pfad == "vorschlaege":
+            import vorschlaege as vs
+            aktion = form.get("aktion") or ""
+            with db() as v:
+                if aktion == "idee":
+                    vs.idee_speichern(v, form.get("idee") or "")
+                    return "Idee gespeichert.", "vorschlaege"
+                if aktion.startswith("idee_loeschen_"):
+                    vs.idee_loeschen(v, int(aktion.rsplit("_", 1)[1]))
+                    return "Idee gelöscht.", "vorschlaege"
+                auswahl = [s_[4:] for s_ in form if s_.startswith("sel_") and form.get(s_)]
+                if aktion == "alle_einblenden":
+                    auswahl = list(vs.status(v))
+                if not auswahl:
+                    raise ValueError("Nichts ausgewählt.")
+                if aktion in ("einblenden", "alle_einblenden"):
+                    vs.ausblenden(v, auswahl, "")
+                    return f"{len(auswahl)} Vorschlag/Vorschläge wieder eingeblendet.", "vorschlaege"
+                vs.ausblenden(v, auswahl, "gemeldet" if aktion == "gemeldet" else "ausgeblendet")
+            return f"{len(auswahl)} Vorschlag/Vorschläge {'als gemeldet markiert' if aktion == 'gemeldet' else 'ausgeblendet'}.", \
+                "vorschlaege"
         if pfad == "dokumente/neu-sichten":
             import sichtung
             with db() as v:

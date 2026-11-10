@@ -28,6 +28,16 @@ def version() -> str:
 
 
 @lru_cache(maxsize=1)
+def repository() -> str:
+    pfad = _datei("config.yaml")
+    if pfad:
+        m = re.search(r'^url:\s*"?([^"\n]+)"?', pfad.read_text(encoding="utf-8"), re.M)
+        if m:
+            return m.group(1).strip()
+    return "https://github.com/khu1985/finanz-ha"
+
+
+@lru_cache(maxsize=1)
 def changelog() -> str:
     pfad = _datei("CHANGELOG.md")
     return pfad.read_text(encoding="utf-8") if pfad else "Keine Änderungen gefunden."

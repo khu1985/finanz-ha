@@ -1176,3 +1176,39 @@ def test_dokumente_verwalten(k, db, tmp_path):
     rest = {e.schluessel for e in vw.eintraege(db, tmp_path)}
     assert f"v:{c}" not in rest and f"d:{d}" not in rest and "b:Privatkonto" not in rest
     assert not (tmp_path / "vorsorge" / f"{d}.txt").exists()
+
+
+def test_vorschlaege_aus_daten_anonymisiert(k, db, tmp_path):
+    from datetime import datetime
+    import dokumente as dk
+    import vorschlaege as vs
+    from policen import HAUSRAT
+    k["personen"][0]["name"] = "Annelies Muster-Gubler"
+    k["haushalt"]["kanton"] = "ZG"
+    k["wohnen"]["aktiv"] = True
+    # Police: Prämie von Hand korrigiert → «falsch erkannt»; Dateiname enthält den Namen
+    vid = vi.hochladen(db, tmp_path, "Police Annelies Muster-Gubler.pdf", pdf(HAUSRAT))
+    vi.aktualisieren(db, vid, {"praemie_jahr": 987.65, "person": "Annelies Muster-Gubler"}, quelle="hand")
+    # 3a-Auszug ohne Beitrag → «nicht erkannt»
+    dk.hochladen(db, tmp_path, "3a.txt", "Säule 3a Vorsorgekonto\nGuthaben CHF 12'345.00\n".encode())
+    # Protokoll mit persönlichen Angaben
+    (tmp_path / "finanz.log").write_text(
+        f"{datetime.now():%Y-%m-%d %H:%M:%S},123 WARNING Import 'Annelies 2025.pdf' fehlgeschlagen: CHF 1'234 am 03.04.2025 "
+        "an annelies@example.ch, IBAN CH93 0076 2011 6238 5295 7\n", encoding="utf-8")
+    liste = vs.sammeln(k, db, tmp_path)
+    titel = [v.titel for v in liste]
+    assert any("Prämie pro Jahr" in t and "falsch erkannt" in t for t in titel)
+    assert any("3a-Beitrag" in t and "nicht erkannt" in t for t in titel)
+    assert any("Kanton ZG: Unterhaltspauschale" in t for t in titel)
+    assert liste[0].gewicht == vs.HOCH                                   # von Hand korrigiert zuerst
+    text = vs.bericht(liste, "9.9.9", "ZG")
+    for privat in ("Annelies", "Gubler", "12'345", "987", "1'234", "03.04.2025", "example.ch", "CH93", "Police"):
+        assert privat not in text, privat
+    assert "WARNING: Import ‹…› fehlgeschlagen" in text
+    # ausblenden, eigene Idee, Issue-Link
+    vs.ausblenden(db, [liste[0].schluessel])
+    assert vs.status(db) == {liste[0].schluessel: "ausgeblendet"}
+    vs.idee_speichern(db, "Export für Annelies als Excel")
+    assert any(v.bereich == "Eigene Ideen" and v.titel == "Export für ‹…› als Excel" for v in vs.sammeln(k, db, tmp_path))
+    link = vs.issue_link("https://github.com/x/y", "a" * 9000, "1.0")
+    assert link.startswith("https://github.com/x/y/issues/new?title=") and len(link) < 20000
