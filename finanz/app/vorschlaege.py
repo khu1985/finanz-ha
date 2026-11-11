@@ -301,15 +301,33 @@ def _normalisieren(meldung: str) -> str:
     return (erste[:160] + (f" – {ausnahme}" if ausnahme else "")).strip()
 
 
+def seit_version(eintraege: list[tuple[str, str, str]], version: str, muster: str) -> str | None:
+    """Zeit des ersten Starts der aktuellen Version (nach dem letzten Start einer anderen Version), sonst None.
+
+    `eintraege`: (Zeit, Stufe, Text) neueste zuerst; `muster`: Regex mit einer Gruppe für die Version."""
+    seit, vorher = None, None
+    for zeit, _stufe, text in reversed(eintraege):
+        m = re.search(muster, text)
+        if not m:
+            continue
+        if m.group(1) == version and vorher != version:
+            seit = zeit
+        vorher = m.group(1)
+    return seit if vorher == version else None
+
+
 def _protokoll(daten: Path, erg: dict, tage: int = 30) -> None:
+    """Warnungen und Fehler seit dem Start der installierten Version – Behobenes aus älteren Versionen zählt nicht."""
     import meta
-    grenze = (datetime.now() - timedelta(days=tage)).strftime("%Y-%m-%d")
-    for zeit, stufe, text in meta.protokoll(daten / "finanz.log", "WARNING", 2000):
-        if zeit[:10] < grenze:
+    alle = meta.protokoll(daten / "finanz.log", "INFO", 20000)
+    seit = seit_version(alle, meta.version(), r"Finanzplanung (\S+) startet")
+    grenze = seit or (datetime.now() - timedelta(days=tage)).strftime("%Y-%m-%d")
+    hinweis = f"seit Version {meta.version()}" if seit else f"im Protokoll der letzten {tage} Tage"
+    for zeit, stufe, text in alle:
+        if stufe not in ("WARNING", "ERROR", "CRITICAL") or zeit < grenze:
             continue
         gewicht = HOCH if stufe in ("ERROR", "CRITICAL") or "Traceback" in text else MITTEL
-        _zaehlen(erg, ("Fehler und Warnungen", f"{stufe}: {_normalisieren(text)}",
-                       f"im Protokoll der letzten {tage} Tage"), gewicht)
+        _zaehlen(erg, ("Fehler und Warnungen", f"{stufe}: {_normalisieren(text)}", hinweis), gewicht)
 
 
 def _kanton(k: dict, erg: dict) -> None:

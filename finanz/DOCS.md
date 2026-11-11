@@ -592,9 +592,9 @@ Entwicklung weitergeben kannst.
 |---|---|---|
 | von Hand korrigierte Dokumente | «Hausrat (Mobiliar): «Prämie pro Jahr» falsch erkannt» | hoch |
 | PDFs ohne Text (auch OCR erfolglos) | «Policen ohne Text – auch die Texterkennung (OCR) fand nichts» | hoch |
-| Fehler im Protokoll (30 Tage) | «ERROR: Seite ‹…› fehlgeschlagen – KeyError in seiten.py:wohnen» | hoch |
+| Fehler im Protokoll seit dem Update (installierte Version; ohne Startzeile 30 Tage) | «ERROR: Seite ‹…› fehlgeschlagen – KeyError in seiten.py:wohnen» | hoch |
 | nicht erkannte Felder, Arten, Sparten | «Veranlagung Kanton BL: «Direkte Bundessteuer» nicht erkannt» | mittel |
-| Warnungen im Protokoll | gruppiert mit Anzahl | mittel |
+| Warnungen im Protokoll seit dem Update | gruppiert mit Anzahl | mittel |
 | fehlende kantonale Werte | «Kanton ZG: Unterhaltspauschale Staatssteuer nicht hinterlegt» | mittel/tief |
 | Einstellungen mit roter Ampel | nur Feldname, ohne Wert | tief |
 | eigene Ideen | freier Text | mittel |

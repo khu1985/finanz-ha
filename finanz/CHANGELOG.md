@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.25.3 – 2026-11-11
+
+- **Vorschläge:** Meldungen aus dem Protokoll zählen nur seit dem Start der installierten Version – was ein Update
+  behoben hat, verschwindet sofort statt erst nach 30 Tagen
+
 ## 0.25.2 – 2026-11-11
 
 - **Weniger Last auf dem Home Assistant:** Die Texterkennung gescannter PDFs läuft mit niedrigster Priorität und

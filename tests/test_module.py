@@ -1281,3 +1281,24 @@ def test_neu_sichten_im_hintergrund_und_ocr_nur_einmal(k, db, tmp_path, daten, m
         import time
         time.sleep(0.05)
     assert sichtung.STAND["laeuft"] is False
+
+
+def test_vorschlaege_nur_meldungen_der_aktuellen_version(k, db, tmp_path):
+    from datetime import datetime, timedelta
+    import meta
+    import vorschlaege as vs
+    t = datetime.now() - timedelta(hours=3)
+
+    def z(min_):
+        return f"{t + timedelta(minutes=min_):%Y-%m-%d %H:%M:%S},1"
+    (tmp_path / "finanz.log").write_text("\n".join([
+        f"{z(0)} INFO Finanzplanung 0.0.1 startet",
+        f"{z(1)} WARNING Alte Warnung schon behoben",
+        f"{z(2)} INFO Finanzplanung {meta.version()} startet",
+        f"{z(3)} WARNING Neue Warnung",
+        f"{z(4)} INFO Finanzplanung {meta.version()} startet",          # Neustart derselben Version zählt mit
+        f"{z(5)} ERROR Neuer Fehler",
+    ]) + "\n", encoding="utf-8")
+    titel = {v.titel: v.detail for v in vs.sammeln(k, db, tmp_path) if v.bereich == "Fehler und Warnungen"}
+    assert set(titel) == {"WARNING: Neue Warnung", "ERROR: Neuer Fehler"}
+    assert all(d == f"seit Version {meta.version()}" for d in titel.values())
