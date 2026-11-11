@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.26.0 – 2026-11-11
+
+- **Konten verwalten (Vermögen → Konto anklicken):** eigene Seite pro Konto mit
+  - Name, Art, Person, Währung und Notiz ändern – beim Umbenennen wandern die Budget-Buchungen mit
+  - allen Saldi in einer Tabelle: Datum und Betrag direkt korrigieren, einzelne oder ausgewählte löschen, neuen
+    Saldo hinzufügen; Verlauf des Kontos als Grafik
+  - Zusammenführen doppelter Konten (z. B. von Hand erfasst und später per Bank-Import angelegt) inkl. Buchungen
+    ohne Doppelte
+  - Auflösen: Saldo 0 ab einem Datum, Verlauf bleibt; aufgelöste Konten stehen eingeklappt unter der Liste
+- Kontenliste mit Auswahl-Kästchen zum Löschen mehrerer Konten; Löschen entfernt auch die Buchungen des Kontos
+
 ## 0.25.4 – 2026-11-11
 
 - **Berater:** nutzen jetzt die eingestellte KI-Entität (Einstellungen → KI); bisher immer die Standard-KI-Aufgabe

@@ -74,6 +74,7 @@ DETAIL = {
     "vorsorge/dokument": ("Vorsorgedokument", lambda k, v, i: seiten.vorsorge_dokument(k, v, i), dk, dk.ordner, "datei"),
     "steuern/dokument": ("Steuerdokument", lambda k, v, i: seiten.steuer_dokument(k, v, i), sd, sd.ordner, "datei"),
     "berater": ("Beratung", lambda k, v, i: seiten.beratung(k, v, i), br, None, None),
+    "vermoegen/konto": ("Konto", lambda k, v, i: seiten.konto(k, v, i), vm, None, None),
 }
 
 
@@ -364,9 +365,51 @@ class Handler(BaseHTTPRequestHandler):
             konfig.speichern(k)
             return "Anlage-Check gespeichert.", "vermoegen"
         if pfad == "vermoegen/loeschen":
+            ids = [int(s_[6:]) for s_ in form if s_.startswith("sel_k:") and form.get(s_)]
+            if form.get("id"):
+                ids.append(int(form["id"]))
+            if not ids:
+                raise ValueError("Kein Konto ausgewählt.")
             with db() as v:
-                vm.konto_loeschen(v, int(form["id"]))
-            return "Konto gelöscht."
+                for i in ids:
+                    vm.konto_loeschen(v, i)
+            return f"{len(ids)} Konto/Konten gelöscht.", "vermoegen"
+        teile = pfad.split("/")
+        if len(teile) == 4 and teile[:2] == ["vermoegen", "konto"] and teile[2].isdigit():
+            kid, was = int(teile[2]), teile[3]
+            zurueck = f"vermoegen/konto/{kid}"
+            with db() as v:
+                if was == "speichern":
+                    vm.konto_aendern(v, kid, form.get("name", ""), form.get("art", "bank"), form.get("person", ""),
+                                     form.get("waehrung", "CHF"), form.get("notiz", ""))
+                    return "Konto gespeichert.", zurueck
+                if was == "saldi":
+                    alt = [s["datum"] for s in vm.saldi(v, kid)]
+                    weg = [d for d in alt if form.get(f"sel_{d}")] if form.get("aktion") == "loeschen" else []
+                    aend = {}
+                    if form.get("aktion") != "loeschen":
+                        for d in alt:
+                            if form.get(f"d_{d}") and form.get(f"b_{d}") not in (None, ""):
+                                aend[d] = (vm.datum(form[f"d_{d}"]), vm.zahl(form[f"b_{d}"]))
+                    geaendert, geloescht = vm.saldi_aendern(v, kid, aend, weg)
+                    neu = 0
+                    if form.get("aktion") != "loeschen" and (form.get("neu_betrag") or "").strip():
+                        vm.saldo_setzen(v, kid, vm.datum(form.get("neu_datum") or datetime.now().date().isoformat()),
+                                        vm.zahl(form["neu_betrag"]))
+                        neu = 1
+                    if form.get("aktion") == "loeschen" and not weg:
+                        raise ValueError("Kein Saldo ausgewählt.")
+                    return (f"{geaendert} geändert, {geloescht} gelöscht" + (", 1 hinzugefügt" if neu else "") + "."), zurueck
+                if was == "zusammenfuehren":
+                    ziel = int(form["ziel"])
+                    n = vm.zusammenfuehren(v, kid, ziel)
+                    return f"Zusammengeführt – {n} Saldi übernommen.", f"vermoegen/konto/{ziel}"
+                if was == "aufloesen":
+                    if form.get("oeffnen"):
+                        vm.aufloesen(v, kid, None)
+                        return "Konto wieder geöffnet.", zurueck
+                    vm.aufloesen(v, kid, vm.datum(form["datum"]))
+                    return "Konto als aufgelöst markiert.", zurueck
         if pfad == "einstellungen/sensoren":
             import sensoren
             with db() as v:

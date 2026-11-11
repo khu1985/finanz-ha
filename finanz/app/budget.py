@@ -110,6 +110,31 @@ def kategorie(text: str, betrag: float, eigene: dict[str, str] | None = None) ->
     return EINNAHMEN if betrag > 0 else UEBRIGES
 
 
+def schluessel(konto: str, tag: str, betrag: float, text: str, n: int = 1) -> str:
+    """Eindeutiger Schlüssel einer Buchung (n = wievielte gleiche Buchung am selben Tag) – verhindert Doppelimporte."""
+    basis = (konto, tag, round(betrag, 2), text)
+    return hashlib.sha1(("|".join(map(str, basis)) + f"|{n}").encode()).hexdigest()
+
+
+def konto_umbenennen(db, alt: str, neu: str) -> int:
+    """Buchungen von Konto `alt` zu `neu` verschieben (Umbenennen oder Zusammenführen); Schlüssel werden neu
+    berechnet, damit spätere Importe nichts doppelt einlesen. Schon vorhandene gleiche Buchungen fallen weg.
+    Gibt die Anzahl verschobener Buchungen."""
+    _tabelle(db)
+    zaehler: dict[tuple, int] = {}
+    n = 0
+    for r in db.execute("SELECT id, datum, betrag, text FROM buchungen WHERE konto = ? ORDER BY id", (alt,)).fetchall():
+        basis = (r["datum"], round(r["betrag"], 2), r["text"])
+        zaehler[basis] = zaehler.get(basis, 0) + 1
+        sch = schluessel(neu, r["datum"], r["betrag"], r["text"], zaehler[basis])
+        if db.execute("SELECT 1 FROM buchungen WHERE schluessel = ? AND id != ?", (sch, r["id"])).fetchone():
+            db.execute("DELETE FROM buchungen WHERE id = ?", (r["id"],))
+            continue
+        db.execute("UPDATE buchungen SET konto = ?, schluessel = ? WHERE id = ?", (neu, sch, r["id"]))
+        n += 1
+    return n
+
+
 def speichern(db, konto: str, buchungen: list[tuple[str, float, str]], k: dict | None = None) -> int:
     """Buchungen eines Kontos speichern; bereits importierte (gleiches Datum, Betrag, Text) werden übersprungen."""
     _tabelle(db)
@@ -119,7 +144,7 @@ def speichern(db, konto: str, buchungen: list[tuple[str, float, str]], k: dict |
     for tag, betrag, text in buchungen:
         basis = (konto, tag, round(betrag, 2), text)
         zaehler[basis] = zaehler.get(basis, 0) + 1
-        sch = hashlib.sha1(("|".join(map(str, basis)) + f"|{zaehler[basis]}").encode()).hexdigest()
+        sch = schluessel(konto, tag, betrag, text, zaehler[basis])
         cur = db.execute("INSERT OR IGNORE INTO buchungen (konto, datum, betrag, text, kategorie, schluessel) "
                          "VALUES (?,?,?,?,?,?)", (konto, tag, betrag, text, kategorie(text, betrag, eigene), sch))
         neu += cur.rowcount

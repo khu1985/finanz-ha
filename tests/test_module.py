@@ -1311,3 +1311,39 @@ def test_berater_nutzt_eingestellte_ki_entitaet(k, db, monkeypatch):
     k["ki"].update(aktiv=True, entity="ai_task.lokal")
     berater.fragen(k, db, berater.profile(k)[0]["id"], "Amortisieren oder anlegen?")
     assert aufrufe == ["ai_task.lokal"]
+
+
+def test_konten_verwalten(db):
+    import budget
+    a = vm.konto_anlegen(db, "Sparkonto", "bank")
+    b = vm.konto_anlegen(db, "Raiffeisen …7890", "bank")
+    for tag, betrag in (("2026-01-31", 1000), ("2026-02-28", 1200), ("2026-03-31", 1500)):
+        vm.saldo_setzen(db, a, tag, betrag)
+    vm.saldo_setzen(db, b, "2026-03-31", 9999)
+    vm.saldo_setzen(db, b, "2026-04-30", 1700)
+    buchung = [("2026-03-05", -50.0, "Migros")]
+    budget.speichern(db, "Sparkonto", buchung)
+    # umbenennen: Buchungen wandern mit, ein erneuter Import erkennt sie als schon vorhanden
+    vm.konto_aendern(db, a, "Sparkonto ZKB", "bank", "", "CHF", "IBAN …1234")
+    assert vm.konto(db, a)["buchungen"] == 1 and vm.konto(db, a)["notiz"] == "IBAN …1234"
+    assert budget.speichern(db, "Sparkonto ZKB", buchung) == 0
+    with pytest.raises(ValueError, match="schon ein Konto"):
+        vm.konto_aendern(db, a, "Raiffeisen …7890", "bank", "", "CHF")
+    # Saldi bearbeiten und löschen
+    g, l_ = vm.saldi_aendern(db, a, {"2026-02-28": ("2026-02-27", 1250.0)}, ["2026-01-31"])
+    assert (g, l_) == (1, 1)
+    assert [(s["datum"], s["betrag"]) for s in vm.saldi(db, a)] == [("2026-03-31", 1500), ("2026-02-27", 1250)]
+    # zusammenführen: gleicher Tag → Zielkonto gilt; Buchungen und Saldi wandern, Quelle verschwindet
+    budget.speichern(db, "Raiffeisen …7890", buchung + [("2026-04-02", -20.0, "Coop")])
+    assert vm.zusammenfuehren(db, b, a) == 1                                   # nur 2026-04-30 neu
+    assert vm.konto(db, b) is None
+    assert {s["datum"]: s["betrag"] for s in vm.saldi(db, a)}["2026-03-31"] == 1500
+    assert vm.konto(db, a)["buchungen"] == 2                                   # Migros nur einmal
+    # auflösen und wieder öffnen
+    vm.aufloesen(db, a, "2026-05-31")
+    assert vm.konten(db)[0]["aufgeloest"] == "2026-05-31" and vm.konten(db)[0]["betrag"] == 0
+    vm.aufloesen(db, a, None)
+    assert vm.konten(db)[0]["aufgeloest"] == "" and vm.konten(db)[0]["betrag"] == 1700
+    # löschen entfernt auch die Buchungen
+    vm.konto_loeschen(db, a)
+    assert db.execute("SELECT COUNT(*) FROM buchungen").fetchone()[0] == 0

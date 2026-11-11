@@ -1,5 +1,6 @@
 import threading
 import urllib.error
+import re
 import urllib.parse
 import urllib.request
 from http.server import ThreadingHTTPServer
@@ -188,3 +189,26 @@ def test_nur_ingress_in_home_assistant(server, monkeypatch):
     with pytest.raises(urllib.error.HTTPError) as e:
         urllib.request.urlopen(server + "/")
     assert e.value.code == 403
+
+
+def test_konto_verwalten_seite(server):
+    _post(f"{server}/vermoegen/saldo", {"konto": "Privatkonto", "art": "bank", "datum": "2026-01-31", "betrag": "1'000"})
+    _post(f"{server}/vermoegen/saldo", {"konto": "Privatkonto", "art": "bank", "datum": "2026-02-28", "betrag": "1'200"})
+    liste = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    kid = int(re.search(r'href="vermoegen/konto/(\d+)"', liste).group(1))
+    html = urllib.request.urlopen(f"{server}/vermoegen/konto/{kid}").read().decode()
+    assert "Saldi" in html and 'name="b_2026-02-28"' in html and "Zusammenführen" in html
+    code, ziel = _post(f"{server}/vermoegen/konto/{kid}/speichern",
+                       {"name": "Privatkonto UBS", "art": "bank", "person": "", "waehrung": "CHF", "notiz": "…1234"})
+    assert code == 303 and ziel.startswith(f"/vermoegen/konto/{kid}")
+    code, ziel = _post(f"{server}/vermoegen/konto/{kid}/saldi",
+                       {"aktion": "speichern", "d_2026-01-31": "2026-01-31", "b_2026-01-31": "1000",
+                        "d_2026-02-28": "2026-02-28", "b_2026-02-28": "1'250", "neu_datum": "2026-03-31", "neu_betrag": "1300"})
+    assert "1%20ge%C3%A4ndert" in ziel or "1 geändert" in urllib.parse.unquote(ziel)
+    code, _ = _post(f"{server}/vermoegen/konto/{kid}/saldi", {"aktion": "loeschen", "sel_2026-01-31": "1"})
+    html = urllib.request.urlopen(f"{server}/vermoegen/konto/{kid}").read().decode()
+    assert "Privatkonto UBS" in html and 'name="b_2026-01-31"' not in html and 'value="1250.00"' in html
+    _post(f"{server}/vermoegen/konto/{kid}/aufloesen", {"datum": "2026-04-30"})
+    assert "Aufgelöste Konten (1)" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    code, _ = _post(f"{server}/vermoegen/loeschen", {f"sel_k:{kid}": "1"})
+    assert code == 303 and "Privatkonto UBS" not in urllib.request.urlopen(f"{server}/vermoegen").read().decode()

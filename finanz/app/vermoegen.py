@@ -41,6 +41,10 @@ def verbinden(pfad: Path) -> sqlite3.Connection:
     if "waehrung" not in spalten:
         db.execute("ALTER TABLE konten ADD COLUMN waehrung TEXT NOT NULL DEFAULT 'CHF'")
         db.commit()
+    for spalte in ("notiz", "aufgeloest"):              # aufgeloest: Datum, an dem das Konto aufgelöst wurde
+        if spalte not in spalten:
+            db.execute(f"ALTER TABLE konten ADD COLUMN {spalte} TEXT NOT NULL DEFAULT ''")
+            db.commit()
     return db
 
 
@@ -85,9 +89,107 @@ def waehrung_setzen(db, konto_id: int, waehrung: str) -> None:
     db.commit()
 
 
-def konto_loeschen(db, konto_id: int) -> None:
+def _buchungen_da(db) -> bool:
+    return bool(db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'buchungen'").fetchone())
+
+
+def konto_loeschen(db, konto_id: int, mit_buchungen: bool = True) -> None:
+    """Konto mit allen Saldi löschen – und mit den Buchungen des Budgets, die zu diesem Konto gehören."""
+    k = konto(db, konto_id)
+    if k and mit_buchungen and _buchungen_da(db):
+        db.execute("DELETE FROM buchungen WHERE konto = ?", (k["name"],))
     db.execute("DELETE FROM saldi WHERE konto_id = ?", (konto_id,))
     db.execute("DELETE FROM konten WHERE id = ?", (konto_id,))
+    db.commit()
+
+
+def konto(db, konto_id: int) -> dict | None:
+    r = db.execute("SELECT * FROM konten WHERE id = ?", (konto_id,)).fetchone()
+    if not r:
+        return None
+    erg = dict(r)
+    erg["buchungen"] = (db.execute("SELECT COUNT(*) FROM buchungen WHERE konto = ?", (erg["name"],)).fetchone()[0]
+                        if _buchungen_da(db) else 0)
+    return erg
+
+
+def saldi(db, konto_id: int) -> list[dict]:
+    """Alle Saldi eines Kontos, neueste zuerst."""
+    return [dict(r) for r in db.execute("SELECT datum, betrag FROM saldi WHERE konto_id = ? ORDER BY datum DESC",
+                                        (konto_id,))]
+
+
+def konto_aendern(db, konto_id: int, name: str, art: str, person: str, waehrung: str, notiz: str = "") -> None:
+    """Stammdaten ändern; beim Umbenennen wandern die Buchungen des Budgets mit."""
+    alt = konto(db, konto_id)
+    if not alt:
+        raise ValueError("Konto nicht gefunden.")
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Der Kontoname darf nicht leer sein.")
+    andere = db.execute("SELECT id FROM konten WHERE name = ? AND id != ?", (name, konto_id)).fetchone()
+    if andere:
+        raise ValueError(f"Es gibt schon ein Konto «{name}» – zum Zusammenlegen «Zusammenführen» verwenden.")
+    db.execute("UPDATE konten SET name = ?, art = ?, person = ?, waehrung = ?, notiz = ? WHERE id = ?",
+               (name, art if art in ARTEN else "sonstiges", person or "", (waehrung or "CHF").upper(),
+                (notiz or "").strip(), konto_id))
+    if name != alt["name"] and _buchungen_da(db):
+        import budget
+        budget.konto_umbenennen(db, alt["name"], name)
+    db.commit()
+
+
+def saldi_aendern(db, konto_id: int, aenderungen: dict[str, tuple[str, float]], loeschen: list[str]) -> tuple[int, int]:
+    """Saldi bearbeiten: {altes Datum: (neues Datum, Betrag)} und Daten zum Löschen. Gibt (geändert, gelöscht)."""
+    vorher = {s["datum"]: s["betrag"] for s in saldi(db, konto_id)}
+    geloescht = 0
+    for d in loeschen:
+        if d in vorher:
+            db.execute("DELETE FROM saldi WHERE konto_id = ? AND datum = ?", (konto_id, d))
+            geloescht += 1
+    geaendert = 0
+    for alt, (neu, betrag) in aenderungen.items():
+        if alt in loeschen or alt not in vorher or (neu == alt and abs(betrag - vorher[alt]) < 0.005):
+            continue
+        db.execute("DELETE FROM saldi WHERE konto_id = ? AND datum = ?", (konto_id, alt))
+        db.execute("INSERT OR REPLACE INTO saldi (konto_id, datum, betrag) VALUES (?, ?, ?)", (konto_id, neu, betrag))
+        geaendert += 1
+    db.commit()
+    return geaendert, geloescht
+
+
+def zusammenfuehren(db, quelle_id: int, ziel_id: int) -> int:
+    """Saldi und Buchungen von `quelle` ins Konto `ziel` übernehmen und `quelle` löschen.
+
+    Gibt es an einem Tag in beiden Konten einen Saldo, gilt der des Zielkontos. Gibt die Anzahl übernommener Saldi."""
+    if quelle_id == ziel_id:
+        raise ValueError("Ein Konto kann nicht mit sich selbst zusammengeführt werden.")
+    q, z = konto(db, quelle_id), konto(db, ziel_id)
+    if not q or not z:
+        raise ValueError("Konto nicht gefunden.")
+    vorher = db.execute("SELECT COUNT(*) FROM saldi WHERE konto_id = ?", (ziel_id,)).fetchone()[0]
+    db.execute("INSERT OR IGNORE INTO saldi (konto_id, datum, betrag) SELECT ?, datum, betrag FROM saldi WHERE konto_id = ?",
+               (ziel_id, quelle_id))
+    neu = db.execute("SELECT COUNT(*) FROM saldi WHERE konto_id = ?", (ziel_id,)).fetchone()[0] - vorher
+    if _buchungen_da(db):
+        import budget
+        budget.konto_umbenennen(db, q["name"], z["name"])
+    db.execute("DELETE FROM saldi WHERE konto_id = ?", (quelle_id,))
+    db.execute("DELETE FROM konten WHERE id = ?", (quelle_id,))
+    db.commit()
+    return neu
+
+
+def aufloesen(db, konto_id: int, tag: str | None) -> None:
+    """Konto als aufgelöst markieren (Saldo 0 ab diesem Tag, Verlauf bleibt) – oder mit tag=None wieder öffnen."""
+    if tag:
+        db.execute("INSERT OR REPLACE INTO saldi (konto_id, datum, betrag) VALUES (?, ?, 0)", (konto_id, tag))
+        db.execute("UPDATE konten SET aufgeloest = ? WHERE id = ?", (tag, konto_id))
+    else:
+        k = konto(db, konto_id)
+        if k and k["aufgeloest"]:
+            db.execute("DELETE FROM saldi WHERE konto_id = ? AND datum = ? AND betrag = 0", (konto_id, k["aufgeloest"]))
+        db.execute("UPDATE konten SET aufgeloest = '' WHERE id = ?", (konto_id,))
     db.commit()
 
 
@@ -129,7 +231,7 @@ def _vorzeichen(art: str, betrag: float) -> float:
 def konten(db) -> list[dict]:
     rows = db.execute(
         """
-        SELECT k.id, k.name, k.art, k.person, k.waehrung, s.datum, s.betrag,
+        SELECT k.id, k.name, k.art, k.person, k.waehrung, k.notiz, k.aufgeloest, s.datum, s.betrag,
                (SELECT COUNT(*) FROM saldi WHERE konto_id = k.id) AS anzahl
         FROM konten k
         LEFT JOIN saldi s ON s.konto_id = k.id

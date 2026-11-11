@@ -136,6 +136,7 @@ input,select,textarea{font:inherit;color:var(--text);background:var(--bg);border
 border-radius:8px;padding:8px 10px;width:100%}
 textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:420px}
 textarea.kurz{min-height:0;font-family:inherit}textarea.mittel{min-height:240px}
+.felder label.breit{grid-column:1/-1}
 .vorschlag{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-size:inherit;color:inherit;padding:8px 0;border-bottom:1px solid var(--linie)}
 .vorschlag input{margin-top:3px;flex:none;width:auto!important}.vorschlag>span{flex:1;min-width:0}.vorschlag span.leise{display:block;font-size:.9em}
 button,.knopf{font:inherit;background:var(--akzent);color:#fff;border:0;border-radius:8px;padding:8px 16px;
@@ -779,20 +780,26 @@ def vermoegen(k: dict, db) -> str:
     personen = [p["name"] for p in k["personen"]]
     import waehrung as wg
     kurse = wg.kurse(db)
-    zeilen = []
-    for x in ks:
+    def zeile(x):
         w = x["waehrung"] or "CHF"
-        w_opts = "".join(f'<option{" selected" if o == w else ""}>{o}</option>' for o in wg.WAEHRUNGEN)
-        w_form = (f'<form method="post" action="vermoegen/waehrung" class="inline"><input type="hidden" name="id" value="{x["id"]}">'
-                  f'<select name="waehrung" onchange="this.form.submit()" aria-label="Währung">{w_opts}</select></form>')
         saldo = chf(x["wert"]) + (f'<br><small class="leise">{w} {chf(abs(x["betrag"] or 0))} × {kurse.get(w, (1, ""))[0]:.4f}</small>'
                                   if w != "CHF" else "")
-        zeilen.append([escape(x["name"]), vm.ARTEN.get(x["art"], x["art"]), escape(x["person"] or "gemeinsam"),
-                       escape(x["datum"] or "–"), w_form, saldo,
-                       f'<form method="post" action="vermoegen/loeschen" onsubmit="return confirm(\'Konto und alle Saldi löschen?\')">'
-                       f'<input type="hidden" name="id" value="{x["id"]}"><button class="zweit klein">Löschen</button></form>'])
-    zeilen.append(["<b>Total</b>", "", "", "", "", f"<b>{chf(nv['total'])}</b>", ""])
-    liste = tabelle(["Konto", "Art", "Person", "Stand", "Währung", "Saldo CHF", ""], zeilen, zahlen_ab=5)
+        name = (f'<a href="vermoegen/konto/{x["id"]}">{escape(x["name"])}</a>'
+                + (f'<br><small class="leise">{escape(x["notiz"])}</small>' if x.get("notiz") else ""))
+        stand = ("<span>" + escape(x["datum"] or "–")
+                 + (f' <small class="leise">({x["anzahl"]})</small>' if x["anzahl"] > 1 else "") + "</span>")
+        return [auswahl_zelle(f"k:{x['id']}"), name, vm.ARTEN.get(x["art"], x["art"]), escape(x["person"] or "gemeinsam"),
+                stand, saldo, f'<a class="knopf zweit klein" href="vermoegen/konto/{x["id"]}">Verwalten</a>']
+    offen = [x for x in ks if not x.get("aufgeloest")]
+    zu = [x for x in ks if x.get("aufgeloest")]
+    zeilen = [zeile(x) for x in offen]
+    zeilen.append(["", "<b>Total</b>", "", "", "", f"<b>{chf(nv['total'])}</b>", ""])
+    kopf = ["", "Konto", "Art", "Person", "Stand (Saldi)", "Saldo CHF", ""]
+    liste = konten_form(tabelle(kopf, zeilen, zahlen_ab=5)
+                        + (f'<details><summary>Aufgelöste Konten ({len(zu)})</summary>'
+                           + tabelle(kopf, [zeile(x) for x in zu], zahlen_ab=5) + "</details>" if zu else ""))
+    liste += ('<p class="leise">Konto anklicken, um Name, Art, Person, Währung und Notiz zu ändern, einzelne Saldi zu '
+              'korrigieren oder zu löschen, Konten zusammenzuführen oder als aufgelöst zu markieren.</p>')
     fremd = sorted({x["waehrung"] for x in ks if (x["waehrung"] or "CHF") != "CHF"})
     if fremd:
         liste += ('<p class="leise">Kurse (CHF pro Einheit): ' + ", ".join(
@@ -834,6 +841,88 @@ Saldo-Spalte, den heutigen Kontostand als Endsaldo angeben.</p>
             + '<div class="raster">' + karte("Bank-Import", bank) + karte("Saldo erfassen", erfassen)
             + karte("CSV importieren (eigene Liste)", importieren)
             + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>")
+
+
+def konten_form(inhalt: str) -> str:
+    return ('<form method="post" action="vermoegen/loeschen" data-status="Wird gelöscht …">' + inhalt
+            + '<div class="zeile nicht-drucken"><label class="entfernen"><input type="checkbox" data-alle>alle auswählen'
+              '</label><button class="zweit klein" onclick="return confirm(\'Ausgewählte Konten mit allen Saldi und '
+              'Buchungen löschen?\')">Ausgewählte löschen</button></div></form>')
+
+
+def konto(k: dict, db, kid: int) -> str:
+    """Ein Konto verwalten: Stammdaten, Saldi bearbeiten/löschen, Verlauf, zusammenführen, auflösen, löschen."""
+    import waehrung as wg
+    x = vm.konto(db, kid)
+    if not x:
+        return '<p class="leer">Konto nicht gefunden.</p><p><a href="vermoegen">Zurück zum Vermögen</a></p>'
+    ss = vm.saldi(db, kid)
+    w = x["waehrung"] or "CHF"
+    aktuell = ss[0]["betrag"] if ss else 0.0
+    wert = vm._vorzeichen(x["art"], wg.in_chf(aktuell, w, db))
+    a = f"vermoegen/konto/{kid}"
+    kpis = '<div class="kpis">' + "".join([
+        kpi(chf(wert), "Saldo CHF" + (f" ({w} {chf(abs(aktuell))})" if w != "CHF" else "")),
+        kpi(str(len(ss)), "Saldi", f"{ss[-1]['datum']} bis {ss[0]['datum']}" if ss else ""),
+        kpi(str(x["buchungen"]), "Buchungen (Budget)"),
+        kpi(f"aufgelöst {x['aufgeloest']}" if x["aufgeloest"] else "offen", "Status"),
+    ]) + "</div>"
+    personen = [p["name"] for p in k["personen"]]
+    arten = "".join(f'<option value="{s}"{" selected" if s == x["art"] else ""}>{n}</option>' for s, n in vm.ARTEN.items())
+    pers = (f'<option value=""{"" if x["person"] else " selected"}>gemeinsam</option>'
+            + "".join(f'<option{" selected" if p == x["person"] else ""}>{escape(p)}</option>' for p in personen))
+    waehr = "".join(f'<option{" selected" if o == w else ""}>{o}</option>' for o in wg.WAEHRUNGEN)
+    stamm = f"""<form method="post" action="{a}/speichern"><div class="felder">
+<label>Name<input name="name" value="{escape(x['name'])}" required></label>
+<label>Art<select name="art">{arten}</select></label>
+<label>Person<select name="person">{pers}</select></label>
+<label>Währung<select name="waehrung">{waehr}</select></label>
+<label class="breit">Notiz (z. B. IBAN-Ende, Zweck, Kündigungsfrist)<input name="notiz" value="{escape(x.get('notiz') or '')}"></label>
+</div><div class="zeile"><button>Speichern</button></div></form>
+<p class="leise">Beim Umbenennen wandern die Buchungen im Budget mit.</p>"""
+    zeilen = [[auswahl_zelle(s["datum"]),
+               f'<input type="date" name="d_{s["datum"]}" value="{s["datum"]}" aria-label="Datum">',
+               f'<input name="b_{s["datum"]}" value="{s["betrag"]:.2f}" inputmode="decimal" aria-label="Betrag" '
+               'style="max-width:10em;text-align:right">'] for s in ss]
+    zeilen.append(["neu", f'<input type="date" name="neu_datum" value="{date.today().isoformat()}" aria-label="Datum neu">',
+                   '<input name="neu_betrag" inputmode="decimal" placeholder="Saldo hinzufügen" aria-label="Betrag neu" '
+                   'style="max-width:10em;text-align:right">'])
+    saldi_form = (f'<form method="post" action="{a}/saldi">'
+                  + tabelle(["", "Datum", f"Saldo ({w})"], zeilen, zahlen_ab=9)
+                  + '<div class="zeile nicht-drucken"><label class="entfernen"><input type="checkbox" data-alle>alle '
+                    'auswählen</label><button name="aktion" value="speichern">Änderungen speichern</button>'
+                    '<button class="zweit klein" name="aktion" value="loeschen" onclick="return confirm(\'Ausgewählte '
+                    'Saldi löschen?\')">Ausgewählte löschen</button></div></form>'
+                  + '<p class="leise">Datum oder Betrag direkt in der Tabelle ändern und speichern. Schulden (Hypothek, '
+                    'Kredit) als positiven Betrag erfassen.</p>')
+    verlauf = (dg.linie({x["name"]: [(s["datum"], s["betrag"]) for s in reversed(ss)]}) if len(ss) > 1
+               else '<p class="leer">Für einen Verlauf braucht es mindestens zwei Saldi.</p>')
+    andere = [y for y in vm.konten(db) if y["id"] != kid]
+    zusammen = (f"""<form method="post" action="{a}/zusammenfuehren" onsubmit="return confirm('Dieses Konto ins gewählte übernehmen und danach löschen?')"><div class="felder"><label>Saldi und Buchungen übernehmen in<select name="ziel">
+{"".join(f'<option value="{y["id"]}">{escape(y["name"])}</option>' for y in andere)}</select></label></div>
+<div class="zeile"><button class="zweit">Zusammenführen</button></div></form>
+<p class="leise">Für doppelte Konten, z. B. von Hand erfasst und später per Bank-Import angelegt. Gibt es am selben Tag in
+beiden Konten einen Saldo, gilt der des gewählten Kontos.</p>""" if andere else '<p class="leer">Keine anderen Konten.</p>')
+    if x["aufgeloest"]:
+        schliessen = (f'<form method="post" action="{a}/aufloesen"><input type="hidden" name="oeffnen" value="1">'
+                      f'<p>Aufgelöst per {escape(x["aufgeloest"])} – Saldo 0, der Verlauf bleibt erhalten.</p>'
+                      '<div class="zeile"><button class="zweit">Wieder öffnen</button></div></form>')
+    else:
+        schliessen = (f'<form method="post" action="{a}/aufloesen"><div class="felder"><label>Aufgelöst per'
+                      f'<input type="date" name="datum" value="{date.today().isoformat()}" required></label></div>'
+                      '<div class="zeile"><button class="zweit">Als aufgelöst markieren</button></div></form>'
+                      '<p class="leise">Setzt den Saldo ab diesem Tag auf 0, behält den Verlauf und verschiebt das Konto '
+                      'in «Aufgelöste Konten».</p>')
+    loeschen = (f'<form method="post" action="vermoegen/loeschen" onsubmit="return confirm(\'Konto «{escape(x["name"])}» '
+                f'mit {len(ss)} Saldi und {x["buchungen"]} Buchungen endgültig löschen?\')">'
+                f'<input type="hidden" name="id" value="{kid}"><div class="zeile"><button class="zweit loeschen">Konto löschen'
+                f'</button></div></form><p class="leise">Löscht {len(ss)} Saldi und {x["buchungen"]} Buchungen. Für ein '
+                'geschlossenes Konto besser «aufgelöst» wählen – dann stimmt der Vermögensverlauf weiterhin.</p>')
+    return (f'<p><a href="vermoegen">← Vermögen</a></p>' + kpis
+            + '<div class="raster">' + karte("Konto", stamm) + karte("Verlauf", verlauf) + "</div>"
+            + karte("Saldi", saldi_form)
+            + '<div class="raster">' + karte("Zusammenführen", zusammen) + karte("Auflösen", schliessen)
+            + karte("Löschen", loeschen) + "</div>")
 
 
 # ---------------------------------------------------------------- Einstellungen

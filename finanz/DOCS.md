@@ -184,6 +184,18 @@ Hinweise zu Klumpenrisiko (Arbeitgeberaktien) und Hypothekarzins. Risikoprofil u
 
 Saldi von Hand, als eigene Liste oder per **Bank-Import**; ein Saldo pro Konto und Tag, neuere ersetzen ältere.
 
+**Konto verwalten:** Kontoname in der Liste anklicken (oder «Verwalten»).
+
+| Was | Wie |
+|---|---|
+| Name, Art, Person, Währung, Notiz | Karte «Konto» → Speichern; beim Umbenennen wandern die Budget-Buchungen mit |
+| Saldo korrigieren | in der Tabelle «Saldi» Datum oder Betrag ändern → Änderungen speichern |
+| Saldo löschen | Kästchen ankreuzen → Ausgewählte löschen |
+| Saldo nachtragen | letzte Zeile «neu» ausfüllen → Änderungen speichern |
+| doppelte Konten | «Zusammenführen» ins richtige Konto: Saldi und Buchungen wandern mit (am selben Tag gilt das Zielkonto, gleiche Buchungen zählen einmal) |
+| Konto geschlossen | «Als aufgelöst markieren»: Saldo 0 ab dem Datum, Verlauf bleibt, Konto steht eingeklappt unter «Aufgelöste Konten» |
+| Konto löschen | auf der Kontoseite oder mehrere per Kästchen in der Liste – löscht Saldi und Buchungen |
+
 **Bank-Import.** Kontoauszug im E-Banking als CSV exportieren (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken,
 Migros Bank, neon, Yuh u. a.) und unter «Vermögen → Bank-Import» hochladen oder als `bank*.csv` bzw. `konto*.csv` in den
 Import-Ordner legen. Die App erkennt Kodierung, Trennzeichen, Vorspann-Zeilen, IBAN, Bank und die Spalten (Datum,
