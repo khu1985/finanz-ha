@@ -490,7 +490,11 @@ STICHWORTE = {
     "typ": r"", "sparte": r"", "versicherer": r"",
 }
 KOPF_FELDER = {"typ", "sparte", "versicherer"}   # dafür zählen die ersten Zeilen (Briefkopf, Titel)
-ADRESSE = re.compile(r"\b(?:herr|frau|familie|eheleute)\b|\b\d{4}\s+[A-ZÄÖÜ][a-zäöüé]+|"
+# Zeilen, die nie in einen Auszug kommen: Anrede, Adresse, Personalien und Gesundheitsangaben (Vorbehalte)
+PERSOENLICH = re.compile(r"geburtsdatum|\bgeb\.|nationalit|zivilstand|heimatort|versicherte\s+person|"
+                         r"versicherungsnehmer|zahlbar\s+durch|anschrift|eigentümerschaft|e-?mail|@|"
+                         r"erkrank|verletzung|diagnose|vorbehalt|gelenk|befund|operation|raucher|leiden\b", re.I)
+ADRESSE = re.compile(r"\b(?:herrn?|frau|familie|eheleute)\b|\b\d{4}\s+[A-ZÄÖÜ][a-zäöüé]+|"
                      r"\b[A-ZÄÖÜ][a-zäöüé]+(?:strasse|weg|gasse|platz|allee|rain|ring)\s+\d", re.I)
 MAX_ZEILEN = 40
 MAX_DOKUMENTE = 12
@@ -535,7 +539,7 @@ def auszug(text: str, felder: set[str], private: list[str]) -> list[str]:
     aus = []
     for i in sorted(nehmen):
         z = zeilen[i]
-        if ADRESSE.search(z) or MUSTER[1][0].search(z) or MUSTER[2][0].search(z):
+        if ADRESSE.search(z) or PERSOENLICH.search(z) or MUSTER[1][0].search(z) or MUSTER[2][0].search(z):
             continue
         z = _auszug_anonym(z, private)[:160]
         if z.strip("‹…› ") and (not aus or aus[-1] != z):

@@ -690,8 +690,8 @@ ohne die PDFs zu schicken. Pro betroffenem Dokument kommen nur die Zeilen rund u
 |---|---|
 | Ziffern | jede durch 9 ersetzt: «CHF 9'999.99», «99.99.9999» – das Format bleibt erkennbar |
 | Namen, Orte, Policen- und Kontonummern aus deinen Daten | ‹…› |
-| Zeilen mit Anrede (Herr, Frau), Postleitzahl und Ort, Strasse und Hausnummer, IBAN, AHV-Nummer | weggelassen |
-| E-Mail | ‹E-Mail› |
+| Zeilen mit Anrede (Herr, Frau), Postleitzahl und Ort, Strasse und Hausnummer, IBAN, AHV-Nummer, E-Mail | weggelassen |
+| Zeilen mit Personalien (Geburtsdatum, Nationalität, versicherte Person) und Gesundheitsangaben (Vorbehalte, Erkrankungen, Verletzungen) | weggelassen |
 
 Lies den Text trotzdem durch, bevor du ihn weitergibst – Namen, die nirgends in der App stehen, kann sie nicht kennen.
 

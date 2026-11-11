@@ -107,6 +107,8 @@ VERSICHERER = [
     "Lalux", "Youplus", "Liechtenstein Life", "Fisch Asset", "Europäische Reiseversicherung", "Epona",
 ]
 
+ZAHLWORTE = {"einen": 1, "ein": 1, "eins": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6, "zwölf": 12}
+
 MONATE = {"januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4, "mai": 5, "juni": 6, "juli": 7,
           "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12}
 
@@ -299,7 +301,8 @@ def praemie_erkennen(text: str) -> float:
         z = zeile.lower()
         if not re.search(r"prämie|praemie|total|zu bezahlen|rechnungsbetrag|betrag", z):
             continue
-        if re.search(r"summe|franchise|selbstbehalt|versicherungswert|kapital|leistung", z):
+        if re.search(r"summe|franchise|selbstbehalt|versicherungswert|kapital|leistung|zwischentotal|subtotal|"
+                     r"überschuss|abgaben?\b|stempel", z):
             continue
         for m in re.finditer(BETRAG, zeile):
             try:
@@ -309,7 +312,8 @@ def praemie_erkennen(text: str) -> float:
             if wert < 10 or (1900 <= wert <= 2100 and "." not in m.group(1)):
                 continue  # Jahreszahlen und Kleinstbeträge
             faktor = 12 if re.search(r"monat|mtl", z) else 4 if "quartal" in z else 2 if "halbj" in z else 1
-            gewicht = 3 if re.search(r"jahresprämie|total|gesamtprämie|zu bezahlen", z) else 1
+            gewicht = (4 if re.search(r"zu bezahlen|rechnungsbetrag|total\s+jahresprämie|jahresprämie\s+total", z)
+                       else 3 if re.search(r"jahresprämie|total|gesamtprämie", z) else 1)
             kandidaten.append((gewicht, wert * faktor))
     if not kandidaten:
         return 0.0
@@ -526,6 +530,9 @@ def _allgemein(text: str) -> dict:
         if re.search(rf"\b{re.escape(name)}\b", text, re.I):
             erg["versicherer"] = name
             break
+    if erg.get("versicherer") == "Helvetia" and re.search(r"\bdeine?\s+(?:jahresprämie|prämie|police|versicherung)", text,
+                                                          re.I):
+        erg["versicherer"] = "Smile"       # smile.direct gehört zur Helvetia und duzt
     m = re.search(r"(?:Police|Policen|Vertrags|Versicherten)[- ]?(?:Nr\.?|nummer)\s*:?\s*([A-Z0-9][A-Z0-9./\-]{3,30})",
                   text, re.I)
     if m:
@@ -535,12 +542,25 @@ def _allgemein(text: str) -> dict:
     if m:
         erg["person"] = m.group(2).strip()
     erg["praemie_jahr"] = praemie_erkennen(text)
-    erg["beginn"] = _erstes_datum(text, r"vertragsbeginn|versicherungsbeginn|beginn|gültig ab|ab dem")
+    erg["beginn"] = _erstes_datum(text, r"vertragsbeginn|versicherungsbeginn|beginn|gültig ab|ab dem|erstmals fällig am")
     erg["ablauf"] = _erstes_datum(text, r"vertragsablauf|ablauf|vertragsende|gültig bis|läuft bis|endet am")
-    m = re.search(r"kündigungsfrist\D{0,20}(\d{1,2})\s*monat", text, re.I) or \
-        re.search(r"(\d{1,2})\s*monate?\D{0,40}(?:vor|kündig)", text, re.I)
+    m = re.search(r"(?:versicherungs|vertrags)?(?:laufzeit|dauer)\D{0,30}" + DATUM + r"\s*(?:-|–|bis)\s*" + DATUM, text, re.I)
     if m:
-        erg["kuendigungsfrist_monate"] = int(m.group(1))
+        try:
+            erg["beginn"] = erg["beginn"] or datum_iso(m.group(1))
+            erg["ablauf"] = erg["ablauf"] or datum_iso(m.group(2))
+        except (ValueError, AttributeError, IndexError):
+            pass
+    if not erg["ablauf"]:
+        erg["ablauf"] = _erstes_datum(text, r"ende der (?:leistungspflicht|prämienzahlung|versicherung)\w*(?:\s+spätestens)?")
+    zahl_ = r"(\d{1,2}|" + "|".join(ZAHLWORTE) + r")"
+    m = re.search(r"kündigungsfrist\D{0,20}" + zahl_ + r"\s*monat", text, re.I) or \
+        re.search(zahl_ + r"\s*monate?\D{0,40}(?:vor|kündig)", text, re.I)
+    if m:
+        w = m.group(1).lower()
+        erg["kuendigungsfrist_monate"] = int(w) if w.isdigit() else ZAHLWORTE[w]
+    elif re.search(r"jährliche[sn]?\s+kündigungsrecht", text, re.I):
+        erg["kuendigungsfrist_monate"] = 3
     m = re.search(r"franchise\D{0,20}" + BETRAG, text, re.I)
     if m:
         erg["franchise"] = zahl(m.group(1))

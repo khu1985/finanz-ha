@@ -1,6 +1,7 @@
 """Versicherungen, Vorsorgedokumente, Risiko, Konkubinat, Berater und Import-Ordner (erfundene Daten)."""
 import copy
 from datetime import date
+import re
 
 import pytest
 
@@ -1244,6 +1245,53 @@ def test_kantonale_gebaeudeversicherung_nicht_kuendbar():
     assert vi.naechster_termin({**e, "ablauf": "2026-12-31"}, date(2026, 6, 1)) is None
     privat = "Helvetia Versicherungen\nGebäudeversicherung\n" + "Zeile\n" * 15 + "Feuer ist bei der BGV versichert\n"
     assert vi.erkennen(privat)["versicherer"] == "Helvetia"
+
+
+def test_erkennung_aus_textauszuegen_0_30():
+    # Rechnung mit Zwischentotal und Überschussbeteiligung: der zu bezahlende Betrag zählt
+    bgv = ("Basellandschaftliche Gebäudeversicherung\nJahresprämienrechnung\nGrundstück Grundbetrag 80.00 4.00 84.00\n"
+           "Zwischentotal 512.40\nÜberschussbeteiligung Teil Prämie -40.10\nZu bezahlender Betrag 468.30\n")
+    assert vi.erkennen(bgv)["praemie_jahr"] == 468.30
+    # Kündigungsfrist als Wort, jährliches Kündigungsrecht
+    helv = ("Helvetia Versicherungen\nGebäudeversicherung\nJährliches Kündigungsrecht\n"
+            "Den Vertragspartnern steht das Recht zu, den Vertrag drei Monate vor Ablauf jedes Versicherungsjahres zu kündigen.")
+    assert vi.erkennen(helv)["kuendigungsfrist_monate"] == 3
+    # smile (Helvetia-Marke, duzt), Laufzeit von–bis
+    smile = ("Police 123\nVertragsdaten Versicherungslaufzeit 01.03.2025 – 28.02.2026\nHausratversicherung\n"
+             "Helvetia Schweizerische Versicherungsgesellschaft AG\nDeine Jahresprämie Total CHF 312.50\n"
+             "Gesetzliche Abgaben CHF 15.60\n")
+    e = vi.erkennen(smile)
+    assert e["versicherer"] == "Smile" and e["praemie_jahr"] == 312.50
+    assert e["beginn"] == "2025-03-01" and e["ablauf"] == "2026-02-28"
+    # Erwerbsunfähigkeit: Beginn «erstmals fällig», Ablauf «Ende der Leistungspflicht»
+    eu = ("Helvetia\nErwerbsunfähigkeit\nEnde der Leistungspflicht spätestens am 31.05.2049\n"
+          "Total Jahresprämie erstmals fällig am 01.06.2020 1'234.50\n")
+    e = vi.erkennen(eu)
+    assert e["beginn"] == "2020-06-01" and e["ablauf"] == "2049-05-31" and e["praemie_jahr"] == 1234.50
+
+
+def test_pk_ausweis_tabellen():
+    import dokumente as dk
+    text = ("Vorsorgeausweis Pensionskasse Asga\nAltersguthaben per 01.01.2026 123'456.00\n"
+            "Finanzierung über alle Pläne und Stiftungen Ihr Beitrag Ihre Altersgutschrift\n"
+            "pro Monat 450.00 1'100.00\nLeistungen im Alter - Projektionszinssatz 2%\n"
+            "Alter Alterskapital Altersrente\n60 400'000.00 21'000.00\n65 512'345.00 27'500.00\n"
+            "Todesfallsumme 150'000.00\nDie Kasse hat Ihr Alterskapital mit 2,5 % verzinst (2025).\n"
+            "Umwandlungssatz 5.4 %\nInvalidenrente, Wartefrist 24 Monate 36'000.00\n")
+    e = dk.erkennen(text)
+    w = e["werte"]
+    assert e["anbieter"] == "Asga"
+    assert w["ausweis_alterskapital"] == 512345 and w["ausweis_altersrente"] == 27500
+    assert w["sparbeitrag_jahr"] == 13200 and w["todesfallkapital_pk"] == 150000 and w["zins"] == 2.5
+
+
+def test_textauszug_ohne_personalien_und_gesundheitsangaben():
+    import vorschlaege as vs
+    text = ("Prämie total CHF 100.00\nE-Mail anna.muster@example.ch\nGeburtsdatum 01.02.1980\nNationalität Schweiz\n"
+            "Herrn Ben Muster\nkeine Leistungen für Erkrankungen des rechten Knies\nJahresprämie CHF 200.00\n")
+    zeilen = vs.auszug(text, {"praemie_jahr"}, [])
+    assert "Prämie total CHF 999.99" in zeilen and "Jahresprämie CHF 999.99" in zeilen
+    assert not any(re.search(r"example|muster|Geburt|Nationalit|Herrn|Erkrank", z, re.I) for z in zeilen)
 
 
 def test_ocr_fuer_gescannte_pdfs(monkeypatch, caplog):

@@ -39,9 +39,15 @@ WERTE_PK = {
     "partnerrente_pk": ("Ehegatten-/Partnerrente pro Jahr", "risiko.partnerrente_pk",
                         r"(?:ehegatten|lebenspartner|partner|witwen|hinterlassenen)-?rente"),
     "waisenrente_pk": ("Waisenrente pro Jahr", "risiko.waisenrente_pk", r"waisenrente"),
-    "todesfallkapital_pk": ("Todesfallkapital", "risiko.todesfallkapital_pk", r"todesfallkapital"),
+    "todesfallkapital_pk": ("Todesfallkapital", "risiko.todesfallkapital_pk", r"todesfall(?:kapital|summe)"),
     "lohn": ("Jahreslohn (AHV-Lohn)", "lohn_brutto", r"(?:massgebender |gemeldeter )?(?:jahreslohn|ahv-lohn|jahresbruttolohn)"),
 }
+
+PENSIONSKASSEN = ["Asga", "Publica", "BVK", "Basellandschaftliche Pensionskasse", "Pensionskasse Basel-Stadt", "PKBS",
+                  "Bernische Pensionskasse", "Previs", "Profond", "Nest", "Tellco", "Abendrot", "Noventus", "Gemini",
+                  "Comunitas", "Swisscanto", "Copré", "Ascaro", "Spida", "GastroSocial", "Migros-Pensionskasse",
+                  "Pensionskasse SBB", "PKZH", "Pensionskasse Stadt Zürich", "Luzerner Pensionskasse", "Vita",
+                  "Swiss Life", "AXA", "Helvetia", "Baloise", "Allianz", "Mobiliar", "PAX"]
 
 ANBIETER_3A = ["VIAC", "frankly", "finpension", "Selma", "True Wealth", "Descartes", "Mobiliar", "PostFinance",
                "Raiffeisen", "UBS", "ZKB", "Zürcher Kantonalbank", "BLKB", "Basellandschaftliche", "Swissquote",
@@ -130,6 +136,40 @@ def _wert_nach(text: str, muster: str, prozent: bool = False, alter65: bool = Fa
     return kandidaten[0][1]
 
 
+_ZAHL = r"(\d{1,3}(?:['’]\d{3})*(?:[.,]\d{2})?)"
+
+
+def _pk_tabellen(text: str) -> dict:
+    """Werte aus Tabellen, deren Beschriftung in der Zeile darüber steht (z. B. «Alter Alterskapital Altersrente»)."""
+    erg: dict = {}
+    zeilen = [z.strip() for z in text.splitlines()]
+    for i, kopf in enumerate(zeilen):
+        k = kopf.lower()
+        # Leistungen im Alter: Zeilen «Alter Kapital Rente», Zeile mit Alter 65 bzw. die letzte
+        if re.search(r"\balter\b.*alterskapital.*altersrente", k) and not _betraege(re.sub(r"\balter\b", "", k)):
+            reihen = []
+            for z in zeilen[i + 1:i + 8]:
+                m = re.match(r"(\d{2})\s+" + _ZAHL + r"\s+" + _ZAHL + r"\b", z)
+                if not m:
+                    break
+                reihen.append((int(m.group(1)), vi.zahl(m.group(2)), vi.zahl(m.group(3))))
+            if reihen:
+                alter, kapital, rente = next((r for r in reihen if r[0] == 65), reihen[-1])
+                erg["ausweis_alterskapital"], erg["ausweis_altersrente"] = kapital, rente
+        # Beiträge: «Ihr Beitrag  Ihre Altersgutschrift» / «pro Monat  123.45  678.90»
+        if "altersgutschrift" in k and i + 1 < len(zeilen):
+            spalten = re.findall(r"(?:sparbeitrag|risikobeitrag|altersgutschrift|beitrag)", k)
+            werte = _betraege(zeilen[i + 1])
+            if len(spalten) > 1 and len(werte) >= len(spalten):
+                w = werte[spalten.index("altersgutschrift")]
+                faktor = 12 if re.search(r"monat", zeilen[i + 1], re.I) else 1
+                erg["sparbeitrag_jahr"] = round(w * faktor, 2)
+    m = re.search(r"(?:alterskapital|altersguthaben|guthaben)\s+mit\s+(\d{1,2}(?:[.,]\d{1,3})?)\s*%\s+verzinst", text, re.I)
+    if m:
+        erg["zins"] = vi.zahl(m.group(1))
+    return erg
+
+
 def _stichtag(text: str) -> str:
     m = re.search(r"(?:stichtag|stand|per|gültig ab|datum)\D{0,15}(\d{1,2}\.\s?\d{1,2}\.\s?\d{4})", text, re.I)
     if m:
@@ -154,8 +194,10 @@ def erkennen(text: str) -> dict:
                            alter65=schluessel in ("ausweis_alterskapital", "ausweis_altersrente"))
             if w is not None:
                 erg["werte"][schluessel] = w
+        erg["werte"].update(_pk_tabellen(text))
         m = re.search(r"(?:pensionskasse|vorsorgeeinrichtung|stiftung)\s*:?\s*([A-ZÄÖÜ][^\n]{2,60})", text)
-        erg["anbieter"] = m.group(1).strip() if m else ""
+        bekannt = next((a for a in PENSIONSKASSEN if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
+        erg["anbieter"] = bekannt or (m.group(1).strip() if m else "")
     elif erg["typ"] == "saeule3a":
         w = _wert_nach(text, r"(?:saldo|kontostand|guthaben|gesamtvermögen|vermögen total|total vermögen|depotwert)")
         if w is not None:

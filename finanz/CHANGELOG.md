@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.30.0 – 2026-11-11
+
+Erkennung verbessert anhand anonymisierter Textauszüge:
+
+- **Prämie:** der zu bezahlende Betrag zählt vor Zwischentotal, Überschussbeteiligung, Stempel und Abgaben
+  (z. B. Rechnung der Basellandschaftlichen Gebäudeversicherung)
+- **Kündigungsfrist** auch als Wort («drei Monate vor Ablauf») und bei «jährlichem Kündigungsrecht»
+- **Beginn und Ablauf** aus «Versicherungslaufzeit … – …», «erstmals fällig am» und «Ende der Leistungspflicht»
+- **smile** wird auch erkannt, wenn im Text nur die Helvetia als Versicherungsgesellschaft steht
+- **Vorsorgeausweis Pensionskasse:** Tabellen mit Beschriftung in der Zeile darüber (Alter / Alterskapital /
+  Altersrente; Ihr Beitrag / Altersgutschrift pro Monat), «Todesfallsumme», «Alterskapital mit … % verzinst»,
+  bekannte Pensionskassen als Anbieter (z. B. Asga, Publica, BVK)
+- **Textauszüge noch zurückhaltender:** Zeilen mit E-Mail, Geburtsdatum, Nationalität, versicherter Person,
+  «Herrn» und Gesundheitsangaben (Vorbehalte, Erkrankungen, Verletzungen) werden weggelassen
+
 ## 0.29.0 – 2026-11-11
 
 - **Kantonale Gebäudeversicherungen** (z. B. Basellandschaftliche Gebäudeversicherung, GVZ, GVB, AGV, GVBS, ECA)
