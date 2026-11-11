@@ -1347,3 +1347,43 @@ def test_konten_verwalten(db):
     # löschen entfernt auch die Buchungen
     vm.konto_loeschen(db, a)
     assert db.execute("SELECT COUNT(*) FROM buchungen").fetchone()[0] == 0
+
+
+EU_POLICE = """Muster Versicherungen AG
+Police Nr. 12.345.678
+Erwerbsunfähigkeitsversicherung
+Versicherte Person: Person 1
+Leistungen bei Erwerbsunfähigkeit infolge Krankheit und Unfall
+Erwerbsunfähigkeitsrente jährlich CHF 24'000.00
+Wartefrist 720 Tage
+Leistungsdauer bis Alter 65
+Prämienbefreiung bei Erwerbsunfähigkeit eingeschlossen
+Leistungen ab einem Erwerbsunfähigkeitsgrad von 25 %
+Jahresprämie CHF 1'234.50
+Vertragsbeginn 01.01.2020 Vertragsablauf 31.12.2049"""
+
+
+def test_invaliditaet_aus_policen(k, db, tmp_path):
+    import sichtung
+    e = vi.erkennen(EU_POLICE)
+    assert e["sparte"] == "erwerbsunfaehigkeit"
+    assert (e["iv_rente_jahr"], e["iv_wartefrist_monate"], e["iv_bis_alter"]) == (24_000, 24, 65)
+    assert (e["iv_ursache"], e["iv_grad_min"], e["iv_beitragsbefreiung"]) == ("Krankheit und Unfall", 25, 1)
+    monatlich = vi.iv_erkennen("Invalidenrente\nCHF 1'500 pro Monat\nInvaliditätskapital CHF 100'000")
+    assert monatlich["iv_rente_jahr"] == 18_000 and monatlich["iv_kapital"] == 100_000
+    assert vi.iv_erkennen("Hausratversicherung Versicherungssumme CHF 80'000") == {}
+    # in die Risiko-Rechnung: «Extern» aus der Police, solange in den Einstellungen 0 steht
+    vid = vi.hochladen(db, tmp_path, "eu.pdf", pdf(EU_POLICE))
+    vi.aktualisieren(db, vid, {"person": "Person 1"})
+    k["personen"][0]["risiko"]["iv_rente_extern"] = 0
+    r = vi.risiko(k, vs.ahv(k, 2026), vi.alle(db))[0]
+    assert r.iv_extern == 24_000
+    k["personen"][0]["risiko"]["iv_rente_extern"] = 10_000                      # eigener Wert hat Vorrang
+    r = vi.risiko(k, vs.ahv(k, 2026), vi.alle(db))[0]
+    assert r.iv_extern == 10_000 and any("Policen 24'000" in h for h in r.hinweise)
+    # von Hand bearbeitet: Neu-Sichten ergänzt nur leere IV-Felder, überschreibt nichts
+    vi.aktualisieren(db, vid, {"praemie_jahr": 999.0, "iv_rente_jahr": 0, "iv_wartefrist_monate": 12}, quelle="hand")
+    sichtung.ausfuehren(k, db, tmp_path, "Test")
+    v = vi.einer(db, vid)
+    assert v["praemie_jahr"] == 999 and v["iv_wartefrist_monate"] == 12 and v["iv_rente_jahr"] == 24_000
+    assert v["quelle"] == "hand"

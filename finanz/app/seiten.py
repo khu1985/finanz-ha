@@ -1160,7 +1160,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px"><button>Importieren</button></div></form>"""
     if not vertraege:
         return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte(
-            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + krankenkasse_karte(k, db) + risiko_karte(k)
+            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + krankenkasse_karte(k, db) + risiko_karte(k, [])
     zeilen = []
     for v in vertraege:
         t = vi.naechster_termin(v, heute)
@@ -1201,7 +1201,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
             + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>"
             + '<div class="raster">' + karte("Kündigungstermine", termin_html) + karte("Prämien nach Sparte", sparten) + "</div>"
             + karte("Deckungscheck", _deckung(k, vertraege))
-            + krankenkasse_karte(k, db) + risiko_karte(k))
+            + krankenkasse_karte(k, db) + risiko_karte(k, vertraege))
 
 
 def _deckung(k: dict, vertraege: list[dict]) -> str:
@@ -1227,6 +1227,31 @@ def versicherung(k: dict, db, vid: int) -> str:
             wert = f"{wert:.2f}".rstrip("0").rstrip(".")
         return f'<label>{escape(text)}<input name="{name}" type="{typ}" value="{escape(str(wert))}"></label>'
 
+    # Leistungen bei Invalidität / Erwerbsunfähigkeit – offen bei passenden Sparten oder wenn schon Werte da sind
+    iv_werte = any(v.get(f) for f in vi.IV_FELDER)
+    ursache = "".join(f'<option{" selected" if o == (v.get("iv_ursache") or "") else ""}>{escape(o)}</option>'
+                      for o in vi.IV_URSACHEN)
+    befreiung = (f'<label>Prämienbefreiung bei Invalidität<select name="iv_beitragsbefreiung">'
+                 f'<option value="0"{"" if v.get("iv_beitragsbefreiung") else " selected"}>nein / unbekannt</option>'
+                 f'<option value="1"{" selected" if v.get("iv_beitragsbefreiung") else ""}>ja</option></select></label>')
+
+    def iv_feld(name, text, hilfe=""):
+        w = v.get(name) or ""
+        if isinstance(w, float):
+            w = f"{w:.2f}".rstrip("0").rstrip(".")
+        return (f'<label>{escape(text)}<input name="{name}" inputmode="decimal" value="{escape(str(w or ""))}"'
+                f'{f" placeholder=\"{escape(hilfe)}\"" if hilfe else ""}></label>')
+    iv_teil = (f'<details class="iv-teil"{" open" if iv_werte or v["sparte"] in vi.IV_SPARTEN else ""}>'
+               '<summary>Leistungen bei Invalidität bzw. Erwerbsunfähigkeit</summary><div class="felder">'
+               + iv_feld("iv_rente_jahr", "Rente pro Jahr CHF", "z. B. 24000 (monatlich × 12)")
+               + iv_feld("iv_kapital", "Invaliditätskapital CHF (einmalig)")
+               + iv_feld("iv_wartefrist_monate", "Wartefrist (Monate)", "z. B. 24 (720 Tage)")
+               + iv_feld("iv_bis_alter", "Rente bis Alter", "z. B. 65")
+               + f'<label>Ursache<select name="iv_ursache">{ursache}</select></label>'
+               + iv_feld("iv_grad_min", "Leistung ab Invaliditätsgrad %", "z. B. 25")
+               + befreiung + '</div><p class="leise">Die Rente fliesst in «Risiko Invalidität und Tod» ein (Spalte '
+               '«Extern»), sofern in den Einstellungen kein eigener Wert steht. Leere Felder füllt das Neu-Sichten aus dem '
+               'Vertragstext.</p></details>')
     unfall = (f'<label>Unfall eingeschlossen<select name="unfall_eingeschlossen">'
               f'<option value="0"{"" if v["unfall_eingeschlossen"] else " selected"}>nein</option>'
               f'<option value="1"{" selected" if v["unfall_eingeschlossen"] else ""}>ja</option></select></label>')
@@ -1237,7 +1262,7 @@ def versicherung(k: dict, db, vid: int) -> str:
 {feld("praemie_jahr", "Prämie pro Jahr CHF")}{feld("beginn", "Beginn", "date")}{feld("ablauf", "Ablauf", "date")}
 {feld("kuendigungsfrist_monate", "Kündigungsfrist (Monate)")}{feld("franchise", "Franchise CHF")}
 {feld("selbstbehalt", "Selbstbehalt CHF")}{feld("summe", "Versicherungssumme CHF")}{unfall}
-</div><label style="margin-top:10px">Notiz<input name="notiz" value="{escape(v["notiz"])}"></label>
+</div>{iv_teil}<label style="margin-top:10px">Notiz<input name="notiz" value="{escape(v["notiz"])}"></label>
 <div class="zeile"><button>Speichern</button><a class="knopf zweit" href="versicherungen/{vid}/datei">Original öffnen</a></div></form>"""
     t = vi.naechster_termin(v, date.today())
     termin = (f'<p>Nächste Kündigung: bis <b>{t.kuendigen_bis.strftime("%d.%m.%Y")}</b>, wirksam auf '
@@ -1411,9 +1436,9 @@ def _dokument_analyse(k: dict, d: dict) -> list[str]:
 
 # ---------------------------------------------------------------- Risiko (Invalidität, Tod)
 
-def risiko_karte(k: dict) -> str:
+def risiko_karte(k: dict, vertraege: list[dict] | None = None) -> str:
     ahv = vs.ahv(k, date.today().year)
-    rs = vi.risiko(k, ahv)
+    rs = vi.risiko(k, ahv, vertraege)
     zeilen = []
     for r in rs:
         zeilen.append([licht(am.iv_status(r.iv_quote) if r.lohn else am.GRAU) + escape(r.name), chf(r.iv_ahv + r.iv_kinder_ahv), chf(r.iv_pk + r.iv_kinder_pk), chf(r.iv_extern),
@@ -1424,8 +1449,9 @@ def risiko_karte(k: dict) -> str:
     tod = tabelle(["Tod von …", "Renten Hinterbliebene/Jahr", "Todesfallkapital", "Richtwert Kapital"], zeilen)
     hinweise = [x for r in rs for x in r.hinweise]
     return karte("Risiko Invalidität und Tod", iv + tod + hinweisliste(sorted(set(hinweise), key=hinweise.index))
-                 + '<p class="leise">IV-Rente ≈ Altersrente der AHV ohne 13. Rente, Kinderrenten 40 %. PK- und externe Leistungen '
-                   'aus den Einstellungen (Abschnitt «risiko» pro Person) bzw. aus dem hochgeladenen Vorsorgeausweis.</p>')
+                 + '<p class="leise">IV-Rente ≈ Altersrente der AHV ohne 13. Rente, Kinderrenten 40 %. PK-Leistungen aus den '
+                   'Einstellungen bzw. dem Vorsorgeausweis; «Extern» aus den Einstellungen oder – wenn dort 0 – aus den '
+                   'Invaliditätsrenten der hochgeladenen Policen (laufend, der Person zugeordnet).</p>')
 
 
 # ---------------------------------------------------------------- Anlageberater

@@ -233,3 +233,15 @@ def test_nachlass_fragebogen_und_notfallordner(server):
     _post(f"{server}/nachlass/fragebogen", {"bereich": "liegenschaft", "haushalt|eigentum": "Miteigentum"})
     notfall = urllib.request.urlopen(f"{server}/notfall").read().decode()
     assert "Notariat Muster" in notfall and "Wo liegt das Original?" in notfall and "Miteigentum" in notfall
+
+
+def test_vertrag_invaliditaet_erfassen(server):
+    from policen import LEBEN, pdf
+    code, ziel = _upload(f"{server}/versicherungen/hochladen", "datei", "leben.pdf", pdf(LEBEN))
+    vid = int(re.search(r"/versicherungen/(\d+)", ziel).group(1))
+    html = urllib.request.urlopen(f"{server}/versicherungen/{vid}").read().decode()
+    assert "Leistungen bei Invalidität bzw. Erwerbsunfähigkeit" in html and 'name="iv_rente_jahr"' in html
+    _post(f"{server}/versicherungen/{vid}", {"sparte": "leben", "iv_rente_jahr": "18'000", "iv_wartefrist_monate": "24",
+                                            "iv_ursache": "Krankheit und Unfall", "iv_beitragsbefreiung": "1"})
+    html = urllib.request.urlopen(f"{server}/versicherungen/{vid}").read().decode()
+    assert 'name="iv_rente_jahr" inputmode="decimal" value="18000"' in html and "<option selected>Krankheit und Unfall" in html

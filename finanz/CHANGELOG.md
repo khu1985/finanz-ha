@@ -11,6 +11,11 @@
 - Die Antworten erscheinen im **Notfallordner** (auch in der Druckfassung); sind die wichtigen Angaben vollständig,
   lässt sich der Punkt direkt in der Checkliste abhaken
 - Navigation markiert auch Unterseiten (z. B. Konto, Fragebögen) beim richtigen Menüpunkt
+- **Invaliditätsleistungen bei Versicherungen:** neue Felder pro Vertrag (Rente pro Jahr, Invaliditätskapital,
+  Wartefrist, Rente bis Alter, Ursache, Mindest-Invaliditätsgrad, Prämienbefreiung), automatisch aus dem Vertragstext
+  gelesen – auch aus bestehenden Dokumenten beim Neu-Sichten nach dem Update (bei von Hand bearbeiteten Verträgen nur
+  leere Felder); fliessen als «Extern» in «Risiko Invalidität und Tod», mit Hinweisen zu langer Wartefrist und
+  reinen Unfallpolicen
 
 ## 0.26.0 – 2026-11-11
 

@@ -109,14 +109,28 @@ def tabellen(db) -> None:
     )
     spalten = {r[1] for r in db.execute("PRAGMA table_info(vertraege)")}
     for name, typ in (("modell", "TEXT NOT NULL DEFAULT ''"), ("geburtsdatum", "TEXT NOT NULL DEFAULT ''"),
-                      ("unfall_praemie", "REAL NOT NULL DEFAULT 0"), ("produkte", "TEXT NOT NULL DEFAULT ''")):
+                      ("unfall_praemie", "REAL NOT NULL DEFAULT 0"), ("produkte", "TEXT NOT NULL DEFAULT ''"),
+                      ("iv_rente_jahr", "REAL NOT NULL DEFAULT 0"), ("iv_kapital", "REAL NOT NULL DEFAULT 0"),
+                      ("iv_wartefrist_monate", "INTEGER NOT NULL DEFAULT 0"), ("iv_bis_alter", "INTEGER NOT NULL DEFAULT 0"),
+                      ("iv_ursache", "TEXT NOT NULL DEFAULT ''"), ("iv_grad_min", "INTEGER NOT NULL DEFAULT 0"),
+                      ("iv_beitragsbefreiung", "INTEGER NOT NULL DEFAULT 0")):
         if name not in spalten:
             db.execute(f"ALTER TABLE vertraege ADD COLUMN {name} {typ}")
 
 
 FELDER = ["sparte", "versicherer", "police", "person", "praemie_jahr", "beginn", "ablauf",
           "kuendigungsfrist_monate", "franchise", "selbstbehalt", "summe", "unfall_eingeschlossen", "notiz",
-          "modell", "geburtsdatum", "unfall_praemie", "produkte"]
+          "modell", "geburtsdatum", "unfall_praemie", "produkte",
+          "iv_rente_jahr", "iv_kapital", "iv_wartefrist_monate", "iv_bis_alter", "iv_ursache", "iv_grad_min",
+          "iv_beitragsbefreiung"]
+# Leistungen bei Invalidität bzw. Erwerbsunfähigkeit (Erwerbsunfähigkeits-, Unfall-, Lebens- und Risikopolicen)
+IV_FELDER = {
+    "iv_rente_jahr": "Rente bei Invalidität pro Jahr", "iv_kapital": "Invaliditätskapital",
+    "iv_wartefrist_monate": "Wartefrist (Monate)", "iv_bis_alter": "Rente bis Alter",
+    "iv_ursache": "Ursache", "iv_grad_min": "ab Invaliditätsgrad %", "iv_beitragsbefreiung": "Prämienbefreiung",
+}
+IV_URSACHEN = ["", "Krankheit und Unfall", "nur Krankheit", "nur Unfall"]
+IV_SPARTEN = {"erwerbsunfaehigkeit", "unfall", "leben", "risiko_leben"}
 
 
 def ordner(daten: Path) -> Path:
@@ -395,7 +409,72 @@ def erkennen(text: str) -> dict:
                     continue
                 kk[schluessel] = wert
         return kk
-    return _allgemein(text)
+    return _allgemein(text) | iv_erkennen(text)
+
+
+_IV_WORT = r"(?:erwerbsunf\w*|invalid\w*|\bEU[- ]rente|\bIV[- ]rente|arbeitsunf\w*|erwerbsausfall\w*)"
+_MONATLICH = r"(?:pro\s+monat|monatlich|mtl\.?|/\s*monat|je\s+monat)"
+_JAEHRLICH = r"(?:pro\s+jahr|jährlich|p\.\s?a\.|/\s*jahr|je\s+jahr|jahresrente)"
+
+
+def _zeilen_mit(text: str, *muster: str) -> list[str]:
+    """Zeilen (inkl. der folgenden), in denen alle Muster vorkommen – Policen setzen Betrag und Text oft untereinander."""
+    zeilen = [z.strip() for z in text.splitlines()]
+    erg = []
+    for i, z in enumerate(zeilen):
+        block = " ".join(zeilen[i:i + 2])
+        if all(re.search(m, z if j == 0 else block, re.I) for j, m in enumerate(muster)):
+            erg.append(block)
+    return erg
+
+
+def iv_erkennen(text: str) -> dict:
+    """Leistungen bei Invalidität bzw. Erwerbsunfähigkeit aus dem Vertragstext."""
+    erg: dict = {}
+    if not re.search(_IV_WORT, text, re.I):
+        return erg
+    # Rente: Zeile mit IV-Wort und «Rente», Betrag in derselben oder der nächsten Zeile
+    for block in _zeilen_mit(text, _IV_WORT + r"|jahresrente|rentenleistung", r"rente"):
+        if re.search(r"kapital|prämie|beitrag", block.split("rente")[0], re.I) and not re.search(_IV_WORT, block, re.I):
+            continue
+        m = re.search(r"rente\w*[^0-9]{0,60}?" + BETRAG, block, re.I)
+        if not m or not re.search(r"\d{3}", m.group(1)):
+            continue
+        wert = zahl(m.group(1))
+        if wert < 100:
+            continue
+        rest = block[m.start():m.end() + 40]
+        erg["iv_rente_jahr"] = round(wert * 12, 2) if re.search(_MONATLICH, rest, re.I) and not re.search(_JAEHRLICH, rest, re.I) \
+            else wert
+        break
+    for block in _zeilen_mit(text, r"(?:invaliditäts|erwerbsunfähigkeits)kapital|kapital\s+bei\s+(?:invalidität|erwerbsunf)"):
+        m = re.search(r"kapital\w*[^0-9]{0,60}?" + BETRAG, block, re.I)
+        if m and re.search(r"\d{3}", m.group(1)) and zahl(m.group(1)) >= 1000:
+            erg["iv_kapital"] = zahl(m.group(1))
+            break
+    m = re.search(r"wartefrist\D{0,40}?(\d{1,4})\s*(monat|tag|woche)", text, re.I)
+    if m:
+        n = int(m.group(1))
+        einheit = m.group(2).lower()
+        erg["iv_wartefrist_monate"] = round(n / 30) if einheit.startswith("tag") else round(n / 4.33) if einheit.startswith("woche") else n
+    m = re.search(r"(?:endalter|schlussalter|bis\s+(?:zum\s+)?(?:vollendeten\s+)?alter|leistungs(?:dauer|ende)\D{0,25}?alter)"
+                  r"\s*(\d{2})\b(?!\s*%)", text, re.I)
+    if m and 50 <= int(m.group(1)) <= 70:
+        erg["iv_bis_alter"] = int(m.group(1))
+    t = text.lower()
+    if re.search(r"krankheit\s+(?:und|&|\+|/)\s*unfall|unfall\s+(?:und|&|\+|/)\s*krankheit", t):
+        erg["iv_ursache"] = "Krankheit und Unfall"
+    elif re.search(r"nur\s+(?:bei\s+)?krankheit|ausschliesslich\s+krankheit|infolge\s+krankheit", t):
+        erg["iv_ursache"] = "nur Krankheit"
+    elif re.search(r"nur\s+(?:bei\s+)?unfall|ausschliesslich\s+unfall|infolge\s+unfall", t):
+        erg["iv_ursache"] = "nur Unfall"
+    m = re.search(r"(?:erwerbsunfähigkeits|invaliditäts|iv-)grad\w*\D{0,40}?(\d{2})\s*%", text, re.I) or \
+        re.search(r"(?:ab|mindestens|von\s+mindestens)\s*(\d{2})\s*%\s*(?:erwerbsunf|invalid)", text, re.I)
+    if m and 10 <= int(m.group(1)) <= 70:
+        erg["iv_grad_min"] = int(m.group(1))
+    if re.search(r"(?:prämien|beitrags)befreiung|befreiung\s+von\s+der\s+(?:prämien|beitrags)zahlung", t):
+        erg["iv_beitragsbefreiung"] = 1
+    return erg
 
 
 def _allgemein(text: str) -> dict:
@@ -445,7 +524,10 @@ def _allgemein(text: str) -> dict:
 KI_ANWEISUNG = """Lies diesen Schweizer Versicherungsvertrag und antworte NUR mit einem JSON-Objekt mit den Schlüsseln:
 sparte (eine von: {sparten}), versicherer, police, person, praemie_jahr (Zahl, CHF pro Jahr inkl. Abgaben),
 beginn (JJJJ-MM-TT), ablauf (JJJJ-MM-TT), kuendigungsfrist_monate (Zahl), franchise (Zahl), selbstbehalt (Zahl),
-summe (Zahl, Versicherungssumme), unfall_eingeschlossen (0 oder 1), notiz (höchstens drei kurze Sätze zu
+summe (Zahl, Versicherungssumme), unfall_eingeschlossen (0 oder 1), iv_rente_jahr (Zahl, Rente bei Invalidität bzw.
+Erwerbsunfähigkeit in CHF pro Jahr), iv_kapital (Zahl, Invaliditätskapital), iv_wartefrist_monate (Zahl),
+iv_bis_alter (Zahl, Endalter der Rente), iv_ursache ("Krankheit und Unfall", "nur Krankheit" oder "nur Unfall"),
+iv_grad_min (Zahl, Mindest-Invaliditätsgrad in %), iv_beitragsbefreiung (0 oder 1), notiz (höchstens drei kurze Sätze zu
 Besonderheiten, Ausschlüssen und Auffälligkeiten). Unbekannte Werte weglassen.
 
 Vertrag:
@@ -505,9 +587,10 @@ def bereinigen(werte: dict) -> dict:
         if f not in werte or werte[f] in (None, ""):
             continue
         v = werte[f]
-        if f in ("praemie_jahr", "franchise", "selbstbehalt", "summe"):
+        if f in ("praemie_jahr", "franchise", "selbstbehalt", "summe", "iv_rente_jahr", "iv_kapital"):
             erg[f] = zahl(str(v))
-        elif f in ("kuendigungsfrist_monate", "unfall_eingeschlossen"):
+        elif f in ("kuendigungsfrist_monate", "unfall_eingeschlossen", "iv_wartefrist_monate", "iv_bis_alter",
+                   "iv_grad_min", "iv_beitragsbefreiung"):
             erg[f] = int(float(str(v).replace("ja", "1").replace("nein", "0")))
         elif f in ("beginn", "ablauf"):
             s = str(v).strip()
@@ -766,7 +849,32 @@ class Risiko:
     hinweise: list
 
 
-def risiko(k: dict, ahv_ergebnisse) -> list[Risiko]:
+def iv_aus_policen(vertraege: list[dict] | None, person: str, heute: date | None = None) -> tuple[float, float, list[str]]:
+    """(Rente pro Jahr, Kapital, Hinweise) aus laufenden Policen einer Person."""
+    heute = heute or date.today()
+    rente = kapital = 0.0
+    hinweise: list[str] = []
+    for v in vertraege or []:
+        if not v.get("person") or not gleiche_person(v["person"], person):
+            continue
+        if v.get("ablauf") and str(v["ablauf"]) < heute.isoformat():
+            continue
+        r_, c_ = float(v.get("iv_rente_jahr") or 0), float(v.get("iv_kapital") or 0)
+        if not (r_ or c_):
+            continue
+        rente += r_
+        kapital += c_
+        name = f"{v.get('versicherer') or v.get('dateiname')} ({SPARTEN.get(v.get('sparte'), v.get('sparte'))})"
+        if r_ and int(v.get("iv_wartefrist_monate") or 0) > 24:
+            hinweise.append(f"Invalidität {person}: Rente aus {name} erst nach {v['iv_wartefrist_monate']} Monaten Wartefrist – "
+                            "Lohnfortzahlung bzw. Krankentaggeld decken meist nur 24 Monate.")
+        if r_ and v.get("iv_ursache") == "nur Unfall":
+            hinweise.append(f"Invalidität {person}: {name} zahlt nur bei Unfall – die meisten Invaliditätsfälle sind "
+                            "krankheitsbedingt.")
+    return rente, kapital, hinweise
+
+
+def risiko(k: dict, ahv_ergebnisse, vertraege: list[dict] | None = None) -> list[Risiko]:
     import kinder as ki
     verheiratet = k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet"
     w = k["wohnen"]
@@ -783,9 +891,18 @@ def risiko(k: dict, ahv_ergebnisse) -> list[Risiko]:
         iv_pk = float(r.get("iv_rente_pk", 0))
         iv_kind_pk = float(r.get("iv_kinderrente_pk", 0)) * kinder
         iv_ext = float(r.get("iv_rente_extern", 0))
+        pol_rente, pol_kapital, pol_hinw = iv_aus_policen(vertraege, p["name"])
+        h = list(pol_hinw)
+        if not iv_ext and pol_rente:
+            iv_ext = pol_rente                       # Renten aus den hochgeladenen Policen
+        elif iv_ext and pol_rente and abs(iv_ext - pol_rente) > 100:
+            h.append(f"Invalidität {p['name']}: Einstellungen {iv_ext:,.0f}/Jahr extern, Policen {pol_rente:,.0f}/Jahr – "
+                     "Wert in den Einstellungen prüfen (0 = aus den Policen)." >> TS)
+        if pol_kapital:
+            h.append(f"Invalidität {p['name']}: zusätzlich Invaliditätskapital von CHF {pol_kapital:,.0f} aus Policen "
+                     "(einmalig)." >> TS)
         total = iv + iv_kind + iv_pk + iv_kind_pk + iv_ext
         quote = total / lohn * 100 if lohn else 0
-        h = []
         if lohn and quote < 70:
             h.append(f"Invalidität: {quote:.0f} % des Lohns gedeckt – Richtwert 70–80 %.")
         if iv_ext and iv_pk and quote > 100:

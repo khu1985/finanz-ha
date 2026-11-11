@@ -251,6 +251,15 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
 - **Risiko Invalidität und Tod** pro Person: IV-Rente der AHV, PK und externe Policen gegenüber dem Lohn; Renten für
   Hinterbliebene und Todesfallkapital gegenüber dem Richtwert
 
+**Invaliditätsleistungen pro Vertrag.** Auf der Vertragsseite unter «Leistungen bei Invalidität bzw.
+Erwerbsunfähigkeit» (bei Erwerbsunfähigkeits-, Unfall-, Lebens- und Risikopolicen aufgeklappt): Rente pro Jahr,
+Invaliditätskapital, Wartefrist, Rente bis Alter, Ursache (Krankheit und Unfall / nur Krankheit / nur Unfall),
+Mindest-Invaliditätsgrad und Prämienbefreiung. Die App liest diese Angaben aus dem Vertragstext (Monatsrenten × 12,
+Wartefrist in Tagen → Monate); beim Neu-Sichten werden auch bei von Hand bearbeiteten Verträgen leere Felder ergänzt,
+eingetragene Werte bleiben. Die Renten laufender, einer Person zugeordneter Policen zählen in «Risiko Invalidität und
+Tod» als «Extern», solange in den Einstellungen `risiko.iv_rente_extern` 0 ist; Hinweise bei Wartefrist über 24 Monaten
+und bei reinen Unfallpolicen.
+
 ## Szenarien
 
 **PK-Einkauf optimieren.** Person, Budget (0 = ganzes Potenzial), Zeitraum, Mindest-Ersparnis pro Franken und

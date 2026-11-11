@@ -31,7 +31,8 @@ STEUER_ERWARTET = {
     "rechnung": [("steuer_kanton_gemeinde", "staatssteuer", "bundessteuer")],
 }
 # Erwartete Felder je Versicherungssparte (alle Sparten: Prämie, Versicherer)
-VERSICHERUNG_ERWARTET = {"kvg": ["franchise", "modell"], "vvg": ["produkte"]}
+VERSICHERUNG_ERWARTET = {"kvg": ["franchise", "modell"], "vvg": ["produkte"],
+                         "erwerbsunfaehigkeit": ["iv_rente_jahr", "iv_wartefrist_monate"]}
 # Persönliche Felder werden nie verglichen oder genannt
 VERSICHERUNG_PRIVAT = {"police", "person", "geburtsdatum", "notiz"}
 # Schlüssel in finanz.yaml, deren Werte persönlich sind

@@ -53,6 +53,9 @@ VERTRAG_FELDER = {
     "franchise": "Franchise", "selbstbehalt": "Selbstbehalt", "summe": "Versicherungssumme",
     "unfall_eingeschlossen": "Unfall eingeschlossen", "notiz": "Notiz", "modell": "Modell", "geburtsdatum": "Geburtsdatum",
     "unfall_praemie": "Unfallanteil pro Jahr", "produkte": "Produkte",
+    "iv_rente_jahr": "IV-Rente pro Jahr", "iv_kapital": "Invaliditätskapital", "iv_wartefrist_monate": "Wartefrist (Monate)",
+    "iv_bis_alter": "IV-Rente bis Alter", "iv_ursache": "IV-Ursache", "iv_grad_min": "ab IV-Grad %",
+    "iv_beitragsbefreiung": "Prämienbefreiung",
 }
 
 
@@ -134,7 +137,18 @@ def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
         for v, werte in ((haupt, erkannt), *(((vertraege[1], zusatz),) if zusatz and len(vertraege) > 1 else ())):
             db.execute("UPDATE vertraege SET text = ? WHERE id = ?", (text, v["id"]))
             if v["quelle"] in GESCHUETZT and not alle:
-                b.geschuetzt += 1
+                # Von Hand bzw. per KI bearbeitet: nichts überschreiben, nur bisher leere Felder ergänzen (z. B. neue
+                # Felder nach einem Update wie die Invaliditätsleistungen)
+                leer = {f: w for f, w in werte.items() if f in vi.FELDER and f.startswith("iv_")
+                        and w not in (None, "", 0) and v.get(f) in (None, "", 0)}
+                if leer:
+                    for f_, w in sorted(leer.items()):
+                        _detail(b, "Versicherungen", _name(v, werte), f"versicherungen/{v['id']}",
+                                VERTRAG_FELDER.get(f_, f_), None, _anzeige(f_, w))
+                    vi.aktualisieren(db, v["id"], leer)
+                    b.geaendert.append(f"Versicherungen: {v['versicherer'] or v['dateiname']} ergänzt ({', '.join(sorted(leer))})")
+                else:
+                    b.geschuetzt += 1
                 continue
             neu = {f: w for f, w in werte.items() if f in vi.FELDER and w not in (None, "") and v.get(f) != w
                    and not (isinstance(w, (int, float)) and isinstance(v.get(f), (int, float)) and abs(v[f] - w) < 0.005)}

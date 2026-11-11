@@ -209,7 +209,7 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         erg.append(Ampel("Versicherungsschutz", GRAU, "keine Verträge erfasst", "versicherungen"))
 
     # Risiko Invalidität und Tod
-    rs = vi.risiko(k, vs.ahv(k, heute.year))
+    rs = vi.risiko(k, vs.ahv(k, heute.year), vertraege)
     if any(r.iv_pk or r.iv_extern for r in rs):
         s = schlechteste(iv_status(r.iv_quote) for r in rs if r.lohn)
         erg.append(Ampel("Invalidität", s, ", ".join(f"{r.name} {r.iv_quote:.0f} %" for r in rs if r.lohn) + " des Lohns",
