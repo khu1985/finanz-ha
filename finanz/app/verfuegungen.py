@@ -40,6 +40,7 @@ class Typ:
     form: str                              # Formvorschrift in einem Satz
     fragebogen: str                        # zugehöriger Bereich im Nachlass-Fragebogen
     nur_konkubinat: bool = False
+    nur_ehe: bool = False
 
 
 TYPEN = (
@@ -58,6 +59,18 @@ TYPEN = (
     Typ("beguenstigung_3a", "Begünstigung Säule 3a", True,
         "Brief an jede 3a-Stiftung bzw. Versicherung, unterschrieben; Bestätigung verlangen und ablegen.",
         "begünstigung_3a"),
+    Typ("ehevertrag", "Ehevertrag", False,
+        "Öffentliche Beurkundung beim Notar, von beiden Ehegatten unterschrieben (Art. 184 ZGB). Der Entwurf dient als "
+        "Grundlage für das Gespräch mit dem Notar.", "testament", nur_ehe=True),
+    Typ("erbvertrag", "Erbvertrag", False,
+        "Öffentliche Beurkundung beim Notar mit zwei Zeugen (Art. 512 ZGB); bindet beide Seiten – Änderung nur gemeinsam. "
+        "Der Entwurf dient als Grundlage für das Gespräch mit dem Notar.", "testament"),
+    Typ("darlehen", "Darlehen in der Familie", False,
+        "Schriftlich, von beiden datiert und unterschrieben; je ein Exemplar. Zinsen und Guthaben in der Steuererklärung "
+        "angeben (Darlehensgeber: Vermögen und Ertrag, Darlehensnehmer: Schuld und Schuldzins).", "testament"),
+    Typ("schenkung", "Schenkung bzw. Erbvorbezug", False,
+        "Schriftlich, datiert und von beiden unterschrieben; bei Liegenschaften öffentliche Beurkundung und Grundbuch. "
+        "Schenkungssteuer des Wohnkantons prüfen (Nachkommen und Ehegatten sind meist befreit).", "testament"),
 )
 NACH_TYP = {t.schluessel: t for t in TYPEN}
 
@@ -611,15 +624,245 @@ def beguenstigung_text(l: Lage, a: dict) -> str:
     return "\n".join(z)
 
 
+# ---------------------------------------------------------------- Ehe- und Erbvertrag, Darlehen, Schenkung
+
+def _namen(k: dict) -> list[str]:
+    namen = [p["name"] for p in k["personen"]][:2]
+    return namen + ["[Name]"] * (2 - len(namen))
+
+
+def _kindernamen(k: dict) -> str:
+    import kinder as ki
+    return ", ".join(c["name"] for c in ki.liste(k))
+
+
+def _schluss(namen: list[str], beurkundung: bool) -> list[str]:
+    if beurkundung:
+        return ["", "[Öffentliche Beurkundung durch den Notar – Ort, Datum, Unterschriften, bei Erbvertrag mit zwei Zeugen]"]
+    return ["", "[Ort], [Tag. Monat Jahr]", "", f"[Unterschrift {namen[0]}]", "", f"[Unterschrift {namen[1]}]"]
+
+
+def ehevertrag_fragen(k: dict) -> list[Frage]:
+    return [
+        Frage("gueterstand", "Güterstand", "auswahl",
+              _o(("vorschlag", "Errungenschaftsbeteiligung, ganzer Vorschlag an den überlebenden Ehegatten (Art. 216 ZGB)"),
+                 ("errungenschaft", "Errungenschaftsbeteiligung wie im Gesetz, nur Klarstellungen (unten)"),
+                 ("trennung", "Gütertrennung (Art. 247 ZGB) – jeder behält sein Vermögen"),
+                 ("gemeinschaft", "Gütergemeinschaft (Art. 221 ZGB) – Gesamtgut gehört beiden")),
+              vorgabe="vorschlag",
+              hilfe="Die Vorschlagszuweisung begünstigt den überlebenden Ehegatten am stärksten, ohne die Pflichtteile "
+                    "gemeinsamer Kinder zu verletzen; nicht gemeinsame Kinder können ihren Pflichtteil verlangen."),
+        Frage("nur_tod", "Gilt die Zuweisung nur beim Tod (nicht bei Scheidung)?", "auswahl", JA_NEIN, vorgabe="ja"),
+        Frage("eigengut", "Eigengut (z. B. Erbschaften, Schenkungen, Liegenschaftsanteil vor der Ehe)", "lang"),
+        Frage("geschaeft", "Vermögenswerte für einen Beruf oder ein Geschäft als Eigengut (Art. 199 ZGB)", "lang"),
+        Frage("liegenschaft", "Regelung zur Liegenschaft (Mehrwertanteil, Übernahmerecht)", "lang",
+              vorgabe="Die überlebende Person kann die gemeinsame Liegenschaft unter Anrechnung auf ihre Ansprüche "
+                      "übernehmen."),
+    ]
+
+
+def ehevertrag_text(k: dict, a: dict) -> str:
+    n = _namen(k)
+    z = ["Ehevertrag (Entwurf für die öffentliche Beurkundung)", "", f"zwischen {n[0]} und {n[1]}", ""]
+    st = a.get("gueterstand") or "vorschlag"
+    nr = 1
+    if st in ("vorschlag", "errungenschaft"):
+        z.append(f"{nr}. Wir bleiben im ordentlichen Güterstand der Errungenschaftsbeteiligung.")
+        nr += 1
+        if st == "vorschlag":
+            fall = ("bei Auflösung der Ehe durch Tod" if (a.get("nur_tod") or "ja") == "ja"
+                    else "bei jeder Auflösung des Güterstands")
+            z.append(f"{nr}. {fall[0].upper() + fall[1:]} erhält die überlebende Person die Summe beider Vorschläge "
+                     "(Art. 216 Abs. 1 ZGB). Die Pflichtteilsansprüche nicht gemeinsamer Nachkommen bleiben vorbehalten "
+                     "(Art. 216 Abs. 2 ZGB).")
+            nr += 1
+    elif st == "trennung":
+        z.append(f"{nr}. Wir vereinbaren Gütertrennung (Art. 247 ff. ZGB). Jede Person verwaltet und nutzt ihr Vermögen "
+                 "selbst und haftet für ihre Schulden allein.")
+        nr += 1
+    else:
+        z.append(f"{nr}. Wir vereinbaren die allgemeine Gütergemeinschaft (Art. 222 ZGB). Bei Auflösung durch Tod erhält "
+                 "die überlebende Person das ganze Gesamtgut, soweit Pflichtteile nicht entgegenstehen (Art. 241 ZGB).")
+        nr += 1
+    for schl, titel in (("eigengut", "Eigengut"), ("geschaeft", "Eigengut für Beruf bzw. Geschäft"),
+                        ("liegenschaft", "Liegenschaft")):
+        if a.get(schl):
+            z.append(f"{nr}. {titel}: {a[schl].strip()}")
+            nr += 1
+    z.append(f"{nr}. Wir haben ein Inventar unseres Vermögens erstellt; es liegt diesem Vertrag bei.")
+    return "\n".join(z + _schluss(n, True))
+
+
+def erbvertrag_fragen(k: dict) -> list[Frage]:
+    kinder = _kindernamen(k)
+    return [
+        Frage("art", "Was soll der Vertrag regeln?", "auswahl",
+              _o(("gegenseitig", "Gegenseitige Einsetzung: die überlebende Person erhält so viel wie möglich"),
+                 ("verzicht", "Erbverzicht bzw. Pflichtteilsverzicht (z. B. der Kinder zugunsten des Ehegatten)"),
+                 ("eigene", "eigene Regelung (unten)")), vorgabe="gegenseitig"),
+        Frage("schlusserben", "Schlusserben nach dem Tod beider", vorgabe=kinder or "unsere Nachkommen zu gleichen Teilen",
+              hilfe="Wer erbt, wenn auch die zweite Person gestorben ist"),
+        Frage("verzichtende", "Wer verzichtet (bei Erbverzicht)?", vorgabe=kinder,
+              hilfe="Erwachsene Personen, die selbst mitunterzeichnen; Abfindung (unten) möglich"),
+        Frage("abfindung", "Abfindung für den Verzicht", "lang"),
+        Frage("wiederverheiratung", "Bei Wiederverheiratung der überlebenden Person", "auswahl",
+              _o(("keine", "keine besondere Regel"),
+                 ("pflichtteil", "Nachkommen können sofort ihren Pflichtteil verlangen")), vorgabe="keine"),
+        Frage("eigene", "Eigene Regelung", "lang"),
+    ]
+
+
+def erbvertrag_text(k: dict, a: dict) -> str:
+    n = _namen(k)
+    z = ["Erbvertrag (Entwurf für die öffentliche Beurkundung)", "", f"zwischen {n[0]} und {n[1]}", ""]
+    nr = 1
+    art = a.get("art") or "gegenseitig"
+    if art == "gegenseitig":
+        z.append(f"{nr}. Wir setzen uns gegenseitig als Erben ein. Die überlebende Person erhält den grösstmöglichen "
+                 "Teil des Nachlasses; die Nachkommen werden auf den Pflichtteil gesetzt.")
+        nr += 1
+        z.append(f"{nr}. Nach dem Tod der überlebenden Person geht der Nachlass an: "
+                 f"{a.get('schlusserben') or '[Schlusserben]'}.")
+        nr += 1
+    elif art == "verzicht":
+        z.append(f"{nr}. {a.get('verzichtende') or '[Name]'} verzichtet beim Tod der erstversterbenden Person auf den "
+                 "Pflichtteil zugunsten der überlebenden Person (Art. 495 ZGB) und bleibt Erbe bzw. Erbin der "
+                 "zweitversterbenden Person.")
+        nr += 1
+        if a.get("abfindung"):
+            z.append(f"{nr}. Abfindung: {a['abfindung'].strip()}")
+            nr += 1
+    if a.get("eigene"):
+        z.append(f"{nr}. {a['eigene'].strip()}")
+        nr += 1
+    if (a.get("wiederverheiratung") or "keine") == "pflichtteil":
+        z.append(f"{nr}. Heiratet die überlebende Person wieder, können die Nachkommen sofort ihren Pflichtteil am "
+                 "Nachlass der erstverstorbenen Person verlangen.")
+        nr += 1
+    z.append(f"{nr}. Dieser Vertrag kann nur von allen Vertragsparteien gemeinsam und in öffentlicher Form geändert "
+             "werden.")
+    return "\n".join(z + _schluss(n, True))
+
+
+def darlehen_fragen(k: dict) -> list[Frage]:
+    n = _namen(k)
+    return [
+        Frage("geber", "Darlehensgeber (Name, Adresse)", vorgabe=n[0]),
+        Frage("nehmer", "Darlehensnehmer (Name, Adresse)"),
+        Frage("betrag", "Betrag in CHF", "zahl"),
+        Frage("auszahlung", "Auszahlung am", "datum"),
+        Frage("zweck", "Zweck (z. B. Eigenmittel Wohneigentum)"),
+        Frage("zins", "Zins in % pro Jahr (0 = zinslos)", "zahl", vorgabe="0",
+              hilfe="Unter Verwandten zinslos möglich; die Steuerverwaltungen publizieren jährlich Richtzinssätze"),
+        Frage("rueckzahlung", "Rückzahlung", "auswahl",
+              _o(("kuendigung", "auf Kündigung mit Frist (unten)"), ("raten", "in Raten (unten)"),
+                 ("fix", "auf einen festen Termin (unten)")), vorgabe="kuendigung"),
+        Frage("rueckzahlung_detail", "Kündigungsfrist, Raten bzw. Termin", vorgabe="6 Monate auf ein Monatsende"),
+        Frage("erbteilung", "Beim Tod des Darlehensgebers", "auswahl",
+              _o(("anrechnen", "offener Betrag wird bei der Erbteilung angerechnet"),
+                 ("erlass", "offener Betrag wird erlassen (Schenkung – Pflichtteile beachten)"),
+                 ("zurueck", "offener Betrag ist den Erben zurückzuzahlen")), vorgabe="anrechnen"),
+    ]
+
+
+def darlehen_text(k: dict, a: dict) -> str:
+    geber, nehmer = a.get("geber") or "[Darlehensgeber]", a.get("nehmer") or "[Darlehensnehmer]"
+    betrag = a.get("betrag") or "[Betrag]"
+    zins = str(a.get("zins") or "0").strip()
+    z = ["Darlehensvertrag", "", f"zwischen {geber} (Darlehensgeber)", f"und {nehmer} (Darlehensnehmer)", ""]
+    z.append(f"1. Der Darlehensgeber gewährt dem Darlehensnehmer ein Darlehen von CHF {betrag}"
+             + (f", ausbezahlt am {_datum(a['auszahlung'])}" if a.get("auszahlung") else "") + ".")
+    nr = 2
+    if a.get("zweck"):
+        z.append(f"{nr}. Zweck: {a['zweck'].strip()}.")
+        nr += 1
+    z.append(f"{nr}. " + ("Das Darlehen ist zinslos." if zins in ("0", "0.0", "") else
+                          f"Das Darlehen wird zu {zins} % pro Jahr verzinst; der Zins ist jeweils am 31. Dezember fällig."))
+    nr += 1
+    detail = a.get("rueckzahlung_detail") or "[Frist, Raten bzw. Termin]"
+    rz = {"kuendigung": f"Das Darlehen kann von beiden Seiten gekündigt werden; Kündigungsfrist: {detail}.",
+          "raten": f"Das Darlehen wird in Raten zurückbezahlt: {detail}. Vorzeitige Rückzahlung ist jederzeit möglich.",
+          "fix": f"Das Darlehen ist am {detail} zur Rückzahlung fällig. Vorzeitige Rückzahlung ist jederzeit möglich."}
+    z.append(f"{nr}. {rz[a.get('rueckzahlung') or 'kuendigung']}")
+    nr += 1
+    tod = {"anrechnen": "Stirbt der Darlehensgeber, wird der offene Betrag dem Darlehensnehmer bei der Erbteilung "
+                        "angerechnet.",
+           "erlass": "Stirbt der Darlehensgeber, wird der offene Betrag erlassen; der Erlass gilt als Zuwendung unter "
+                     "Vorbehalt der Pflichtteile.",
+           "zurueck": "Stirbt der Darlehensgeber, ist der offene Betrag den Erben nach diesem Vertrag zurückzuzahlen."}
+    z.append(f"{nr}. {tod[a.get('erbteilung') or 'anrechnen']}")
+    nr += 1
+    z.append(f"{nr}. Änderungen bedürfen der Schriftform. Es gilt schweizerisches Recht (Art. 312 ff. OR).")
+    return "\n".join(z + _schluss([geber, nehmer], False))
+
+
+def schenkung_fragen(k: dict) -> list[Frage]:
+    n = _namen(k)
+    return [
+        Frage("schenker", "Schenkende Person(en)", vorgabe=" und ".join(x for x in n if x != "[Name]")),
+        Frage("empfaenger", "Empfänger (Name, Geburtsdatum)"),
+        Frage("gegenstand", "Was wird geschenkt? (Betrag in CHF oder Gegenstand)"),
+        Frage("datum", "Übergabe am", "datum"),
+        Frage("ausgleich", "Anrechnung beim Erbe", "auswahl",
+              _o(("vorbezug", "Erbvorbezug: wird bei der Erbteilung angerechnet (Ausgleichung, Art. 626 ZGB)"),
+                 ("befreit", "Schenkung ohne Anrechnung (von der Ausgleichung befreit, Pflichtteile bleiben vorbehalten)")),
+              vorgabe="vorbezug",
+              hilfe="Ohne Regelung müssen Nachkommen Ausstattungen (z. B. Geld für Wohneigentum) ausgleichen"),
+        Frage("wert_zeitpunkt", "Anrechnung zum Wert", "auswahl",
+              _o(("heute", "am Tag der Schenkung (Betrag fix)"), ("tod", "am Todestag (gesetzliche Regel)")),
+              vorgabe="heute"),
+        Frage("rueckfall", "Rückfall, wenn der Empfänger vor den Schenkenden stirbt (Art. 247 OR)", "auswahl",
+              JA_NEIN, vorgabe="nein"),
+        Frage("auflagen", "Auflagen bzw. Bedingungen", "lang"),
+    ]
+
+
+def schenkung_text(k: dict, a: dict) -> str:
+    schenker = a.get("schenker") or "[Name]"
+    empf = a.get("empfaenger") or "[Name]"
+    vorbezug = (a.get("ausgleich") or "vorbezug") == "vorbezug"
+    z = [("Erbvorbezug" if vorbezug else "Schenkungsvertrag"), "", f"zwischen {schenker} (schenkend)",
+         f"und {empf} (empfangend)", ""]
+    z.append(f"1. {schenker} {'überträgt' if ' und ' not in schenker else 'übertragen'} {empf} "
+             f"{a.get('gegenstand') or '[Betrag bzw. Gegenstand]'}"
+             + (f" am {_datum(a['datum'])}" if a.get("datum") else "") + ".")
+    if vorbezug:
+        wert = ("zum Wert am Tag der Übergabe" if (a.get("wert_zeitpunkt") or "heute") == "heute"
+                else "zum Wert am Todestag")
+        z.append(f"2. Die Zuwendung ist ein Erbvorbezug. Sie wird {empf} bei der Erbteilung {wert} angerechnet "
+                 "(Ausgleichung nach Art. 626 ff. ZGB).")
+    else:
+        z.append(f"2. Die Zuwendung ist eine Schenkung; {empf} ist von der Ausgleichung befreit. Die Pflichtteile der "
+                 "übrigen Erben bleiben vorbehalten (Herabsetzung nach Art. 527 ZGB).")
+    nr = 3
+    if (a.get("rueckfall") or "nein") == "ja":
+        z.append(f"{nr}. Stirbt {empf} vor den Schenkenden, fällt die Zuwendung an sie zurück (Art. 247 OR).")
+        nr += 1
+    if a.get("auflagen"):
+        z.append(f"{nr}. Auflagen: {a['auflagen'].strip()}")
+        nr += 1
+    z.append(f"{nr}. {empf} nimmt die Zuwendung an.")
+    teile = [x.strip() for x in schenker.split(" und ")]
+    return "\n".join(z + _schluss([teile[0], empf] if len(teile) == 1 else teile[:2], False)
+                     + ([f"", f"[Unterschrift {empf}]"] if len(teile) > 1 else []))
+
+
 # ---------------------------------------------------------------- gemeinsame Schnittstelle
 
 def antworten(k: dict, typ: str, wer: str) -> dict:
     return dict((((k.get("verfuegungen") or {}).get(typ) or {}).get(wer)) or {})
 
 
+HAUSHALT_TYPEN = {"konkubinatsvertrag": (lambda k: konkubinatsvertrag_fragen(k), lambda k, a: konkubinatsvertrag_text(k, a)),
+                  "ehevertrag": (lambda k: ehevertrag_fragen(k), lambda k, a: ehevertrag_text(k, a)),
+                  "erbvertrag": (lambda k: erbvertrag_fragen(k), lambda k, a: erbvertrag_text(k, a)),
+                  "darlehen": (lambda k: darlehen_fragen(k), lambda k, a: darlehen_text(k, a)),
+                  "schenkung": (lambda k: schenkung_fragen(k), lambda k, a: schenkung_text(k, a))}
+
+
 def fragen(k: dict, typ: str, wer: str) -> list[Frage]:
-    if typ == "konkubinatsvertrag":
-        return konkubinatsvertrag_fragen(k)
+    if typ in HAUSHALT_TYPEN:
+        return HAUSHALT_TYPEN[typ][0](k)
     l = lage(k, wer, antworten(k, typ, wer))
     return {"testament": testament_fragen, "vorsorgeauftrag": vorsorgeauftrag_fragen,
             "patientenverfuegung": patientenverfuegung_fragen, "beguenstigung_3a": beguenstigung_fragen}[typ](l)
@@ -640,8 +883,8 @@ def mit_vorgaben(k: dict, typ: str, wer: str) -> dict:
 
 def text(k: dict, typ: str, wer: str) -> str:
     a = mit_vorgaben(k, typ, wer)
-    if typ == "konkubinatsvertrag":
-        return konkubinatsvertrag_text(k, a)
+    if typ in HAUSHALT_TYPEN:
+        return HAUSHALT_TYPEN[typ][1](k, a)
     l = lage(k, wer, a)
     return {"testament": testament_text, "vorsorgeauftrag": vorsorgeauftrag_text,
             "patientenverfuegung": patientenverfuegung_text, "beguenstigung_3a": beguenstigung_text}[typ](l, a)
@@ -653,8 +896,9 @@ def speichern(k: dict, typ: str, wer: str, form: dict) -> None:
 
 
 def typen(k: dict) -> list[Typ]:
-    konkubinat = k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and len(k["personen"]) > 1
-    return [t for t in TYPEN if konkubinat or not t.nur_konkubinat]
+    verheiratet = k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet"
+    konkubinat = not verheiratet and len(k["personen"]) > 1
+    return [t for t in TYPEN if (konkubinat or not t.nur_konkubinat) and (verheiratet or not t.nur_ehe)]
 
 
 def spalten(k: dict, t: Typ) -> list[str]:

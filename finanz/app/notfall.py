@@ -58,6 +58,58 @@ def erste_schritte(k: dict) -> list[Schritt]:
     return s
 
 
+def meldeliste(k: dict, db) -> list[tuple[str, str, str]]:
+    """Konkrete Stellen, die nach einem Todesfall zu melden sind – aus den erfassten Daten (Stelle, Wozu, Person)."""
+    import dokumente as dk
+    import vermoegen as vm
+    import versicherungen as vi
+    erg: list[tuple[str, str, str]] = []
+    gesehen: set[tuple[str, str]] = set()
+
+    def neu(stelle: str, wozu: str, person: str = "") -> None:
+        if stelle and (stelle.lower(), person) not in gesehen:
+            gesehen.add((stelle.lower(), person))
+            erg.append((stelle, wozu, person))
+
+    for p in k["personen"]:
+        neu("Wohngemeinde bzw. Bestattungsamt", "Todesfall melden (innert 2 Tagen), Bestattung", p["name"])
+        neu("AHV-Ausgleichskasse", "Rente stoppen bzw. Hinterlassenenrenten beantragen", p["name"])
+        if p.get("arbeitgeber"):
+            neu(str(p["arbeitgeber"]), "Arbeitgeber: Lohn bis Todestag, Lohnnachgenuss", p["name"])
+    try:
+        dk.tabellen(db)
+        for d in dk.alle(db):
+            if d.get("anbieter") and d["typ"] in ("pk_ausweis", "saeule3a", "saeule3b"):
+                wozu = {"pk_ausweis": "Pensionskasse: Hinterlassenenrente bzw. Todesfallkapital anmelden",
+                        "saeule3a": "Säule 3a: Auszahlung an die Begünstigten", "saeule3b": "Säule 3b: Leistung bzw. "
+                        "Rückkaufswert"}[d["typ"]]
+                neu(str(d["anbieter"]), wozu, str(d.get("person") or ""))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        for x in vm.konten(db):
+            if x["art"] in ("bank", "depot", "vorsorge", "hypothek", "kredit") and not x.get("aufgeloest"):
+                wozu = {"hypothek": "Hypothek: Schuldner melden, Zinsen weiter zahlen", "kredit": "Kredit melden"}.get(
+                    x["art"], "Konto melden (Sperre bis zur Erbbescheinigung), Saldo am Todestag verlangen")
+                neu(str(x["name"]), wozu, str(x.get("person") or ""))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        vi.tabellen(db)
+        for v in vi.alle(db):
+            sparte = vi.SPARTEN.get(v["sparte"], v["sparte"])
+            wozu = ("Leistung im Todesfall anmelden" if v["sparte"] in ("risiko_leben", "leben_3b", "unfall",
+                                                                         "erwerbsunfaehigkeit")
+                    else "Vertrag kündigen bzw. auf Hinterbliebene umschreiben")
+            neu(f"{v.get('versicherer') or 'Versicherung'} – {sparte}", wozu + (f" (Police {v['police']})"
+                                                                                if v.get("police") else ""),
+                str(v.get("person") or ""))
+    except Exception:  # noqa: BLE001
+        pass
+    neu("Steuerverwaltung", "Steuererklärung bis zum Todestag; Inventar für die Erbschaftssteuer")
+    return erg
+
+
 def konfiguration(k: dict) -> dict:
     cfg = k.get("notfall") or {}
     return {"kontakte": list(cfg.get("kontakte") or []), "ablage": dict(cfg.get("ablage") or {}),

@@ -2706,6 +2706,12 @@ def notfall(k: dict, db) -> str:
     return (druck + kpis + knoepfe
             + karte("Personen", personen_html)
             + karte("Erste Schritte im Todesfall", schritte)
+            + karte("Wen melden – Liste für die Hinterbliebenen",
+                    tabelle(["", "Stelle", "Wozu", "Person"],
+                            [["☐", escape(s_), escape(w_), escape(p_ or "")] for s_, w_, p_ in nf.meldeliste(k, db)],
+                            zahlen_ab=99, responsiv=True)
+                    + '<p class="leise">Aus den erfassten Konten, Vorsorgedokumenten und Versicherungen – zum Abhaken '
+                      'beim Ausdrucken.</p>')
             + karte("Konten und Vermögen", konten_html)
             + karte("Vorsorge", vorsorge_html)
             + karte("Versicherungen", vers_html)

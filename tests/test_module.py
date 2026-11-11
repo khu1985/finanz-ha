@@ -1517,3 +1517,30 @@ def test_camt053_import(db):
     a, n = bi.aus_datei(db, puffer.getvalue(), "camt.zip")
     assert a.bank == "Raiffeisen" and n == 3 and a.ausgaben == 1350
     assert len(bi.buchungen_lesen(inhalt)) == 4
+
+
+def test_verfuegungen_ehevertrag_erbvertrag_darlehen_schenkung(k):
+    import verfuegungen as vf
+    k["haushalt"]["zivilstand"] = "verheiratet"
+    assert {"ehevertrag", "erbvertrag", "darlehen", "schenkung"} <= {t.schluessel for t in vf.typen(k)}
+    t = vf.text(k, "ehevertrag", vf.HAUSHALT)
+    assert "Art. 216 Abs. 1 ZGB" in t and "durch Tod" in t and "Notar" in t
+    vf.speichern(k, "darlehen", vf.HAUSHALT, {"nehmer": "Kind A", "betrag": "50000", "zins": "1", "rueckzahlung": "raten",
+                                              "rueckzahlung_detail": "CHF 5000 pro Jahr", "erbteilung": "erlass"})
+    t = vf.text(k, "darlehen", vf.HAUSHALT)
+    assert "CHF 50000" in t and "1 % pro Jahr" in t and "CHF 5000 pro Jahr" in t and "erlassen" in t
+    vf.speichern(k, "schenkung", vf.HAUSHALT, {"empfaenger": "Kind A", "gegenstand": "CHF 30'000",
+                                               "ausgleich": "befreit", "rueckfall": "ja"})
+    t = vf.text(k, "schenkung", vf.HAUSHALT)
+    assert t.startswith("Schenkungsvertrag") and "Art. 527 ZGB" in t and "Art. 247 OR" in t
+    assert "Kind 1" in vf.text(k, "erbvertrag", vf.HAUSHALT)                  # Schlusserben aus den Kindern
+    k["haushalt"]["zivilstand"] = "konkubinat"
+    assert "ehevertrag" not in {t.schluessel for t in vf.typen(k)}
+
+
+def test_notfall_meldeliste(k, db, tmp_path):
+    import notfall as nf
+    vi.hochladen(db, tmp_path, "p.txt", "Mobiliar\nHausratversicherung\nPolice Nr. 12-345\nJahresprämie CHF 300.00\n".encode())
+    stellen = [s for s, _, _ in nf.meldeliste(k, db)]
+    assert "AHV-Ausgleichskasse" in stellen and "Steuerverwaltung" in stellen
+    assert any(s.startswith("Mobiliar – Hausrat") for s in stellen)
