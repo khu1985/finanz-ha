@@ -60,19 +60,73 @@ def braucht_ocr(text: str) -> bool:
     return len("".join(text.split())) < MIN_ZEICHEN
 
 
+def _grund(e: Exception) -> str:
+    """Kurzer, lesbarer Grund eines fehlgeschlagenen Programmaufrufs (inkl. Fehlermeldung des Programms)."""
+    if isinstance(e, subprocess.TimeoutExpired):
+        return f"Zeitlimit {int(e.timeout)} s überschritten"
+    if isinstance(e, subprocess.CalledProcessError):
+        fehler = (e.stderr or b"").decode("utf-8", "replace") if isinstance(e.stderr, bytes) else (e.stderr or "")
+        letzte = [z.strip() for z in fehler.splitlines() if z.strip()][-1:] or [""]
+        return f"Exit-Code {e.returncode}" + (f": {letzte[0][:200]}" if letzte[0] else "")
+    return str(e)[:200]
+
+
+def _entschluesselt(inhalt: bytes) -> bytes | None:
+    """PDF mit Besitzer-Passwort (ohne Öffnungs-Passwort) als unverschlüsselte Kopie – pdftoppm lehnt manche ab."""
+    try:
+        import io
+        from pypdf import PdfReader, PdfWriter
+        leser = PdfReader(io.BytesIO(inhalt))
+        if not leser.is_encrypted or not leser.decrypt(""):
+            return None
+        schreiber = PdfWriter(clone_from=leser)
+        puffer = io.BytesIO()
+        schreiber.write(puffer)
+        return puffer.getvalue()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _bilder(pdf: Path, tmp: Path, seiten: int, name: str) -> list[Path]:
+    """Seitenbilder: zuerst rendern (pdftoppm), sonst die eingebetteten Scan-Bilder direkt (pdfimages)."""
+    try:
+        subprocess.run(_nett(["pdftoppm", "-r", str(DPI), "-gray", "-png", "-l", str(seiten), str(pdf), str(tmp / "s")]),
+                       check=True, capture_output=True, timeout=ZEIT_PRO_SEITE * seiten)
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("OCR: %s – Seiten nicht gerendert (%s), versuche eingebettete Bilder", name or "PDF", _grund(e))
+    bilder = sorted(tmp.glob("s*.png"))
+    if bilder:
+        return bilder
+    if shutil.which("pdfimages"):
+        try:
+            subprocess.run(_nett(["pdfimages", "-j", "-l", str(seiten), str(pdf), str(tmp / "b")]),
+                           check=True, capture_output=True, timeout=ZEIT_PRO_SEITE)
+        except Exception as e:  # noqa: BLE001
+            LOG.warning("OCR: %s – keine eingebetteten Bilder lesbar (%s)", name or "PDF", _grund(e))
+        # kleine Bilder (Logos, Unterschriften) überspringen: nur Bilder ab einem Drittel des grössten
+        alle = [b for b in tmp.glob("b-*") if b.suffix in (".jpg", ".ppm", ".pbm", ".pgm", ".png")]
+        gross = max((b.stat().st_size for b in alle), default=0)
+        bilder = sorted(b for b in alle if b.stat().st_size >= gross / 3)
+    return bilder
+
+
 def pdf_text(inhalt: bytes, name: str = "") -> str:
     """Text eines gescannten PDFs per OCR, Seiten getrennt mit Seitenvorschub wie bei pypdf."""
     if not verfuegbar():
         return ""
-    with tempfile.TemporaryDirectory(prefix="ocr-") as tmp:
-        pdf = Path(tmp) / "d.pdf"
+    seiten = int(_einstellungen().get("max_seiten") or MAX_SEITEN)
+    with tempfile.TemporaryDirectory(prefix="ocr-") as tmp_:
+        tmp = Path(tmp_)
+        pdf = tmp / "d.pdf"
         pdf.write_bytes(inhalt)
-        try:
-            subprocess.run(_nett(["pdftoppm", "-r", str(DPI), "-gray", "-png", "-l",
-                            str(int(_einstellungen().get("max_seiten") or MAX_SEITEN)), str(pdf),
-                            str(Path(tmp) / "s")]), check=True, capture_output=True, timeout=ZEIT_PRO_SEITE * MAX_SEITEN)
-        except Exception as e:  # noqa: BLE001
-            LOG.warning("OCR: PDF %s nicht in Bilder umwandelbar: %s", name, e)
+        bilder = _bilder(pdf, tmp, seiten, name)
+        if not bilder:
+            klar = _entschluesselt(inhalt)
+            if klar:
+                pdf.write_bytes(klar)
+                bilder = _bilder(pdf, tmp, seiten, name)
+        if not bilder:
+            LOG.warning("OCR: %s – keine Seitenbilder, Text bleibt leer", name or "PDF")
             return ""
         sprache = sprachen()
         # Seiten parallel auf höchstens der Hälfte der Kerne, jede Seite nur mit einem Thread
@@ -83,11 +137,10 @@ def pdf_text(inhalt: bytes, name: str = "") -> str:
                 return subprocess.run(_nett(["tesseract", str(bild), "stdout", "-l", sprache, "--psm", "3"]),
                                       capture_output=True, text=True, timeout=ZEIT_PRO_SEITE, env=umgebung).stdout
             except Exception as e:  # noqa: BLE001
-                LOG.warning("OCR: Seite %s von %s fehlgeschlagen: %s", bild.stem, name, e)
+                LOG.warning("OCR: Seite %s von %s fehlgeschlagen: %s", bild.stem, name, _grund(e))
                 return ""
-        bilder = sorted(Path(tmp).glob("s*.png"))
         with ThreadPoolExecutor(max_workers=max(1, min(MAX_PARALLEL, (os.cpu_count() or 2) // 2))) as pool:
-            seiten = list(pool.map(seite, bilder))
-        text = "\n\f\n".join(seiten)
-        LOG.info("OCR: %s – %d Seite(n), %d Zeichen erkannt", name or "PDF", len(seiten), len(text.strip()))
+            texte = list(pool.map(seite, bilder))
+        text = "\n\f\n".join(texte)
+        LOG.info("OCR: %s – %d Seite(n), %d Zeichen erkannt", name or "PDF", len(texte), len(text.strip()))
         return text

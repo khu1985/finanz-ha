@@ -4,6 +4,9 @@
 
 - **Weniger Last auf dem Home Assistant:** Die Texterkennung gescannter PDFs läuft mit niedrigster Priorität und
   höchstens zwei Seiten gleichzeitig (vorher bis vier) – Home Assistant behält Rechenleistung und Speicher
+- **Texterkennung robuster:** Lässt sich ein PDF nicht in Seitenbilder umwandeln, liest die App die eingebetteten
+  Scan-Bilder direkt (schneller) und entsperrt PDFs mit Besitzer-Passwort; der Grund eines Fehlers steht lesbar im
+  Protokoll (Fehlermeldung des Programms statt nur «exit status 1»)
 
 ## 0.25.1 – 2026-11-11
 

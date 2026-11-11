@@ -1214,7 +1214,7 @@ def test_vorschlaege_aus_daten_anonymisiert(k, db, tmp_path):
     assert link.startswith("https://github.com/x/y/issues/new?title=") and len(link) < 20000
 
 
-def test_ocr_fuer_gescannte_pdfs():
+def test_ocr_fuer_gescannte_pdfs(monkeypatch, caplog):
     import io
     import shutil
     import ocr
@@ -1235,6 +1235,12 @@ def test_ocr_fuer_gescannte_pdfs():
     assert "Hausrat" in text and "245" in text
     assert vi.erkennen(text)["sparte"] == "hausrat"
     assert shutil.which("tesseract")
+    # pdftoppm scheitert → eingebettetes Scan-Bild direkt lesen; Grund steht lesbar im Protokoll
+    echt = ocr._nett
+    monkeypatch.setattr(ocr, "_nett", lambda b: ["false"] if b[0] == "pdftoppm" else echt(b))
+    with caplog.at_level("WARNING", logger="finanz"):
+        assert "Hausrat" in ocr.pdf_text(inhalt, "scan.pdf")
+    assert "Exit-Code 1" in caplog.text and "eingebettete Bilder" in caplog.text
 
 
 def test_neu_sichten_im_hintergrund_und_ocr_nur_einmal(k, db, tmp_path, daten, monkeypatch):

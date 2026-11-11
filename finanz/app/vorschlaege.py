@@ -295,6 +295,7 @@ def _normalisieren(meldung: str) -> str:
         stelle = next((re.sub(r'.*[/\\](\w+\.py)", line \d+, in (\w+).*', r"\1:\2", z)
                        for z in reversed(zeilen) if z.startswith("File ") and "/app/" in z.replace("\\", "/")), "")
         ausnahme = (zeilen[-1].split(":")[0] if zeilen else "") + (f" in {stelle}" if stelle else "")
+    erste = re.sub(r"Command '?\[[^\]]*\]'?", "Befehl", erste)          # Programmaufrufe mit Pfaden kürzen
     erste = re.sub(r"'[^']*'|\"[^\"]*\"|«[^»]*»", "‹…›", _muster(erste))
     erste = re.sub(r"\b\d+\b", "#", erste)
     return (erste[:160] + (f" – {ausnahme}" if ausnahme else "")).strip()
