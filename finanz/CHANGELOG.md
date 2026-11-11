@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.27.0 – 2026-11-11
+
+- **Fragebögen zum Nachlass** (Nachlass → Checkliste → «Fragebogen» bzw. Nachlass → Fragebögen): pro Bereich die
+  konkreten Angaben – Testament (Form, Datum, wo das Original liegt, wer was erhält), Pensionskasse (Meldung des
+  Partners, Bestätigung, Leistungen), 3a und Policen (Begünstigte, schriftlich festgelegt), Vorsorgeauftrag
+  (beauftragte Person, Ersatz, Infostar), Patientenverfügung (Vertretung, Hinterlegung, Organspende),
+  Konkubinatsvertrag, Liegenschaft (Eigentumsform, Regelung, Finanzierung der Auszahlung), Willensvollstrecker,
+  Zugänge, digitaler Nachlass und Bestattungswünsche – je Person oder für den Haushalt
+- Die Antworten erscheinen im **Notfallordner** (auch in der Druckfassung); sind die wichtigen Angaben vollständig,
+  lässt sich der Punkt direkt in der Checkliste abhaken
+- Navigation markiert auch Unterseiten (z. B. Konto, Fragebögen) beim richtigen Menüpunkt
+
 ## 0.26.0 – 2026-11-11
 
 - **Konten verwalten (Vermögen → Konto anklicken):** eigene Seite pro Konto mit

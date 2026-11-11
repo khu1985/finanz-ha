@@ -212,3 +212,24 @@ def test_konto_verwalten_seite(server):
     assert "Aufgelöste Konten (1)" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
     code, _ = _post(f"{server}/vermoegen/loeschen", {f"sel_k:{kid}": "1"})
     assert code == 303 and "Privatkonto UBS" not in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+
+
+def test_nachlass_fragebogen_und_notfallordner(server):
+    k = konfig.laden()
+    k["haushalt"]["zivilstand"] = "ledig"
+    konfig.speichern(k)
+    p1 = k["personen"][0]["name"]
+    html = urllib.request.urlopen(f"{server}/nachlass").read().decode()
+    assert 'href="nachlass/fragebogen?bereich=testament#testament"' in html
+    html = urllib.request.urlopen(f"{server}/nachlass/fragebogen?bereich=testament").read().decode()
+    assert 'id="testament" open' in html and "Konkubinatsvertrag" in html and 'class="aktiv"' in html
+    code, ziel = _post(f"{server}/nachlass/fragebogen", {
+        "bereich": "testament", f"{p1}|vorhanden": "ja", f"{p1}|original": "Notariat Muster", f"{p1}|datum": "2025-03-01",
+        "abhaken": "1"})
+    assert code == 303 and ziel.endswith("#testament") and "m=" in ziel
+    k = konfig.laden()
+    assert k["nachlass"]["fragebogen"]["testament"][p1]["original"] == "Notariat Muster"
+    assert k["nachlass"]["checkliste"]["testament"][p1] is True                 # wichtige Angaben da → abgehakt
+    _post(f"{server}/nachlass/fragebogen", {"bereich": "liegenschaft", "haushalt|eigentum": "Miteigentum"})
+    notfall = urllib.request.urlopen(f"{server}/notfall").read().decode()
+    assert "Notariat Muster" in notfall and "Wo liegt das Original?" in notfall and "Miteigentum" in notfall

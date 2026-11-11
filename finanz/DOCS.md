@@ -315,6 +315,30 @@ Patientenverfügung, Konkubinatsvertrag, Regelung Liegenschaft, Willensvollstrec
 `nachlass.checkliste` gespeichert. Ampel: rot im Konkubinat ohne Testamente, gelb bei offenen Punkten. Keine
 Rechtsberatung – Testament und Vorsorgeauftrag handschriftlich bzw. notariell errichten.
 
+### Fragebögen zum Nachlass
+
+Zu jedem Punkt der Checkliste gibt es einen Fragebogen (Link «Fragebogen» in der Checkliste oder
+`Nachlass → Fragebögen`): je Person bzw. für den Haushalt, mit Auswahlfeldern, Datum und Freitext. Mit * markierte
+Angaben sind wichtig; sind sie ausgefüllt und die Kernfrage mit «ja» beantwortet, bietet die App an, den Punkt in der
+Checkliste abzuhaken.
+
+| Bereich | Inhalt |
+|---|---|
+| Testament / Erbvertrag | vorhanden, Form, Datum, wo das Original liegt, Kopie, wer was erhält, zuletzt geprüft |
+| Pensionskasse | Kasse, Partner gemeldet, Datum, Bestätigung, Leistungen laut Reglement, Kontakt |
+| Säule 3a | Konten, Begünstigte, schriftlich festgelegt |
+| Risiko- und Lebensversicherungen | Policen, Begünstigte, bestätigt |
+| Vorsorgeauftrag | vorhanden, Form, beauftragte Person, Ersatz, Bereiche, Infostar, Original |
+| Patientenverfügung | vorhanden, Vertretung, hinterlegt bei, Organspende, Wünsche |
+| Konkubinatsvertrag (nur Konkubinat) | vorhanden, Eigentum, Darlehen, Wohnen und Trennung, Original |
+| Liegenschaft | Eigentumsform, Regelung im Todesfall, Finanzierung der Auszahlung, Tragbarkeit, Dokumente |
+| Willensvollstrecker | bestimmt, Name, Kontakt, Ersatz, Honorar |
+| Notfallordner | wer davon weiss, Zugänge (nur Ort/Verfahren, keine Passwörter), digitaler Nachlass, Bestattung |
+
+Die ausgefüllten Antworten stehen im **Notfallordner** unter «Testament, Vorsorgeauftrag, Begünstigungen» und
+damit auch in der Druckfassung. Gespeichert unter `nachlass.fragebogen` in `finanz.yaml` (bleibt im Home Assistant
+und ist im Backup enthalten).
+
 ## Anlageberater
 
 Sechs Profile: Konservativ, Steueroptimierer, Hypothekar- und Immobilienberater, Vorsorge- und Pensionsplaner,

@@ -355,7 +355,7 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
     for gruppe, eintraege in NAVIGATION:
         links = []
         for p, n in eintraege:
-            aktiv = p == pfad
+            aktiv = p == pfad or (bool(p) and pfad.startswith(p + "/"))
             punkt = licht(ampeln[p]) if ampeln.get(p) in (am.GELB, am.ROT) else ""
             zahl = f'<span class="zahl" title="Warnungen heute">{warnungen}</span>' if p == "protokoll" and warnungen else ""
             aktuell = ' aria-current="page"' if aktiv else ""
@@ -2251,8 +2251,15 @@ def nachlass(k: dict, db) -> str:
     liste = nl.checkliste(k)
     namen = [p["name"] for p in k["personen"]]
     zeilen = []
+    import fragebogen as fb
     for s_, titel, text, status in liste:
-        zellen = [f'<b>{escape(titel)}</b><br><span class="leise">{escape(text)}</span>']
+        b = fb.NACH_SCHLUESSEL.get(s_)
+        fb_link = ""
+        if b and b in fb.bereiche(k):
+            e_, t_ = fb.stand(k, b)
+            fb_link = (f'<br><a href="nachlass/fragebogen?bereich={escape(s_)}#{escape(s_)}">Fragebogen</a> '
+                       f'<small class="leise">({e_}/{t_} Angaben)</small>')
+        zellen = [f'<b>{escape(titel)}</b><br><span class="leise">{escape(text)}</span>{fb_link}']
         for n in namen:
             ok = status[n]
             zellen.append(f'<label style="flex-direction:row;align-items:center;gap:6px;color:var(--text)">{licht(am.GRUEN if ok else am.GELB)}'
@@ -2264,7 +2271,61 @@ def nachlass(k: dict, db) -> str:
             + tabelle(["Was", *[escape(n) for n in namen]], zeilen, zahlen_ab=9)
             + f'<div class="felder"><label>Gemeinsamer Haushalt seit (Jahr)<input name="zusammen_seit" value="{zusammen}" inputmode="numeric"></label></div>'
             + '<div class="zeile"><button>Speichern</button></div></form>')
-    teile.append(karte(f"Checkliste ({offen} offen)", form))
+    teile.append(karte(f"Checkliste ({offen} offen)", form
+                       + '<p class="leise">Zu jedem Punkt gibt es einen <a href="nachlass/fragebogen">Fragebogen</a> – die '
+                         'Antworten erscheinen im <a href="notfall">Notfallordner</a>.</p>'))
+    return "".join(teile)
+
+
+def nachlass_fragebogen(k: dict, db, q: dict | None = None) -> str:
+    """Alle Fragebögen; jeder Bereich als eigenes Formular, auf Wunsch aufgeklappt (?bereich=…)."""
+    import fragebogen as fb
+    import nachlass as nl
+    q = q or {}
+    offen_bereich = (q.get("bereich") or [""])[0]
+    checkliste = {s_: st_ for s_, _, _, st_ in nl.checkliste(k)}
+    teile = ['<p><a href="nachlass">← Nachlass</a> · <a href="notfall">Notfallordner</a></p>'
+             '<p class="leise">Pro Bereich die wichtigsten Angaben für Angehörige und Willensvollstrecker. Alles bleibt in '
+             'Home Assistant; die ausgefüllten Antworten erscheinen im Notfallordner (druckbar). Keine Passwörter '
+             'eintragen – nur, wo und wie man sie findet.</p>']
+    for b in fb.bereiche(k):
+        spalten = fb.spalten(k, b)
+        namen = [("Haushalt" if w == fb.HAUSHALT else w) for w in spalten]
+        zeilen = []
+        for f in b.fragen:
+            zellen = ["<span>" + escape(f.text) + (" <b>*</b>" if f.wichtig else "")
+                      + (f'<br><small class="leise">{escape(f.hilfe)}</small>' if f.hilfe else "") + "</span>"]
+            for w in spalten:
+                name, v = f"{w}|{f.schluessel}", escape(fb.wert(k, b, w, f.schluessel))
+                if f.art == "auswahl":
+                    feld = (f'<select name="{escape(name)}" aria-label="{escape(f.text)}">' + "".join(
+                        f'<option{" selected" if o == fb.wert(k, b, w, f.schluessel) else ""}>{escape(o)}</option>'
+                        for o in f.auswahl) + "</select>")
+                elif f.art == "datum":
+                    feld = f'<input type="date" name="{escape(name)}" value="{v}" aria-label="{escape(f.text)}">'
+                elif f.art == "lang":
+                    feld = f'<textarea name="{escape(name)}" class="kurz" rows="2" aria-label="{escape(f.text)}">{v}</textarea>'
+                else:
+                    feld = f'<input name="{escape(name)}" value="{v}" aria-label="{escape(f.text)}">'
+                zellen.append(feld)
+            zeilen.append(zellen)
+        e_, t_ = fb.stand(k, b)
+        vorschlag = [w for w in spalten if w != fb.HAUSHALT and fb.erledigt_vorschlag(k, b, w)
+                     and not (checkliste.get(b.schluessel) or {}).get(w)]
+        if b.schluessel in checkliste and not b.je_person and fb.erledigt_vorschlag(k, b, fb.HAUSHALT) \
+                and not all((checkliste.get(b.schluessel) or {}).values()):
+            vorschlag = [p["name"] for p in k["personen"]]
+        abhaken = (f'<button class="zweit" name="abhaken" value="1">Speichern und in der Checkliste abhaken</button>'
+                   if vorschlag else "")
+        status = licht(am.GRUEN if e_ == t_ else am.GELB if e_ else am.GRAU, f"{e_}/{t_}")
+        form = (f'<form method="post" action="nachlass/fragebogen"><input type="hidden" name="bereich" value="{b.schluessel}">'
+                + tabelle(["Frage", *[escape(n) for n in namen]], zeilen, zahlen_ab=99, responsiv=True)
+                + f'<div class="zeile"><button>Speichern</button>{abhaken}</div></form>')
+        teile.append(f'<details class="karte" id="{b.schluessel}"{" open" if offen_bereich == b.schluessel else ""}>'
+                     f'<summary>{status} {escape(b.titel)} <small class="leise">({e_}/{t_} wichtige Angaben)</small>'
+                     f'</summary>{form}</details>')
+    teile.append('<p class="leise">* wichtig – erscheint im Notfallordner zuerst. Die Fragebögen ersetzen keine '
+                 'Rechtsberatung; Testament und Vorsorgeauftrag brauchen die gesetzliche Form.</p>')
     return "".join(teile)
 
 
@@ -2587,6 +2648,20 @@ def notfall(k: dict, db) -> str:
     offen = [t for s_, t, _, st in nl.checkliste(k) if not all(st.values())]
     nachlass_html = ("<p>Offene Punkte der Nachlass-Checkliste: " + escape(", ".join(offen)) + ' – <a href="nachlass">Nachlass</a></p>'
                      if offen else '<p class="gut">Nachlass-Checkliste erledigt.</p>')
+    import fragebogen as fbg
+    regelungen = fbg.fuer_notfallordner(k)
+    if regelungen:
+        for titel_, zeilen_ in regelungen:
+            b_ = next(b for b in fbg.bereiche(k) if b.titel == titel_)
+            kopf_ = ["", *[("" if w == fbg.HAUSHALT else w) for w in fbg.spalten(k, b_)]]
+            nachlass_html += (f"<h3>{escape(titel_)}</h3>" + tabelle(
+                kopf_, [[escape(fr), *[escape(a).replace("\n", "<br>") or "–" for a in an]] for fr, an in zeilen_],
+                zahlen_ab=99))
+        nachlass_html += ('<p class="leise nicht-drucken">Aus den <a href="nachlass/fragebogen">Fragebögen zum Nachlass</a> '
+                          '– dort ergänzen oder ändern.</p>')
+    else:
+        nachlass_html += ('<p class="leise nicht-drucken">Die <a href="nachlass/fragebogen">Fragebögen zum Nachlass</a> '
+                          'ausfüllen – die Antworten erscheinen hier (z. B. wo das Testament liegt, wer beauftragt ist).</p>')
     return (druck + kpis + knoepfe
             + karte("Personen", personen_html)
             + karte("Erste Schritte im Todesfall", schritte)

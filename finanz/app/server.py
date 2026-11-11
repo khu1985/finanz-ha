@@ -27,7 +27,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"steuererklaerung", "bericht", "dokumente"}
+MIT_ABFRAGE = {"nachlass/fragebogen", "steuererklaerung", "bericht", "dokumente"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -44,6 +44,7 @@ SEITEN = {
     "bericht": ("Jahresbericht", seiten.bericht),
     "dokumente": ("Dokumente", seiten.dokumente),
     "vorschlaege": ("Vorschläge", seiten.vorschlaege),
+    "nachlass/fragebogen": ("Fragebögen zum Nachlass", seiten.nachlass_fragebogen),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -121,9 +122,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(inhalt)
 
     def weiter(self, pfad: str, meldung: str = "", fehler: bool = False):
+        pfad, _, anker = pfad.partition("#")             # Sprungmarke gehört ans Ende der Adresse
         ziel = f"{self.basis}/{pfad}"
         if meldung:
             ziel += ("&" if "?" in ziel else "?") + f"m={quote(meldung)}" + ("&f=1" if fehler else "")
+        if anker:
+            ziel += "#" + anker
         self.send_response(303)
         self.send_header("Location", ziel)
         self.send_header("Content-Length", "0")
@@ -562,6 +566,23 @@ class Handler(BaseHTTPRequestHandler):
             k["haushalt"]["kinder"] = neu
             konfig.speichern(k)
             return f"{len(neu)} Kind(er) gespeichert.", "kinder"
+        if pfad == "nachlass/fragebogen":
+            import fragebogen as fb
+            k = konfig.laden()
+            bereich = str(form.get("bereich", ""))
+            if bereich not in fb.NACH_SCHLUESSEL:
+                raise ValueError("Unbekannter Bereich.")
+            n = fb.speichern(k, bereich, form)
+            b = fb.NACH_SCHLUESSEL[bereich]
+            text = f"{b.titel}: {n} Angaben gespeichert."
+            if form.get("abhaken"):
+                cl = k.setdefault("nachlass", {}).setdefault("checkliste", {}).setdefault(bereich, {})
+                for p in k["personen"]:
+                    if (not b.je_person and fb.erledigt_vorschlag(k, b, fb.HAUSHALT)) or fb.erledigt_vorschlag(k, b, p["name"]):
+                        cl[p["name"]] = True
+                text += " In der Checkliste abgehakt."
+            konfig.speichern(k)
+            return text, f"nachlass/fragebogen?bereich={bereich}#{bereich}"
         if pfad == "nachlass/checkliste":
             import nachlass as nl
             k = konfig.laden()
