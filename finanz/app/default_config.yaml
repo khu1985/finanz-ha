@@ -207,6 +207,10 @@ sensoren:
   aktiv: true                      # Kennzahlen als sensor.finanz_* an Home Assistant liefern
   praefix: finanz
 
+ocr:                               # Texterkennung für gescannte PDFs
+  sprachen: deu                    # z. B. deu+fra (jede Sprache kostet Zeit)
+  max_seiten: 6
+
 ki:
   aktiv: false                     # KI-Aufgabe (ai_task) von Home Assistant für Dokumente und Berater nutzen
   entity: ""                       # z. B. ai_task.openai_ai_task; leer = Standard-KI-Aufgabe

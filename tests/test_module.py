@@ -1235,3 +1235,43 @@ def test_ocr_fuer_gescannte_pdfs():
     assert "Hausrat" in text and "245" in text
     assert vi.erkennen(text)["sparte"] == "hausrat"
     assert shutil.which("tesseract")
+
+
+def test_neu_sichten_im_hintergrund_und_ocr_nur_einmal(k, db, tmp_path, daten, monkeypatch):
+    import contextlib
+    import sqlite3
+    import ocr
+    import sichtung
+    import seiten
+    # gescanntes PDF: einmal erkannter Text wird beim Neu-Sichten wiederverwendet, nicht nochmals per OCR gerechnet
+    aufrufe = []
+    monkeypatch.setattr(ocr, "verfuegbar", lambda: True)
+    monkeypatch.setattr(ocr, "pdf_text", lambda inhalt, name="": aufrufe.append(name) or "Hausratversicherung " * 5)
+    leer = pdf("")
+    vi.hochladen(db, tmp_path, "scan.pdf", leer)
+    assert aufrufe == ["scan.pdf"]
+    sichtung.ausfuehren(k, db, tmp_path, "Test")
+    assert aufrufe == ["scan.pdf"]                                          # kein zweites Mal
+    assert sichtung.STAND["laeuft"] is False and sichtung.STAND["fertig"] == sichtung.STAND["gesamt"] == 1
+    # Knopf: läuft im Hintergrund; ein zweiter Klick startet keinen zweiten Lauf
+    pfad = tmp_path / "x.sqlite"
+
+    @contextlib.contextmanager
+    def verbinden():
+        v = sqlite3.connect(pfad, check_same_thread=False)
+        v.row_factory = sqlite3.Row
+        yield v
+        v.close()
+    with sichtung._SPERRE:
+        assert not sichtung.im_hintergrund(lambda: k, verbinden, tmp_path)
+        sichtung.STAND.update(laeuft=True, fertig=2, gesamt=5, aktuell="police.pdf", ausloeser="Knopf")
+        html = seiten.sichtung_knopf("dokumente")
+        assert "2 von 5" in html and "police.pdf" in html and "<button" not in html
+        sichtung.STAND["laeuft"] = False
+    assert sichtung.im_hintergrund(lambda: k, verbinden, tmp_path)
+    for _ in range(100):
+        if not sichtung.STAND["laeuft"]:
+            break
+        import time
+        time.sleep(0.05)
+    assert sichtung.STAND["laeuft"] is False

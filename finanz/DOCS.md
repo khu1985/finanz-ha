@@ -657,9 +657,14 @@ Home Assistant leitet pro Anfrage höchstens 16 MB an die App weiter. Wählt man
 sie einzeln (Fortschritt im Statusfenster, am Schluss eine gemeinsame Meldung). Eine einzelne Datei über 16 MB lässt
 sich nicht hochladen – solche Dateien in den Import-Ordner kopieren (siehe unten) oder als PDF verkleinern.
 
-Gescannte PDFs (nur Bilder, kein Text) liest die App mit Texterkennung (OCR, tesseract: Deutsch, Französisch,
-Italienisch; die ersten 10 Seiten, auf dem Raspberry Pi einige Sekunden pro Seite). Bereits hochgeladene Scans werden
-nach dem Update beim automatischen Neu-Sichten erkannt.
+Gescannte PDFs (nur Bilder, kein Text) liest die App mit Texterkennung (OCR, tesseract) – einmal beim Hochladen
+bzw. beim ersten Neu-Sichten; danach wird der erkannte Text wiederverwendet. Standard: Deutsch, die ersten 6 Seiten,
+alle Prozessorkerne parallel (auf dem Raspberry Pi etwa 10–30 Sekunden pro Seite). Französische oder italienische
+Dokumente: im YAML-Editor `ocr: sprachen: deu+fra` (bzw. `+ita`) – jede Sprache kostet Zeit; `ocr: max_seiten`
+begrenzt die Seiten.
+
+Neu sichten läuft im Hintergrund, die App bleibt bedienbar; oben auf jeder Seite steht der Fortschritt
+(«7 von 25 – gerade: …»).
 
 Jedes hochgeladene Dokument zeigt eine Ampel für den ausgelesenen Text: **rot** = kein Text gefunden (auch die
 Texterkennung fand nichts – Werte von Hand eintragen, mit KI auslesen oder besser scannen), **gelb** = sehr

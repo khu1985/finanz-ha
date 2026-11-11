@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.25.1 – 2026-11-11
+
+- **Neu sichten blieb hängen:** Die Texterkennung lief bei jeder Sichtung für alle Scans neu (10 Seiten, 300 dpi,
+  drei Sprachen – auf dem Raspberry Pi Minuten pro Dokument), und der Knopf wartete auf eine bereits laufende
+  Sichtung. Jetzt:
+  - erkannter Text wird wiederverwendet – OCR nur einmal pro Dokument
+  - schneller: Deutsch (einstellbar unter `ocr: sprachen`), 6 Seiten, 200 dpi, Seiten parallel auf allen Kernen
+  - Neu sichten läuft im Hintergrund mit Fortschrittsanzeige («7 von 25»); ein zweiter Klick startet keinen
+    zweiten Lauf
+
 ## 0.25.0 – 2026-11-10
 
 Umgesetzt aus den ersten Vorschlägen (App → Vorschläge):

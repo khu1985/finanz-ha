@@ -5,17 +5,28 @@ Wird nur genutzt, wenn ein PDF keinen eingebetteten Text hat. Fehlen die Program
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 
 LOG = logging.getLogger("finanz")
-MAX_SEITEN = 10           # Policen und Ausweise: das Wichtige steht vorne
-DPI = 300
-ZEIT_PRO_SEITE = 90       # Sekunden (Raspberry Pi)
+MAX_SEITEN = 6            # Policen und Ausweise: das Wichtige steht vorne
+DPI = 200                 # reicht für gedruckten Text und ist auf dem Raspberry Pi gut doppelt so schnell wie 300
+ZEIT_PRO_SEITE = 180      # Sekunden (Raspberry Pi)
 MIN_ZEICHEN = 40          # weniger Text gilt als «gescannt»
+STANDARD_SPRACHEN = "deu" # jede weitere Sprache kostet Zeit; in finanz.yaml unter ocr.sprachen änderbar
+
+
+def _einstellungen() -> dict:
+    try:
+        import konfig
+        return konfig.laden().get("ocr") or {}
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def verfuegbar() -> bool:
@@ -23,15 +34,20 @@ def verfuegbar() -> bool:
 
 
 @lru_cache(maxsize=1)
-def sprachen() -> str:
-    """Installierte Sprachen in sinnvoller Reihenfolge (deu+fra+ita+eng, soweit vorhanden)."""
+def installiert() -> frozenset[str]:
     try:
         aus = subprocess.run(["tesseract", "--list-langs"], capture_output=True, text=True, timeout=20).stdout
     except Exception:  # noqa: BLE001
-        return "eng"
-    da = {z.strip() for z in aus.splitlines()[1:]}
-    gewaehlt = [s for s in ("deu", "fra", "ita", "eng") if s in da]
-    return "+".join(gewaehlt) or "eng"
+        return frozenset()
+    return frozenset(z.strip() for z in aus.splitlines()[1:] if z.strip())
+
+
+def sprachen(gewuenscht: str | None = None) -> str:
+    """Gewünschte und installierte Sprachen, z. B. «deu» oder «deu+fra» (Standard: Deutsch)."""
+    gewuenscht = gewuenscht or str(_einstellungen().get("sprachen") or STANDARD_SPRACHEN)
+    da = installiert()
+    gewaehlt = [s for s in gewuenscht.replace(",", "+").split("+") if s.strip() in da]
+    return "+".join(s.strip() for s in gewaehlt) or ("deu" if "deu" in da else "eng")
 
 
 def braucht_ocr(text: str) -> bool:
@@ -46,19 +62,26 @@ def pdf_text(inhalt: bytes, name: str = "") -> str:
         pdf = Path(tmp) / "d.pdf"
         pdf.write_bytes(inhalt)
         try:
-            subprocess.run(["pdftoppm", "-r", str(DPI), "-gray", "-png", "-l", str(MAX_SEITEN), str(pdf),
+            subprocess.run(["pdftoppm", "-r", str(DPI), "-gray", "-png", "-l",
+                            str(int(_einstellungen().get("max_seiten") or MAX_SEITEN)), str(pdf),
                             str(Path(tmp) / "s")], check=True, capture_output=True, timeout=ZEIT_PRO_SEITE * MAX_SEITEN)
         except Exception as e:  # noqa: BLE001
             LOG.warning("OCR: PDF %s nicht in Bilder umwandelbar: %s", name, e)
             return ""
-        seiten = []
-        for bild in sorted(Path(tmp).glob("s*.png")):
+        sprache = sprachen()
+        # Seiten parallel auf allen Kernen, dafür jede Seite nur mit einem Thread (schneller als tesseract-intern)
+        umgebung = {**os.environ, "OMP_THREAD_LIMIT": "1"}
+
+        def seite(bild: Path) -> str:
             try:
-                r = subprocess.run(["tesseract", str(bild), "stdout", "-l", sprachen(), "--psm", "3"],
-                                   capture_output=True, text=True, timeout=ZEIT_PRO_SEITE)
-                seiten.append(r.stdout)
+                return subprocess.run(["tesseract", str(bild), "stdout", "-l", sprache, "--psm", "3"],
+                                      capture_output=True, text=True, timeout=ZEIT_PRO_SEITE, env=umgebung).stdout
             except Exception as e:  # noqa: BLE001
                 LOG.warning("OCR: Seite %s von %s fehlgeschlagen: %s", bild.stem, name, e)
+                return ""
+        bilder = sorted(Path(tmp).glob("s*.png"))
+        with ThreadPoolExecutor(max_workers=max(1, min(4, os.cpu_count() or 1))) as pool:
+            seiten = list(pool.map(seite, bilder))
         text = "\n\f\n".join(seiten)
         LOG.info("OCR: %s – %d Seite(n), %d Zeichen erkannt", name or "PDF", len(seiten), len(text.strip()))
         return text

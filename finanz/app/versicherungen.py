@@ -187,7 +187,8 @@ def loeschen(db, daten: Path, vid: int) -> None:
 
 # ---------------------------------------------------------------- Text und Erkennung
 
-def text_auslesen(dateiname: str, inhalt: bytes) -> str:
+def text_auslesen(dateiname: str, inhalt: bytes, vorher: str = "") -> str:
+    """Text eines PDFs; gescannte PDFs per OCR – ausser es gibt schon erkannten Text von früher (`vorher`)."""
     if dateiname.lower().endswith(".pdf") or inhalt[:5] == b"%PDF-":
         try:
             from pypdf import PdfReader
@@ -197,8 +198,11 @@ def text_auslesen(dateiname: str, inhalt: bytes) -> str:
             LOG.warning("PDF %s nicht lesbar: %s", dateiname, e)
             text = ""
         import ocr
-        if ocr.braucht_ocr(text) and ocr.verfuegbar():
-            text = ocr.pdf_text(inhalt, dateiname) or text
+        if ocr.braucht_ocr(text):
+            if vorher and not ocr.braucht_ocr(vorher):
+                return vorher                      # früher schon per OCR erkannt – nicht nochmals rechnen
+            if ocr.verfuegbar():
+                text = ocr.pdf_text(inhalt, dateiname) or text
         return text
     return inhalt.decode("utf-8", errors="replace")
 

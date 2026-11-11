@@ -338,6 +338,8 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
             links.append(f'<a href="{p or "./"}" class="{"aktiv" if aktiv else ""}"{aktuell}>{punkt}{n}{zahl}</a>')
         gruppen.append(f'<div class="grp"><span class="gl">{gruppe}</span>{"".join(links)}</div>')
     m = f'<div class="meldung{" fehler" if fehler else ""}" role="status">{escape(meldung)}</div>' if meldung else ""
+    if 'id="sichtung-laeuft"' not in inhalt:
+        m += sichtung_fortschritt()
     v = meta.version()
     return f"""<!doctype html><html lang="de-CH"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><base href="{escape(basis)}/">
@@ -2510,7 +2512,23 @@ def bericht(k: dict, db, q: dict | None = None) -> str:
 
 # ---------------------------------------------------------------- Neu sichten
 
+def sichtung_fortschritt() -> str:
+    """Hinweis während eine Sichtung läuft (Start nach Update oder Knopf), mit automatischer Aktualisierung."""
+    import sichtung
+    s = sichtung.STAND
+    if not s["laeuft"]:
+        return ""
+    anteil = f"{s['fertig']} von {s['gesamt']}" if s["gesamt"] else "wird vorbereitet"
+    aktuell = f" – gerade: {escape(s['aktuell'])}" if s["aktuell"] else ""
+    return (f'<div class="meldung nicht-drucken" id="sichtung-laeuft">{licht(am.GELB, "läuft")} Dokumente werden neu '
+            f'gesichtet ({escape(s["ausloeser"])}): {anteil}{aktuell}. Gescannte Dokumente brauchen beim ersten Mal '
+            'etwas länger (Texterkennung). <a href="">aktualisieren</a></div>')
+
+
 def sichtung_knopf(zurueck: str, text: str = "Alle Dokumente neu sichten") -> str:
+    laeuft = sichtung_fortschritt()
+    if laeuft:
+        return laeuft
     return (f'<form method="post" action="dokumente/neu-sichten" data-status="Dokumente werden neu gelesen …" class="nicht-drucken">'
             f'<input type="hidden" name="zurueck" value="{zurueck}"><div class="zeile"><button class="zweit klein">'
             f'{escape(text)}</button><span class="leise">mit der aktuellen Erkennung, ohne erneutes Hochladen</span></div></form>')

@@ -456,15 +456,15 @@ class Handler(BaseHTTPRequestHandler):
                 "vorschlaege"
         if pfad == "dokumente/neu-sichten":
             import sichtung
-            with db() as v:
-                b = sichtung.ausfuehren(konfig.laden(), v, konfig.datenordner(), "Knopf", alle=bool(form.get("alle")))
             ziel = form.get("zurueck") if form.get("zurueck") in ("versicherungen", "vorsorge", "steuern", "einstellungen",
                                                                "dokumente") \
                 else "einstellungen"
-            text = (f"{b.geprueft} Dokument(e) neu gesichtet: {len(b.geaendert)} mit neuen Werten, {len(b.neu)} neu angelegt"
-                    + (f", {b.geschuetzt} von Hand bearbeitete belassen" if b.geschuetzt else "")
-                    + (f", {b.fehlend} ohne Originaldatei" if b.fehlend else "") + ".")
-            return text, ziel
+            if not sichtung.im_hintergrund(konfig.laden, db, konfig.datenordner(), "Knopf", alle=bool(form.get("alle"))):
+                s = sichtung.STAND
+                return (f"Neu sichten läuft bereits ({s['fertig']} von {s['gesamt'] or '?'} Dokumenten) – "
+                        "bitte warten, bis es fertig ist."), ziel
+            return ("Neu sichten läuft im Hintergrund – die App bleibt bedienbar. Gescannte Dokumente brauchen beim "
+                    "ersten Mal etwas länger (Texterkennung)."), ziel
         if pfad == "bericht/stand":
             import bericht as br
             with db() as v:

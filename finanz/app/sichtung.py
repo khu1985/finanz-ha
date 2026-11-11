@@ -23,6 +23,13 @@ from pathlib import Path
 LOG = logging.getLogger("finanz")
 GESCHUETZT = {"hand", "ki"}
 _SPERRE = threading.Lock()
+# Fortschritt der laufenden Sichtung (für die Anzeige; nur ein Lauf gleichzeitig)
+STAND: dict = {"laeuft": False, "fertig": 0, "gesamt": 0, "aktuell": "", "seit": "", "ausloeser": ""}
+
+
+def _schritt(name: str) -> None:
+    STAND["fertig"] += 1
+    STAND["aktuell"] = name
 
 
 @dataclass
@@ -96,11 +103,11 @@ def letzte(db) -> Bericht | None:
     return Bericht(**json.loads(r[0])) if r else None
 
 
-def _lesen(pfad: Path, dateiname: str) -> str | None:
+def _lesen(pfad: Path, dateiname: str, vorher: str = "") -> str | None:
     import versicherungen as vi
     if not pfad.exists():
         return None
-    return vi.text_auslesen(dateiname, pfad.read_bytes())
+    return vi.text_auslesen(dateiname, pfad.read_bytes(), vorher or "")
 
 
 def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
@@ -115,7 +122,9 @@ def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
     for datei, vertraege in gruppen.items():
         vertraege.sort(key=lambda v: v["id"])
         haupt = vertraege[0]
-        text = _lesen(vi.ordner(daten) / datei, haupt["dateiname"])
+        STAND["aktuell"] = haupt["dateiname"]
+        text = _lesen(vi.ordner(daten) / datei, haupt["dateiname"], haupt.get("text") or "")
+        _schritt(haupt["dateiname"])
         if text is None:
             b.fehlend += 1
             continue
@@ -157,7 +166,9 @@ def _dokumente(db, daten: Path, b: Bericht, alle: bool, bereich: str, modul, tab
     for d in modul.alle(db):
         if not d["datei"]:
             continue
-        text = _lesen(modul.ordner(daten) / d["datei"], d["dateiname"])
+        STAND["aktuell"] = d["dateiname"]
+        text = _lesen(modul.ordner(daten) / d["datei"], d["dateiname"], d.get("text") or "")
+        _schritt(d["dateiname"])
         if text is None:
             b.fehlend += 1
             continue
@@ -212,34 +223,71 @@ def _dokumente(db, daten: Path, b: Bericht, alle: bool, bereich: str, modul, tab
 
 
 def ausfuehren(k: dict, db, daten: Path, ausloeser: str = "Knopf", alle: bool = False) -> Bericht:
+    import meta
+    with _SPERRE:
+        b = Bericht(datetime.now().isoformat(timespec="seconds"), meta.version(), ausloeser)
+        STAND.update(laeuft=True, fertig=0, gesamt=_anzahl(db), aktuell="", seit=b.zeit, ausloeser=ausloeser)
+        try:
+            return _ausfuehren(k, db, daten, b, alle, ausloeser)
+        finally:
+            STAND.update(laeuft=False, aktuell="")
+
+
+def _anzahl(db) -> int:
+    """Anzahl Originaldateien (Policen je Datei einmal) – für die Fortschrittsanzeige."""
+    n = 0
+    for sql in ("SELECT COUNT(DISTINCT datei) FROM vertraege WHERE datei != ''",
+                "SELECT COUNT(*) FROM vorsorge_dok WHERE datei != ''", "SELECT COUNT(*) FROM steuer_dok WHERE datei != ''"):
+        try:
+            n += db.execute(sql).fetchone()[0] or 0
+        except Exception:  # noqa: BLE001
+            pass
+    return n
+
+
+def im_hintergrund(laden, verbinden, daten: Path, ausloeser: str = "Knopf", alle: bool = False) -> bool:
+    """Neu sichten in einem eigenen Thread starten; False, wenn schon eine Sichtung läuft."""
+    if _SPERRE.locked() or STAND["laeuft"]:
+        return False
+
+    def lauf():
+        try:
+            with verbinden() as db:
+                ausfuehren(laden(), db, daten, ausloeser, alle=alle)
+        except Exception as e:  # noqa: BLE001
+            LOG.warning("Neu sichten (%s): %s", ausloeser, e)
+    STAND.update(laeuft=True, fertig=0, gesamt=0, aktuell="", ausloeser=ausloeser,
+                 seit=datetime.now().isoformat(timespec="seconds"))
+    threading.Thread(target=lauf, name="sichtung-knopf", daemon=True).start()
+    return True
+
+
+def _ausfuehren(k: dict, db, daten: Path, b: Bericht, alle: bool, ausloeser: str) -> Bericht:
     import budget as bu
     import dokumente as dk
     import konfig
-    import meta
     import steuerdokumente as sd
-    with _SPERRE:
-        b = Bericht(datetime.now().isoformat(timespec="seconds"), meta.version(), ausloeser)
-        speichern = False
-        for name, f in (("Versicherungen", lambda: _versicherungen(k, db, daten, b, alle)),
-                        ("Vorsorgedokumente", lambda: _dokumente(db, daten, b, alle, "Vorsorge", dk, "vorsorge_dok", False)),
-                        ("Steuerdokumente", lambda: _dokumente(db, daten, b, alle, "Steuern", sd, "steuer_dok", True)),
-                        ("Budget", lambda: setattr(b, "buchungen", bu.neu_kategorisieren(db, k)))):
-            try:
-                if f():
-                    speichern = True
-            except Exception as e:  # noqa: BLE001
-                LOG.warning("Neu sichten (%s): %s", name, e)
-                b.fehler.append(f"{name}: {e}")
-        if speichern:
-            konfig.speichern(k)
-        _tabelle(db)
-        db.execute("INSERT INTO sichtung (zeit, version, bericht) VALUES (?, ?, ?)",
-                   (b.zeit, b.version, json.dumps(asdict(b), ensure_ascii=False)))
-        db.commit()
-        LOG.info("Dokumente neu gesichtet (%s): %d geprüft, %d geändert, %d neu, %d von Hand bearbeitet belassen, "
-                 "%d Buchungen neu kategorisiert", ausloeser, b.geprueft, len(b.geaendert), len(b.neu), b.geschuetzt,
-                 b.buchungen)
-        return b
+    speichern = False
+    for name, f in (("Versicherungen", lambda: _versicherungen(k, db, daten, b, alle)),
+                    ("Vorsorgedokumente", lambda: _dokumente(db, daten, b, alle, "Vorsorge", dk, "vorsorge_dok", False)),
+                    ("Steuerdokumente", lambda: _dokumente(db, daten, b, alle, "Steuern", sd, "steuer_dok", True)),
+                    ("Budget", lambda: setattr(b, "buchungen", bu.neu_kategorisieren(db, k)))):
+        try:
+            if f():
+                speichern = True
+        except Exception as e:  # noqa: BLE001
+            LOG.warning("Neu sichten (%s): %s", name, e)
+            b.fehler.append(f"{name}: {e}")
+    if speichern:
+        konfig.speichern(k)
+    _tabelle(db)
+    db.execute("INSERT INTO sichtung (zeit, version, bericht) VALUES (?, ?, ?)",
+               (b.zeit, b.version, json.dumps(asdict(b), ensure_ascii=False)))
+    db.commit()
+    LOG.info("Dokumente neu gesichtet (%s): %d geprüft, %d geändert, %d neu, %d von Hand bearbeitet belassen, "
+             "%d Buchungen neu kategorisiert", ausloeser, b.geprueft, len(b.geaendert), len(b.neu), b.geschuetzt,
+             b.buchungen)
+    return b
 
 
 def nach_update(laden, verbinden, daten: Path) -> threading.Thread | None:
