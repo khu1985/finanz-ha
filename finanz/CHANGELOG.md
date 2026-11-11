@@ -10,6 +10,15 @@
     ohne Doppelte
   - Auflösen: Saldo 0 ab einem Datum, Verlauf bleibt; aufgelöste Konten stehen eingeklappt unter der Liste
 - Kontenliste mit Auswahl-Kästchen zum Löschen mehrerer Konten; Löschen entfernt auch die Buchungen des Kontos
+- **Übersichtlicher:**
+  - Krankenkasse: eine Zeile pro Person (heute, optimal, Ersparnis, ab welchen Kosten die tiefste Franchise lohnt);
+    die Details als eine aufklappbare Tabelle Franchise × Gesundheitskosten statt zwei langer Tabellen pro Person
+  - Hinzufügen steht überall direkt unter der Liste: Versicherungen (Hochladen, Liste importieren), Vermögen
+    (Saldo erfassen, Bank-Import, CSV), Budget (Kontoauszüge), Kinder (Erfassen zuerst); Auswertungen danach
+  - Prämien nach Sparte als horizontale Balken – lange Spartennamen überlappen nicht mehr
+  - Berater: Amortisations-Szenario eingeklappt (Bearbeiten unter Wohnen)
+- **Kopieren** (Vorschläge, Berater-Auftrag) funktioniert jetzt auch im Home-Assistant-Fenster; geht es nicht, wird der
+  Text markiert
 
 ## 0.25.4 – 2026-11-11
 

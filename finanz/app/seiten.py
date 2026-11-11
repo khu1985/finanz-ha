@@ -137,6 +137,12 @@ border-radius:8px;padding:8px 10px;width:100%}
 textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:420px}
 textarea.kurz{min-height:0;font-family:inherit}textarea.mittel{min-height:240px}
 .felder label.breit{grid-column:1/-1}
+.hbalken{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:baseline;padding:6px 0}
+.hb-spur{grid-column:1/-1;background:var(--linie);border-radius:4px;height:10px;overflow:hidden}
+.hb-wert{display:block;height:100%;background:var(--akzent);border-radius:4px}
+.hb-zahl{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.hb-zahl small{color:var(--leise)}
+table.matrix td,table.matrix th{white-space:nowrap}
+@media (max-width:640px){table.matrix{font-size:12px}table.matrix td,table.matrix th{padding:6px 5px}}
 .vorschlag{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-size:inherit;color:inherit;padding:8px 0;border-bottom:1px solid var(--linie)}
 .vorschlag input{margin-top:3px;flex:none;width:auto!important}.vorschlag>span{flex:1;min-width:0}.vorschlag span.leise{display:block;font-size:.9em}
 button,.knopf{font:inherit;background:var(--akzent);color:#fff;border:0;border-radius:8px;padding:8px 16px;
@@ -225,6 +231,23 @@ JS = """
   var texte = %s;
   var ov = document.getElementById('status'), txt = document.getElementById('status-text'), bar = document.getElementById('lade');
   function zeige(t){ txt.textContent = t; ov.classList.add('an'); }
+  // Kopieren: im iframe von Home Assistant ist die Zwischenablage-API oft gesperrt – zuerst execCommand (geht im
+  // iframe bei einem Klick), dann die API, sonst den Text markieren, damit man selbst kopieren kann
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('[data-kopieren]');
+    if (!b) return;
+    var el = document.getElementById(b.getAttribute('data-kopieren'));
+    if (!el) return;
+    var t = el.value, alt = b.textContent;
+    function zeigen(s){ b.textContent = s; setTimeout(function(){ b.textContent = alt; }, 4000); }
+    function markieren(){ el.focus(); el.select(); zeigen('Markiert – jetzt kopieren (Strg+C)'); }
+    var ok = false;
+    try { el.focus(); el.select(); el.setSelectionRange(0, t.length); ok = document.execCommand('copy'); } catch (x) { ok = false; }
+    if (ok) { zeigen('Kopiert ✓'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function(){ zeigen('Kopiert ✓'); }, markieren);
+    } else { markieren(); }
+  });
   document.addEventListener('change', function(e){
     if (e.target.matches && e.target.matches('[data-alle]')) {
       var f = e.target.closest('form');
@@ -372,7 +395,8 @@ def karte(titel: str, inhalt: str) -> str:
     return f'<section class="karte"><h2>{escape(titel)}</h2>{inhalt}</section>'
 
 
-def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1, karten: bool = False) -> str:
+def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1, karten: bool = False,
+            responsiv: bool | None = None) -> str:
     """Tabelle; ab fünf Spalten auf dem Handy als Karten (Beschriftung je Zelle)."""
     th = "".join(f'<th class="{"z" if i >= zahlen_ab else ""}">{escape(h)}</th>' for i, h in enumerate(kopf))
     tr = []
@@ -382,7 +406,9 @@ def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1, karten: boo
         tr.append(f"<tr>{tds}</tr>")
     # lange Texte in Wertspalten: auf dem Handy ebenfalls als Karten
     lang = len(kopf) >= 3 and any(len(re.sub(r"<[^>]+>", "", str(c))) > 45 for z in zeilen for c in z[1:])
-    klasse = ' class="responsiv"' if len(kopf) > 4 or lang or karten else ""
+    if responsiv is None:
+        responsiv = len(kopf) > 4 or lang or karten
+    klasse = ' class="responsiv"' if responsiv else ' class="matrix"' if responsiv is False and len(kopf) > 4 else ""
     return f'<div class="tab"><table{klasse}><thead><tr>{th}</tr></thead><tbody>{"".join(tr)}</tbody></table></div>'
 
 
@@ -836,11 +862,12 @@ Saldo-Spalte, den heutigen Kontostand als Endsaldo angeben.</p>
 <button>Auszug importieren</button></div></form>"""
     arten_zeilen = [[vm.ARTEN.get(a, a), chf(v)] for a, v in sorted(nv["nach_art"].items(), key=lambda x: -x[1])]
     return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["frei"]), "Freies Vermögen (ohne Immobilie/Hypothek)") + "</div>"
-            + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)})) + anlage_karte(k, db)
             + karte("Konten", liste)
-            + '<div class="raster">' + karte("Bank-Import", bank) + karte("Saldo erfassen", erfassen)
-            + karte("CSV importieren (eigene Liste)", importieren)
-            + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>")
+            + '<div class="raster">' + karte("Saldo erfassen", erfassen) + karte("Bank-Import", bank)
+            + karte("CSV importieren (eigene Liste)", importieren) + "</div>"
+            + '<div class="raster">' + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
+            + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>"
+            + anlage_karte(k, db))
 
 
 def konten_form(inhalt: str) -> str:
@@ -1167,13 +1194,14 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
     termin_html = tabelle(["Kündigen bis", "wirksam auf", "Vertrag", "Grundlage"], termin_zeilen, zahlen_ab=9) + (
         '<p class="leise">Ohne Datum im Vertrag wird keine Frist berechnet. Massgebend sind Police und AVB; '
         'die Kündigung muss vor Fristende beim Versicherer eintreffen.</p>')
-    sparten = dg.saeulen([vi.SPARTEN.get(s, s)[:14] for s in pr["nach_sparte"]],
-                         {"Prämie": list(pr["nach_sparte"].values())}) if pr["total"] else ""
+    sparten = (dg.balken_liste([(vi.SPARTEN.get(s, s), w) for s, w in pr["nach_sparte"].items()])
+               if pr["total"] else '<p class="leer">Noch keine Prämien.</p>')
+    # Reihenfolge: Liste → direkt darunter hinzufügen → Fristen und Prämien → Analysen
     return (f'<div class="kpis">{kpis}</div>' + karte("Verträge", liste)
-            + '<div class="raster">' + karte("Deckungscheck", _deckung(k, vertraege))
-            + karte("Kündigungstermine", termin_html) + "</div>"
-            + krankenkasse_karte(k, db) + risiko_karte(k) + karte("Prämien nach Sparte", sparten)
-            + '<div class="raster">' + karte("Weitere Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>")
+            + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>"
+            + '<div class="raster">' + karte("Kündigungstermine", termin_html) + karte("Prämien nach Sparte", sparten) + "</div>"
+            + karte("Deckungscheck", _deckung(k, vertraege))
+            + krankenkasse_karte(k, db) + risiko_karte(k))
 
 
 def _deckung(k: dict, vertraege: list[dict]) -> str:
@@ -1423,7 +1451,9 @@ placeholder="z. B. Wie erreichen wir bis zur Fälligkeit eine Amortisation von 6
                escape((b["frage"] or "Gesamtbeurteilung")[:80]), licht(am.GRUEN, "beantwortet") + "beantwortet" if b["antwort"] else licht(am.GELB, "offen") + "offen"] for b in liste]
     verlauf = tabelle(["Datum", "Berater", "Frage", "Antwort"], zeilen, zahlen_ab=9) if liste else '<p class="leise">Noch keine Beratungen.</p>'
     return ('<div class="raster">' + karte("Situation", sit) + karte("Berater fragen", fragen) + "</div>"
-            + karte("Amortisation bis zur Fälligkeit", amort) + karte("Bisherige Beratungen", verlauf)
+            + karte("Bisherige Beratungen", verlauf)
+            + '<details class="karte"><summary>Amortisations-Szenario (geht als Fakt an die Berater; bearbeiten unter '
+              '<a href="wohnen">Wohnen</a>)</summary>' + amort + "</details>"
             + '<p class="leise">Die Berater sind KI-Profile, keine zugelassenen Anlageberater. Ergebnisse kritisch prüfen.</p>')
 
 
@@ -1452,7 +1482,7 @@ def beratung(k: dict, db, bid: int) -> str:
 <div class="zeile"><button class="zweit">Antwort speichern</button></div></form>"""
     auftrag = f"""<details{"" if b["antwort"] else " open"}><summary>Auftrag anzeigen</summary>
 <textarea readonly id="auftrag" style="min-height:300px">{escape(b['auftrag'])}</textarea>
-<div class="zeile"><button type="button" class="zweit" onclick="navigator.clipboard.writeText(document.getElementById('auftrag').value);this.textContent='Kopiert'">Kopieren</button></div></details>"""
+<div class="zeile"><button type="button" class="zweit" data-kopieren="auftrag">Kopieren</button></div></details>"""
     loeschen = (f'<form method="post" action="berater/{bid}/loeschen" onsubmit="return confirm(\'Beratung löschen?\')">'
                 '<button class="zweit">Löschen</button></form>')
     return (karte(f"{b['profil']} · {b['datum'][:16].replace('T', ' ')}",
@@ -1994,27 +2024,57 @@ def krankenkasse_karte(k: dict, db) -> str:
         kpi(chf(total_best), "mit optimaler Franchise", "gut" if total_best < total_heute else ""),
         kpi(chf(total_heute - total_best), "Ersparnis pro Jahr", "", am.GELB if total_heute - total_best >= 200 else am.GRUEN),
     ])
+    # Übersicht: eine Zeile pro Person
+    uebersicht_z = []
+    for e in ergebnisse.values():
+        f0, fb = e.person.franchise, e.beste
+        heute_t = e.kosten.get(f0, e.kosten[fb])
+        be = e.break_even[0][2] if e.break_even else None
+        uebersicht_z.append([
+            escape(e.person.name),
+            chf(e.person.kosten_jahr) if e.person.kosten_jahr else '<span class="leise">nicht erfasst</span>',
+            f"{f0} · {chf(heute_t)}",
+            (f'<span>{licht(am.GRUEN if fb == f0 else am.GELB, "")}{fb} · <b>{chf(e.kosten[fb])}</b>'
+             + (f'<br><small class="gut">spart {chf(heute_t - e.kosten[fb])}</small>' if heute_t - e.kosten[fb] >= 1 else "")
+             + "</span>"),
+            f"ab {chf(be)}" if be is not None else "–"])
+    vergleich = tabelle(["Person", "Gesundheitskosten/Jahr", "Heute: Franchise · Total", "Optimal: Franchise · Total",
+                         f"Tiefste Franchise lohnt"], uebersicht_z, zahlen_ab=1)
+    vergleich += ('<p class="leise">Total = Prämie + Kostenbeteiligung (Franchise und 10 % Selbstbehalt) bei den erwarteten '
+                  'Gesundheitskosten. «Tiefste Franchise lohnt ab»: Kosten pro Jahr, ab denen die tiefste Franchise günstiger '
+                  'ist als die höchste.</p>')
+    # Details pro Person: eine Matrix Franchise × Gesundheitskosten, je Spalte die günstigste markiert
     teile = []
     for e in ergebnisse.values():
-        z = [[licht(am.GRUEN if f == e.beste else am.GRAU, "optimal" if f == e.beste else "") + str(f)
-              + (" (heute)" if f == e.person.franchise else ""), chf(e.praemien[f]),
-              chf(e.kosten[f] - e.praemien[f]), f"<b>{chf(e.kosten[f])}</b>" if f == e.beste else chf(e.kosten[f])]
-             for f in e.franchisen]
         stufen = [0, 1000, 2000, 5000, 10000]
-        z2 = [[f"bei Kosten {chf(s)}"] + [chf(e.tabelle[s][f]) for f in (e.franchisen[0], e.franchisen[-1])]
-              + [str(min(e.franchisen, key=lambda f: e.tabelle[s][f]))] for s in stufen]
-        teile.append(f'<h2>{escape(e.person.name)}</h2>'
-                     + tabelle(["Franchise", "Prämie/Jahr", "Kostenbeteiligung", "Total/Jahr"], z)
-                     + tabelle(["Szenario", f"Franchise {e.franchisen[0]}", f"Franchise {e.franchisen[-1]}", "beste"], z2))
-    hinweise = [h for e in ergebnisse.values() for h in e.hinweise]
+        eigene = round(e.person.kosten_jahr or 0)
+        if eigene and eigene not in stufen:
+            stufen = sorted(stufen + [eigene])
+        kopf = ["Franchise"] + [("erwartet " if s == eigene and eigene else "") + (chf(s) if s else "keine Kosten")
+                                for s in stufen]
+        z = []
+        for f in e.franchisen:
+            zelle = [f"{f}" + (" <small>(heute)</small>" if f == e.person.franchise else "")]
+            for s in stufen:
+                wert = e.tabelle[s][f] if s in e.tabelle else round(e.praemien[f] + kk.kostenbeteiligung(s, f, e.person.kind))
+                bester = min(e.franchisen, key=lambda ff: (e.tabelle[s][ff] if s in e.tabelle else
+                                                             e.praemien[ff] + kk.kostenbeteiligung(s, ff, e.person.kind), -ff))
+                zelle.append(f'<b class="gut">{chf(wert)}</b>' if f == bester else chf(wert))
+            z.append(zelle)
+        teile.append(f'<details><summary>{escape(e.person.name)}: Total pro Jahr nach Franchise und Gesundheitskosten'
+                     f'</summary>' + tabelle(kopf, z, zahlen_ab=1, responsiv=False)
+                     + '<p class="leise">Grün = günstigste Franchise bei diesen Kosten.</p></details>')
+    # «lohnt sich erst ab» steht schon in der Vergleichstabelle
+    hinweise = [h for e in ergebnisse.values() for h in e.hinweise if "Die tiefste Franchise lohnt sich erst ab" not in h]
     geschaetzt = any(e.geschaetzt for e in ergebnisse.values())
     fuss = ('<p class="leise">Prämien anderer Franchisen geschätzt mit dem gesetzlichen Höchstrabatt (70 % des Risikounterschieds, '
             'höchstens 50 % der Prämie). Genaue Prämien und Kassenvergleich: priminfo.admin.ch; eigene Offerten unter '
             '<code>krankenkasse.personen[].angebote</code> (Franchise: Prämie/Monat) eintragen. Wechsel oder Franchise-Änderung '
             'bis 30. November eingeschrieben, Erhöhung der Franchise auch bei der eigenen Kasse.</p>' if geschaetzt else "")
     return karte("Krankenkasse: Franchise und Modell", f'<div class="kpis">{kpis}</div>' + policen_html
+                 + "<h2>Franchisen-Vergleich</h2>" + vergleich + "".join(teile)
                  + "<h2>Empfehlungen</h2>" + hinweisliste(hinweise)
-                 + "".join(teile) + fuss + "<details><summary>Angaben bearbeiten</summary>" + form + "</details>")
+                 + fuss + "<details><summary>Angaben bearbeiten</summary>" + form + "</details>")
 
 
 
@@ -2283,9 +2343,8 @@ werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>kont
     return (kpis
             + karte("Ausgaben pro Monat", diagramm + hinweisliste(a.hinweise) + sparen_form)
             + '<div class="raster">' + karte("Nach Kategorie", kat_html) + karte("Monate", monat_html) + "</div>"
-            + karte("Ohne Kategorie", unb_html)
-            + '<div class="raster">' + karte("Eigene Regeln", regel_html)
-            + karte("Kontoauszüge", konten_html + import_form) + "</div>")
+            + karte("Kontoauszüge", konten_html + import_form)
+            + karte("Ohne Kategorie", unb_html) + karte("Eigene Regeln", regel_html))
 
 
 # ---------------------------------------------------------------- Kinder
@@ -2363,8 +2422,8 @@ def kinder(k: dict, db) -> str:
             'Drittbetreuung bis 14 (höchstens ' + chf(float(k["kennzahlen"].get("bund_betreuung_max", 25800))) + '). '
             'Zulagen: Mindestansätze 215 bzw. 268 pro Monat, sofern nicht erfasst.</p>')
     link = '<p class="leise">Was ein tieferes Pensum statt Kita kostet: <a href="szenarien#teilzeit">Teilzeit-Rechner unter Szenarien</a>.</p>'
-    return (kpis + karte("Hinweise", hinweisliste(u.hinweise) + link) + karte("Zeitachse bis zur Selbständigkeit", zeit)
-            + karte("Kinder erfassen", form))
+    return (kpis + karte("Kinder", form) + karte("Hinweise", hinweisliste(u.hinweise) + link)
+            + karte("Zeitachse bis zur Selbständigkeit", zeit))
 
 
 # ---------------------------------------------------------------- Steuererklärung
@@ -2805,8 +2864,7 @@ def vorschlaege(k: dict, db) -> str:
     teil_text = karte("Weitergeben", (
         f'<textarea id="vorschlaege-text" class="mittel" readonly>{escape(text)}</textarea>'
         '<div class="zeile nicht-drucken">'
-        '<button type="button" class="zweit" onclick="navigator.clipboard.writeText('
-        'document.getElementById(\'vorschlaege-text\').value);this.textContent=\'Kopiert\'">Kopieren</button>'
+        '<button type="button" class="zweit" data-kopieren="vorschlaege-text">Kopieren</button>'
         '<a class="knopf zweit" href="vorschlaege.md">Herunterladen (.md)</a>'
         f'<a class="knopf" href="{escape(link)}" target="_blank" rel="noopener noreferrer">Als GitHub-Issue öffnen</a></div>'
         '<p class="leise">«Als GitHub-Issue öffnen» füllt auf GitHub ein neues Issue mit diesem Text vor – abgeschickt wird '

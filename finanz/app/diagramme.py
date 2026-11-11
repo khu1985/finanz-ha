@@ -127,3 +127,22 @@ def saeulen(kategorien: list[str], serien: dict[str, list[float]], linie_bei: fl
                      f'<text class="achse ziel-text" x="{B - R}" y="{y - 6:.1f}" text-anchor="end">{escape(linie_text)}</text>')
     teile.append("</svg>")
     return f'<figure class="diagramm">{"".join(teile)}{_legende(list(serien))}</figure>'
+
+
+def _anteil(p: float) -> str:
+    return "&lt;1&nbsp;%" if 0 < p < 1 else f"{p:.0f}&nbsp;%"
+
+
+def balken_liste(daten: list[tuple[str, float]], einheit: str = "") -> str:
+    """Horizontale Balken mit Beschriftung links – für Kategorien mit langen Namen (überlappt nie, auch auf dem Handy)."""
+    daten = [(n, w) for n, w in daten if w]
+    if not daten:
+        return '<p class="leer">Noch keine Daten.</p>'
+    hi = max(w for _, w in daten) or 1
+    total = sum(w for _, w in daten) or 1
+    zeilen = "".join(
+        f'<div class="hbalken"><span class="hb-name">{escape(n)}</span>'
+        f'<span class="hb-zahl">{f"{w:,.0f}" >> TS}{escape(einheit)} <small>{_anteil(w / total * 100)}</small></span>'
+        f'<span class="hb-spur"><span class="hb-wert" style="width:{max(1.5, w / hi * 100):.1f}%"></span></span></div>'
+        for n, w in sorted(daten, key=lambda x: -x[1]))
+    return f'<div class="hbalken-liste">{zeilen}</div>'
