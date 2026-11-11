@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.25.4 – 2026-11-11
+
+- **Berater:** nutzen jetzt die eingestellte KI-Entität (Einstellungen → KI); bisher immer die Standard-KI-Aufgabe
+  von Home Assistant
+
 ## 0.25.3 – 2026-11-11
 
 - **Vorschläge:** Meldungen aus dem Protokoll zählen nur seit dem Start der installierten Version – was ein Update

@@ -280,6 +280,6 @@ def fragen(k: dict, db, pid: str, frage: str) -> int:
     """Auftrag an die KI senden und Antwort speichern."""
     p = profil(k, pid)
     text = auftrag(k, db, pid, frage)
-    antwort = vi.ki_aufgabe(text, (k.get("versicherungen") or {}).get("ki_entity", ""), f"Beratung {p['name']}",
+    antwort = vi.ki_aufgabe(text, (k.get("ki") or {}).get("entity", ""), f"Beratung {p['name']}",
                             json_antwort=False)
     return speichern(db, p["name"], frage, text, antwort or "")

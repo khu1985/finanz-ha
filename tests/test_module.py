@@ -1302,3 +1302,12 @@ def test_vorschlaege_nur_meldungen_der_aktuellen_version(k, db, tmp_path):
     titel = {v.titel: v.detail for v in vs.sammeln(k, db, tmp_path) if v.bereich == "Fehler und Warnungen"}
     assert set(titel) == {"WARNING: Neue Warnung", "ERROR: Neuer Fehler"}
     assert all(d == f"seit Version {meta.version()}" for d in titel.values())
+
+
+def test_berater_nutzt_eingestellte_ki_entitaet(k, db, monkeypatch):
+    import berater
+    aufrufe = []
+    monkeypatch.setattr(vi, "ki_aufgabe", lambda text, entity, name, json_antwort=True: aufrufe.append(entity) or "Antwort")
+    k["ki"].update(aktiv=True, entity="ai_task.lokal")
+    berater.fragen(k, db, berater.profile(k)[0]["id"], "Amortisieren oder anlegen?")
+    assert aufrufe == ["ai_task.lokal"]
