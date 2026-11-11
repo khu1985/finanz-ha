@@ -5,6 +5,7 @@
 - versicherungen*.csv        → Versicherungsliste (ohne PDF)
 - bank*.csv, konto*.csv      → Kontoauszug aus dem E-Banking (Monatssaldi); auch .xml/.zip (camt.053)
 - versicherung*.pdf, police* → Versicherungsvertrag hochladen und analysieren
+- steuerauszug*.xml/.pdf     → E-Steuerauszug der Bank (eCH-0196): Saldi per 31.12. ins Vermögen
 - steuer*.pdf, veranlagung*  → Steuererklärung / Veranlagung analysieren
 - übrige *.pdf               → Vorsorgedokument (Vorsorgeausweis, 3a-, IK-Auszug)
 
@@ -53,6 +54,11 @@ def einlesen(daten: Path, db) -> list[str]:
                 a, n = bi.aus_datei(db, inhalt, pfad.name)
                 nb = bu.speichern(db, a.konto_vorschlag, bi.buchungen_lesen(inhalt), konfig.laden())
                 meldungen.append(f"{pfad.name}: {n} Monatssaldi, {nb} Buchungen für {a.konto_vorschlag}")
+            elif name.startswith("steuerauszug") and name.endswith((".xml", ".pdf")):
+                import esteuerauszug as es
+                s = es.lesen(inhalt, pfad.name)
+                _, n = es.speichern(db, s)
+                meldungen.append(f"{pfad.name}: Steuerauszug {s.jahr or ''}, {n} Konten/Depots")
             elif name.endswith(".csv") and name.startswith("versicherung"):
                 n, fehler = vi.csv_import(db, inhalt)
                 meldungen.append(f"{pfad.name}: {n} Verträge" + (f", {len(fehler)} übersprungen" if fehler else ""))

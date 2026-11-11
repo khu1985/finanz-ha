@@ -1,5 +1,21 @@
 # Änderungen
 
+## 0.31.0 – 2026-11-11
+
+- **Kontoauszüge im Bankformat camt.053** (ISO 20022, XML oder ZIP mit mehreren Tagesauszügen; auch camt.052/054):
+  Buchungsdatum, Betrag, Gegenpartei und Mitteilung pro Buchung, Sammelaufträge einzeln, vorgemerkte Buchungen nicht;
+  Monatssaldi aus dem Schlusssaldo. Unter Vermögen und Budget sowie im Import-Ordner
+- **E-Steuerauszug der Bank (eCH-0196):** neu unter «Steuern». Aus der XML-Datei (direkt oder als Anhang im PDF)
+  kommen Konten, Depots und Schulden mit dem Saldo per 31.12. ins Vermögen; Steuerwert, Bruttoerträge A und B,
+  Verrechnungssteueranspruch, Schuldzinsen und Spesen stehen in der Checkliste der Steuererklärung. Vom PDF allein
+  liest die App die Totale
+- **Verfügungen:** Entwürfe für Ehevertrag, Erbvertrag, Darlehen in der Familie sowie Schenkung bzw. Erbvorbezug
+- **Notfallordner:** Meldeliste – welche Stellen nach einem Todesfall zu benachrichtigen sind (Gemeinde, AHV,
+  Arbeitgeber, Pensionskasse, 3a/3b, Banken, Versicherungen), aus den erfassten Daten
+- **Vorschläge haken sich selbst ab:** Die App merkt sich offene Vorschläge. Kommt einer nach einem Update nicht mehr
+  vor, erscheint er unter «Erledigt» mit der Version («durch Update auf …» bzw. «durch deine Änderung»). Was eine
+  Version erledigt hat, steht auch im Text zum Weitergeben
+
 ## 0.30.0 – 2026-11-11
 
 Erkennung verbessert anhand anonymisierter Textauszüge:

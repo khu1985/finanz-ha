@@ -1544,3 +1544,51 @@ def test_notfall_meldeliste(k, db, tmp_path):
     stellen = [s for s, _, _ in nf.meldeliste(k, db)]
     assert "AHV-Ausgleichskasse" in stellen and "Steuerverwaltung" in stellen
     assert any(s.startswith("Mobiliar – Hausrat") for s in stellen)
+
+
+def test_esteuerauszug_xml(k, db):
+    from pathlib import Path
+    import esteuerauszug as es
+    import steuererklaerung as se
+    inhalt = (Path(__file__).parent / "daten" / "esteuerauszug_beispiel.xml").read_bytes()
+    s = es.lesen(inhalt, "steuerauszug.xml")
+    assert (s.jahr, s.steuerwert, s.ertrag_a, s.ertrag_b, s.vst) == (2025, 60500, 410, 120, 143.5)
+    assert s.schulden == 300000 and s.schuldzinsen == 4500 and s.spesen == 150
+    depot = next(p for p in s.posten if p.art == "depot")
+    assert depot.steuerwert == 40000 and depot.titel == 2 and depot.vst == 140
+    _, n = es.speichern(db, s)
+    assert n == 3
+    konten = {x["name"]: x for x in vm.konten(db)}
+    assert "Raiffeisen …2957" in konten and konten["Raiffeisen …2957"]["art"] == "bank"
+    hypo = next(x for x in konten.values() if x["art"] == "hypothek")
+    assert db.execute("SELECT betrag FROM saldi WHERE konto_id = ?", (hypo["id"],)).fetchone()[0] == -300000
+    es.speichern(db, s)                                      # nochmals: ersetzt, verdoppelt nicht
+    assert len(es.alle(db)) == 1 and es.summen(db, 2025)["vst"] == 143.5
+    punkte = {p.schluessel: p for p in se.erstellen(k, db, 2025).punkte}
+    assert "Verrechnungssteuer 143.50" in punkte["steuerauszug"].wert.replace("'", "")
+
+
+def test_esteuerauszug_pdf_text():
+    import esteuerauszug as es
+    text = ("Raiffeisenbank Musterhausen\nSteuerauszug per 31.12.2025\nTotal Steuerwert 61'234.00\n"
+            "Bruttoertrag A (mit Verrechnungssteuer) 410.00\nBruttoertrag B (ohne Verrechnungssteuer) 120.00\n"
+            "Verrechnungssteueranspruch 143.50\n")
+    assert es.ist_steuerauszug_text(text)
+    s = es.aus_text(text)
+    assert (s.jahr, s.steuerwert, s.ertrag_a, s.ertrag_b, s.vst) == (2025, 61234, 410, 120, 143.5)
+
+
+def test_vorschlaege_durch_update_erledigt(db):
+    import vorschlaege as vs
+    a = vs.Vorschlag("Dokumente erkennen", "Hausrat (Muster): «Prämie pro Jahr» falsch erkannt")
+    b = vs.Vorschlag("Dokumente erkennen", "Hausrat (Muster): «Sparte» falsch erkannt")
+    c = vs.Vorschlag("Dokumente erkennen", "Gebäude (Muster): «Ablauf» nicht erkannt")
+    vs.verlauf_nachfuehren(db, [a, b, c], "1.0.0")
+    vs.verlauf_nachfuehren(db, [c], "1.1.0")                  # a und b mit dem Update weg
+    erl = vs.erledigt(db, "1.1.0")
+    assert len(erl) == 1 and erl[0][0].titel == "Hausrat (Muster): «Prämie pro Jahr», «Sparte»" and erl[0][3] == "update"
+    vs.verlauf_nachfuehren(db, [], "1.1.0")                   # c durch eigene Änderung in derselben Version
+    assert [e[3] for e in vs.erledigt(db) if "Gebäude" in e[0].titel] == ["aenderung"]
+    vs.verlauf_nachfuehren(db, [a], "1.2.0")                  # wieder aufgetaucht → offen
+    assert not any("Prämie" in e[0].titel for e in vs.erledigt(db))
+    assert "### Mit 1.1.0 erledigt" in vs.bericht([], "1.1.0", "", None, [e[0] for e in erl])

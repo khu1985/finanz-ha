@@ -535,6 +535,21 @@ Betreuungskosten der Kinder × Anteil der Reduktion). Pensum und Bruttolohn steh
 Gleiche aufeinanderfolgende Jahre werden zusammengefasst. Hinweise zu BVG-Eintrittsschwelle (unter 22'680 entfällt die
 PK), Koordinationsabzug, Splitting bzw. Konkubinat und Risikoschutz.
 
+## E-Steuerauszug der Bank
+
+Viele Banken stellen einmal im Jahr einen **E-Steuerauszug** nach dem Standard eCH-0196 aus: Konten, Wertschriften,
+Schulden, Erträge und Verrechnungssteuer per 31.12. Unter **Steuern → E-Steuerauszug der Bank** einlesen (oder als
+`steuerauszug*.xml` bzw. `.pdf` in den Import-Ordner legen).
+
+| Datei | Was die App übernimmt |
+|---|---|
+| XML (eCH-0196), direkt oder als Anhang im PDF | jedes Konto, Depot und jede Schuld mit Saldo per 31.12. ins Vermögen (Name wie beim Kontoauszug-Import, z. B. «Raiffeisen …1234»; Hypotheken als Hypothek), dazu die Totale |
+| nur PDF | Totale aus dem Text: Steuerwert, Bruttoertrag A (mit VST) und B (ohne VST), Verrechnungssteueranspruch, Schulden, Schuldzinsen, Spesen |
+
+Die Totale erscheinen in der Checkliste der Steuererklärung. Die Barcodes auf den letzten Seiten des PDFs liest die
+App nicht (im App-Image fehlt ein Barcode-Leser) – darum ist die XML-Datei der vollständigste Weg. Ein erneutes
+Einlesen derselben Bank und desselben Jahres ersetzt den früheren Auszug.
+
 ## Steuererklärung vorbereiten
 
 Die Seite **Steuererklärung** erstellt pro Steuerjahr (ab Oktober das laufende, sonst das Vorjahr) eine Checkliste aus
@@ -547,7 +562,7 @@ den Daten der App. Jeder Punkt ist markiert als «aus der App» (Wert vorhanden)
 | Einkommen | Lohnausweise bzw. Rentenbescheinigungen, Zins- und Wertschriftenerträge |
 | Abzüge | Säule 3a, PK-Einkäufe im Jahr, Kinderbetreuung, Prämien, Krankheitskosten, Spenden (Budget), Berufskosten |
 | Liegenschaft | Eigenmietwert, Hypothekarzinsen (Budget oder Schätzung), Unterhalt |
-| Vermögen per 31.12. | jedes Konto mit dem Saldo am nächsten zum 31.12. (höchstens 31 Tage daneben), Lebensversicherungen (Rückkaufswert) |
+| Vermögen per 31.12. | jedes Konto mit dem Saldo am nächsten zum 31.12. (höchstens 31 Tage daneben), Lebensversicherungen (Rückkaufswert), Wertschriften- und Guthabenverzeichnis aus dem E-Steuerauszug (Steuerwert, Erträge A/B, Verrechnungssteuer, Schulden und Schuldzinsen) |
 | Vorjahr | Werte der letzten Veranlagung aus den Steuerdokumenten |
 
 Abgehakte Punkte werden pro Jahr gespeichert. Ampel «Steuererklärung» in den 5 Monaten vor der Frist (rot in den
@@ -565,6 +580,10 @@ gemeinsame), Partner und Liegenschaft und füllt Vorgaben wie Geburtsdatum oder 
 | Patientenverfügung (je Person) | Vertretung, Ersatz, Ziel in aussichtsloser Lage, Wiederbelebung, Ernährung und Beatmung, Schmerztherapie, Organspende, Sterbeort, Seelsorge | schriftlich, datiert, unterschrieben; regelmässig bestätigen |
 | Konkubinatsvertrag (nur Konkubinat) | Hausrat, Haushaltskosten, Liegenschaft, Darlehen, Ausgleich Kinderbetreuung, Trennung, gegenseitige Absicherung | schriftlich, beide unterschreiben |
 | Begünstigung Säule 3a (je Person) | Stiftung, Konto, begünstigte Person, Voraussetzung (Ehe, 5 Jahre Lebensgemeinschaft, gemeinsame Kinder, Unterstützung), Anteil | Brief an jede Stiftung, Bestätigung verlangen |
+| Ehevertrag (nur Ehe) | Güterstand bzw. Zuweisung des Vorschlags an den überlebenden Ehegatten (nur beim Tod), Eigengut, Geschäftsvermögen (Art. 199 ZGB), Liegenschaft | öffentliche Beurkundung (Notar) |
+| Erbvertrag | gegenseitige Einsetzung oder Erbverzicht, Schlusserben, Verzichtende und Abfindung, Wiederverheiratung | öffentliche Beurkundung mit zwei Zeugen |
+| Darlehen in der Familie | Geber, Nehmer, Betrag, Auszahlung, Zweck, Zins, Rückzahlung, Behandlung beim Tod des Gebers | schriftlich, beide unterschreiben |
+| Schenkung bzw. Erbvorbezug | Gegenstand, Übergabe, Anrechnung beim Erbe und zu welchem Wert, Rückfall (Art. 247 OR), Auflagen | schriftlich; Liegenschaften beim Notar |
 
 **Testament – wer erhält was?** Die Tabelle zeigt für jeden Erben den gesetzlichen Erbteil, den Pflichtteil und den
 Anteil laut Entwurf, mit Betrag aus dem geschätzten Nachlass. Grundlage Erbrecht seit 2023: Ehegatte ½ neben
@@ -584,6 +603,10 @@ Konten mit letztem Saldo, Vorsorgeausweise und Leistungen im Todesfall, Versiche
 der Nachlass-Checkliste. Selbst erfasst (`notfall`): wichtige Kontakte (Rolle, Name, Telefon, Notiz), Ablageorte
 (Testament, Vorsorgeauftrag, Passwort-Manager, Schlüssel …) und Hinweise. «Drucken» erzeugt eine Fassung ohne Menü
 und Formulare (auch als PDF). Der Ordner enthält vertrauliche Angaben – ausgedruckt sicher aufbewahren.
+
+Die **Meldeliste** sagt den Angehörigen, wen sie nach einem Todesfall benachrichtigen müssen – mit Namen aus deinen
+Daten: Wohngemeinde, AHV-Ausgleichskasse, Arbeitgeber, Pensionskasse, 3a- und 3b-Anbieter, jedes Konto und jede
+Hypothek, jede Versicherung.
 
 ## Zuzug in die Schweiz
 
@@ -663,6 +686,12 @@ fehlt oder ist unmöglich, **grau** = optional bzw. leer (Standard). Oben stehen
 
 **App → Vorschläge** zeigt, wo die App mit deinen Daten an Grenzen stösst – als Liste, die du anonymisiert an die
 Entwicklung weitergeben kannst.
+
+**Selbst abgehakt:** Die App merkt sich die offenen Vorschläge (Dokumente, kantonale Werte, Einstellungen). Kommt einer
+nicht mehr vor, steht er unter «Erledigt» – «durch Update auf 0.31.0», wenn die Version seit dem letzten Auftreten
+gewechselt hat (z. B. liest die neue Version ein Feld jetzt so, wie du es von Hand korrigiert hast), sonst «durch deine
+Änderung». Taucht er wieder auf, ist er wieder offen. Was die aktuelle Version erledigt hat, steht auch im Text zum
+Weitergeben.
 
 | Quelle | Beispiel | Wichtigkeit |
 |---|---|---|

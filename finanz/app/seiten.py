@@ -222,6 +222,7 @@ STATUS_TEXTE = [
     ("versicherungen/hochladen", "Verträge werden hochgeladen und analysiert …"),
     ("vorsorge/hochladen", "Vorsorgedokumente werden hochgeladen und analysiert …"),
     ("steuern/hochladen", "Steuerdokumente werden hochgeladen und analysiert …"),
+    ("steuern/steuerauszug", "Steuerauszug wird gelesen …"),
     ("importordner", "Import-Ordner wird eingelesen …"),
     ("import", "Daten werden importiert …"),
     ("liste", "Liste wird importiert …"),
@@ -649,7 +650,7 @@ def steuern(k: dict, db) -> str:
                 '<p class="leise">Bund: ein Fünftel des ordentlichen Tarifs. Kanton: effektiver Satz aus der Tabelle '
                 'unter Einstellungen (Schätzung – mit dem kantonalen Rechner prüfen). Ehepaare werden pro Jahr addiert, '
                 'Konkubinatspaare getrennt besteuert.</p>')
-    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + fristen_karte(k) + steuerdokumente_karten(k, db) + karte("Abzüge simulieren", abzuege) + karte(
+    return heute.join(['<div class="kpis">', '</div>']) + einheiten_html + fristen_karte(k) + steuerdokumente_karten(k, db) + steuerauszug_karte(k, db) + karte("Abzüge simulieren", abzuege) + karte(
         "Kapitalbezug PK und 3a", kap_html)
 
 
@@ -1130,7 +1131,7 @@ Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erle
 <li><code>vermoegen*.csv</code> – Konten und Saldi · <code>bank*.csv</code>, <code>konto*.csv</code> – Kontoauszüge aus dem
 E-Banking (auch camt.053 als <code>bank*.xml</code>, <code>camt*.zip</code>) · <code>versicherungen*.csv</code> – Versicherungsliste</li>
 <li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
-<code>veranlagung*.pdf</code> – Steuerdokumente · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
+<code>veranlagung*.pdf</code> – Steuerdokumente · <code>steuerauszug*.xml</code> oder <code>.pdf</code> – E-Steuerauszug der Bank · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
     return (formular + sensoren_karte(k) + sichtung_karte(db) + karte("Import-Ordner", importieren) + karte("Experte", experte)
             + karte("Sichern und übertragen", datei))
@@ -1607,6 +1608,30 @@ VERGLEICH_FELDER = ["steuerbar_kanton", "steuerbar_bund", "steuer_kanton_gemeind
                     "vermoegenssteuer",
                     "lohn_netto", "abzug_3a", "abzug_pk_einkauf", "schuldzinsen", "unterhalt_liegenschaft", "eigenmietwert",
                     "mietertrag"]
+
+
+def steuerauszug_karte(k: dict, db) -> str:
+    import esteuerauszug as es
+    pers = "".join(f'<option>{escape(p["name"])}</option>' for p in k.get("personen") or [])
+    form = f"""<form method="post" action="steuern/steuerauszug" enctype="multipart/form-data" class="nicht-drucken">
+<p class="leise">Der <b>E-Steuerauszug</b> der Bank (Standard eCH-0196) enthält Konten, Wertschriften, Schulden, Erträge und
+Verrechnungssteuer per 31.12. Am vollständigsten ist die XML-Datei (manche Banken bieten sie im E-Banking an oder hängen sie
+ans PDF); vom PDF allein liest die App die Totale. Konten und Depots kommen mit dem Saldo per 31.12. ins Vermögen –
+unter demselben Namen wie beim Kontoauszug-Import, z. B. «Raiffeisen …1234».</p>
+<div class="felder"><label>Person<select name="person"><option value="">gemeinsam</option>{pers}</select></label></div>
+<div class="zeile"><input type="file" name="datei" accept=".xml,.pdf,application/xml,application/pdf" multiple required
+style="max-width:360px"><button>Steuerauszug einlesen</button></div></form>"""
+    auszuege = es.alle(db)
+    if not auszuege:
+        return f'<div id="steuerauszug"></div>' + karte("E-Steuerauszug der Bank", form)
+    zeilen = [[escape(a["institut"] or "Bank"), str(a["jahr"] or "?"), chf(a["steuerwert"]), chf(a["ertrag_a"]),
+               chf(a["ertrag_b"]), chf(a["vst"]), chf(a["schulden"]), chf(a["schuldzinsen"]),
+               ("XML" if a["quelle"] == "xml" else "PDF-Text") + (f' · {len(a["posten"])} Posten' if a["posten"] else ""),
+               f'<form method="post" action="steuern/steuerauszug/{a["id"]}/loeschen">'
+               '<button class="zweit klein loeschen">Entfernen</button></form>'] for a in auszuege]
+    tab = tabelle(["Bank", "Jahr", "Steuerwert", "Ertrag mit VST (A)", "Ertrag ohne VST (B)", "VST-Anspruch", "Schulden",
+                   "Schuldzinsen", "Quelle", ""], zeilen, zahlen_ab=2, responsiv=True)
+    return '<div id="steuerauszug"></div>' + karte("E-Steuerauszug der Bank", tab + form)
 
 
 def steuerdokumente_karten(k: dict, db) -> str:
@@ -2941,6 +2966,7 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
         kpi(str(hoch), "davon wichtig", "", am.ROT if hoch else am.GRUEN),
         kpi(str(sum(1 for v in weg if st[v.schluessel] == "gemeldet")), "gemeldet"),
         kpi(str(sum(1 for v in weg if st[v.schluessel] == "ausgeblendet")), "ausgeblendet"),
+        kpi(str(len(vs.erledigt(db, meta.version()))), f"mit {meta.version()} erledigt", "", am.GRUEN),
     ]) + "</div>"
     intro = ('<p>Die App leitet aus deinen Daten ab, wo sie besser werden kann: Werte, die du in Dokumenten von Hand '
              'korrigieren musstest, Felder, die sie nicht erkennt, Fehler im Protokoll, fehlende kantonale Werte und '
@@ -2983,7 +3009,7 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
     kanton = str(k["haushalt"].get("kanton") or "").upper()
     mit_auszug = (q or {}).get("auszuege") == ["1"]
     auszuege = vs.textauszuege(k, db) if mit_auszug else None
-    text = vs.bericht(sichtbar, meta.version(), kanton, auszuege)
+    text = vs.bericht(sichtbar, meta.version(), kanton, auszuege, [e[0] for e in vs.erledigt(db, meta.version())])
     link = vs.issue_link(meta.repository(), text, meta.version())
     schalter = ('<form method="get" action="vorschlaege" class="nicht-drucken"><label class="wahl">'
                 f'<input type="checkbox" name="auszuege" value="1" onchange="this.form.submit()"'
@@ -3009,7 +3035,23 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
                     + '<div class="zeile"><button class="zweit klein" name="aktion" value="einblenden">Ausgewählte '
                       'wieder einblenden</button><button class="zweit klein" name="aktion" value="alle_einblenden">Alle '
                       'wieder einblenden</button></div></form></details>')
-    return kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_weg
+    erl = vs.erledigt(db)
+    teil_erledigt = ""
+    if erl:
+        z = []
+        for v, version, datum, durch in erl:
+            wie = f"durch Update auf {version}" if durch == "update" else "durch deine Änderung"
+            z.append(f'<li>{licht(am.GRUEN, "erledigt")} {escape(v.titel)} '
+                     f'<span class="leise">· {escape(v.bereich)} · {escape(wie)} · {escape(datum)}</span></li>')
+        teil_erledigt = ('<details class="karte"' + (" open" if any(e[1] == meta.version() and e[3] == "update"
+                                                                      for e in erl) else "")
+                         + f'><summary>Erledigt ({len(erl)})</summary><ul class="hinweise">{"".join(z)}</ul>'
+                         '<p class="leise">Die App merkt sich die offenen Vorschläge. Kommt einer nach einem Update nicht '
+                         'mehr vor – z. B. weil die neue Version ein Feld jetzt selbst richtig liest –, wird er hier '
+                         'abgehakt. Bei Dokumenten erkennt sie das, sobald die Version deine Korrekturen selbst trifft; '
+                         'deine Werte bleiben dabei unverändert.</p></details>')
+    return (kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_erledigt
+            + teil_weg)
 
 
 # ---------------------------------------------------------------- Verfügungen (Testament & Co.)

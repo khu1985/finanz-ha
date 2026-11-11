@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taxStatement xmlns="http://www.ech.ch/xmlns/eCH-0196/2" id="X1" creationDate="2026-01-10T08:00:00" taxPeriod="2025" periodFrom="2025-01-01" periodTo="2025-12-31" country="CH" canton="BL" totalTaxValue="60500.00" totalGrossRevenueA="410.00" totalGrossRevenueB="120.00" totalWithHoldingTaxClaim="143.50" minorVersion="2">
+ <institution name="Raiffeisenbank Musterhausen Genossenschaft"/>
+ <client clientNumber="123"/>
+ <listOfBankAccounts totalTaxValue="20500.00" totalGrossRevenueA="10.00" totalGrossRevenueB="0" totalWithHoldingTaxClaim="3.50">
+  <bankAccount iban="CH9300762011623852957" bankAccountName="Privatkonto" bankAccountCurrency="CHF" totalTaxValue="20500.00" totalGrossRevenueA="10.00" totalWithHoldingTaxClaim="3.50">
+   <taxValue referenceDate="2025-12-31" balanceCurrency="CHF" balance="20500.00" value="20500.00"/>
+   <payment paymentDate="2025-12-31" amountCurrency="CHF" amount="10.00" grossRevenueA="10.00" withHoldingTaxClaim="3.50"/>
+  </bankAccount>
+ </listOfBankAccounts>
+ <listOfLiabilities totalTaxValue="300000.00" totalGrossRevenueB="4500.00">
+  <liabilityAccount bankAccountNumber="777.888" bankAccountName="Festhypothek" bankAccountCurrency="CHF" totalTaxValue="300000.00" totalGrossRevenueB="4500.00">
+   <taxValue referenceDate="2025-12-31" balanceCurrency="CHF" balance="300000.00" value="300000.00"/>
+  </liabilityAccount>
+ </listOfLiabilities>
+ <listOfSecurities totalTaxValue="40000.00" totalGrossRevenueA="400.00" totalGrossRevenueB="120.00" totalWithHoldingTaxClaim="140.00">
+  <depot depotNumber="555-123456">
+   <security positionId="1" isin="CH0000000001" securityName="Fonds A" currency="CHF" quotationType="PIECE" securityCategory="FUND" country="CH">
+    <taxValue referenceDate="2025-12-31" quantity="100" balanceCurrency="CHF" unitPrice="250" balance="25000" value="25000.00"/>
+    <payment paymentDate="2025-06-01" quantity="100" amountCurrency="CHF" amount="400" grossRevenueA="400.00" withHoldingTaxClaim="140.00"/>
+   </security>
+   <security positionId="2" isin="US0000000002" securityName="Aktie B" currency="USD" quotationType="PIECE" securityCategory="SHARE" country="US">
+    <taxValue referenceDate="2025-12-31" quantity="10" balanceCurrency="USD" unitPrice="1700" balance="17000" exchangeRate="0.88" value="15000.00"/>
+    <payment paymentDate="2025-09-01" quantity="10" amountCurrency="USD" amount="136" exchangeRate="0.88" grossRevenueB="120.00"/>
+   </security>
+  </depot>
+ </listOfSecurities>
+ <listOfExpenses totalExpenses="150.00" totalExpensesDeductible="150.00"/>
+</taxStatement>

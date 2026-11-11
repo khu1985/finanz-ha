@@ -170,7 +170,8 @@ class Handler(BaseHTTPRequestHandler):
                     st = vs.status(v)
                     liste = [x for x in vs.sammeln(k, v, konfig.datenordner()) if x.schluessel not in st]
                     auszuege = vs.textauszuege(k, v) if q.get("auszuege") == ["1"] else None
-                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege)
+                    weg = [e[0] for e in vs.erledigt(v, meta.version())]
+                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege, weg)
                 return self.senden(200, text.encode("utf-8"), "text/markdown; charset=utf-8",
                                    {"Content-Disposition": 'attachment; filename="finanz-vorschlaege.md"'})
             if pfad == "protokoll.log":
@@ -763,6 +764,19 @@ class Handler(BaseHTTPRequestHandler):
         daten = konfig.datenordner()
         teile = pfad.split("/")
         with db() as v:
+            if pfad == "steuern/steuerauszug":
+                import esteuerauszug as es
+                teile_ = []
+                for name, inhalt in form.get("_dateien_datei") or []:
+                    s = es.lesen(inhalt, name)
+                    _, n = es.speichern(v, s, form.get("person", ""))
+                    teile_.append(f"{s.institut or 'Bank'} {s.jahr or ''}".strip() + (f": {n} Konten/Depots ins Vermögen"
+                                  if n else " (nur Totale aus dem PDF-Text)"))
+                return "Steuerauszug gelesen – " + "; ".join(teile_), "steuern#steuerauszug"
+            if len(teile) == 4 and teile[1] == "steuerauszug" and teile[2].isdigit() and teile[3] == "loeschen":
+                import esteuerauszug as es
+                es.loeschen(v, int(teile[2]))
+                return "Steuerauszug entfernt (die Saldi im Vermögen bleiben).", "steuern#steuerauszug"
             if pfad == "steuern/hochladen":
                 import verwaltung as vw
                 dateien, doppelt = vw.neue_dateien(v, daten, "s", form.get("_dateien_datei") or [])

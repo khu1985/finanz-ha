@@ -13,11 +13,14 @@ Policen- und Kontonummern, Dateinamen, E-Mail, IBAN, AHV-Nummer, Datumsangaben u
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
+
+LOG = logging.getLogger("finanz")
 
 HOCH, MITTEL, TIEF = 3, 2, 1
 PRIO_TEXT = {HOCH: "hoch", MITTEL: "mittel", TIEF: "tief"}
@@ -391,6 +394,58 @@ def tabellen(db) -> None:
                "datum TEXT NOT NULL)")
 
 
+# Bereiche, deren Vorschläge dauerhaft aus den Daten folgen (Protokollmeldungen beginnen mit jeder Version neu)
+VERLAUF_BEREICHE = ("Dokumente erkennen", "Kantonale Werte", "Einstellungen")
+
+
+def _verlauf_tabelle(db) -> None:
+    db.execute("CREATE TABLE IF NOT EXISTS vorschlag_verlauf (schluessel TEXT PRIMARY KEY, bereich TEXT NOT NULL, "
+               "titel TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', version_zuerst TEXT NOT NULL, "
+               "version_zuletzt TEXT NOT NULL, erledigt_version TEXT, erledigt_datum TEXT, durch TEXT)")
+
+
+def verlauf_nachfuehren(db, liste: list[Vorschlag], version: str | None = None) -> None:
+    """Offene Vorschläge merken; was nicht mehr vorkommt, gilt als erledigt – durch ein Update, wenn die Version
+    seit dem letzten Auftreten gewechselt hat, sonst durch eine Änderung an den Daten."""
+    if version is None:
+        import meta
+        version = meta.version()
+    _verlauf_tabelle(db)
+    jetzt = datetime.now().isoformat(timespec="seconds")
+    offen = {v.schluessel: v for v in liste if v.bereich in VERLAUF_BEREICHE}
+    for s, v in offen.items():
+        db.execute("INSERT INTO vorschlag_verlauf (schluessel, bereich, titel, detail, version_zuerst, version_zuletzt) "
+                   "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(schluessel) DO UPDATE SET version_zuletzt = excluded.version_zuletzt, "
+                   "erledigt_version = NULL, erledigt_datum = NULL, durch = NULL",
+                   (s, v.bereich, v.titel, v.detail, version, version))
+    for s, zuletzt in db.execute("SELECT schluessel, version_zuletzt FROM vorschlag_verlauf "
+                                 "WHERE erledigt_version IS NULL").fetchall():
+        if s not in offen:
+            db.execute("UPDATE vorschlag_verlauf SET erledigt_version = ?, erledigt_datum = ?, durch = ? "
+                       "WHERE schluessel = ?", (version, jetzt, "update" if zuletzt != version else "aenderung", s))
+    db.commit()
+
+
+def erledigt(db, nur_version: str | None = None, anzahl: int = 60) -> list[tuple[Vorschlag, str, str, str]]:
+    """Erledigte Vorschläge (neueste zuerst), pro Dokument gruppiert: (Vorschlag, Version, Datum, «update»/«aenderung»)."""
+    _verlauf_tabelle(db)
+    sql = ("SELECT bereich, titel, detail, erledigt_version, erledigt_datum, durch FROM vorschlag_verlauf "
+           "WHERE erledigt_version IS NOT NULL" + (" AND erledigt_version = ? AND durch = 'update'" if nur_version else "")
+           + " ORDER BY erledigt_datum DESC, titel LIMIT ?")
+    zeilen = db.execute(sql, (nur_version, anzahl) if nur_version else (anzahl,)).fetchall()
+    info = {}
+    roh = []
+    for bereich, titel, detail, version, datum, durch in zeilen:
+        marke = f"{durch}|{version}"
+        info[marke] = (version, (datum or "")[:10], durch or "")
+        roh.append(Vorschlag(bereich, titel.replace("falsch erkannt", "nicht erkannt"), marke))
+    erg = []
+    for v in _gruppieren(roh):
+        v.titel = re.sub(r" nicht erkannt$", "", v.titel)
+        erg.append((v, *info[v.detail]))
+    return erg
+
+
 def ausblenden(db, schluessel: list[str], status: str = "ausgeblendet") -> None:
     tabellen(db)
     jetzt = datetime.now().isoformat(timespec="seconds")
@@ -465,6 +520,10 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
     private = _private_texte(k, db)
     liste = [Vorschlag(bereich, anonymisieren(titel, private), anonymisieren(detail, private), anzahl, gewicht)
              for (bereich, titel, detail), (anzahl, gewicht) in erg.items()]
+    try:
+        verlauf_nachfuehren(db, liste)
+    except Exception:  # noqa: BLE001 – der Verlauf ist eine Zugabe, die Vorschläge gehen vor
+        LOG.exception("Vorschläge: Verlauf nicht nachgeführt")
     liste = _gruppieren(liste)
     eigene: dict[str, int] = {}
     for i in ideen(db):
@@ -569,7 +628,7 @@ def textauszuege(k: dict, db) -> list[tuple[str, list[str]]]:
 
 
 def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "",
-            auszuege: list[tuple[str, list[str]]] | None = None) -> str:
+            auszuege: list[tuple[str, list[str]]] | None = None, erledigt_: list[Vorschlag] | None = None) -> str:
     """Markdown-Text zum Weitergeben (nur die übergebenen, bereits anonymisierten Vorschläge und Auszüge)."""
     kopf = [f"Vorschläge aus der Finanzplanung {version}" + (f" · Kanton {kanton}" if kanton else ""),
             "", "_Automatisch abgeleitet und anonymisiert (keine Namen, Beträge, Daten oder Dateinamen)._", ""]
@@ -581,6 +640,8 @@ def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "",
             d = f" – {v.detail}" if v.detail else ""
             teile.append(f"- [{PRIO_TEXT[v.gewicht]}] {v.titel}{n}{d}")
         teile.append("")
+    if erledigt_:
+        teile += [f"### Mit {version} erledigt", ""] + [f"- {v.titel}" for v in erledigt_] + [""]
     if auszuege:
         teile += ["### Textauszüge (anonymisiert: Ziffern → 9, Namen und Adressen entfernt)", ""]
         for titel, zeilen in auszuege:

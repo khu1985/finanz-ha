@@ -277,6 +277,25 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
                                  "Rückkaufswert per 31.12. (Bescheinigung der Versicherung)"))
     except Exception:  # noqa: BLE001
         pass
+    try:
+        import esteuerauszug as es
+        su = es.summen(db, jahr)
+    except Exception:  # noqa: BLE001
+        su = None
+    if su:
+        rp = lambda v: f"{v:,.2f}".replace(",", "'")  # noqa: E731 – Erträge und VST mit Rappen
+        teile = [f"Steuerwert {_chf(su['steuerwert'])}", f"Ertrag A {rp(su['ertrag_a'])}",
+                 f"Ertrag B {rp(su['ertrag_b'])}", f"Verrechnungssteuer {rp(su['vst'])}"]
+        pkt.append(Punkt("steuerauszug", "Vermögen per 31.12.", "Wertschriften- und Guthabenverzeichnis",
+                         "E-Steuerauszug: " + ", ".join(su["institute"]), " · ".join(teile), "daten"))
+        if su["schulden"] or su["schuldzinsen"]:
+            pkt.append(Punkt("steuerauszug_schulden", "Vermögen per 31.12.", "Schulden und Schuldzinsen laut Steuerauszug",
+                             "E-Steuerauszug", f"Schulden {_chf(su['schulden'])} · Zinsen {_chf(su['schuldzinsen'])}",
+                             "daten"))
+    else:
+        pkt.append(Punkt("steuerauszug", "Vermögen per 31.12.", "Wertschriften- und Guthabenverzeichnis",
+                         "E-Steuerauszug der Banken (unter «Steuern» einlesen: Erträge und Verrechnungssteuer "
+                         "kommen dann automatisch hierher)"))
     pkt.append(Punkt("vorsorge_info", "Vermögen per 31.12.", "Säule 3a, Pensionskasse und Freizügigkeit",
                      wert="nicht als Vermögen deklarieren (steuerfrei bis zum Bezug)", status="info"))
 
