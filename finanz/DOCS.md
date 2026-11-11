@@ -88,6 +88,7 @@ personen:
 | Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
+| Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag und 3a-Begünstigung mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text zum Abschreiben bzw. Drucken |
 | Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
@@ -544,6 +545,29 @@ den Daten der App. Jeder Punkt ist markiert als «aus der App» (Wert vorhanden)
 
 Abgehakte Punkte werden pro Jahr gespeichert. Ampel «Steuererklärung» in den 5 Monaten vor der Frist (rot in den
 letzten 14 Tagen mit offenen Punkten).
+
+## Verfügungen
+
+Die Seite **Verfügungen** führt mit Fragen und Optionen zu einem Entwurf. Die App kennt Zivilstand, Kinder (eigene und
+gemeinsame), Partner und Liegenschaft und füllt Vorgaben wie Geburtsdatum oder Vertretungsperson vor.
+
+| Dokument | Fragen und Optionen | Form |
+|---|---|---|
+| Testament (je Person) | Ziel: Partner maximal begünstigen · Ehegatte Nutzniessung + ½ zu Eigentum (Art. 473 ZGB, mit gemeinsamen Kindern) · Kinder gesetzlich · eigene Quoten; Ersatzerben, Liegenschaft (Übernahme unter Anrechnung oder Wohnrecht), Vermächtnisse, Willensvollstrecker, Widerruf | vollständig von Hand, Ort, Datum, Unterschrift – oder Notar |
+| Vorsorgeauftrag (je Person) | beauftragte Person, Ersatz, Bereiche (Personen-, Vermögenssorge, Rechtsverkehr), Liegenschaft verkaufen/belasten, Post und digitale Konten, Entschädigung, Anweisungen | von Hand oder Notar; Hinterlegung im Infostar eintragen |
+| Patientenverfügung (je Person) | Vertretung, Ersatz, Ziel in aussichtsloser Lage, Wiederbelebung, Ernährung und Beatmung, Schmerztherapie, Organspende, Sterbeort, Seelsorge | schriftlich, datiert, unterschrieben; regelmässig bestätigen |
+| Konkubinatsvertrag (nur Konkubinat) | Hausrat, Haushaltskosten, Liegenschaft, Darlehen, Ausgleich Kinderbetreuung, Trennung, gegenseitige Absicherung | schriftlich, beide unterschreiben |
+| Begünstigung Säule 3a (je Person) | Stiftung, Konto, begünstigte Person, Voraussetzung (Ehe, 5 Jahre Lebensgemeinschaft, gemeinsame Kinder, Unterstützung), Anteil | Brief an jede Stiftung, Bestätigung verlangen |
+
+**Testament – wer erhält was?** Die Tabelle zeigt für jeden Erben den gesetzlichen Erbteil, den Pflichtteil und den
+Anteil laut Entwurf, mit Betrag aus dem geschätzten Nachlass. Grundlage Erbrecht seit 2023: Ehegatte ½ neben
+Nachkommen bzw. ¾ neben dem elterlichen Stamm; Pflichtteile Nachkommen und Ehegatte je ½ des gesetzlichen Erbteils,
+Eltern keinen; Konkubinatspartner erben nur mit Testament. Verletzte Pflichtteile, Quoten ungleich 100 % und die
+Erbschaftssteuer im Konkubinat werden angezeigt.
+
+Der Entwurf lässt sich kopieren oder drucken (nur der Text) und im Nachlass-Fragebogen als «in Arbeit» vermerken.
+Platzhalter in [eckigen Klammern] beim Abschreiben ersetzen. Die Entwürfe ersetzen keine Rechtsberatung – bei
+Liegenschaften, Patchwork-Familien und grossen Vermögen notariell prüfen lassen.
 
 ## Notfallordner
 

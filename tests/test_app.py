@@ -245,3 +245,20 @@ def test_vertrag_invaliditaet_erfassen(server):
                                             "iv_ursache": "Krankheit und Unfall", "iv_beitragsbefreiung": "1"})
     html = urllib.request.urlopen(f"{server}/versicherungen/{vid}").read().decode()
     assert 'name="iv_rente_jahr" inputmode="decimal" value="18000"' in html and "<option selected>Krankheit und Unfall" in html
+
+
+def test_verfuegungen_seite(server):
+    k = konfig.laden()
+    p1 = k["personen"][0]["name"]
+    html = urllib.request.urlopen(f"{server}/verfuegungen").read().decode()
+    assert "Verfügungen erstellen" in html and "verfuegungen?typ=testament&amp;wer=" in html
+    q = urllib.parse.quote(p1)
+    html = urllib.request.urlopen(f"{server}/verfuegungen?typ=testament&wer={q}").read().decode()
+    assert "Wer erhält was?" in html and 'id="entwurf-text"' in html and "Pflichtteil" in html
+    code, ziel = _post(f"{server}/verfuegungen", {"typ": "testament", "wer": p1, "ziel": "eigene",
+                                                 "quoten": "Musterstiftung: 100", "widerruf": "ja"})
+    assert code == 303 and "typ=testament" in ziel
+    html = urllib.request.urlopen(f"{server}/verfuegungen?typ=testament&wer={q}").read().decode()
+    assert "Musterstiftung erhält 100 % meines Nachlasses" in html
+    _post(f"{server}/verfuegungen/vermerken", {"typ": "testament", "wer": p1})
+    assert konfig.laden()["nachlass"]["fragebogen"]["testament"][p1]["vorhanden"] == "in Arbeit"

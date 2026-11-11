@@ -1387,3 +1387,34 @@ def test_invaliditaet_aus_policen(k, db, tmp_path):
     v = vi.einer(db, vid)
     assert v["praemie_jahr"] == 999 and v["iv_wartefrist_monate"] == 12 and v["iv_rente_jahr"] == 24_000
     assert v["quelle"] == "hand"
+
+
+def test_verfuegungen_erbteile_und_entwuerfe(k):
+    from fractions import Fraction as F
+    import verfuegungen as vf
+    k["personen"][0]["name"], k["personen"][1]["name"] = "Anna", "Ben"
+    # verheiratet mit einem Kind: Ehegatte max. ¾, Kind Pflichtteil ¼
+    k["haushalt"].update(zivilstand="verheiratet", kinder=[{"name": "Lia", "geburtsdatum": "2020-01-01"}])
+    l = vf.lage(k, "Anna")
+    assert vf.verfuegbar(l) == F(1, 2)
+    v = {e: n for e, _, _, n in vf.verteilung(l, {"ziel": "partner_max"}).zeilen}
+    assert v == {"Ben": F(3, 4), "Lia": F(1, 4)}
+    assert any("Pflichtteil verletzt: Lia" in w for w in vf.verteilung(l, {"ziel": "eigene", "quoten": "Ben: 90\nLia: 10"}).warnungen)
+    # verheiratet ohne Kinder, Eltern leben: verfügbar 5/8, Ehegatte alles möglich
+    k["haushalt"]["kinder"] = []
+    assert vf.verfuegbar(vf.lage(k, "Anna", {"eltern": "ja"})) == F(5, 8)
+    # Konkubinat mit Kind: Partner höchstens ½; ohne Kinder alles verfügbar
+    k["haushalt"].update(zivilstand="ledig", kinder=[{"name": "Lia", "geburtsdatum": "2020-01-01"}])
+    assert {e: n for e, _, _, n in vf.verteilung(vf.lage(k, "Anna"), {"ziel": "partner_max"}).zeilen}["Ben"] == F(1, 2)
+    k["haushalt"]["kinder"] = []
+    assert vf.verfuegbar(vf.lage(k, "Anna")) == 1
+    # Texte
+    k["verfuegungen"] = {"testament": {"Anna": {"ziel": "partner_max", "bezeichnung": "lebenspartner",
+                                                "willensvollstrecker": "Notariat Muster"}}}
+    t = vf.text(k, "testament", "Anna")
+    assert "wende ich meinem Lebenspartner Ben zu" in t and "Willensvollstrecker setze ich Notariat Muster" in t
+    assert "[Unterschrift]" in t
+    assert "Ich beauftrage Ben mit der Personensorge" in vf.text(k, "vorsorgeauftrag", "Anna")
+    assert "BVV 3" in vf.text(k, "beguenstigung_3a", "Anna")                 # Konkubinat: Grundlage nennen
+    assert "Unterschrift Ben" in vf.text(k, "konkubinatsvertrag", vf.HAUSHALT)
+    assert [t_.schluessel for t_ in vf.typen(k)].count("konkubinatsvertrag") == 1

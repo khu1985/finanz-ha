@@ -25,7 +25,7 @@ NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")]),
     ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
                  ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
-                 ("notfall", "Notfallordner")]),
+                 ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("vorschlaege", "Vorschläge"),
              ("protokoll", "Protokoll"),
@@ -136,7 +136,11 @@ input,select,textarea{font:inherit;color:var(--text);background:var(--bg);border
 border-radius:8px;padding:8px 10px;width:100%}
 textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:420px}
 textarea.kurz{min-height:0;font-family:inherit}textarea.mittel{min-height:240px}
-.felder label.breit{grid-column:1/-1}
+.felder label.breit,.felder fieldset.breit{grid-column:1/-1}
+.wahl-gruppe{border:1px solid var(--linie);border-radius:10px;padding:8px 12px}.wahl-gruppe legend{padding:0 6px}
+label.wahl{display:flex;flex-direction:row;align-items:flex-start;gap:8px;padding:5px 0;color:var(--text)}
+label.wahl input{width:auto;margin-top:3px;flex:none}
+.entwurf-druck{white-space:pre-wrap;font-family:Georgia,serif;font-size:13pt;line-height:1.6}
 .hbalken{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:baseline;padding:6px 0}
 .hb-spur{grid-column:1/-1;background:var(--linie);border-radius:4px;height:10px;overflow:hidden}
 .hb-wert{display:block;height:100%;background:var(--akzent);border-radius:4px}
@@ -2285,6 +2289,11 @@ def nachlass(k: dict, db) -> str:
             e_, t_ = fb.stand(k, b)
             fb_link = (f'<br><a href="nachlass/fragebogen?bereich={escape(s_)}#{escape(s_)}">Fragebogen</a> '
                        f'<small class="leise">({e_}/{t_} Angaben)</small>')
+            vf_typ = {"testament": "testament", "vorsorgeauftrag": "vorsorgeauftrag",
+                      "patientenverfuegung": "patientenverfuegung", "konkubinatsvertrag": "konkubinatsvertrag",
+                      "begünstigung_3a": "beguenstigung_3a"}.get(s_)
+            if vf_typ:
+                fb_link += f' · <a href="verfuegungen?typ={vf_typ}">Entwurf erstellen</a>'
         zellen = [f'<b>{escape(titel)}</b><br><span class="leise">{escape(text)}</span>{fb_link}']
         for n in namen:
             ok = status[n]
@@ -2344,7 +2353,12 @@ def nachlass_fragebogen(k: dict, db, q: dict | None = None) -> str:
         abhaken = (f'<button class="zweit" name="abhaken" value="1">Speichern und in der Checkliste abhaken</button>'
                    if vorschlag else "")
         status = licht(am.GRUEN if e_ == t_ else am.GELB if e_ else am.GRAU, f"{e_}/{t_}")
-        form = (f'<form method="post" action="nachlass/fragebogen"><input type="hidden" name="bereich" value="{b.schluessel}">'
+        vf_typ = {"testament": "testament", "vorsorgeauftrag": "vorsorgeauftrag",
+                  "patientenverfuegung": "patientenverfuegung", "konkubinatsvertrag": "konkubinatsvertrag",
+                  "begünstigung_3a": "beguenstigung_3a"}.get(b.schluessel)
+        entwurf_link = (f'<p class="leise">Noch kein Dokument? <a href="verfuegungen?typ={vf_typ}">Entwurf mit Fragen und '
+                        'Optionen erstellen</a></p>') if vf_typ else ""
+        form = (entwurf_link + f'<form method="post" action="nachlass/fragebogen"><input type="hidden" name="bereich" value="{b.schluessel}">'
                 + tabelle(["Frage", *[escape(n) for n in namen]], zeilen, zahlen_ab=99, responsiv=True)
                 + f'<div class="zeile"><button>Speichern</button>{abhaken}</div></form>')
         teile.append(f'<details class="karte" id="{b.schluessel}"{" open" if offen_bereich == b.schluessel else ""}>'
@@ -2980,3 +2994,102 @@ def vorschlaege(k: dict, db) -> str:
                       'wieder einblenden</button><button class="zweit klein" name="aktion" value="alle_einblenden">Alle '
                       'wieder einblenden</button></div></form></details>')
     return kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_weg
+
+
+# ---------------------------------------------------------------- Verfügungen (Testament & Co.)
+
+def _vf_feld(f, wert: str) -> str:
+    name = escape(f.schluessel)
+    hilfe = f'<small class="leise">{escape(f.hilfe)}</small>' if f.hilfe else ""
+    if f.art == "auswahl" and f.schluessel in ("ziel",):
+        optionen = "".join(
+            f'<label class="wahl"><input type="radio" name="{name}" value="{escape(o.wert)}"'
+            f'{" checked" if o.wert == wert else ""}><span>{escape(o.text)}</span></label>' for o in f.optionen)
+        return f'<fieldset class="breit wahl-gruppe"><legend>{escape(f.text)}</legend>{optionen}{hilfe}</fieldset>'
+    if f.art == "auswahl":
+        opts = "".join(f'<option value="{escape(o.wert)}"{" selected" if o.wert == wert else ""}>{escape(o.text)}</option>'
+                       for o in f.optionen)
+        return f'<label>{escape(f.text)}<select name="{name}">{opts}</select>{hilfe}</label>'
+    if f.art == "lang":
+        return (f'<label class="breit">{escape(f.text)}<textarea name="{name}" class="kurz" rows="3">{escape(wert)}'
+                f'</textarea>{hilfe}</label>')
+    typ = {"datum": "date", "zahl": "text"}.get(f.art, "text")
+    modus = ' inputmode="decimal"' if f.art == "zahl" else ""
+    return f'<label>{escape(f.text)}<input type="{typ}" name="{name}" value="{escape(wert)}"{modus}>{hilfe}</label>'
+
+
+def verfuegungen(k: dict, db, q: dict | None = None) -> str:
+    from urllib.parse import quote
+    import fragebogen as fb
+    import nachlass as nl
+    import verfuegungen as vf
+    q = q or {}
+    typ = (q.get("typ") or [""])[0]
+    wer = (q.get("wer") or [""])[0]
+    hinweis = ('<p class="leise">Die Entwürfe ersetzen keine Rechtsberatung. Bei Liegenschaften, Patchwork-Familien, '
+               'Unternehmen oder grossen Vermögen das Testament von einer Notarin bzw. einem Anwalt prüfen lassen. '
+               'Alles bleibt in Home Assistant.</p>')
+    if typ not in vf.NACH_TYP or typ not in [t_.schluessel for t_ in vf.typen(k)]:
+        zeilen = []
+        for t_ in vf.typen(k):
+            zellen = [f"<b>{escape(t_.titel)}</b><br><small class=\"leise\">{escape(t_.form)}</small>"]
+            for w in vf.spalten(k, t_):
+                begonnen = vf.begonnen(k, t_, w)
+                zellen.append(f'<a class="knopf {"zweit " if begonnen else ""}klein" '
+                              f'href="verfuegungen?typ={t_.schluessel}&amp;wer={quote(w)}">'
+                              f'{"Entwurf bearbeiten" if begonnen else "Erstellen" if t_.je_person else "Gemeinsam erstellen"}</a>'
+                              + (f' <small class="leise">{licht(am.GRUEN, "begonnen")}begonnen</small>' if begonnen else ""))
+            if not t_.je_person:
+                zellen += [""] * (len(k["personen"]) - 1)
+            zeilen.append(zellen)
+        kopf = ["Dokument", *[escape(p["name"]) for p in k["personen"]]]
+        return (karte("Verfügungen erstellen",
+                      '<p>Mit Fragen und Optionen zum Entwurf: Die App kennt eure Familiensituation (Zivilstand, Kinder, '
+                      'Liegenschaft), rechnet beim Testament die Pflichtteile nach geltendem Recht und schreibt den Text. '
+                      'Danach von Hand abschreiben bzw. ausdrucken, datieren und unterschreiben.</p>'
+                      + tabelle(kopf, zeilen, zahlen_ab=99, responsiv=True) + hinweis)
+                + '<p class="leise">Wo die fertigen Dokumente liegen, gehört in die <a href="nachlass/fragebogen">'
+                  'Fragebögen zum Nachlass</a> – von dort in den <a href="notfall">Notfallordner</a>.</p>')
+    t_ = vf.NACH_TYP[typ]
+    if wer not in vf.spalten(k, t_):
+        wer = vf.spalten(k, t_)[0]
+    a = vf.mit_vorgaben(k, typ, wer)
+    felder = "".join(_vf_feld(f, str(a.get(f.schluessel, ""))) for f in vf.fragen(k, typ, wer))
+    andere = "".join(f' · <a href="verfuegungen?typ={typ}&amp;wer={quote(w)}">{escape(w)}</a>'
+                     for w in vf.spalten(k, t_) if w != wer)
+    titel = f"{t_.titel} – {'beide' if wer == vf.HAUSHALT else wer}"
+    form = (f'<form method="post" action="verfuegungen"><input type="hidden" name="typ" value="{typ}">'
+            f'<input type="hidden" name="wer" value="{escape(wer)}"><div class="felder">{felder}</div>'
+            '<div class="zeile"><button>Speichern und Entwurf aktualisieren</button></div></form>')
+    teile = [f'<p class="nicht-drucken"><a href="verfuegungen">← alle Verfügungen</a>{andere}</p>',
+             karte(f"Fragen: {titel}", form).replace('<section class="karte"', '<section class="karte nicht-drucken"', 1)]
+    if typ == "testament":
+        l = vf.lage(k, wer, a, nl.nachlass_von(k, db, wer)[0])
+        v = vf.verteilung(l, a)
+        zeilen = [[escape(e), vf._pz(g), vf._pz(p_), f"<b>{vf._pz(n)}</b>",
+                   chf(float(n) * l.nachlass) if l.nachlass else "–"] for e, g, p_, n in v.zeilen]
+        info = (f'<p class="leise">Verfügbare Quote: {vf._pz(vf.verfuegbar(l))}. Pflichtteile: Nachkommen und Ehegatte je '
+                'die Hälfte des gesetzlichen Erbteils, Eltern keinen (seit 2023). Konkubinatspartner sind ohne Testament '
+                'keine Erben. Beträge: geschätzter Nachlass laut Vermögen und Liegenschaft.</p>')
+        if v.nutzniessung:
+            info += ('<p class="leise">Nutzniessung: Der Ehegatte nutzt zusätzlich den Anteil der gemeinsamen Kinder '
+                     'lebenslang (Erträge, Wohnen); sie endet bei Wiederverheiratung für den Pflichtteil.</p>')
+        teile.append(karte("Wer erhält was?", tabelle(["Erbe", "ohne Testament", "Pflichtteil", "laut Entwurf",
+                                                       "ca. CHF"], zeilen)
+                           + (hinweisliste(v.warnungen) if v.warnungen else "") + info)
+                     .replace('<section class="karte"', '<section class="karte nicht-drucken"', 1))
+    entwurf = vf.text(k, typ, wer)
+    fb_bereich = fb.NACH_SCHLUESSEL.get(t_.fragebogen)
+    vermerk = (f'<form method="post" action="verfuegungen/vermerken" class="inline"><input type="hidden" name="typ" '
+               f'value="{typ}"><input type="hidden" name="wer" value="{escape(wer)}"><button class="zweit">Im '
+               'Nachlass-Fragebogen als «in Arbeit» vermerken</button></form>') if fb_bereich else ""
+    teile.append(f'<section class="karte entwurf"><h2>Entwurf: {escape(titel)}</h2>'
+                 f'<p class="hinweis-text">{licht(am.GELB, "Form")} {escape(t_.form)}</p>'
+                 f'<textarea id="entwurf-text" class="mittel nicht-drucken" readonly>{escape(entwurf)}</textarea>'
+                 f'<pre class="nur-druck entwurf-druck">{escape(entwurf)}</pre>'
+                 '<div class="zeile nicht-drucken"><button type="button" class="zweit" data-kopieren="entwurf-text">'
+                 'Kopieren</button><button type="button" class="zweit" onclick="window.print()">Drucken</button>'
+                 f'{vermerk}</div>'
+                 '<p class="leise nicht-drucken">Platzhalter in [eckigen Klammern] beim Abschreiben ersetzen.</p></section>')
+    teile.append(hinweis)
+    return "".join(teile)

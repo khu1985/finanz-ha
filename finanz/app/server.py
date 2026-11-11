@@ -27,7 +27,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"nachlass/fragebogen", "steuererklaerung", "bericht", "dokumente"}
+MIT_ABFRAGE = {"nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -45,6 +45,7 @@ SEITEN = {
     "dokumente": ("Dokumente", seiten.dokumente),
     "vorschlaege": ("Vorschläge", seiten.vorschlaege),
     "nachlass/fragebogen": ("Fragebögen zum Nachlass", seiten.nachlass_fragebogen),
+    "verfuegungen": ("Verfügungen", seiten.verfuegungen),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
@@ -566,6 +567,29 @@ class Handler(BaseHTTPRequestHandler):
             k["haushalt"]["kinder"] = neu
             konfig.speichern(k)
             return f"{len(neu)} Kind(er) gespeichert.", "kinder"
+        if pfad in ("verfuegungen", "verfuegungen/vermerken"):
+            import verfuegungen as vf
+            k = konfig.laden()
+            typ, wer = str(form.get("typ", "")), str(form.get("wer", ""))
+            if typ not in vf.NACH_TYP or wer not in vf.spalten(k, vf.NACH_TYP[typ]):
+                raise ValueError("Unbekanntes Dokument.")
+            ziel = f"verfuegungen?typ={typ}&wer={quote(wer)}"
+            t_ = vf.NACH_TYP[typ]
+            if pfad == "verfuegungen/vermerken":
+                import fragebogen as fb
+                bereich = fb.NACH_SCHLUESSEL[t_.fragebogen]
+                kern = next((f.schluessel for f in bereich.fragen if f.auswahl == tuple(fb.JA_NEIN)), None)
+                fbr = k.setdefault("nachlass", {}).setdefault("fragebogen", {}).setdefault(t_.fragebogen, {})
+                eintrag = fbr.setdefault(wer if bereich.je_person else fb.HAUSHALT, {})
+                if kern and eintrag.get(kern) in (None, "", "nein"):
+                    eintrag[kern] = "in Arbeit"
+                if any(f.schluessel == "form" for f in bereich.fragen) and not eintrag.get("form"):
+                    eintrag["form"] = "eigenhändig (von Hand geschrieben)"
+                konfig.speichern(k)
+                return f"{t_.titel}: im Nachlass-Fragebogen als «in Arbeit» vermerkt.", ziel
+            vf.speichern(k, typ, wer, form)
+            konfig.speichern(k)
+            return f"{t_.titel}: Entwurf aktualisiert.", ziel
         if pfad == "nachlass/fragebogen":
             import fragebogen as fb
             k = konfig.laden()

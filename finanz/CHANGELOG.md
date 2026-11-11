@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.28.0 – 2026-11-11
+
+- **Verfügungen (neue Seite unter Planung):** Entwürfe mit Fragen und Optionen für
+  - **Testament:** Ziel wählen (Partner maximal begünstigen, Nutzniessung für den Ehegatten nach Art. 473 ZGB, Kinder
+    gesetzlich, eigene Quoten), Ersatzerben, Liegenschaft, Vermächtnisse, Willensvollstrecker; Tabelle «Wer erhält
+    was?» mit gesetzlichem Erbteil, Pflichtteil (Erbrecht seit 2023) und Betrag; Warnung bei verletzten Pflichtteilen
+  - **Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, Begünstigung Säule 3a**
+  - Text zum Abschreiben bzw. Drucken mit Formvorschrift; im Nachlass-Fragebogen als «in Arbeit» vermerken
+- Nachlass-Checkliste und Fragebögen verlinken auf die passenden Entwürfe
+
 ## 0.27.0 – 2026-11-11
 
 - **Fragebögen zum Nachlass** (Nachlass → Checkliste → «Fragebogen» bzw. Nachlass → Fragebögen): pro Bereich die

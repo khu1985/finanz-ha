@@ -121,6 +121,7 @@ flowchart TB
 | `finanz/app/verwaltung.py` | Übersicht, Duplikate und Löschen aller Dokumente |
 | `finanz/app/ocr.py` | Texterkennung (tesseract) für gescannte PDFs |
 | `finanz/app/fragebogen.py` | Detail-Fragebögen zur Nachlass-Checkliste für den Notfallordner |
+| `finanz/app/verfuegungen.py` | Entwürfe für Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung |
 | `finanz/app/vorschlaege.py` | Verbesserungsvorschläge aus den eigenen Daten, anonymisiert zum Weitergeben |
 | `finanz/app/pruefung.py` | Plausibilität der Einstellungen (Ampel pro Feld) |
 | `finanz/app/sichtung.py` | Gespeicherte Dokumente nach Updates neu sichten |
