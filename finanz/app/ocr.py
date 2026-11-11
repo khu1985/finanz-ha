@@ -19,6 +19,12 @@ DPI = 200                 # reicht für gedruckten Text und ist auf dem Raspberr
 ZEIT_PRO_SEITE = 180      # Sekunden (Raspberry Pi)
 MIN_ZEICHEN = 40          # weniger Text gilt als «gescannt»
 STANDARD_SPRACHEN = "deu" # jede weitere Sprache kostet Zeit; in finanz.yaml unter ocr.sprachen änderbar
+MAX_PARALLEL = 2          # höchstens zwei Seiten gleichzeitig – Home Assistant behält Rechenleistung und Speicher
+
+
+def _nett(befehl: list[str]) -> list[str]:
+    """Mit niedrigster Priorität laufen lassen (Home Assistant und die App-Seiten haben Vorrang)."""
+    return ["nice", "-n", "19", *befehl] if shutil.which("nice") else befehl
 
 
 def _einstellungen() -> dict:
@@ -62,25 +68,25 @@ def pdf_text(inhalt: bytes, name: str = "") -> str:
         pdf = Path(tmp) / "d.pdf"
         pdf.write_bytes(inhalt)
         try:
-            subprocess.run(["pdftoppm", "-r", str(DPI), "-gray", "-png", "-l",
+            subprocess.run(_nett(["pdftoppm", "-r", str(DPI), "-gray", "-png", "-l",
                             str(int(_einstellungen().get("max_seiten") or MAX_SEITEN)), str(pdf),
-                            str(Path(tmp) / "s")], check=True, capture_output=True, timeout=ZEIT_PRO_SEITE * MAX_SEITEN)
+                            str(Path(tmp) / "s")]), check=True, capture_output=True, timeout=ZEIT_PRO_SEITE * MAX_SEITEN)
         except Exception as e:  # noqa: BLE001
             LOG.warning("OCR: PDF %s nicht in Bilder umwandelbar: %s", name, e)
             return ""
         sprache = sprachen()
-        # Seiten parallel auf allen Kernen, dafür jede Seite nur mit einem Thread (schneller als tesseract-intern)
+        # Seiten parallel auf höchstens der Hälfte der Kerne, jede Seite nur mit einem Thread
         umgebung = {**os.environ, "OMP_THREAD_LIMIT": "1"}
 
         def seite(bild: Path) -> str:
             try:
-                return subprocess.run(["tesseract", str(bild), "stdout", "-l", sprache, "--psm", "3"],
+                return subprocess.run(_nett(["tesseract", str(bild), "stdout", "-l", sprache, "--psm", "3"]),
                                       capture_output=True, text=True, timeout=ZEIT_PRO_SEITE, env=umgebung).stdout
             except Exception as e:  # noqa: BLE001
                 LOG.warning("OCR: Seite %s von %s fehlgeschlagen: %s", bild.stem, name, e)
                 return ""
         bilder = sorted(Path(tmp).glob("s*.png"))
-        with ThreadPoolExecutor(max_workers=max(1, min(4, os.cpu_count() or 1))) as pool:
+        with ThreadPoolExecutor(max_workers=max(1, min(MAX_PARALLEL, (os.cpu_count() or 2) // 2))) as pool:
             seiten = list(pool.map(seite, bilder))
         text = "\n\f\n".join(seiten)
         LOG.info("OCR: %s – %d Seite(n), %d Zeichen erkannt", name or "PDF", len(seiten), len(text.strip()))

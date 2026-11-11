@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.25.2 – 2026-11-11
+
+- **Weniger Last auf dem Home Assistant:** Die Texterkennung gescannter PDFs läuft mit niedrigster Priorität und
+  höchstens zwei Seiten gleichzeitig (vorher bis vier) – Home Assistant behält Rechenleistung und Speicher
+
 ## 0.25.1 – 2026-11-11
 
 - **Neu sichten blieb hängen:** Die Texterkennung lief bei jeder Sichtung für alle Scans neu (10 Seiten, 300 dpi,

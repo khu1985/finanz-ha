@@ -659,7 +659,8 @@ sich nicht hochladen – solche Dateien in den Import-Ordner kopieren (siehe unt
 
 Gescannte PDFs (nur Bilder, kein Text) liest die App mit Texterkennung (OCR, tesseract) – einmal beim Hochladen
 bzw. beim ersten Neu-Sichten; danach wird der erkannte Text wiederverwendet. Standard: Deutsch, die ersten 6 Seiten,
-alle Prozessorkerne parallel (auf dem Raspberry Pi etwa 10–30 Sekunden pro Seite). Französische oder italienische
+mit niedrigster Priorität und höchstens zwei Seiten parallel, damit Home Assistant flüssig bleibt (auf dem
+Raspberry Pi etwa 10–30 Sekunden pro Seite). Französische oder italienische
 Dokumente: im YAML-Editor `ocr: sprachen: deu+fra` (bzw. `+ita`) – jede Sprache kostet Zeit; `ocr: max_seiten`
 begrenzt die Seiten.
 
