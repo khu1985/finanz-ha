@@ -205,6 +205,12 @@ automatisch (z. B. «Raiffeisen …7890») oder wird angegeben. Fehlt die Saldo-
 Endsaldo angeben; die App rechnet die Monatssaldi aus den Beträgen zurück. Hypotheken und Kredite zählen
 negativ. Das freie Vermögen (ohne Immobilie und Hypothek) fliesst in den Kapitalverzehr im Ruhestand.
 
+**camt.053 (ISO 20022).** Genauer als CSV ist der Export im Bankformat camt.053 (im E-Banking meist unter «Export»
+bzw. «Kontoauszug als XML/camt», oft mehrere Tagesauszüge als ZIP). Die App liest XML und ZIP direkt (auch camt.052
+und camt.054, alle Versionen): Buchungsdatum, Betrag mit Soll/Haben, Gegenpartei und Mitteilung pro Buchung,
+Sammelaufträge aufgeteilt in Einzelzahlungen, vorgemerkte Buchungen nicht gezählt, doppelte Tagesauszüge nur einmal.
+Die Monatssaldi kommen aus dem Schlusssaldo. Im Import-Ordner als `bank*.xml`, `konto*.zip` oder `camt*.zip`.
+
 ## Budget und Cashflow
 
 Der Bank-Import (Seite Budget, Vermögen oder Import-Ordner) speichert neben den Monatssaldi die einzelnen Buchungen;
@@ -771,7 +777,7 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 |---|---|
 | `finanz.yaml` | ersetzt die Konfiguration (vorherige Fassung als `finanz.yaml.bak`) |
 | `vermoegen*.csv` | Konten und Saldi (`Datum;Konto;Saldo;Art;Person`) |
-| `bank*.csv`, `konto*.csv` | Kontoauszug aus dem E-Banking (Monatssaldi) |
+| `bank*.csv`, `konto*.csv` (auch `.xml`/`.zip` im Format camt.053, `camt*.zip`) | Kontoauszug aus dem E-Banking (Monatssaldi und Buchungen) |
 | `versicherungen*.csv` | Versicherungsliste (`Versicherung;Anbieter;Betrag;Person;Summe;Notiz`) |
 | `versicherung*.pdf`, `police*.pdf` | Versicherungsvertrag analysieren |
 | `steuer*.pdf`, `veranlagung*.pdf` | Steuerdokument analysieren |

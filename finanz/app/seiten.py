@@ -856,13 +856,14 @@ Arten: bank, depot, krypto, immobilie, hypothek, kredit, sonstiges. Bestehende S
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px">
 <button>Importieren</button><a class="knopf zweit" href="vorlage.csv">Vorlage herunterladen</a></div></form>"""
     bank = f"""<form method="post" action="vermoegen/bank" enctype="multipart/form-data">
-<p class="leise">Kontoauszug als CSV aus dem E-Banking (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken, Migros Bank, neon,
-Yuh u. a.). Die App erkennt Bank, IBAN und Spalten und übernimmt den letzten Saldo jedes Monats. Fehlt im Auszug eine
-Saldo-Spalte, den heutigen Kontostand als Endsaldo angeben.</p>
+<p class="leise">Kontoauszug aus dem E-Banking als CSV oder – genauer – im Bankformat <b>camt.053</b> (ISO 20022, XML oder
+ZIP; Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken, Migros Bank, neon, Yuh u. a.). Die App erkennt Bank, IBAN und
+Spalten und übernimmt den letzten Saldo jedes Monats. Fehlt im Auszug ein Saldo, den heutigen Kontostand als Endsaldo
+angeben.</p>
 <div class="felder"><label>Konto (leer = automatisch, z. B. «Raiffeisen …7890»)<input name="konto" list="konten"></label>
 <label>Art<select name="art">{arten}</select></label><label>Person<select name="person">{pers}</select></label>
 <label>Endsaldo (nur ohne Saldo-Spalte)<input name="endsaldo" inputmode="decimal"></label></div>
-<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt" multiple required style="max-width:360px">
+<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt,.xml,.zip,application/xml,application/zip" multiple required style="max-width:360px">
 <button>Auszug importieren</button></div></form>"""
     arten_zeilen = [[vm.ARTEN.get(a, a), chf(v)] for a, v in sorted(nv["nach_art"].items(), key=lambda x: -x[1])]
     return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["frei"]), "Freies Vermögen (ohne Immobilie/Hypothek)") + "</div>"
@@ -1127,7 +1128,7 @@ Studio Code Server) in den Ordner <code>/addon_configs/…_finanz/import/</code>
 Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erledigte Dateien nach <code>import/erledigt/</code>.</p>
 <ul class="hinweise"><li><code>finanz.yaml</code> – ersetzt die ganze Konfiguration (vorherige Fassung wird gesichert)</li>
 <li><code>vermoegen*.csv</code> – Konten und Saldi · <code>bank*.csv</code>, <code>konto*.csv</code> – Kontoauszüge aus dem
-E-Banking · <code>versicherungen*.csv</code> – Versicherungsliste</li>
+E-Banking (auch camt.053 als <code>bank*.xml</code>, <code>camt*.zip</code>) · <code>versicherungen*.csv</code> – Versicherungsliste</li>
 <li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
 <code>veranlagung*.pdf</code> – Steuerdokumente · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
@@ -2376,10 +2377,10 @@ def budget(k: dict, db) -> str:
     a = bu.auswerten(k, db)
     import_form = f"""<form method="post" action="vermoegen/bank" enctype="multipart/form-data">
 <input type="hidden" name="zurueck" value="budget">
-<p class="leise">Kontoauszüge als CSV aus dem E-Banking – am besten 12 Monate aller Konten, über die Einnahmen und Ausgaben
+<p class="leise">Kontoauszüge als CSV oder camt.053 (XML/ZIP) aus dem E-Banking – am besten 12 Monate aller Konten, über die Einnahmen und Ausgaben
 laufen. Die App übernimmt die Monatssaldi (Vermögen) und die einzelnen Buchungen (Budget); bereits importierte Buchungen
 werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>konto*.csv</code>).</p>
-<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt" multiple required style="max-width:360px">
+<div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt,.xml,.zip,application/xml,application/zip" multiple required style="max-width:360px">
 <button>Auszüge importieren</button></div></form>"""
     if a is None:
         return karte("Budget und Cashflow", '<p class="leer">Noch keine Buchungen. Kontoauszug importieren:</p>' + import_form)

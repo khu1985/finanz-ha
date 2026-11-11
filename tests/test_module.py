@@ -1498,3 +1498,22 @@ def test_verfuegungen_erbteile_und_entwuerfe(k):
     assert "BVV 3" in vf.text(k, "beguenstigung_3a", "Anna")                 # Konkubinat: Grundlage nennen
     assert "Unterschrift Ben" in vf.text(k, "konkubinatsvertrag", vf.HAUSHALT)
     assert [t_.schluessel for t_ in vf.typen(k)].count("konkubinatsvertrag") == 1
+
+
+def test_camt053_import(db):
+    import io
+    import zipfile
+    from pathlib import Path
+    import bankimport as bi
+    import camt
+    inhalt = (Path(__file__).parent / "daten" / "camt053_beispiel.xml").read_bytes()
+    k = camt.lesen(inhalt)[0]
+    assert k.iban.endswith("2957") and len(k.buchungen) == 4          # vorgemerkte Buchung zählt nicht
+    assert ("2026-02-03", -200.0, "Krankenkasse Sammelauftrag") in k.buchungen   # Sammelauftrag aufgeteilt
+    assert camt.monatssaldi(k)["2026-01"] == ("2026-01-25", 7000.0)
+    puffer = io.BytesIO()
+    with zipfile.ZipFile(puffer, "w") as z:
+        z.writestr("auszug.xml", inhalt)
+    a, n = bi.aus_datei(db, puffer.getvalue(), "camt.zip")
+    assert a.bank == "Raiffeisen" and n == 3 and a.ausgaben == 1350
+    assert len(bi.buchungen_lesen(inhalt)) == 4

@@ -1,4 +1,4 @@
-"""Bank-Import: Kontoauszüge als CSV aus dem E-Banking einlesen und Monatssaldi übernehmen.
+"""Bank-Import: Kontoauszüge als CSV oder camt.053 (ISO 20022, auch als ZIP) einlesen und Monatssaldi übernehmen.
 
 Erkennt Trennzeichen, Kodierung, Vorspann-Zeilen (Kontonummer, IBAN, Zeitraum) und die Spalten über
 typische Bezeichnungen der Schweizer Banken (Raiffeisen, UBS, ZKB, PostFinance, Kantonalbanken, Migros Bank,
@@ -211,9 +211,40 @@ def importieren(db, auszug: Auszug, konto: str, art: str, person: str,
     return len(werte)
 
 
+def _camt_auszug(inhalt: bytes, dateiname: str) -> tuple[Auszug, "object"]:
+    import camt
+    konten = camt.lesen(inhalt)
+    k = konten[0]
+    bank = next((n for s, n in BANKEN if s in (k.bank + " " + dateiname).lower()), k.bank)
+    name = " ".join(x for x in (bank, ("…" + k.iban[-4:]) if k.iban else "") if x) or "Bankkonto"
+    betraege = [b for _, b, _ in k.buchungen]
+    hinweise = [] if len(konten) == 1 else [f"Die Datei enthält {len(konten)} Konten – importiert wurde das erste "
+                                           f"({k.iban or 'ohne IBAN'}); die anderen bitte einzeln exportieren."]
+    monats = camt.monatssaldi(k)
+    if not monats:
+        hinweise.append("Kein Schlusssaldo im Auszug – Verlauf wird aus den Beträgen zurückgerechnet, sobald ein "
+                        "Endsaldo bekannt ist.")
+    zeitraum = (k.buchungen[0][0], k.buchungen[-1][0]) if k.buchungen else None
+    a = Auszug(bank, k.iban, name, "vorsorge" if bank.lower() in VORSORGE else "bank", {"format": "camt (ISO 20022)"},
+               len(k.buchungen), monats, max(monats.values()) if monats else None, zeitraum,
+               round(sum(b for b in betraege if b > 0), 2), round(-sum(b for b in betraege if b < 0), 2), hinweise,
+               k.waehrung or "CHF")
+    return a, k
+
+
 def aus_datei(db, inhalt: bytes, dateiname: str, konto: str = "", art: str = "", person: str = "",
               endsaldo: float | None = None) -> tuple[Auszug, int]:
+    import camt
     import waehrung as wg
+    if camt.ist_camt(inhalt):
+        a, k = _camt_auszug(inhalt, dateiname)
+        monats = None
+        if not a.monatssaldi:
+            if endsaldo is None:
+                raise ValueError("Der Auszug enthält keinen Saldo. Bitte den aktuellen Kontostand als Endsaldo angeben.")
+            k.schlusssaldi = {k.buchungen[-1][0]: endsaldo} if k.buchungen else {}
+            monats = camt.monatssaldi(k)
+        return a, importieren(db, a, konto, art, person, monats)
     a = analysieren(inhalt, dateiname)
     a.waehrung = wg.erkennen(_dekodieren(inhalt))
     monats = None
@@ -226,6 +257,9 @@ def aus_datei(db, inhalt: bytes, dateiname: str, konto: str = "", art: str = "",
 
 def buchungen_lesen(inhalt: bytes) -> list[tuple[str, float, str]]:
     """Einzelbuchungen (Datum, Betrag, Text) für die Budget-Auswertung; leer, wenn der Auszug keine Beträge hat."""
+    import camt
+    if camt.ist_camt(inhalt):
+        return list(camt.lesen(inhalt)[0].buchungen)
     text = _dekodieren(inhalt)
     zeilen = list(csv.reader(io.StringIO(text), delimiter=_trennzeichen(text.splitlines())))
     i = _kopfzeile(zeilen)

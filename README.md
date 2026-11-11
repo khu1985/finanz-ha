@@ -112,6 +112,7 @@ flowchart TB
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
 | `finanz/app/hypothek.py` | Hypothekar-Strategie über Zinsszenarien |
 | `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen |
+| `finanz/app/camt.py` | Kontoauszüge im Bankformat camt.053/052/054 (ISO 20022, XML oder ZIP) lesen |
 | `finanz/app/krankenkasse.py` | Franchise- und Modell-Optimierung der Grundversicherung |
 | `finanz/app/fruehpension.py` | Frühpensionierung 58–65 |
 | `finanz/app/anlage.py` | Anlage-Check |
