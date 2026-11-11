@@ -27,7 +27,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente"}
+MIT_ABFRAGE = {"nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -169,7 +169,8 @@ class Handler(BaseHTTPRequestHandler):
                     k = konfig.laden()
                     st = vs.status(v)
                     liste = [x for x in vs.sammeln(k, v, konfig.datenordner()) if x.schluessel not in st]
-                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper())
+                    auszuege = vs.textauszuege(k, v) if q.get("auszuege") == ["1"] else None
+                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege)
                 return self.senden(200, text.encode("utf-8"), "text/markdown; charset=utf-8",
                                    {"Content-Disposition": 'attachment; filename="finanz-vorschlaege.md"'})
             if pfad == "protokoll.log":

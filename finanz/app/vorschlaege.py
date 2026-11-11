@@ -158,12 +158,20 @@ def anonymisieren(text: str, private: list[str]) -> str:
 
 # ---------------------------------------------------------------- Quellen
 
+def _problem(probleme: dict | None, schluessel: str, titel: str, text: str, feld: str) -> None:
+    """Dokument mit Erkennungsproblem merken – für anonymisierte Textauszüge."""
+    if probleme is None:
+        return
+    p = probleme.setdefault(schluessel, {"titel": titel, "text": text, "felder": set()})
+    p["felder"].add(feld)
+
+
 def _zaehlen(ziel: dict, schluessel: tuple, gewicht: int = MITTEL) -> None:
     a, g = ziel.get(schluessel, (0, gewicht))
     ziel[schluessel] = (a + 1, max(g, gewicht))
 
 
-def _vorsorge(db, erg: dict) -> None:
+def _vorsorge(db, erg: dict, probleme: dict | None = None) -> None:
     import dokumente as dk
     try:
         dk.tabellen(db)
@@ -184,8 +192,10 @@ def _vorsorge(db, erg: dict) -> None:
         if d["typ"] == "sonstiges":
             _zaehlen(erg, ("Dokumente erkennen", f"Vorsorgedokument nicht erkannt ({anbieter})",
                            "Art «Sonstiges» – Stichworte für diese Dokumentart fehlen"), MITTEL)
+            _problem(probleme, f"d:{d['id']}", f"Vorsorgedokument ({anbieter})", text, "typ")
             continue
         art = dk.TYPEN.get(d["typ"], d["typ"])
+        dok = (f"d:{d['id']}", f"{art} ({anbieter})", text)
         if d.get("quelle") == "hand":
             if e["typ"] != d["typ"]:
                 _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): als «{dk.TYPEN.get(e['typ'], e['typ'])}» erkannt",
@@ -195,14 +205,16 @@ def _vorsorge(db, erg: dict) -> None:
                     wie = "nicht erkannt" if e["werte"].get(f) in (None, "") else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): «{beschriftung.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
+                    _problem(probleme, *dok, f)
         else:
             for f in dk.WERTE_JE_TYP.get(d["typ"], []):
                 if d["werte"].get(f) in (None, ""):
                     _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): «{beschriftung.get(f, f)}» nicht erkannt",
                                    "Feld fehlt nach dem Einlesen"), MITTEL)
+                    _problem(probleme, *dok, f)
 
 
-def _steuern(k: dict, db, erg: dict) -> None:
+def _steuern(k: dict, db, erg: dict, probleme: dict | None = None) -> None:
     import steuerdokumente as sd
     try:
         sd.tabellen(db)
@@ -223,8 +235,10 @@ def _steuern(k: dict, db, erg: dict) -> None:
         if d["typ"] == "sonstiges":
             _zaehlen(erg, ("Dokumente erkennen", f"Steuerdokument nicht erkannt (Kanton {kanton})",
                            "Art «Sonstiges» – Stichworte für diese Dokumentart fehlen"), MITTEL)
+            _problem(probleme, f"s:{d['id']}", f"Steuerdokument (Kanton {kanton})", text, "typ")
             continue
         e = sd.erkennen(text)
+        dok = (f"s:{d['id']}", art, text)
         if d.get("quelle") == "hand":
             if e["typ"] != d["typ"]:
                 _zaehlen(erg, ("Dokumente erkennen", f"{art}: als «{sd.TYPEN.get(e['typ'], e['typ'])}» erkannt",
@@ -234,15 +248,17 @@ def _steuern(k: dict, db, erg: dict) -> None:
                     wie = "nicht erkannt" if e["werte"].get(f) in (None, "") else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen", f"{art}: «{beschriftung.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
+                    _problem(probleme, *dok, f)
         else:
             for gruppe in STEUER_ERWARTET.get(d["typ"], []):
                 if all(d["werte"].get(f) in (None, "") for f in gruppe):
                     namen = " / ".join(beschriftung.get(f, f) for f in gruppe)
                     _zaehlen(erg, ("Dokumente erkennen", f"{art}: «{namen}» nicht erkannt", "Feld fehlt nach dem Einlesen"),
                              MITTEL)
+                    _problem(probleme, *dok, gruppe[0])
 
 
-def _versicherungen(db, erg: dict) -> None:
+def _versicherungen(db, erg: dict, probleme: dict | None = None) -> None:
     import sichtung
     import versicherungen as vi
     try:
@@ -265,9 +281,11 @@ def _versicherungen(db, erg: dict) -> None:
         e = erkannt_je_datei[v["datei"]]
         if v["sparte"] == "vvg" and e.get("_zusatz"):
             e = e["_zusatz"]
+        dok = (f"v:{v['datei']}", f"{sparte} ({versicherer})", text)
         if v["sparte"] == "sonstiges":
             _zaehlen(erg, ("Dokumente erkennen", f"Versicherungssparte nicht erkannt ({versicherer})",
                            "Sparte «Sonstiges» – Stichworte fehlen"), MITTEL)
+            _problem(probleme, *dok, "sparte")
         if v.get("quelle") == "hand":
             for f in vi.FELDER:
                 if f in VERSICHERUNG_PRIVAT or v.get(f) in (None, "", 0):
@@ -280,12 +298,14 @@ def _versicherungen(db, erg: dict) -> None:
                     _zaehlen(erg, ("Dokumente erkennen",
                                    f"{sparte} ({versicherer}): «{sichtung.VERTRAG_FELDER.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
+                    _problem(probleme, *dok, f)
         else:
             for f in ["praemie_jahr", "versicherer"] + VERSICHERUNG_ERWARTET.get(v["sparte"], []):
                 if v.get(f) in (None, "", 0):
                     _zaehlen(erg, ("Dokumente erkennen",
                                    f"{sparte} ({versicherer}): «{sichtung.VERTRAG_FELDER.get(f, f)}» nicht erkannt",
                                    "Feld fehlt nach dem Einlesen"), MITTEL)
+                    _problem(probleme, *dok, f)
 
 
 def _normalisieren(meldung: str) -> str:
@@ -410,8 +430,31 @@ def ideen(db) -> list[dict]:
 
 # ---------------------------------------------------------------- Sammeln und Bericht
 
+GRUPPE = re.compile(r"^(?P<dok>.+?): «(?P<feld>.+)» (?P<wie>nicht erkannt|falsch erkannt)$")
+
+
+def _gruppieren(liste: list[Vorschlag]) -> list[Vorschlag]:
+    """Pro Dokument und Art des Problems eine Zeile mit allen betroffenen Feldern."""
+    gruppen: dict[tuple, list[Vorschlag]] = {}
+    rest = []
+    for v in liste:
+        m = GRUPPE.match(v.titel) if v.bereich == "Dokumente erkennen" else None
+        if m:
+            gruppen.setdefault((m["dok"], m["wie"], v.detail), []).append(v)
+        else:
+            rest.append(v)
+    for (dok, wie, detail), vs_ in gruppen.items():
+        if len(vs_) == 1:
+            rest.append(vs_[0])
+            continue
+        felder = ", ".join(f"«{GRUPPE.match(v.titel)['feld']}»" for v in sorted(vs_, key=lambda x: (-x.anzahl, x.titel)))
+        rest.append(Vorschlag("Dokumente erkennen", f"{dok}: {felder} {wie}", detail,
+                              max(v.anzahl for v in vs_), max(v.gewicht for v in vs_)))
+    return rest
+
+
 def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
-    """Alle Vorschläge, bereits anonymisiert, wichtigste zuerst."""
+    """Alle Vorschläge, bereits anonymisiert und pro Dokument gruppiert, wichtigste zuerst."""
     erg: dict[tuple, tuple[int, int]] = {}
     _vorsorge(db, erg)
     _steuern(k, db, erg)
@@ -422,6 +465,7 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
     private = _private_texte(k, db)
     liste = [Vorschlag(bereich, anonymisieren(titel, private), anonymisieren(detail, private), anzahl, gewicht)
              for (bereich, titel, detail), (anzahl, gewicht) in erg.items()]
+    liste = _gruppieren(liste)
     eigene: dict[str, int] = {}
     for i in ideen(db):
         t = anonymisieren(i["text"].strip(), private)
@@ -433,8 +477,96 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
     return liste
 
 
-def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "") -> str:
-    """Markdown-Text zum Weitergeben (nur die übergebenen, bereits anonymisierten Vorschläge)."""
+# ---------------------------------------------------------------- Anonymisierte Textauszüge
+
+# Stichwörter je Feld, um die passenden Zeilen im Dokument zu finden (sonst die Wörter der Beschriftung)
+STICHWORTE = {
+    "kuendigungsfrist_monate": r"k[üu]ndig|frist|vertragsdauer|verl[äa]nger",
+    "praemie_jahr": r"pr[äa]mie|beitrag|zahlbar|total|j[äa]hrlich|betrag",
+    "beginn": r"beginn|g[üu]ltig|ab\b|vom\b|laufzeit|dauer",
+    "ablauf": r"ablauf|ende\b|bis\b|laufzeit|dauer|verfall|f[äa]llig",
+    "summe": r"summe|versichert|leistung|kapital|deckung",
+    "franchise": r"franchise", "modell": r"modell|hausarzt|telmed|hmo",
+    "typ": r"", "sparte": r"", "versicherer": r"",
+}
+KOPF_FELDER = {"typ", "sparte", "versicherer"}   # dafür zählen die ersten Zeilen (Briefkopf, Titel)
+ADRESSE = re.compile(r"\b(?:herr|frau|familie|eheleute)\b|\b\d{4}\s+[A-ZÄÖÜ][a-zäöüé]+|"
+                     r"\b[A-ZÄÖÜ][a-zäöüé]+(?:strasse|weg|gasse|platz|allee|rain|ring)\s+\d", re.I)
+MAX_ZEILEN = 40
+MAX_DOKUMENTE = 12
+
+
+def _stichworte(feld: str) -> str:
+    if feld in STICHWORTE:
+        return STICHWORTE[feld]
+    if feld.startswith("iv_"):
+        return r"invalid|erwerbsunf|\biv\b|rente|wartefrist|pr[äa]mienbefreiung"
+    import dokumente as dk
+    import sichtung
+    import steuerdokumente as sd
+    beschriftung = {**sichtung.VERTRAG_FELDER, **{s: t for s, (t, _) in dk.ZIELE.items()},
+                    **{s: b for s, (b, _) in sd.FELDER.items()}}.get(feld, feld)
+    woerter = [w.lower() for w in re.findall(r"[A-Za-zÄÖÜäöüé]{5,}", beschriftung)
+               if w.lower() not in {"prognose", "info", "saldo", "unter", "vermögen", "ersetzt", "policen", "heute",
+                                    "einkommen", "steuerbares", "monate"}]
+    return "|".join(re.escape(w[:8]) for w in woerter) or re.escape(feld)
+
+
+def _auszug_anonym(zeile: str, private: list[str]) -> str:
+    for t in private:
+        zeile = re.sub(r"(?<!\w)" + re.escape(t) + r"(?!\w)", "‹…›", zeile, flags=re.I)
+    zeile = MUSTER[0][0].sub("‹E-Mail›", zeile)
+    return re.sub(r"\d", "9", zeile)
+
+
+def auszug(text: str, felder: set[str], private: list[str]) -> list[str]:
+    """Relevante Zeilen eines Dokuments, anonymisiert: Ziffern → 9, Namen ersetzt, Adress- und Anredezeilen weg."""
+    zeilen = [" ".join(z.split()) for z in (text or "").replace("\f", "\n").splitlines()]
+    zeilen = [z for z in zeilen if z]
+    nehmen: set[int] = set()
+    if felder & KOPF_FELDER:
+        nehmen.update(range(min(10, len(zeilen))))
+    muster = "|".join(f"(?:{s})" for s in (_stichworte(f) for f in felder - KOPF_FELDER) if s)
+    if muster:
+        rx = re.compile(muster, re.I)
+        for i, z in enumerate(zeilen):
+            if rx.search(z):
+                nehmen.update(j for j in (i - 1, i, i + 1) if 0 <= j < len(zeilen))
+    aus = []
+    for i in sorted(nehmen):
+        z = zeilen[i]
+        if ADRESSE.search(z) or MUSTER[1][0].search(z) or MUSTER[2][0].search(z):
+            continue
+        z = _auszug_anonym(z, private)[:160]
+        if z.strip("‹…› ") and (not aus or aus[-1] != z):
+            aus.append(z)
+        if len(aus) >= MAX_ZEILEN:
+            break
+    return aus
+
+
+def textauszuege(k: dict, db) -> list[tuple[str, list[str]]]:
+    """(Dokument-Titel, anonymisierte Zeilen) für Dokumente mit Erkennungsproblemen – nur wenn gewünscht."""
+    probleme: dict = {}
+    egal: dict = {}
+    _vorsorge(db, egal, probleme)
+    _steuern(k, db, egal, probleme)
+    _versicherungen(db, egal, probleme)
+    private = _private_texte(k, db)
+    aus = []
+    for p in sorted(probleme.values(), key=lambda p: (-len(p["felder"]), p["titel"])):
+        titel = anonymisieren(p["titel"], private)
+        zeilen = auszug(p["text"], p["felder"], private)
+        if zeilen:
+            aus.append((titel, zeilen))
+        if len(aus) >= MAX_DOKUMENTE:
+            break
+    return aus
+
+
+def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "",
+            auszuege: list[tuple[str, list[str]]] | None = None) -> str:
+    """Markdown-Text zum Weitergeben (nur die übergebenen, bereits anonymisierten Vorschläge und Auszüge)."""
     kopf = [f"Vorschläge aus der Finanzplanung {version}" + (f" · Kanton {kanton}" if kanton else ""),
             "", "_Automatisch abgeleitet und anonymisiert (keine Namen, Beträge, Daten oder Dateinamen)._", ""]
     teile = []
@@ -445,6 +577,10 @@ def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "") -> str
             d = f" – {v.detail}" if v.detail else ""
             teile.append(f"- [{PRIO_TEXT[v.gewicht]}] {v.titel}{n}{d}")
         teile.append("")
+    if auszuege:
+        teile += ["### Textauszüge (anonymisiert: Ziffern → 9, Namen und Adressen entfernt)", ""]
+        for titel, zeilen in auszuege:
+            teile += [f"**{titel}**", "", "```", *zeilen, "```", ""]
     return "\n".join(kopf + (teile or ["Keine Vorschläge."])).strip() + "\n"
 
 

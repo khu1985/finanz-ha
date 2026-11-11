@@ -63,6 +63,41 @@ STICHWORTE = {
     "tier": [("tierversicherung", 6), ("hund", 2), ("katze", 2)],
 }
 
+# Kantonale Gebäudeversicherungen (öffentlich-rechtlich, in 19 Kantonen obligatorisch): Muster → Name
+KANTONALE_GEBAEUDEVERSICHERUNGEN = [
+    (r"basellandschaftliche\s+geb[äa]udeversicherung|\bBGV\b", "Basellandschaftliche Gebäudeversicherung"),
+    (r"geb[äa]udeversicherung\s+(?:des\s+)?kantons?\s+z[üu]rich|\bGVZ\b", "Gebäudeversicherung Kanton Zürich"),
+    (r"geb[äa]udeversicherung\s+bern|\bGVB\b", "Gebäudeversicherung Bern"),
+    (r"aargauische\s+geb[äa]udeversicherung|\bAGV\b", "Aargauische Gebäudeversicherung"),
+    (r"geb[äa]udeversicherung\s+(?:des\s+)?kantons?\s+basel-stadt|\bGVBS\b", "Gebäudeversicherung Basel-Stadt"),
+    (r"solothurnische\s+geb[äa]udeversicherung|\bSGV\b", "Solothurnische Gebäudeversicherung"),
+    (r"geb[äa]udeversicherung\s+luzern|\bGVL\b", "Gebäudeversicherung Luzern"),
+    (r"geb[äa]udeversicherung\s+st\.?\s*gallen|\bGVA\s+SG\b", "Gebäudeversicherung St. Gallen"),
+    (r"geb[äa]udeversicherung\s+thurgau|\bGVTG\b", "Gebäudeversicherung Thurgau"),
+    (r"geb[äa]udeversicherung\s+graub[üu]nden|\bGVG\b", "Gebäudeversicherung Graubünden"),
+    (r"geb[äa]udeversicherung\s+(?:des\s+)?kantons?\s+zug|\bGVZG\b", "Gebäudeversicherung Zug"),
+    (r"schaffhauser\s+geb[äa]udeversicherung", "Schaffhauser Gebäudeversicherung"),
+    (r"glarner(?:ische)?\s+sachversicherung", "Glarner Sachversicherung"),
+    (r"nidwaldner\s+sachversicherung", "Nidwaldner Sachversicherung"),
+    (r"geb[äa]udeversicherung\s+(?:des\s+)?kantons?\s+(?:freiburg|fribourg)|\bKGV\b|\bECAB\b",
+     "Kantonale Gebäudeversicherung Freiburg"),
+    (r"\bECA\s+Vaud\b|établissement\s+cantonal\s+d.assurance", "ECA Vaud"),
+    (r"assekuranz\s+appenzell|geb[äa]udeversicherung\s+appenzell", "Assekuranz Appenzell Ausserrhoden"),
+    (r"^\s*kantonale\s+geb[äa]udeversicherung", "Kantonale Gebäudeversicherung"),
+]
+
+
+def kantonale_gebaeudeversicherung(text: str) -> str:
+    """Name der kantonalen Gebäudeversicherung, wenn das Dokument (bzw. der Versicherername) von ihr stammt.
+
+    Nur der Briefkopf zählt: private Gebäudepolicen erwähnen die kantonale Versicherung oft im Text."""
+    kopf = "\n".join((text or "").strip().splitlines()[:12])[:800]
+    for muster, name in KANTONALE_GEBAEUDEVERSICHERUNGEN:
+        if re.search(muster, kopf, re.I | re.M):
+            return name
+    return ""
+
+
 VERSICHERER = [
     "Smile", "Helvetia Baloise", "Helvetia", "Baloise", "Basler", "AXA", "Allianz", "Mobiliar", "Zurich", "Generali",
     "Vaudoise", "TCS", "Swiss Life", "Pax", "Elvia", "Protekta", "Coop Rechtsschutz", "Dextra",
@@ -482,7 +517,12 @@ def _allgemein(text: str) -> dict:
     if not text.strip():
         return erg
     erg["sparte"] = sparte_erkennen(text)
-    for name in VERSICHERER:
+    kanton = kantonale_gebaeudeversicherung(text)
+    if kanton:
+        # Kantonale Gebäudeversicherung: obligatorisch, Prämie per Verfügung, nicht kündbar
+        erg.update(versicherer=kanton, sparte="gebaeude", kuendigungsfrist_monate=0,
+                   notiz="Obligatorische kantonale Gebäudeversicherung – nicht kündbar.")
+    for name in ([] if kanton else VERSICHERER):
         if re.search(rf"\b{re.escape(name)}\b", text, re.I):
             erg["versicherer"] = name
             break
@@ -620,6 +660,8 @@ class Termin:
 
 
 def naechster_termin(v: dict, heute: date) -> Termin | None:
+    if kantonale_gebaeudeversicherung(v.get("versicherer") or ""):
+        return None            # obligatorisch, nicht kündbar
     if v["sparte"] == "kvg":
         frist = date(heute.year, 11, 30)
         if heute > frist:

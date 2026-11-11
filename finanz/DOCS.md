@@ -233,7 +233,8 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
   ist üblich), Todesfallsumme gegenüber Hypothek und Kindern, Doppelversicherungen, Unfall in der Grundversicherung
   bei Angestellten, Franchise, Sparversicherungen, Erwerbsunfähigkeit
 - **Kündigungstermine:** Grundversicherung bis 30. November auf 1. Januar, sonst auf Ablauf bzw. nach 3 Jahren
-  (Art. 35a VVG)
+  (Art. 35a VVG). Kantonale Gebäudeversicherungen (z. B. BGV, GVZ, GVB, AGV) werden am Briefkopf erkannt und sind als
+  obligatorisch und nicht kündbar vermerkt – für sie gibt es keinen Kündigungstermin
 - **Krankenkasse: Franchise und Modell:** Pro Person und Kind Prämie pro Monat, Franchise, erwartete
   Gesundheitskosten (was die Grundversicherung bezahlt), Modell und Unfalldeckung eintragen (vorbelegt aus den
   KVG-Policen). Gesamtkosten = Prämie + Franchise + 10 % Selbstbehalt (höchstens 700, Kinder 350). Ohne eigene Offerten
@@ -677,6 +678,22 @@ Kanton angepasst wird.
 mit «Als GitHub-Issue öffnen» auf GitHub vorbefüllt öffnen (abgeschickt wird erst mit «Submit»; Issues sind
 öffentlich). Was du nicht weitergeben willst, blendest du aus; Weitergegebenes markierst du als gemeldet – beides
 kommt nicht mehr in den Text und lässt sich wieder einblenden.
+
+Probleme mit demselben Dokument stehen in **einer Zeile** mit allen betroffenen Feldern, z. B. «Hausrat (Mobiliar):
+«Prämie pro Jahr», «Kündigungsfrist (Monate)» falsch erkannt».
+
+**Anonymisierte Textauszüge** (Häkchen unter «Weitergeben», standardmässig aus) helfen, die Erkennung zu verbessern,
+ohne die PDFs zu schicken. Pro betroffenem Dokument kommen nur die Zeilen rund um die betroffenen Felder in den Text
+(bei nicht erkannter Sparte oder Art der Briefkopf), höchstens 40 Zeilen und 12 Dokumente:
+
+| Was | Wie |
+|---|---|
+| Ziffern | jede durch 9 ersetzt: «CHF 9'999.99», «99.99.9999» – das Format bleibt erkennbar |
+| Namen, Orte, Policen- und Kontonummern aus deinen Daten | ‹…› |
+| Zeilen mit Anrede (Herr, Frau), Postleitzahl und Ort, Strasse und Hausnummer, IBAN, AHV-Nummer | weggelassen |
+| E-Mail | ‹E-Mail› |
+
+Lies den Text trotzdem durch, bevor du ihn weitergibst – Namen, die nirgends in der App stehen, kann sie nicht kennen.
 
 ## Dokumente verwalten und löschen
 

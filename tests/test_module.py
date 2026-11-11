@@ -1214,6 +1214,38 @@ def test_vorschlaege_aus_daten_anonymisiert(k, db, tmp_path):
     assert link.startswith("https://github.com/x/y/issues/new?title=") and len(link) < 20000
 
 
+def test_vorschlaege_pro_dokument_gruppiert_mit_textauszug(k, db, tmp_path):
+    import vorschlaege as vs
+    k["personen"][0]["name"] = "Annelies Muster-Gubler"
+    text = ("Irgendwas anderes 42\nMuster Versicherungen AG\nFrau Annelies Muster-Gubler\nDorfstrasse 12\n9999 Musterhausen\n"
+            "Hausratversicherung Police 12-345.678\nVersicherungsbeginn 01.01.2024\n"
+            "Jahresprämie total CHF 456.70\nKündigung: 3 Monate vor Ablauf\n")
+    vid = vi.hochladen(db, tmp_path, "Police Gubler.txt", text.encode())
+    vi.aktualisieren(db, vid, {"praemie_jahr": 400.0, "kuendigungsfrist_monate": 2, "person": "Annelies Muster-Gubler"},
+                     quelle="hand")
+    liste = [v for v in vs.sammeln(k, db, tmp_path) if "falsch erkannt" in v.titel or "nicht erkannt" in v.titel]
+    zeile = [v.titel for v in liste if "Prämie pro Jahr" in v.titel]
+    assert len(zeile) == 1 and "«Kündigungsfrist (Monate)»" in zeile[0]       # eine Zeile pro Dokument
+    auszuege = vs.textauszuege(k, db)
+    assert len(auszuege) == 1
+    zeilen = auszuege[0][1]
+    assert "Jahresprämie total CHF 999.99" in zeilen and "Kündigung: 9 Monate vor Ablauf" in zeilen
+    bericht = vs.bericht(liste, "9.9.9", "", auszuege)
+    for privat in ("Annelies", "Gubler", "Dorfstrasse", "Musterhausen", "456", "12-345", "Irgendwas"):
+        assert privat not in bericht, privat
+    assert "### Textauszüge" in bericht and "### Textauszüge" not in vs.bericht(liste, "9.9.9")
+
+
+def test_kantonale_gebaeudeversicherung_nicht_kuendbar():
+    bgv = "Basellandschaftliche Gebäudeversicherung\nRechnung Gebäudeversicherung 2026\nPrämie CHF 812.40\n"
+    e = vi.erkennen(bgv)
+    assert e["versicherer"] == "Basellandschaftliche Gebäudeversicherung" and e["sparte"] == "gebaeude"
+    assert e["kuendigungsfrist_monate"] == 0 and "nicht kündbar" in e["notiz"]
+    assert vi.naechster_termin({**e, "ablauf": "2026-12-31"}, date(2026, 6, 1)) is None
+    privat = "Helvetia Versicherungen\nGebäudeversicherung\n" + "Zeile\n" * 15 + "Feuer ist bei der BGV versichert\n"
+    assert vi.erkennen(privat)["versicherer"] == "Helvetia"
+
+
 def test_ocr_fuer_gescannte_pdfs(monkeypatch, caplog):
     import io
     import shutil

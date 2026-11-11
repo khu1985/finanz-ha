@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.29.0 – 2026-11-11
+
+- **Kantonale Gebäudeversicherungen** (z. B. Basellandschaftliche Gebäudeversicherung, GVZ, GVB, AGV, GVBS, ECA)
+  werden am Briefkopf erkannt: Sparte Gebäude, als obligatorisch und nicht kündbar vermerkt, keine Kündigungstermine
+- **Vorschläge kompakter:** pro Dokument eine Zeile mit allen betroffenen Feldern statt einer Zeile pro Feld
+- **Anonymisierte Textauszüge (wahlweise):** unter «Weitergeben» lassen sich die Zeilen rund um nicht oder falsch
+  erkannte Felder anhängen – alle Ziffern durch 9 ersetzt, Namen, Anrede- und Adresszeilen entfernt, höchstens
+  40 Zeilen pro Dokument. Standardmässig aus; der Text ist vor dem Weitergeben sichtbar
+
 ## 0.28.0 – 2026-11-11
 
 - **Verfügungen (neue Seite unter Planung):** Entwürfe mit Fragen und Optionen für

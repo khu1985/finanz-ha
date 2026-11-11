@@ -2920,7 +2920,7 @@ def dokumente(k: dict, db, q: dict | None = None) -> str:
 
 # ---------------------------------------------------------------- Vorschläge
 
-def vorschlaege(k: dict, db) -> str:
+def vorschlaege(k: dict, db, q: dict | None = None) -> str:
     import konfig
     import meta
     import vorschlaege as vs
@@ -2974,13 +2974,22 @@ def vorschlaege(k: dict, db) -> str:
                         '<p class="leise">Namen, Beträge und Daten werden beim Weitergeben ersetzt – schreib trotzdem '
                         'nichts Persönliches hinein.</p>')
     kanton = str(k["haushalt"].get("kanton") or "").upper()
-    text = vs.bericht(sichtbar, meta.version(), kanton)
+    mit_auszug = (q or {}).get("auszuege") == ["1"]
+    auszuege = vs.textauszuege(k, db) if mit_auszug else None
+    text = vs.bericht(sichtbar, meta.version(), kanton, auszuege)
     link = vs.issue_link(meta.repository(), text, meta.version())
+    schalter = ('<form method="get" action="vorschlaege" class="nicht-drucken"><label class="wahl">'
+                f'<input type="checkbox" name="auszuege" value="1" onchange="this.form.submit()"'
+                f'{" checked" if mit_auszug else ""}> Anonymisierte Textauszüge der betroffenen Dokumente anhängen'
+                '</label><p class="leise">Hilft, die Erkennung zu verbessern, ohne die PDFs zu schicken: nur Zeilen '
+                'rund um die betroffenen Felder, alle Ziffern durch 9 ersetzt (z. B. «CHF 9\'999.99»), Namen, Anrede- '
+                'und Adresszeilen entfernt. Prüfe den Text unten trotzdem, bevor du ihn weitergibst.</p></form>')
     teil_text = karte("Weitergeben", (
-        f'<textarea id="vorschlaege-text" class="mittel" readonly>{escape(text)}</textarea>'
+        schalter
+        + f'<textarea id="vorschlaege-text" class="mittel" readonly>{escape(text)}</textarea>'
         '<div class="zeile nicht-drucken">'
         '<button type="button" class="zweit" data-kopieren="vorschlaege-text">Kopieren</button>'
-        '<a class="knopf zweit" href="vorschlaege.md">Herunterladen (.md)</a>'
+        f'<a class="knopf zweit" href="vorschlaege.md{"?auszuege=1" if mit_auszug else ""}">Herunterladen (.md)</a>'
         f'<a class="knopf" href="{escape(link)}" target="_blank" rel="noopener noreferrer">Als GitHub-Issue öffnen</a></div>'
         '<p class="leise">«Als GitHub-Issue öffnen» füllt auf GitHub ein neues Issue mit diesem Text vor – abgeschickt wird '
         'erst, wenn du dort auf «Submit» klickst (GitHub-Konto nötig; das Issue ist öffentlich). Danach die Vorschläge '
