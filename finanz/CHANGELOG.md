@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.32.0 – 2026-11-12
+
+- **Vorname in der App, voller Name in Schreiben:** neues Feld «Nachname» pro Person und Kind. Verfügungen, Verträge,
+  Briefe (z. B. 3a-Begünstigung) und der Notfallordner schreiben Vor- und Nachname aus; Kinder ohne eigenen Nachnamen
+  erhalten den des Elternteils
+- **Namen aufteilen:** Steht unter Einstellungen ein voller Name im Vornamenfeld, teilt die App ihn auf Knopfdruck auf
+- **Umbenennen ohne Datenverlust:** Ändert sich der Name einer Person, werden Konten, Verträge, Vorsorge- und
+  Steuerdokumente, Verfügungen, Checklisten und Kinder-Zuordnungen nachgeführt
+
 ## 0.31.0 – 2026-11-11
 
 - **Kontoauszüge im Bankformat camt.053** (ISO 20022, XML oder ZIP mit mehreren Tagesauszügen; auch camt.052/054):

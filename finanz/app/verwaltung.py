@@ -128,3 +128,18 @@ def neue_dateien(db, daten: Path, kurz: str, dateien: list[tuple[str, bytes]]) -
             vorhanden[h] = name
             neu.append((name, inhalt))
     return neu, doppelt
+
+
+PERSONEN_TABELLEN = ("konten", "vertraege", "vorsorge_dok", "steuer_dok")
+
+
+def person_umbenennen_db(db, alt: str, neu: str) -> int:
+    """Zuordnung von Konten, Verträgen und Dokumenten auf den neuen Namen umschreiben."""
+    n = 0
+    for tabelle in PERSONEN_TABELLEN:
+        try:
+            n += db.execute(f"UPDATE {tabelle} SET person = ? WHERE person = ?", (neu, alt)).rowcount
+        except Exception:  # noqa: BLE001 – Tabelle (noch) nicht vorhanden
+            pass
+    db.commit()
+    return n

@@ -56,6 +56,16 @@ def db():
     return vm.verbinden(konfig.datenordner() / "finanz.sqlite")
 
 
+def _umbenennen(k: dict, alt: str, neu: str) -> str:
+    """Person umbenannt: Konfiguration (Verfügungen, Checklisten, Kinder …) und Zuordnungen in der Datenbank."""
+    import verwaltung as vw
+    konfig.person_umbenennen(k, alt, neu)
+    with db() as v:
+        n = vw.person_umbenennen_db(v, alt, neu)
+    LOG.info("Person umbenannt (%d Zuordnungen)", n)
+    return f"«{alt}» heisst jetzt «{neu}» – {n} Konten, Verträge und Dokumente nachgeführt."
+
+
 def multipart(content_type: str, body: bytes) -> dict:
     nachricht = BytesParser(policy=email_policy).parsebytes(
         b"Content-Type: " + content_type.encode() + b"\r\nMIME-Version: 1.0\r\n\r\n" + body)
@@ -277,13 +287,30 @@ class Handler(BaseHTTPRequestHandler):
     def _aktion(self, pfad: str, form: dict) -> str:
         if pfad == "einstellungen":
             k = konfig.laden()
+            vorher = [p.get("name") for p in k["personen"]]
             for feld, _ in seiten.alle_felder(k):
                 if feld in form:
                     wert = form[feld]
                     seiten.pfad_setzen(k, feld, wert.decode() if isinstance(wert, bytes) else wert)
+            meldung = "Einstellungen gespeichert."
+            for alt_, p in zip(vorher, k["personen"]):
+                p["name"] = str(p.get("name") or "").strip() or alt_
+                if alt_ and p["name"] != alt_:
+                    meldung += " " + _umbenennen(k, alt_, p["name"])
             konfig.speichern(k)
             LOG.info("Einstellungen gespeichert")
-            return "Einstellungen gespeichert."
+            return meldung
+        if pfad == "einstellungen/namen_trennen":
+            k = konfig.laden()
+            teile_ = []
+            for p in k["personen"]:
+                if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1:
+                    alt_ = p["name"]
+                    p["name"], p["nachname"] = konfig.namen_trennen(alt_)
+                    teile_.append(f"«{alt_}» → Vorname «{p['name']}», Nachname «{p['nachname']}»")
+                    _umbenennen(k, alt_, p["name"])
+            konfig.speichern(k)
+            return ("; ".join(teile_) + ".") if teile_ else "Nichts zu trennen.", "einstellungen"
         if pfad in ("einstellungen/yaml", "einstellungen/import"):
             roh = form.get("yaml") or form.get("datei") or b""
             text = roh.decode("utf-8") if isinstance(roh, bytes) else roh
@@ -555,6 +582,7 @@ class Handler(BaseHTTPRequestHandler):
                 c = dict(alt[i]) if i < len(alt) else {}
                 c.pop("geburtsjahr", None)
                 c["name"] = name
+                c["nachname"] = str(form.get(f"nachname_{i}", "")).strip()
                 c["geburtsdatum"] = str(form.get(f"geburtsdatum_{i}", "")).strip()
                 for f in ("eltern", "obhut", "gutschrift"):
                     if f"{f}_{i}" in form:

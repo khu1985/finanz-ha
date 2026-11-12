@@ -882,12 +882,15 @@ def mit_vorgaben(k: dict, typ: str, wer: str) -> dict:
 
 
 def text(k: dict, typ: str, wer: str) -> str:
+    """Entwurf mit vollen Namen (Vor- und Nachname) aller Personen und Kinder."""
+    import konfig
     a = mit_vorgaben(k, typ, wer)
     if typ in HAUSHALT_TYPEN:
-        return HAUSHALT_TYPEN[typ][1](k, a)
+        return konfig.namen_ausschreiben(k, HAUSHALT_TYPEN[typ][1](k, a))
     l = lage(k, wer, a)
-    return {"testament": testament_text, "vorsorgeauftrag": vorsorgeauftrag_text,
-            "patientenverfuegung": patientenverfuegung_text, "beguenstigung_3a": beguenstigung_text}[typ](l, a)
+    return konfig.namen_ausschreiben(k, {"testament": testament_text, "vorsorgeauftrag": vorsorgeauftrag_text,
+                                         "patientenverfuegung": patientenverfuegung_text,
+                                         "beguenstigung_3a": beguenstigung_text}[typ](l, a))
 
 
 def speichern(k: dict, typ: str, wer: str, form: dict) -> None:

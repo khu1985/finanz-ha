@@ -1592,3 +1592,32 @@ def test_vorschlaege_durch_update_erledigt(db):
     vs.verlauf_nachfuehren(db, [a], "1.2.0")                  # wieder aufgetaucht → offen
     assert not any("Prämie" in e[0].titel for e in vs.erledigt(db))
     assert "### Mit 1.1.0 erledigt" in vs.bericht([], "1.1.0", "", None, [e[0] for e in erl])
+
+
+def test_vollname_in_verfuegungen_vorname_in_der_app(k):
+    import konfig
+    import verfuegungen as vf
+    k["personen"][0].update(name="Anna", nachname="Muster")
+    k["personen"][1].update(name="Ben", nachname="Beispiel")
+    k["haushalt"]["kinder"] = [{"name": "Lia", "geburtsdatum": "2018-03-01", "eltern": "gemeinsam"}]
+    assert konfig.vollname(k, "Anna") == "Anna Muster" and konfig.vollname(k, "Lia") == "Lia Muster"
+    k["haushalt"]["kinder"][0]["nachname"] = "Beispiel"
+    assert konfig.vollname(k, "Lia") == "Lia Beispiel"
+    text = vf.text(k, "testament", "Anna")
+    assert "Anna Muster" in text and "Anna Muster Muster" not in text
+    assert konfig.namen_ausschreiben(k, "Annabelle und Ben Beispiel") == "Annabelle und Ben Beispiel"
+    assert konfig.namen_trennen("Anna Maria Muster-Beispiel") == ("Anna Maria", "Muster-Beispiel")
+
+
+def test_person_umbenennen_fuehrt_alles_nach(k, db):
+    import konfig
+    import verwaltung as vw
+    k["personen"][0]["name"] = "Anna Muster"
+    k["verfuegungen"] = {"testament": {"Anna Muster": {"ziel": "partner"}}}
+    k["haushalt"]["kinder"] = [{"name": "Lia", "eltern": "Anna Muster", "obhut": "Anna Muster"}]
+    kid = vm.konto_anlegen(db, "Sparkonto", "bank", "Anna Muster")
+    konfig.person_umbenennen(k, "Anna Muster", "Anna")
+    assert "Anna" in k["verfuegungen"]["testament"] and k["haushalt"]["kinder"][0]["eltern"] == "Anna"
+    assert k["personen"][0]["name"] == "Anna Muster"                 # der Name selbst wird vom Aufrufer gesetzt
+    assert vw.person_umbenennen_db(db, "Anna Muster", "Anna") == 1
+    assert db.execute("SELECT person FROM konten WHERE id = ?", (kid,)).fetchone()[0] == "Anna"

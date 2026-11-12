@@ -262,3 +262,21 @@ def test_verfuegungen_seite(server):
     assert "Musterstiftung erhält 100 % meines Nachlasses" in html
     _post(f"{server}/verfuegungen/vermerken", {"typ": "testament", "wer": p1})
     assert konfig.laden()["nachlass"]["fragebogen"]["testament"][p1]["vorhanden"] == "in Arbeit"
+
+
+def test_namen_aufteilen_und_umbenennen(server, daten):
+    k = konfig.laden()
+    k["personen"][0]["name"] = "Anna Muster"
+    konfig.speichern(k)
+    _post(f"{server}/vermoegen/saldo", {"konto": "Sparen", "art": "bank", "person": "Anna Muster",
+                                        "datum": "2026-01-31", "betrag": "100"})
+    assert "Namen aufteilen" in urllib.request.urlopen(f"{server}/einstellungen").read().decode()
+    code, _ = _post(f"{server}/einstellungen/namen_trennen", {})
+    k = konfig.laden()
+    assert code == 303 and (k["personen"][0]["name"], k["personen"][0]["nachname"]) == ("Anna", "Muster")
+    import vermoegen as vm
+    v = vm.verbinden(konfig.datenordner() / "finanz.sqlite")
+    assert v.execute("SELECT person FROM konten WHERE name = 'Sparen'").fetchone()[0] == "Anna"
+    code, _ = _post(f"{server}/einstellungen", {"personen.0.name": "Anni"})
+    assert konfig.laden()["personen"][0]["name"] == "Anni"
+    assert v.execute("SELECT person FROM konten WHERE name = 'Sparen'").fetchone()[0] == "Anni"

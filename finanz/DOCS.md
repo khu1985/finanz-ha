@@ -492,7 +492,7 @@ Auf der Seite **Kinder** (bzw. `haushalt.kinder[]`) pro Kind erfassen:
 
 | Feld | Bedeutung |
 |---|---|
-| `name`, `geburtsdatum` | ältere Einträge mit `geburtsjahr` gelten weiter (Jahresmitte) |
+| `name`, `nachname`, `geburtsdatum` | Vorname für die App; Nachname leer = wie der Elternteil (für Verfügungen); ältere Einträge mit `geburtsjahr` gelten weiter (Jahresmitte) |
 | `eltern` | `gemeinsam` oder Name einer Person (Kind aus einer früheren Beziehung) |
 | `obhut` | Konkubinat: Person mit Elterntarif und Kinderabzug; leer = höheres Einkommen |
 | `gutschrift` | Konkubinat: AHV-Erziehungsgutschrift `hälftig` oder ganz bei einer Person (Ehe immer hälftig) |
@@ -569,6 +569,11 @@ Abgehakte Punkte werden pro Jahr gespeichert. Ampel «Steuererklärung» in den 
 letzten 14 Tagen mit offenen Punkten).
 
 ## Verfügungen
+
+**Namen:** In der App steht überall der Vorname (`personen[].name`). Verfügungen, Verträge, Briefe und der
+Notfallordner schreiben Vor- und Nachname aus (`personen[].nachname`, bei Kindern `nachname` oder der des Elternteils).
+Steht unter Einstellungen noch ein voller Name im Vornamenfeld, bietet die App «Namen aufteilen» an. Wird eine Person
+umbenannt, führt die App Konten, Verträge, Dokumente, Verfügungen und Checklisten auf den neuen Namen nach.
 
 Die Seite **Verfügungen** führt mit Fragen und Optionen zu einem Entwurf. Die App kennt Zivilstand, Kinder (eigene und
 gemeinsame), Partner und Liegenschaft und füllt Vorgaben wie Geburtsdatum oder Vertretungsperson vor.
@@ -820,7 +825,7 @@ oder **Einstellungen → Experte**.
 | Abschnitt | Inhalt |
 |---|---|
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder)), Bedarf im Ruhestand, Kapitalverzehr |
-| `personen[]` | Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
+| `personen[]` | `name` (Vorname, Anzeige in der App), `nachname` (für Verfügungen und Schreiben), Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |

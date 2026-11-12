@@ -9,6 +9,8 @@ from html import escape
 
 import yaml
 
+import konfig
+
 import diagramme as dg
 import steuern as st
 import vermoegen as vm
@@ -963,7 +965,8 @@ beiden Konten einen Saldo, gilt der des gewählten Kontos.</p>""" if andere else
 def _felder_person(i: int) -> list[tuple]:
     p = f"personen.{i}."
     return [
-        (p + "name", "Name"), (p + "geburtsdatum", "Geburtsdatum (JJJJ-MM-TT)"),
+        (p + "name", "Vorname (Anzeige in der App)"), (p + "nachname", "Nachname (für Verfügungen und Schreiben)"),
+        (p + "geburtsdatum", "Geburtsdatum (JJJJ-MM-TT)"),
         (p + "pensionierung_alter", "Pensionierungsalter"), (p + "lohn_brutto", "Bruttolohn/Jahr"),
         (p + "sparen_monat", "Sparpotenzial/Monat"),
         (p + "ahv.beitragsjahre_bisher", "AHV-Beitragsjahre bisher"), (p + "ahv.fehlende_jahre", "AHV fehlende Jahre"),
@@ -1106,7 +1109,18 @@ def einstellungen(k: dict, db) -> str:
         offen = karte("Zu prüfen", f'<ul class="hinweise">{liste_(am.ROT)}{liste_(am.GELB)}</ul>'
                       '<p class="leise">Grün: plausibel · Gelb: wahrscheinlich falsch, veraltet oder fehlt (gerechnet wird '
                       'trotzdem) · Rot: wichtiger Wert fehlt oder ist unmöglich · Grau: optional bzw. Standard.</p>')
-    teile = [kpis, offen, gruppe("Haushalt", FELDER_HAUSHALT)]
+    zu_trennen = [p["name"] for p in k["personen"] if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1]
+    trennen = ""
+    if zu_trennen:
+        vorschau = ", ".join(f"«{escape(n)}» → {escape(konfig.namen_trennen(n)[0])} · {escape(konfig.namen_trennen(n)[1])}"
+                             for n in zu_trennen)
+        trennen = karte("Vor- und Nachname", (
+            '<p>In der App reicht der Vorname; Verfügungen, Verträge und Schreiben brauchen den vollen Namen. Die App kann '
+            f'die Namen aufteilen: {vorschau}. Konten, Verträge, Dokumente, Verfügungen und Checklisten werden dabei '
+            'nachgeführt.</p><form method="post" action="einstellungen/namen_trennen" class="zeile">'
+            '<button>Namen aufteilen</button></form><p class="leise">Doppelte Nachnamen ohne Bindestrich danach unter der '
+            'Person korrigieren.</p>'))
+    teile = [kpis, trennen, offen, gruppe("Haushalt", FELDER_HAUSHALT)]
     for i, p in enumerate(k["personen"]):
         teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i)))
     teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN),
@@ -2502,7 +2516,8 @@ def kinder(k: dict, db) -> str:
         a = ki.alter(c, jahr) if not neu else -1
         titel = "Neues Kind" if neu else f"{escape(c['name'])} – {a} Jahre" if a >= 0 else escape(c["name"])
         felder = [
-            f'<label>Name<input name="name_{i}" value="{escape("" if neu else str(c["name"]))}"{"" if neu else " required"}></label>',
+            f'<label>Vorname<input name="name_{i}" value="{escape("" if neu else str(c["name"]))}"{"" if neu else " required"}></label>',
+            f'<label>Nachname (leer = wie Elternteil)<input name="nachname_{i}" value="{escape("" if neu else str(c.get("nachname") or ""))}"></label>',
             f'<label>Geburtsdatum<input type="date" name="geburtsdatum_{i}" value="{escape("" if neu else str(ki.geburt(c) or ""))}"></label>',
             f'<label>Kind von{auswahl(f"eltern_{i}", c.get("eltern", "gemeinsam"), eltern)}</label>',
         ]
@@ -2628,9 +2643,11 @@ def notfall(k: dict, db) -> str:
         kpi(cfg["stand"] or "–", "zuletzt bearbeitet"),
     ]) + "</div>"
     # Personen und Kinder
-    zeilen = [[escape(p["name"]), escape(str(p.get("geburtsdatum", ""))), escape(str(k["haushalt"].get("zivilstand", "")))]
+    zeilen = [[escape(konfig.vollname(k, p["name"])), escape(str(p.get("geburtsdatum", ""))),
+               escape(str(k["haushalt"].get("zivilstand", "")))]
               for p in k["personen"]]
-    zeilen += [[escape(c["name"]) + " (Kind)", escape(str(ki.geburt(c) or "")), ""] for c in ki.liste(k)]
+    zeilen += [[escape(konfig.vollname(k, c["name"])) + " (Kind)", escape(str(ki.geburt(c) or "")), ""]
+               for c in ki.liste(k)]
     personen_html = tabelle(["Name", "Geburtsdatum", "Zivilstand"], zeilen, zahlen_ab=9)
     # Schritte
     schritte = "".join(f'<div class="stb-punkt"><div class="text"><b>{escape(s_.was)}</b> '

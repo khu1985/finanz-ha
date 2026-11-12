@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-STANDARD = {"name": "Kind", "geburtsdatum": "", "eltern": "gemeinsam", "obhut": "", "gutschrift": "hälftig",
+STANDARD = {"name": "Kind", "nachname": "", "geburtsdatum": "", "eltern": "gemeinsam", "obhut": "", "gutschrift": "hälftig",
             "ausbildung_bis": 18, "betreuung_jahr": 0, "betreuung_bis": 12, "zulage_monat": 0}
 ZULAGE_KIND, ZULAGE_AUSBILDUNG = 215, 268
 

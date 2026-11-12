@@ -22,6 +22,7 @@ haushalt:
 personen:
   - id: p1
     name: Person 1
+    nachname: ""                 # für Verfügungen und Schreiben; in der App reicht der Vorname
     geburtsdatum: "1985-06-15"
     geschlecht: m                # m | w
     pensionierung_alter: 65
@@ -71,6 +72,7 @@ personen:
       nov_beantragt: false       # nachträgliche ordentliche Veranlagung beantragt (Quellensteuer)
   - id: p2
     name: Person 2
+    nachname: ""
     geburtsdatum: "1987-03-02"
     geschlecht: w
     pensionierung_alter: 65
