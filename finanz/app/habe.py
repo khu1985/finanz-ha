@@ -369,6 +369,7 @@ class Vergleich:
     sparquote_klasse: float
     hinweise: list[str] = field(default_factory=list)
     monate: int = 0
+    aus_budget: bool = True        # False: ohne Buchungen – eigene Werte aus der Planung (Steuern, Krankenkasse, Wohnen)
 
 
 def _summe(gruppe: dict, posten: tuple[str, ...]) -> tuple[float, bool]:
@@ -386,16 +387,16 @@ def vergleichen(k: dict, db, jahr: int | None = None) -> Vergleich | None:
     from datetime import date
     import budget as bu
     a = bu.auswerten(k, db)
-    if not a or not a.ausgaben:
-        return None
+    if a and not a.ausgaben:
+        a = None
     jahr = jahr or date.today().year
     brutto = sum(float(p.get("lohn_brutto") or 0) for p in k.get("personen") or []) / 12
-    if not brutto:
+    if not brutto and a:
         brutto = a.einnahmen / 12 * 1.12                # Nettoeinnahmen grob auf brutto hochrechnen
     t = haushaltstyp(k, jahr)
     kl, kl_text = einkommensklasse(brutto)
     gt, gk = DATEN["typ"][t], DATEN["einkommen"][kl]
-    eigene = {n: v / 12 for n, v, _ in a.kategorien}
+    eigene = {n: v / 12 for n, v, _ in a.kategorien} if a else _aus_planung(k, db, jahr)
     zeilen = []
     for kat, posten in ZUORDNUNG.items():
         st, ut = _summe(gt, posten)
@@ -404,10 +405,53 @@ def vergleichen(k: dict, db, jahr: int | None = None) -> Vergleich | None:
         mittel = (st + sk) / 2
         abw = round((e - mittel) / mittel * 100) if mittel >= 20 and e else None
         zeilen.append(Zeile(kat, round(e), round(st), round(sk), ut or uk, abw))
-    sq = round((a.ueberschuss + a.sparen_konto) / a.einnahmen * 100, 1) if a.einnahmen else None
-    v = Vergleich(TYPEN[t], kl_text, round(brutto), zeilen, sq, _sparquote(gt), _sparquote(gk), monate=a.monate)
-    v.hinweise = _hinweise(v, eigene)
+    if a:
+        sq = round((a.ueberschuss + a.sparen_konto) / a.einnahmen * 100, 1) if a.einnahmen else None
+    else:
+        sparen = sum(float(p.get("sparen_monat") or 0) for p in k.get("personen") or [])
+        netto = brutto - _summe(gk, ("sozialversicherung",))[0] * (brutto / gk["brutto"][0] if gk["brutto"][0] else 1)
+        sq = round(sparen / netto * 100, 1) if sparen and netto > 0 else None
+    v = Vergleich(TYPEN[t], kl_text, round(brutto), zeilen, sq, _sparquote(gt), _sparquote(gk),
+                  monate=a.monate if a else 0, aus_budget=bool(a))
+    v.hinweise = _hinweise(v, eigene) if a else _hinweise_planung(v)
     return v
+
+
+def _aus_planung(k: dict, db, jahr: int) -> dict[str, float]:
+    """Ohne Buchungen: was die Planung schon kennt – Steuern, Krankenkasse, Wohnkosten bei Wohneigentum."""
+    erg: dict[str, float] = {}
+    try:
+        import steuern as st
+        erg["Steuern"] = st.steuern_heute(k)["total_inkl"] / 12
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import krankenkasse as kk
+        import versicherungen as vi
+        erg["Krankenkasse"] = sum(p.praemie_monat for p in kk.personen(k, vi.alle(db)))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        if (k.get("wohnen") or {}).get("aktiv"):
+            import wohnen as wo
+            t = wo.tragbarkeit(k, jahr)
+            w = k["wohnen"]
+            preis = float(w.get("kaufpreis", 0) or 0)
+            zins = t["hypothek"] * float(w.get("hypothek_zins", 0) or 0) / 100
+            erg["Wohnen"] = (zins + preis * float(w.get("unterhalt_pauschal", 1.0) or 0) / 100) / 12
+    except Exception:  # noqa: BLE001
+        pass
+    return {n: v for n, v in erg.items() if v}
+
+
+def _hinweise_planung(v: Vergleich) -> list[str]:
+    h = ["Noch keine Buchungen: Die Spalte «Du» zeigt nur, was die Planung schon kennt (Steuern, Krankenkasse, "
+         "Wohnkosten bei Wohneigentum, Sparquote aus dem Sparpotenzial). Mit importierten Kontoauszügen kommen alle "
+         "Kategorien dazu."]
+    for z in v.zeilen:
+        if z.abweichung is not None and z.abweichung >= 30 and z.kategorie != "Steuern":
+            h.append(f"{z.kategorie}: {z.abweichung:+d} % gegenüber vergleichbaren Haushalten.")
+    return h
 
 
 def _hinweise(v: Vergleich, eigene: dict) -> list[str]:

@@ -1836,3 +1836,14 @@ def test_vergleich_mit_schweizer_haushalten(k, db):
     assert v.typ == "Paare mit Kindern" and v.klasse == "CHF 9'734–13'716"
     assert wohnen.eigen == 3200 and wohnen.typ == 1626 and wohnen.abweichung > 50
     assert any(h.startswith("Wohnen:") for h in v.hinweise) and v.sparquote is not None
+
+
+def test_vergleich_ohne_buchungen(k, db):
+    import habe
+    import seiten
+    k["personen"][0]["lohn_brutto"] = 90000
+    v = habe.vergleichen(k, db, 2026)
+    assert v and not v.aus_budget and v.hinweise[0].startswith("Noch keine Buchungen")
+    assert next(z for z in v.zeilen if z.kategorie == "Steuern").eigen > 0
+    html = seiten.budget(k, db)
+    assert "Vergleich mit Schweizer Haushalten" in html and "Noch keine Buchungen" in html

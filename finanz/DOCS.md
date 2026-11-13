@@ -259,6 +259,8 @@ Einnahmen und Ausgaben laufen.
   Gruppen; Hinweise, wenn eine Kategorie über 30 % und mindestens CHF 100 über beiden Gruppen liegt (oder deutlich
   darunter – dann fehlen oft Buchungen). Dazu die Sparquote. Nicht verglichen: Kinder und Betreuung, Bargeld,
   Kreditkarte und Buchungen ohne Kategorie. Die BFS-Werte sind in der App eingebaut, es geht nichts ins Internet.
+  Ohne Buchungen zeigt die Karte die Vergleichswerte trotzdem – mit dem, was die Planung schon kennt (Steuern,
+  Krankenkassenprämien, Wohnkosten bei Wohneigentum, Sparquote aus dem Sparpotenzial).
 
   | App-Kategorie | BFS-Positionen |
   |---|---|

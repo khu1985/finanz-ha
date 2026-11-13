@@ -2629,7 +2629,8 @@ werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>kont
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt,.xml,.zip,application/xml,application/zip" multiple required style="max-width:360px">
 <button>Auszüge importieren</button></div></form>"""
     if a is None:
-        return karte("Budget und Cashflow", '<p class="leer">Noch keine Buchungen. Kontoauszug importieren:</p>' + import_form)
+        return (karte("Budget und Cashflow", '<p class="leer">Noch keine Buchungen. Kontoauszug importieren:</p>' + import_form)
+                + habe_karte(k, db))
     status = bu.status(a)
     gespart = a.ueberschuss + a.sparen_konto
     kpis = ('<div class="kpis">'
@@ -2712,6 +2713,10 @@ def habe_karte(k: dict, db) -> str:
             stufe = am.ROT if z.abweichung >= 50 else am.GELB if z.abweichung >= 25 else None
             abw = (licht(stufe) if stufe else "") + f"{z.abweichung:+d} %"
         zeilen.append([escape(z.kategorie) + ("*" if z.unsicher else ""), chf(z.eigen), chf(z.typ), chf(z.klasse), abw])
+    if not v.aus_budget:
+        zeilen += [[escape(z.kategorie), "–", chf(z.typ), chf(z.klasse), ""] for z in v.zeilen
+                   if not z.eigen and (z.typ or z.klasse)]
+        ohne = []
     if v.sparquote is not None:
         zeilen.append(["Sparquote", f"{v.sparquote:.0f} %", f"{v.sparquote_typ:.0f} %", f"{v.sparquote_klasse:.0f} %", ""])
     tab = tabelle(["pro Monat", "Du", "Typ", "Einkommen", "±"], zeilen, zahlen_ab=1, responsiv=False)

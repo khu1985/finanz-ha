@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.38.1 – 2026-11-13
+
+- **Vergleich mit Schweizer Haushalten auch ohne Buchungen:** Die Vergleichswerte erscheinen sofort; eigene Werte
+  kommen aus der Planung (Steuern, Krankenkassenprämien, Wohnkosten bei Wohneigentum, Sparquote aus dem
+  Sparpotenzial), bis Kontoauszüge importiert sind
+
 ## 0.38.0 – 2026-11-13
 
 - **Vergleich mit Schweizer Haushalten** im Budget: Ausgaben pro Kategorie und Sparquote neben dem Mittel von
