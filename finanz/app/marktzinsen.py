@@ -76,7 +76,7 @@ def _holen(cube: str, abfrage: str, zeit: int) -> str:
 def holen(db, heute: date | None = None, zeit: int = 30) -> int:
     heute = heute or date.today()
     von_monat = f"{heute.year - 2}-{heute.month:02d}"
-    von_tag = (heute - timedelta(days=45)).isoformat()
+    von_tag = f"{heute.year - 2}-{heute.month:02d}-01"     # zwei Jahre, damit der Verlauf zu den Monatsmitteln passt
     return einlesen(db, _holen("zikrepro", f"dimSel=D0(M)&fromDate={von_monat}", zeit),
                     _holen("zirepo", f"dimSel=D0(H0)&fromDate={von_tag}", zeit))
 
@@ -167,8 +167,9 @@ def saetze(k: dict, db, heute: date | None = None) -> dict:
     if str(eigen.get("saron", "")).strip() not in ("", "None"):
         saron = (float(eigen["saron"]), "Einstellungen")
     marge = None
-    if "saron5" in markt and saron:
-        marge = (round(markt["saron5"][0] - max(saron[0], 0.0), 2), "SNB-Mittel SARON-Hypothek − SARON")
+    sh = markt.get("saron5") or markt.get("saron3")
+    if sh and saron:
+        marge = (round(sh[0] - max(saron[0], 0.0), 2), "SNB-Mittel SARON-Hypothek − SARON")
     for o in offerten(k, heute):
         if o.get("produkt") == "saron" and saron:
             m = round(o["zins"] - max(saron[0], 0.0), 2)

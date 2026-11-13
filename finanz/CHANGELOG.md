@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.34.1 – 2026-11-13
+
+- **Marktzinsen:** Marge der SARON-Hypothek auch aus dem Mittel mit 3 Jahren Rahmenlaufzeit (das 5-jährige
+  veröffentlicht die SNB nicht immer); SARON-Verlauf über zwei Jahre statt nur die letzten Wochen; Hinweis, dass der
+  SARON im SNB-Datenportal mit Verzögerung erscheint
+
 ## 0.34.0 – 2026-11-13
 
 - **Hypothek mit Marktzinsen:** Die App holt einmal am Tag beim SNB-Datenportal den SARON und die publizierten

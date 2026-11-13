@@ -2009,15 +2009,16 @@ def marktzinsen_teil(k: dict, db, cfg: dict) -> str:
         k_ = []
         if "saron" in akt:
             z, d = akt["saron"]
-            k_.append(kpi(f"{z:.2f} %", f"SARON {d[8:10]}.{d[5:7]}.{d[:4]}"))
+            k_.append(kpi(f"{z:.2f} %", f"SARON {d[8:10]}.{d[5:7]}.{d[:4]} (SNB-Datenportal, mit Verzögerung)"))
         for lz in (2, 5, 10):
             if f"fest{lz}" in akt:
                 z, d = akt[f"fest{lz}"]
                 t = mz.trend(db, f"fest{lz}")
                 k_.append(kpi(f"{z:.2f} %", f"Fest {lz} J. (Mittel {d[5:7]}.{d[:4]})"
                               + (f", {t:+.2f} in 3 Monaten" if t else "")))
-        if "saron5" in akt:
-            k_.append(kpi(f"{akt['saron5'][0]:.2f} %", "SARON-Hypothek (Mittel, inkl. Marge)"))
+        sh = akt.get("saron5") or akt.get("saron3")
+        if sh:
+            k_.append(kpi(f"{sh[0]:.2f} %", f"SARON-Hypothek (Mittel {sh[1][5:7]}.{sh[1][:4]}, inkl. Marge)"))
         teile.append('<div class="kpis">' + "".join(k_) + "</div>")
         serien = {n: mz.verlauf(db, p) for n, p in (("SARON", "saron"), ("Fest 5 J.", "fest5"), ("Fest 10 J.", "fest10"))}
         teile.append(dg.linie({n: v for n, v in serien.items() if v}, "Zinsen der letzten 24 Monate"))
