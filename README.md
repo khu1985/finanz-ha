@@ -21,7 +21,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial, wiederkehrende Zahlungen und Abos mit Preisänderungen |
 | Finanzplan | Jahr für Jahr bis 95: Lohn bzw. Renten, Sparen und Entnahmen, Vermögen; 1000 simulierte Börsenverläufe, Wahrscheinlichkeit, dass das Geld reicht, mit 90 % Sicherheit tragbarer Bedarf |
 | Versicherungen | Policen als PDF (auch gescannt, mit Texterkennung) oder Liste, Erkennung inkl. Invaliditätsleistungen und kantonaler Gebäudeversicherungen, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell, alle Kassen mit den BAG-Prämien), Risiko Invalidität und Tod |
-| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
+| Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien, aktuelle Marktzinsen der SNB und eigene Offerten); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
 | Jahresbericht | Monatliche Stände, Vergleich mit dem Vorjahr, Massnahmen, Drucken |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen, Werten aus der App und Saldi per 31.12. |
 | Notfallordner | Druckbare Übersicht für Angehörige mit Konten, Vorsorge, Policen, Kontakten, Ablageorten, ersten Schritten, Antworten der Fragebögen und Meldeliste für den Todesfall |
@@ -95,6 +95,7 @@ flowchart TB
     Z -. optional .-> HA
     EZB["EZB-Referenzkurse<br/>(optional)"] -. täglich .-> K
     BAG["BAG-Prämien<br/>(auf Knopfdruck)"] -. jährlich .-> Z
+    SNB["SNB-Datenportal<br/>SARON, Hypothekarzinsen"] -. täglich .-> Z
     A -. stündlich und alle 15 Minuten .-> HA
     S --> L
 ```
@@ -117,6 +118,7 @@ flowchart TB
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a-, 3b- und IK-Auszug |
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
 | `finanz/app/hypothek.py` | Hypothekar-Strategie über Zinsszenarien |
+| `finanz/app/marktzinsen.py` | SARON und Richtzinsen der Banken (SNB-Datenportal), eigene Offerten |
 | `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen (CSV; camt.053 über `camt.py`) |
 | `finanz/app/camt.py` | Kontoauszüge im Bankformat camt.053/052/054 (ISO 20022, XML oder ZIP) lesen |
 | `finanz/app/esteuerauszug.py` | E-Steuerauszug der Bank (eCH-0196) lesen: Konten, Depots, Schulden, Erträge, Verrechnungssteuer |

@@ -42,11 +42,26 @@ STANDARD_STRATEGIEN = [
 ]
 
 
-def konfiguration(k: dict) -> dict:
+def konfiguration(k: dict, db=None) -> dict:
+    """Standard < Marktzinsen der SNB < eigene Offerten < Einstellungen (siehe marktzinsen.saetze)."""
     eigen = (k.get("wohnen") or {}).get("strategie") or {}
     cfg = {**STANDARD, **{s: v for s, v in eigen.items() if v not in (None, "")}}
     cfg["fest"] = {int(j): float(z) for j, z in {**STANDARD["fest"], **(eigen.get("fest") or {})}.items()}
     cfg["szenarien"] = {**STANDARD["szenarien"], **(eigen.get("szenarien") or {})}
+    cfg["herkunft"] = {}
+    if db is not None:
+        try:
+            import marktzinsen as mz
+            s = mz.saetze(k, db)
+        except Exception:  # noqa: BLE001
+            s = {"fest": {}, "saron": None, "marge": None}
+        for lz, (z, woher) in s["fest"].items():
+            cfg["fest"][lz] = z
+            cfg["herkunft"][f"fest{lz}"] = woher
+        if s["saron"]:
+            cfg["saron"], cfg["herkunft"]["saron"] = s["saron"]
+        if s["marge"]:
+            cfg["marge_saron"], cfg["herkunft"]["marge"] = s["marge"]
     return cfg
 
 
@@ -112,7 +127,7 @@ def vergleichen(k: dict, db=None, heute: date | None = None) -> Strategie | None
     w = k["wohnen"]
     if not w.get("aktiv"):
         return None
-    cfg = konfiguration(k)
+    cfg = konfiguration(k, db)
     start_txt = cfg.get("start") or w.get("hypothek_faellig") or heute.isoformat()
     start = date.fromisoformat(str(start_txt))
     betrag = float(cfg.get("betrag") or 0)
@@ -163,6 +178,19 @@ def vergleichen(k: dict, db=None, heute: date | None = None) -> Strategie | None
         hinw.append(f"Bis zur Fälligkeit dauert es noch rund {vorlauf} Jahr(e). Mit einer Forward-Festhypothek lässt sich der Zins "
                     f"heute fixieren (Richtwert 10 J.: {forward[10]:.2f} %, Aufschlag {cfg['forward_aufschlag']:.2f} % pro Jahr Vorlauf). "
                     "Offerten meist ab 12–36 Monaten vor Fälligkeit. Die Tabelle rechnet ab Fälligkeit mit den heutigen Sätzen.")
+    if db is not None and vorlauf <= 3:
+        try:
+            import marktzinsen as mz
+            for lz in (5, 10):
+                t = mz.trend(db, f"fest{lz}")
+                if t is not None and abs(t) >= 0.2:
+                    hinw.append(f"Die Richtzinsen für {lz}-jährige Festhypotheken sind in den letzten 3 Monaten um "
+                                f"{t:+.2f} Prozentpunkte {'gestiegen' if t > 0 else 'gesunken'}"
+                                + (" – bei steigenden Zinsen lohnt es sich, Offerten früh einzuholen (Forward)."
+                                   if t > 0 else " – mit der Fixierung lässt sich ggf. noch zuwarten."))
+                    break
+        except Exception:  # noqa: BLE001
+            pass
     hinw.append("Festhypotheken lassen sich vor Ablauf nur gegen Vorfälligkeitsentschädigung auflösen – Amortisationen "
                 "auf Ablauftermine legen oder in eine SARON-Tranche einplanen.")
     if beste.flexibel == 0:

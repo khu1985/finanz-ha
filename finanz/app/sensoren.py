@@ -239,6 +239,12 @@ def nebenaufgaben(k: dict, db) -> None:
     except Exception as e:  # noqa: BLE001
         LOG.warning("Wechselkurse: %s", e)
     try:
+        import marktzinsen as mz
+        if mz.aktualisieren(k, db):
+            LOG.info("Marktzinsen (SARON, Hypotheken) der SNB aktualisiert")
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("Marktzinsen: %s", e)
+    try:
         import bericht
         if bericht.automatisch(k, db):
             LOG.info("Monatsstand für den Jahresbericht gespeichert")

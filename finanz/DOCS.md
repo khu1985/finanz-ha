@@ -346,6 +346,24 @@ eine Forward-Festhypothek und Hinweise zu Vorfälligkeit und Staffelung. Sätze 
 `wohnen.strategie` (`saron`, `marge_saron`, `fest`, `szenarien`, `strategien`, `forward_aufschlag`) anpassen – eigene
 Offerten eintragen.
 
+**Marktzinsen.** Solange Wohneigentum aktiv ist, holt die App einmal am Tag beim SNB-Datenportal den SARON (täglich)
+und die publizierten Hypothekarzinsen der Banken (Monatsmittel für Festhypotheken 1–15 Jahre, variable und
+SARON-Hypothek); «Marktzinsen jetzt holen» geht jederzeit, `wohnen.strategie.marktzinsen: false` schaltet aus. Es
+gehen keine eigenen Daten hinaus. Die Karte zeigt die aktuellen Sätze, die Entwicklung der letzten 24 Monate und vor
+der Fälligkeit einen Hinweis, wenn sich die Festzinsen in drei Monaten um 0,2 Prozentpunkte oder mehr bewegt haben.
+
+**Offerten.** Konkrete Angebote (Bank, Produkt, Zins, Datum) unter «Offerte erfassen» – Links zu Comparis, MoneyPark
+und Hypotheke.ch helfen beim Suchen. Die Strategie rechnet mit dieser Rangfolge:
+
+| Quelle | gilt |
+|---|---|
+| `wohnen.strategie.fest`, `saron`, `marge_saron` in den Einstellungen | immer zuerst – leeren, um Marktzinsen zu nutzen |
+| eigene Offerte der letzten 90 Tage | wenn günstiger als das Marktmittel |
+| SNB-Monatsmittel bzw. SARON des letzten Handelstags | sonst |
+| Standardwerte der App | ohne Marktdaten |
+
+Die Marge der SARON-Hypothek schätzt die App aus dem publizierten Mittel der SARON-Hypothek minus SARON.
+
 **Verheiratet oder Konkubinat.** Braucht je Person eine Steuererklärung unter `steuern.personen`. Verglichen werden:
 
 | Punkt | Annahme bei Heirat |
@@ -964,8 +982,8 @@ Richtung des gewählten KI-Anbieters.
 | `finanz.log` | Protokoll (rotiert bei 1 MB) |
 
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten. Ohne KI braucht die App
-kein Internet; nur die Wechselkurse der EZB (optional, täglich) und die Krankenkassen-Prämien des BAG (auf Knopfdruck)
-werden geholt – dabei gehen keine eigenen Daten hinaus. Sie läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
+kein Internet; nur die Wechselkurse der EZB (optional, täglich), die Hypothekarzinsen der SNB (bei Wohneigentum,
+täglich) und die Krankenkassen-Prämien des BAG (auf Knopfdruck) werden geholt – dabei gehen keine eigenen Daten hinaus. Sie läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
 zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe und die
 Benachrichtigungen und Sensoren genutzt.
 

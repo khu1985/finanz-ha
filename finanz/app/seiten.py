@@ -1950,7 +1950,7 @@ def hypothek_karte(k: dict, db, q: dict) -> str:
     k2 = _copy.deepcopy(k)
     eigen = k2["wohnen"].setdefault("strategie", {}) or {}
     k2["wohnen"]["strategie"] = eigen
-    cfg0 = hy.konfiguration(k)
+    cfg0 = hy.konfiguration(k, db)
     felder = [("betrag", "Hypothek ab Start (0 = nach Amortisation)", cfg0.get("betrag") or 0),
               ("horizont_jahre", "Horizont Jahre", cfg0["horizont_jahre"]),
               ("saron", "SARON heute %", cfg0["saron"]), ("marge_saron", "Marge SARON %", cfg0["marge_saron"]),
@@ -1992,11 +1992,69 @@ def hypothek_karte(k: dict, db, q: dict) -> str:
     ])
     pfade = dg.linie({f"SARON {n}": [(s.start.year + t, round(v, 2)) for t, v in enumerate(p)] for n, p in s.pfade.items()},
                      "SARON-Szenarien")
-    return karte(titel, f'<div class="kpis">{kpis}</div>' + tab
+    return '<div id="hypothek"></div>' + karte(titel, f'<div class="kpis">{kpis}</div>' + tab
                  + '<p class="leise">Ampel: Rang der Kosten im Stressszenario (grün = robusteste Drittel). Kosten = Zinsen über den '
-                   'Horizont ohne Amortisation. Festsätze laut Einstellungen (Standard: Richtsätze einer Bank, Stand 08.11.2026) – '
-                   'eigene Offerten unter wohnen.strategie eintragen.</p>'
-                 + pfade + hinweisliste(s.hinweise) + form)
+                   'Horizont ohne Amortisation. Zinsen aus den Marktdaten der SNB bzw. deinen Offerten (siehe unten); die Felder '
+                   'unter der Grafik rechnen einmalig mit anderen Werten.</p>'
+                 + pfade + hinweisliste(s.hinweise) + form + marktzinsen_teil(k, db, cfg0))
+
+
+def marktzinsen_teil(k: dict, db, cfg: dict) -> str:
+    """Marktzinsen (SNB), eigene Offerten und Links zu Vergleichsdiensten."""
+    import marktzinsen as mz
+    akt = mz.aktuell(db)
+    her = cfg.get("herkunft") or {}
+    teile = ["<h2>Marktzinsen und Offerten</h2>"]
+    if akt:
+        k_ = []
+        if "saron" in akt:
+            z, d = akt["saron"]
+            k_.append(kpi(f"{z:.2f} %", f"SARON {d[8:10]}.{d[5:7]}.{d[:4]}"))
+        for lz in (2, 5, 10):
+            if f"fest{lz}" in akt:
+                z, d = akt[f"fest{lz}"]
+                t = mz.trend(db, f"fest{lz}")
+                k_.append(kpi(f"{z:.2f} %", f"Fest {lz} J. (Mittel {d[5:7]}.{d[:4]})"
+                              + (f", {t:+.2f} in 3 Monaten" if t else "")))
+        if "saron5" in akt:
+            k_.append(kpi(f"{akt['saron5'][0]:.2f} %", "SARON-Hypothek (Mittel, inkl. Marge)"))
+        teile.append('<div class="kpis">' + "".join(k_) + "</div>")
+        serien = {n: mz.verlauf(db, p) for n, p in (("SARON", "saron"), ("Fest 5 J.", "fest5"), ("Fest 10 J.", "fest10"))}
+        teile.append(dg.linie({n: v for n, v in serien.items() if v}, "Zinsen der letzten 24 Monate"))
+        quellen = ", ".join(f"{lz} J.: {escape(w)}" for lz, w in
+                            ((p[4:], her[p]) for p in sorted(her, key=lambda x: (len(x), x)) if p.startswith("fest")))
+        teile.append(f'<p class="leise">Die Strategie rechnet mit: SARON {cfg["saron"]:.2f} % ({escape(her.get("saron", "Standard"))}), '
+                     f'Marge {cfg["marge_saron"]:.2f} % ({escape(her.get("marge", "Standard"))}); Festsätze – {quellen or "Standard"}. '
+                     'Monatsmittel der publizierten Zinsen aller Banken (SNB) – die eigene Bank kann abweichen; Werte unter '
+                     'Einstellungen (<code>wohnen.strategie</code>) gehen vor.</p>')
+    else:
+        teile.append('<p class="leise">Noch keine Marktzinsen. Die App holt SARON und die Richtzinsen der Banken (SNB) '
+                     'einmal am Tag automatisch, solange Wohneigentum aktiv ist – oder jetzt:</p>')
+    teile.append('<form method="post" action="szenarien/marktzinsen" class="zeile nicht-drucken">'
+                 '<button class="zweit">Marktzinsen jetzt holen</button></form>')
+    off = mz.offerten(k)
+    if off:
+        teile.append(tabelle(["Bank", "Produkt", "Zins", "Datum", ""], [
+            [escape(o.get("bank") or ""), escape(PRODUKTE_HYPO.get(o.get("produkt"), o.get("produkt") or "")),
+             f'{o["zins"]:.2f} %', escape(str(o.get("datum"))),
+             f'<form method="post" action="szenarien/offerte_loeschen"><input type="hidden" name="i" value="{i}">'
+             '<button class="zweit klein loeschen">Entfernen</button></form>'] for i, o in enumerate(off)], zahlen_ab=2))
+    links = " · ".join(f'<a href="{u}" target="_blank" rel="noopener">{n}</a>' for n, u in mz.VERGLEICH)
+    opts = "".join(f'<option value="{p}">{escape(t)}</option>' for p, t in PRODUKTE_HYPO.items())
+    teile.append(f'<details class="nicht-drucken"><summary>Offerte erfassen</summary><p class="leise">Aktuelle Zinsen '
+                 f'einzelner Banken findest du z. B. bei {links} oder bei deiner Bank. Eine Offerte der letzten 90 Tage geht '
+                 'dem Marktmittel vor, wenn sie günstiger ist.</p>'
+                 '<form method="post" action="szenarien/offerte"><div class="felder">'
+                 '<label>Bank<input name="bank" required></label>'
+                 f'<label>Produkt<select name="produkt">{opts}</select></label>'
+                 '<label>Zins %<input name="zins" inputmode="decimal" required></label>'
+                 f'<label>Datum<input name="datum" type="date" value="{date.today().isoformat()}"></label></div>'
+                 '<div class="zeile"><button>Offerte speichern</button></div></form></details>')
+    return "".join(teile)
+
+
+PRODUKTE_HYPO = {"saron": "SARON-Hypothek (Zins inkl. Marge)", **{f"fest{j}": f"Festhypothek {j} Jahre"
+                                                                  for j in (2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15)}}
 
 
 

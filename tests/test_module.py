@@ -1702,3 +1702,34 @@ def test_finanzplan_monte_carlo(k):
     q = fp.rechnen(k, 0, 2026, pfade=300)
     assert q.erfolg < 10 and q.reicht_bis and q.reicht_bis < q.end_jahr
     assert q.perzentile[10][-1][1] <= q.perzentile[90][-1][1]
+
+
+SNB_ZIKREPRO = ('"CubeId";"zikrepro"\n"PublishingDate";"2026-11-02 09:00"\n\n"Date";"D0";"D1";"Value"\n'
+                '"2026-07";"M";"50";"1.60"\n"2026-08";"M";"50";"1.70"\n"2026-09";"M";"50";"1.80"\n"2026-10";"M";"50";"1.90"\n'
+                '"2026-10";"M";"10";"2.10"\n"2026-10";"M";"20";"1.40"\n"2026-10";"M";"SARJ05";"1.05"\n'
+                '"2026-10";"M";"MV";"2.80"\n"2026-10";"05Q";"50";"1.85"\n"2026-10";"M";"S1";"0.20"\n')
+SNB_ZIREPO = ('"CubeId";"zirepo"\n"PublishingDate";"2026-11-12 18:00"\n\n"Date";"D0";"Value"\n'
+              '"2026-11-11";"H0";"0.05"\n"2026-11-12";"H0";"0.04"\n"2026-11-12";"H6";"0.10"\n')
+
+
+def test_marktzinsen_snb_und_offerten(k, db):
+    from datetime import date
+    import hypothek as hy
+    import marktzinsen as mz
+    assert mz.einlesen(db, SNB_ZIKREPRO, SNB_ZIREPO) == 10
+    akt = mz.aktuell(db)
+    assert akt["fest5"] == (1.9, "2026-10") and akt["saron"] == (0.04, "2026-11-12") and akt["variabel"][0] == 2.8
+    assert mz.trend(db, "fest5") == 0.3
+    k["wohnen"]["strategie"] = {}
+    cfg = hy.konfiguration(k, db)
+    assert cfg["fest"][5] == 1.9 and cfg["fest"][10] == 2.1 and cfg["saron"] == 0.04 and cfg["marge_saron"] == 1.01
+    assert cfg["herkunft"]["fest5"].startswith("SNB")
+    k["wohnen"]["strategie"]["offerten"] = [
+        {"bank": "Musterbank", "produkt": "fest5", "zins": 1.72, "datum": date.today().isoformat()},
+        {"bank": "Alte Bank", "produkt": "fest10", "zins": 1.5, "datum": "2020-01-01"}]       # zu alt
+    cfg = hy.konfiguration(k, db)
+    assert cfg["fest"][5] == 1.72 and cfg["herkunft"]["fest5"] == "Offerte Musterbank" and cfg["fest"][10] == 2.1
+    k["wohnen"]["strategie"]["fest"] = {5: 1.55}                                                 # Einstellungen gehen vor
+    assert hy.konfiguration(k, db)["fest"][5] == 1.55
+    k["wohnen"]["aktiv"] = False
+    assert mz.aktualisieren(k, db) is False

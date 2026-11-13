@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.34.0 – 2026-11-13
+
+- **Hypothek mit Marktzinsen:** Die App holt einmal am Tag beim SNB-Datenportal den SARON und die publizierten
+  Hypothekarzinsen der Banken (Festhypotheken 1–15 Jahre, variabel, SARON-Hypothek). Die Hypothekar-Strategie rechnet
+  damit statt mit festen Standardwerten; Karte mit aktuellen Sätzen, Verlauf über 24 Monate und Hinweis vor der
+  Fälligkeit, wenn sich die Festzinsen deutlich bewegen
+- **Offerten erfassen:** konkrete Angebote einer Bank (Produkt, Zins, Datum) – eine Offerte der letzten 90 Tage geht
+  dem Marktmittel vor, wenn sie günstiger ist; Links zu Vergleichsdiensten für die Suche
+
 ## 0.33.0 – 2026-11-13
 
 Was spezialisierte Anbieter (VZ, Kubera, Copilot, Comparis) können und bisher fehlte:

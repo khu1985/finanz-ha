@@ -665,6 +665,42 @@ class Handler(BaseHTTPRequestHandler):
             return self._berater(pfad, form)
         if pfad.startswith("steuern"):
             return self._steuern(pfad, form)
+        if pfad == "szenarien/marktzinsen":
+            import marktzinsen as mz
+            with db() as v:
+                try:
+                    n = mz.holen(v)
+                except OSError as e:
+                    raise ValueError(f"Marktzinsen nicht geholt ({e}).") from e
+            return f"Marktzinsen aktualisiert ({n} Werte der SNB).", "szenarien#hypothek"
+        if pfad == "szenarien/offerte":
+            from datetime import date as _d
+            k = konfig.laden()
+            st_ = k["wohnen"].setdefault("strategie", {}) or {}
+            k["wohnen"]["strategie"] = st_
+            datum = str(form.get("datum") or _d.today().isoformat())[:10]
+            _d.fromisoformat(datum)
+            zins = vm.zahl(form.get("zins") or "")
+            if not 0 < zins < 15:
+                raise ValueError("Zins in Prozent angeben, z. B. 1.65.")
+            st_.setdefault("offerten", []).append({"bank": str(form.get("bank") or "").strip()[:60],
+                                                   "produkt": str(form.get("produkt") or "fest5"), "zins": zins,
+                                                   "datum": datum})
+            konfig.speichern(k)
+            return "Offerte gespeichert.", "szenarien#hypothek"
+        if pfad == "szenarien/offerte_loeschen":
+            import marktzinsen as mz
+            k = konfig.laden()
+            sichtbar = mz.offerten(k)
+            i = int(form.get("i") or -1)
+            if 0 <= i < len(sichtbar):
+                weg = sichtbar[i]
+                liste = k["wohnen"]["strategie"]["offerten"]
+                k["wohnen"]["strategie"]["offerten"] = [o for o in liste if not (
+                    o.get("bank") == weg.get("bank") and o.get("produkt") == weg.get("produkt")
+                    and str(o.get("datum")) == str(weg.get("datum")) and float(o.get("zins") or 0) == weg["zins"])]
+                konfig.speichern(k)
+            return "Offerte entfernt.", "szenarien#hypothek"
         if pfad == "szenarien/einkauf":
             import szenarien as sz
             k = konfig.laden()
