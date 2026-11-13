@@ -7,6 +7,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 import threading
+import time
 import traceback
 from datetime import datetime
 from email.parser import BytesParser
@@ -164,6 +165,16 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------ GET
     def do_GET(self):
+        import leistung as le
+        t = time.perf_counter()
+        try:
+            return self._get()
+        finally:
+            pfad = self._pfad()[0]
+            if pfad not in ("status", "gesundheit") and "." not in pfad.rsplit("/", 1)[-1]:
+                le.erfassen("seite", le.seitenname(pfad), (time.perf_counter() - t) * 1000)
+
+    def _get(self):
         pfad, q = self._pfad()
         try:
             if pfad == "export":
@@ -182,7 +193,9 @@ class Handler(BaseHTTPRequestHandler):
                     liste = [x for x in vs.sammeln(k, v, konfig.datenordner()) if x.schluessel not in st]
                     auszuege = vs.textauszuege(k, v) if q.get("auszuege") == ["1"] else None
                     weg = [e[0] for e in vs.erledigt(v, meta.version())]
-                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege, weg)
+                    import leistung as le
+                    lz = le.bericht_text(v, konfig.datenordner())
+                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege, weg, lz)
                 return self.senden(200, text.encode("utf-8"), "text/markdown; charset=utf-8",
                                    {"Content-Disposition": 'attachment; filename="finanz-vorschlaege.md"'})
             if pfad == "protokoll.log":
@@ -260,6 +273,14 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------ POST
     def do_POST(self):
+        import leistung as le
+        t = time.perf_counter()
+        try:
+            return self._post()
+        finally:
+            le.erfassen("aktion", le.seitenname(self._pfad()[0]), (time.perf_counter() - t) * 1000)
+
+    def _post(self):
         pfad, _ = self._pfad()
         ziel = pfad.split("/")[0]
         try:
@@ -964,6 +985,8 @@ def main():
             importordner.einlesen(ordner, v)
     except Exception as e:  # noqa: BLE001
         LOG.warning("Import-Ordner: %s", e)
+    import leistung
+    leistung.instrumentieren()
     import erinnerungen
     import sensoren
     erinnerungen.hintergrund(konfig.laden, db)

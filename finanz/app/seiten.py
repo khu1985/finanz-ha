@@ -3265,7 +3265,9 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
     kanton = str(k["haushalt"].get("kanton") or "").upper()
     mit_auszug = (q or {}).get("auszuege") == ["1"]
     auszuege = vs.textauszuege(k, db) if mit_auszug else None
-    text = vs.bericht(sichtbar, meta.version(), kanton, auszuege, [e[0] for e in vs.erledigt(db, meta.version())])
+    import leistung as le
+    text = vs.bericht(sichtbar, meta.version(), kanton, auszuege, [e[0] for e in vs.erledigt(db, meta.version())],
+                      le.bericht_text(db, konfig.datenordner()))
     link = vs.issue_link(meta.repository(), text, meta.version())
     schalter = ('<form method="get" action="vorschlaege" class="nicht-drucken"><label class="wahl">'
                 f'<input type="checkbox" name="auszuege" value="1" onchange="this.form.submit()"'
@@ -3307,7 +3309,40 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
                          'abgehakt. Bei Dokumenten erkennt sie das, sobald die Version deine Korrekturen selbst trifft; '
                          'deine Werte bleiben dabei unverändert.</p></details>')
     return (kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_erledigt
-            + teil_weg)
+            + leistung_karte(db) + teil_weg)
+
+
+def leistung_karte(db) -> str:
+    """Messwerte zur Leistung: System, Datenmengen, Ladezeiten und Rechenzeiten dieser Version."""
+    import leistung as le
+    ms, vorher = le.messungen(db)
+    s = le.system(db, konfig.datenordner())
+    mb = lambda b: f"{b / 1024 / 1024:,.0f} MB".replace(",", "'")  # noqa: E731
+    kpis = ('<div class="kpis">'
+            + kpi(f"{s['kerne']} Kerne", f"Last {s['last'][0]} / {s['last'][1]} / {s['last'][2]} (1/5/15 Min.)")
+            + kpi(mb(s["ram_frei"]), f"RAM frei von {mb(s['ram_total'])}")
+            + kpi(mb(s["prozess"]), f"Speicher der App · läuft seit {s['laufzeit_h']:g} h")
+            + kpi(mb(s["db"] + s["dokumente"]), f"Daten (Datenbank {mb(s['db'])}, Dokumente {mb(s['dokumente'])})")
+            + "</div>")
+    arten = {"seite": "Seite", "aktion": "Aktion", "funktion": "Berechnung", "hintergrund": "Hintergrund"}
+
+    def zeit(v):
+        return f"{v / 1000:.1f} s" if v >= 1000 else f"{v:.0f} ms" if v >= 1 else "< 1 ms"
+
+    def farbe(m):
+        grenze = le.LANGSAM_SEITE_MS if m.art in ("seite", "aktion") else le.LANGSAM_FUNKTION_MS
+        return am.ROT if m.mittel_ms >= 2 * grenze else am.GELB if m.mittel_ms >= grenze else am.GRUEN
+    zeilen = [[licht(farbe(m)) + escape(m.name), arten.get(m.art, m.art), str(m.anzahl), zeit(m.mittel_ms), zeit(m.max_ms),
+               "" if m.vorher_ms is None else zeit(m.vorher_ms)] for m in ms[:40]]
+    tab = (tabelle(["Was", "Art", "Aufrufe", "Ø", "Längster", f"Ø {vorher}" if vorher else "Vorversion"], zeilen,
+                   zahlen_ab=2, responsiv=True) if zeilen else '<p class="leise">Noch keine Messungen in dieser Version.</p>')
+    daten = ", ".join(f"{t} {n:,}".replace(",", "'") for t, n in s["zeilen"].items() if n)
+    return karte("Leistung", kpis + "<details><summary>Ladezeiten und Rechenzeiten dieser Version</summary>" + tab
+                 + "</details>" + (f'<p class="leise">Datensätze: {escape(daten)}</p>' if daten else "")
+                 + '<p class="leise">Gemessen werden Ladezeit jeder Seite und Aktion, die grossen Berechnungen (z. B. '
+                   'Finanzplan, Ampeln, Erinnerungen, Texterkennung) und die Hintergrundaufgaben – pro Version, sortiert nach '
+                   'der gesamten Zeit. Langsame Stellen erscheinen oben als Vorschlag im Bereich «Leistung»; die Messwerte '
+                   '(nur Zeiten und Mengen) stehen auch im Text zum Weitergeben.</p>')
 
 
 # ---------------------------------------------------------------- Verfügungen (Testament & Co.)

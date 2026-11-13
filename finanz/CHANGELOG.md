@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.36.0 – 2026-11-13
+
+- **Leistung messen** (Seite Vorschläge): Ladezeit jeder Seite und Aktion, Rechenzeit der grossen Berechnungen und
+  der Hintergrundaufgaben, dazu System (Kerne, Last, Arbeitsspeicher) und Datenmengen – pro Version, mit dem
+  Vergleich zur Vorversion. Langsame Stellen werden zu Vorschlägen im Bereich «Leistung», die Messwerte stehen im
+  Text zum Weitergeben
+
 ## 0.35.0 – 2026-11-13
 
 Aufgaben und Ampeln in der Übersicht kennen die neuen Funktionen:

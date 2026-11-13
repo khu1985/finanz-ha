@@ -257,10 +257,14 @@ def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
         time.sleep(10)
         while True:
             try:
+                import leistung as le
                 with verbinden() as db:
                     k = laden()
-                    nebenaufgaben(k, db)
-                    schreiben(k, db)
+                    with le.Stoppuhr("hintergrund", "Kurse, Zinsen, Monatsstand"):
+                        nebenaufgaben(k, db)
+                    with le.Stoppuhr("hintergrund", "Sensoren schreiben"):
+                        schreiben(k, db)
+                    le.sichern(db)
             except Exception as e:  # noqa: BLE001
                 LOG.warning("Sensoren: %s", e)
             _ausloeser.wait(intervall)

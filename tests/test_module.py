@@ -1750,3 +1750,33 @@ def test_neue_erinnerungen_und_finanzplan_ampel(k, daten, db):
     assert "E-Steuerauszüge 2026 einlesen" in {e.titel for e in er.alle(k, db, date(2027, 2, 1))}
     fp = next(a for a in am.bewerten(k, db, date(2026, 11, 20)) if a.bereich == "Finanzplan")
     assert fp.status == am.ROT
+
+
+def test_leistung_messen_und_vorschlagen(db, tmp_path):
+    import leistung as le
+    import vorsorge as vs_
+    le._WERTE.clear()
+    assert le.seitenname("versicherungen/12/speichern") == "versicherungen/‹id›/speichern" and le.seitenname("") == "übersicht"
+    alt = vs_.pensionsluecke
+    try:
+        assert le.instrumentieren() > 10 and vs_.pensionsluecke is not alt and le.instrumentieren() == 0
+    finally:
+        vs_.pensionsluecke = alt
+    for ms in (2500, 3500, 3000):
+        le.erfassen("seite", "finanzplan", ms)
+    le.erfassen("funktion", "ampel.bewerten", 100)
+    le.sichern(db, "1.0.0")
+    for _ in range(5):
+        le.erfassen("funktion", "ampel.bewerten", 400)
+    ms, vorher = le.messungen(db, "1.1.0")
+    assert vorher == "1.0.0" and ms[0].name == "ampel.bewerten" and ms[0].vorher_ms == 100
+    ms, _ = le.messungen(db, "1.0.0")
+    assert {m.name: m.mittel_ms for m in ms}["finanzplan"] == 3000
+    import meta
+    import unittest.mock as um
+    with um.patch.object(meta, "version", return_value="1.1.0"):
+        titel = [t for t, _, _ in le.vorschlaege(db, tmp_path)]
+    assert "«ampel.bewerten» ist langsamer geworden" in titel
+    s = le.system(db, tmp_path)
+    assert s["kerne"] >= 1 and "zeilen" in s
+    assert any(z.startswith("System:") for z in le.bericht_text(db, tmp_path))

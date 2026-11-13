@@ -807,6 +807,20 @@ ohne die PDFs zu schicken. Pro betroffenem Dokument kommen nur die Zeilen rund u
 
 Lies den Text trotzdem durch, bevor du ihn weitergibst – Namen, die nirgends in der App stehen, kann sie nicht kennen.
 
+**Leistung.** Die App misst laufend, pro Version:
+
+| Was | Beispiel |
+|---|---|
+| Ladezeit jeder Seite und Aktion | «finanzplan» Ø 166 ms, längster 210 ms |
+| Rechenzeit der grossen Berechnungen | Finanzplan, Ampeln, Erinnerungen, Pensionslücke, Kassenvergleich, Abos, Texterkennung, Neu-Sichten |
+| Hintergrundaufgaben | Kurse, Zinsen und Monatsstand; Sensoren schreiben |
+| System und Daten | Kerne, Last, freier Arbeitsspeicher, Speicher der App, Grösse von Datenbank und Dokumenten, Anzahl Datensätze |
+
+Die Karte «Leistung» zeigt alles mit Ampel und dem Mittel der Vorversion. Daraus entstehen Vorschläge im Bereich
+«Leistung»: Seiten oder Aktionen ab 1,5 s im Mittel, Berechnungen ab 0,8 s, alles, was gegenüber der Vorversion
+deutlich langsamer wurde, Texterkennung über einer Minute pro Dokument, Datenbank über 100 MB, knapper
+Arbeitsspeicher oder hohe Last. Die Messwerte (nur Zeiten und Mengen, keine Inhalte) stehen im Text zum Weitergeben.
+
 ## Dokumente verwalten und löschen
 
 Unter **App → Dokumente** stehen alle hochgeladenen Policen, Vorsorge- und Steuerdokumente sowie die Buchungen pro
@@ -983,7 +997,7 @@ Richtung des gewählten KI-Anbieters.
 | Datei / Ordner | Inhalt |
 |---|---|
 | `finanz.yaml` | Konfiguration; frühere Fassung als `finanz.yaml.bak` |
-| `finanz.sqlite` | Konten, Saldi, Buchungen, Verträge, Vorsorge- und Steuerdokumente, E-Steuerauszüge, Wertschriften-Positionen, Krankenkassen-Prämien des Kantons, Monatsstände, Kurse, Beratungen, erledigte und gesendete Erinnerungen, Status und Verlauf der Vorschläge |
+| `finanz.sqlite` | Konten, Saldi, Buchungen, Verträge, Vorsorge- und Steuerdokumente, E-Steuerauszüge, Wertschriften-Positionen, Krankenkassen-Prämien des Kantons, Monatsstände, Kurse, Beratungen, erledigte und gesendete Erinnerungen, Status und Verlauf der Vorschläge, Leistungsmessungen pro Version |
 | `versicherungen/`, `vorsorge/`, `steuern/` | hochgeladene PDFs |
 | `import/` | Import-Ordner, erledigte Dateien unter `import/erledigt/` |
 | `finanz.log` | Protokoll (rotiert bei 1 MB) |
