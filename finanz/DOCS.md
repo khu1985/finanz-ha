@@ -316,7 +316,12 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
   Angebote über alle Modelle und Franchisen nach Gesamtkosten (Prämie + Franchise + Selbstbehalt bei den erwarteten
   Gesundheitskosten), das günstigste bei gleichem Modell und gleicher Franchise, die günstigste Variante bei der
   eigenen Kasse und die Ersparnis gegenüber heute. Prämienregion aus der KVG-Police oder unter Einstellungen
-  (`krankenkasse.region`); Altersklasse (Kind, 19–25, ab 26) aus dem Geburtsdatum im Prämienjahr.
+  (`krankenkasse.region`); Altersklasse (Kind, 19–25, ab 26) aus dem Geburtsdatum im Prämienjahr. Spalte
+  «Höchstens» = Prämie + volle Franchise + maximaler Selbstbehalt. Liegt die erfasste Prämie über dem, was die
+  Grundversicherung mit derselben Franchise laut BAG kostet (bei der eigenen Kasse bzw. höchstens), weist die App
+  darauf hin (meist Zusatzversicherung eingerechnet) und vergleicht mit dem BAG-Wert. Ohne erwartete Gesundheitskosten
+  sagt sie, wie viel mehr Franchise das günstigste Angebot im schlechtesten Fall kostet. Unter
+  `krankenkasse.personen[]` reicht z. B. `kosten_jahr` – fehlende Angaben kommen aus der Police.
 - **Krankenkassen-Policen:** Policen mit Grund- und Zusatzversicherung im gleichen PDF werden seitenweise gelesen
   (Monatsprämie, Modell, Franchise, Unfalldeckung und Unfallanteil, versicherte Person und Geburtsdatum,
   Versicherten-Nr., gültig ab, erste Anlaufstelle, Prämienregion); die Zusatzversicherung wird ein eigener Vertrag

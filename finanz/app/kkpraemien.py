@@ -192,8 +192,19 @@ def vergleich(k: dict, db, vertraege: list[dict]) -> dict:
         gleich = next((a for a in alle if a.franchise == p.franchise and _typ_von(a) == typ), None)
         eigene_kasse = _kasse_nr(p.versicherer)
         eigene = next((a for a in alle if a.versicherer == eigene_kasse), None) if eigene_kasse else None
+        # Plausibilität: Was kostet die Grundversicherung mit derselben Franchise bei der eigenen Kasse bzw. höchstens?
+        gleiche_f = [a for a in alle if a.franchise == p.franchise]
+        bag_eigen = [a for a in gleiche_f if a.versicherer == eigene_kasse] if eigene_kasse else []
+        bezug = max((a.praemie_monat for a in bag_eigen), default=None) or max((a.praemie_monat for a in gleiche_f),
+                                                                                default=None)
+        zu_hoch = bool(p.praemie_monat and bezug and p.praemie_monat > bezug * 1.1)
+        heute_kvg = None
+        if zu_hoch:
+            a = min(bag_eigen or gleiche_f, key=lambda a: abs(a.praemie_monat - p.praemie_monat))
+            heute_kvg = round(a.praemie_monat * 12 + kk.kostenbeteiligung(p.kosten_jahr, p.franchise, p.kind), 2)
         personen.append({"person": p, "alter": alter, "angebote": alle, "heute": heute, "gleich": gleich,
-                         "eigene": eigene})
+                         "eigene": eigene, "zu_hoch": zu_hoch, "bezug_monat": bezug, "heute_kvg": heute_kvg,
+                         "selbstbehalt_max": kk.SELBSTBEHALT_MAX["kind" if alter == "KIN" else "erwachsen"]})
     return {"jahr": jahr, "kanton": kanton, "region": region, "regionen": sorted(regionen), "personen": personen}
 
 

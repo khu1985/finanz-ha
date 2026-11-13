@@ -2006,3 +2006,17 @@ def test_3a_abgleich_anlegen_und_bezugsplan(k):
     # Konten gelöscht → Wert bleibt, gilt wieder als von Hand
     db.execute("DELETE FROM konten")
     assert dreia.abgleichen(k, db) and "aus_konten" not in cfg and cfg["guthaben"] == 48_000
+
+
+def test_kassenvergleich_praemie_unplausibel(k, db):
+    import kkpraemien as kp
+    kp.einlesen(db, KK_2027.encode(), "BL")
+    k["haushalt"]["kanton"] = "BL"
+    k["krankenkasse"]["region"] = 1
+    police = {"id": 1, "sparte": "kvg", "person": "Person 1", "versicherer": "Atupri Gesundheitsversicherung",
+              "franchise": 300, "praemie_jahr": 900 * 12, "modell": "hmo", "unfall_eingeschlossen": 0, "notiz": "",
+              "beginn": "2026-01-01", "geburtsdatum": ""}
+    k["krankenkasse"]["personen"] = [{"name": "Person 1", "kosten_jahr": 1000}]      # Rest aus der Police
+    e = next(x for x in kp.vergleich(k, db, [police])["personen"] if x["person"].name == "Person 1")
+    assert e["person"].praemie_monat == 900 and e["person"].kosten_jahr == 1000 and e["person"].franchise == 300
+    assert e["zu_hoch"] and e["bezug_monat"] == 450 and e["heute_kvg"] == 450 * 12 + 300 + 70

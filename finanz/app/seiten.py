@@ -2195,17 +2195,32 @@ def kassenvergleich_karte(k: dict, db) -> str:
             continue
         beste = e["angebote"][0]
         zeilen = []
+        sb = e.get("selbstbehalt_max", 700)
         for a in e["angebote"][:5]:
             zeilen.append([f'{escape(a.kasse)}<br><small class="leise">{escape(a.bezeichnung or a.tarif)} · '
                            f'{escape(a.modell)}</small>', f"{a.franchise:,}".replace(",", "'"),
-                           f"{a.praemie_monat:.2f}", chf(a.kosten_jahr)])
+                           f"{a.praemie_monat:.2f}", chf(a.kosten_jahr), chf(a.praemie_monat * 12 + a.franchise + sb)])
         kopf = escape(p.name) + {"KIN": " · Kinderprämie", "JUG": " · junge Erwachsene (19–25)", "ERW": ""}[e["alter"]]
         zus = []
-        if e["heute"]:
-            diff = e["heute"] - beste.kosten_jahr
-            zus.append(f"heute {chf(e['heute'])} pro Jahr ({escape(p.versicherer or 'Police')}, Franchise "
-                       f"{p.franchise}) → günstigstes Angebot {chf(beste.kosten_jahr)}: "
-                       + (f"{chf(diff)} günstiger" if diff > 50 else "kaum Unterschied"))
+        if e.get("zu_hoch"):
+            zus.append(f"{licht(am.GELB, 'Prämie prüfen')} Erfasst sind {p.praemie_monat:.2f} pro Monat – die "
+                       f"Grundversicherung mit Franchise {p.franchise} kostet laut BAG "
+                       + (f"bei {escape(p.versicherer)} " if p.versicherer else "")
+                       + f"höchstens {e['bezug_monat']:.2f}. Vermutlich sind Zusatzversicherungen oder mehrere Personen "
+                       "eingerechnet – bei der Police nur die Prämie der Grundversicherung (KVG) eintragen. Der Vergleich "
+                       "rechnet unten mit dem BAG-Wert.")
+        heute = e.get("heute_kvg") or e["heute"]
+        if heute:
+            diff = heute - beste.kosten_jahr
+            zus.append(f"heute {chf(heute)} pro Jahr ({escape(p.versicherer or 'Police')}, Franchise "
+                       f"{p.franchise}{', Grundversicherung laut BAG' if e.get('heute_kvg') else ''}) → günstigstes Angebot "
+                       f"{chf(beste.kosten_jahr)}: " + (f"{chf(diff)} günstiger" if diff > 50 else "kaum Unterschied"))
+        if not p.kosten_jahr and beste.franchise > p.franchise:
+            zus.append(f"Gerechnet ohne Arzt- und Medikamentenkosten. Mit Franchise {beste.franchise} zahlst du im "
+                       f"schlechtesten Fall bis CHF {chf(beste.franchise - p.franchise)} mehr Franchise "
+                       "selbst als heute – erwartete Kosten unter Einstellungen bei der Krankenkasse eintragen "
+                       "(<code>kosten_jahr</code>), dann rechnet der Vergleich damit. Spalte «Höchstens» = Prämie + "
+                       "volle Franchise + maximaler Selbstbehalt.")
         if e["gleich"]:
             g = e["gleich"]
             zus.append(f"gleiches Modell und gleiche Franchise am günstigsten: {escape(g.kasse)} «{escape(g.bezeichnung)}» "
@@ -2215,7 +2230,8 @@ def kassenvergleich_karte(k: dict, db) -> str:
             zus.append(f"günstigste Variante bei der eigenen Kasse: «{escape(g.bezeichnung)}», Franchise {g.franchise}, "
                        f"{chf(g.kosten_jahr)} pro Jahr")
         teile.append(f"<h2>{kopf}</h2>" + (hinweisliste(zus) if zus else "")
-                     + tabelle(["Kasse", "Franchise", "Prämie/Mt.", "Total/Jahr"], zeilen, zahlen_ab=1, responsiv=False))
+                     + tabelle(["Kasse", "Franchise", "Prämie/Mt.", "Total/Jahr", "Höchstens"], zeilen, zahlen_ab=1,
+                               responsiv=False))
     teile.append('<p class="leise">Wechsel der Grundversicherung bis 30. November (eingeschrieben, Eingang zählt). Die '
                  'Grundversicherung muss jede Kasse aufnehmen; Zusatzversicherungen erst kündigen, wenn die neue Kasse '
                  'sie zugesagt hat. Hausarzt-, HMO- und Telmed-Modelle binden an die erste Anlaufstelle.</p>')

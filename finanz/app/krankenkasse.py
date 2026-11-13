@@ -162,12 +162,15 @@ def personen(k: dict, vertraege: list[dict]) -> list[Person]:
         police = police_von(kvg, name) or (police_von(kvg, alias) if alias else None)
         alter = _alter((police or {}).get("geburtsdatum") or "", jahr) if police else None
         kind = name in kinder or (alter is not None and alter < 19) or bool((eintrag or {}).get("kind"))
-        if eintrag:
-            franchise = int(eintrag.get("franchise", 0 if kind else 300))
-            praemie = float(eintrag.get("praemie_monat", 0))
-            modell = str(eintrag.get("modell", "standard"))
-            unfall = bool(eintrag.get("unfall", kind))
-            kosten = float(eintrag.get("kosten_jahr", 0))
+        if eintrag:                                 # eigene Angaben; was fehlt, kommt aus der Police
+            def wert(feld, aus_police, std):
+                v = eintrag.get(feld)
+                return v if v not in (None, "") else (aus_police if police and aus_police not in (None, "") else std)
+            franchise = int(wert("franchise", (police or {}).get("franchise"), 0 if kind else 300) or 0)
+            praemie = float(wert("praemie_monat", float((police or {}).get("praemie_jahr") or 0) / 12 or None, 0) or 0)
+            modell = str(wert("modell", (police or {}).get("modell"), "standard"))
+            unfall = bool(wert("unfall", (police or {}).get("unfall_eingeschlossen") if police else None, kind))
+            kosten = float(eintrag.get("kosten_jahr") or 0)
             angebote = {int(f): float(v) for f, v in (eintrag.get("angebote") or {}).items()}
         elif police:
             franchise = int(police["franchise"] or (0 if kind else 300))

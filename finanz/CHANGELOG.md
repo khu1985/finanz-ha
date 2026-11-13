@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.41.1 – 2026-11-13
+
+- **Kassenvergleich prüft die heutige Prämie:** Liegt sie über dem, was die Grundversicherung mit derselben Franchise
+  laut BAG kostet, erscheint ein Hinweis (meist sind Zusatzversicherungen eingerechnet); die Ersparnis wird dann mit
+  dem BAG-Wert der eigenen Kasse gerechnet statt mit der zu hohen Prämie
+- Neue Spalte **«Höchstens»** (Prämie + volle Franchise + maximaler Selbstbehalt) und ein Hinweis, wenn ohne
+  erwartete Gesundheitskosten eine höhere Franchise vorgeschlagen wird
+- **Krankenkasse in den Einstellungen:** Eigene Angaben pro Person ergänzen die Police statt sie zu ersetzen –
+  z. B. nur die erwarteten Gesundheitskosten eintragen
+
 ## 0.41.0 – 2026-11-13
 
 - **Säule 3a unter Vermögen:** neue Art «Säule 3a» – jedes 3a-Konto bzw. -Depot mit Person und Verlauf
