@@ -17,7 +17,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Kinder | Lebenslauf je Kind von der Kita über Schule und Lehre bzw. Gymnasium bis zum Studium – mit eigenen Kosten und Vergleichswerten je Phase (Zürcher Kinderkosten-Tabelle, Kita-Vollkosten, Studienbudget); Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse, Finanzplan und Erinnerungen |
-| Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Wertschriften pro Position (Anlageklasse, Region, Währung, Rendite, TER), Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
+| Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Säule 3a je Konto (gebunden, mit Bezugsplan), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Wertschriften pro Position (Anlageklasse, Region, Währung, Rendite, TER), Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial, wiederkehrende Zahlungen und Abos mit Preisänderungen, Vergleich mit Schweizer Haushalten gleichen Typs und Einkommens |
 | Lebensereignisse | Stellenverlust mit Taggeld und Reserve, Trennung bzw. Scheidung (Güterrecht, PK-Teilung, zwei Haushalte), faire Kostenaufteilung im Paar mit Vorsorgelücke |
 | Finanzplan | Lebensziele mit Sparrate; Jahr für Jahr bis 95: Lohn bzw. Renten, Sparen und Entnahmen, Vermögen; 1000 simulierte Börsenverläufe, Wahrscheinlichkeit, dass das Geld reicht, mit 90 % Sicherheit tragbarer Bedarf |
@@ -115,6 +115,7 @@ flowchart TB
 | `finanz/app/steuern.py` | Bundessteuertarif, Kantonssteuer-Kurve, Steuereinheiten (Ehe/Konkubinat), Kapitalbezug |
 | `finanz/app/wohnen.py` | Tragbarkeit, maximaler Kaufpreis, Eigenmietwert |
 | `finanz/app/vermoegen.py` | Konten, Saldi, Kontoverwaltung (umbenennen, zusammenführen, auflösen), CSV-Import, Verlauf |
+| `finanz/app/dreia.py` | Säule 3a als Konten: Abgleich mit den Einstellungen, Konto anlegen, gestaffelter Bezug je Konto |
 | `finanz/app/versicherungen.py` | Policen, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a-, 3b- und IK-Auszug |
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |

@@ -163,10 +163,10 @@ def analysieren(inhalt: bytes, dateiname: str = "") -> Auszug:
     betraege = [b for _, _, b in eintraege if b is not None]
     letzter = max(monats.values()) if monats else None
     name = " ".join(x for x in (bank, ("…" + iban[-4:]) if iban else "") if x) or (dateiname.rsplit(".", 1)[0] or "Bankkonto")
-    art = "vorsorge" if bank.lower() in VORSORGE else "bank"
-    if bank.lower() in VORSORGE:
-        hinweise.append("Vorsorgeanbieter erkannt – 3a-Guthaben gehört eigentlich in die Vorsorge (Einstellungen → 3a); "
-                        "als Vermögen nur importieren, wenn es frei verfügbar ist.")
+    art = "saeule3a" if bank.lower() in VORSORGE or vm.ist_3a(name, bank) else "bank"
+    if art == "saeule3a":
+        hinweise.append("Säule 3a erkannt – das Guthaben zählt als gebundenes Vermögen und ersetzt das 3a-Guthaben in "
+                        "den Einstellungen der Person, der das Konto gehört.")
     return Auszug(bank, iban, name, art, {a: kopf[i] for a, i in sp.items() if i is not None}, len(eintraege), monats,
                   letzter, (eintraege[0][0], eintraege[-1][0]),
                   round(sum(b for b in betraege if b > 0), 2), round(-sum(b for b in betraege if b < 0), 2), hinweise)
@@ -225,7 +225,8 @@ def _camt_auszug(inhalt: bytes, dateiname: str) -> tuple[Auszug, "object"]:
         hinweise.append("Kein Schlusssaldo im Auszug – Verlauf wird aus den Beträgen zurückgerechnet, sobald ein "
                         "Endsaldo bekannt ist.")
     zeitraum = (k.buchungen[0][0], k.buchungen[-1][0]) if k.buchungen else None
-    a = Auszug(bank, k.iban, name, "vorsorge" if bank.lower() in VORSORGE else "bank", {"format": "camt (ISO 20022)"},
+    art = "saeule3a" if bank.lower() in VORSORGE or vm.ist_3a(name, bank) else "bank"
+    a = Auszug(bank, k.iban, name, art, {"format": "camt (ISO 20022)"},
                len(k.buchungen), monats, max(monats.values()) if monats else None, zeitraum,
                round(sum(b for b in betraege if b > 0), 2), round(-sum(b for b in betraege if b < 0), 2), hinweise,
                k.waehrung or "CHF")

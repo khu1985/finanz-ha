@@ -114,7 +114,7 @@ def nachlass_von(k: dict, db, person: str) -> tuple[float, float]:
     n = len(k["personen"]) or 1
     eigen = 0.0
     for x in konten:
-        if x["art"] in ("immobilie", "hypothek"):
+        if x["art"] in ("immobilie", "hypothek", "saeule3a"):     # 3a fällt nach Begünstigtenordnung, nicht in den Nachlass
             continue
         if not x["person"]:
             eigen += x["wert"] / n

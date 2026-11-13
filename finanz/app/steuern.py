@@ -185,10 +185,15 @@ def _bezuege(p: dict, pk_e, d, gestaffelt: bool) -> dict[int, float]:
         if not gestaffelt or konten == 1:
             plan[pj] = plan.get(pj, 0) + d.kapital
         else:
-            # Bezug ab 5 Jahre vor dem Referenzalter; ein Konto pro Jahr, das letzte im Pensionsjahr
+            # Bezug ab 5 Jahre vor dem Referenzalter; ein Konto pro Jahr, das grösste im Pensionsjahr. Mit 3a-Konten
+            # unter Vermögen (`anteile`, aufsteigend) im Verhältnis der Kontostände, sonst gleich gross.
             jahre = [j for j in range(pj - konten + 1, pj + 1) if j >= geburtsjahr(p) + 60] or [pj]
-            for j in jahre:
-                plan[j] = plan.get(j, 0) + d.kapital / len(jahre)
+            anteile = [float(a) for a in (p["saeule3a"].get("anteile") or [])]
+            if len(anteile) != konten or not sum(anteile):
+                anteile = [1 / konten] * konten
+            jahre = [jahre[0]] * (konten - len(jahre)) + jahre
+            for j, a in zip(jahre, anteile):
+                plan[j] = plan.get(j, 0) + d.kapital * a / sum(anteile)
     return plan
 
 

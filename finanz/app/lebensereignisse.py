@@ -189,7 +189,7 @@ def trennung(k: dict, db, heute: date | None = None) -> Trennung | None:
             continue
         if x["person"] in eigen:
             eigen[x["person"]] += x["wert"]
-            if x["art"] == "vorsorge":
+            if x["art"] == "saeule3a":
                 vorsorge_konten[x["person"]] = True
         else:
             gemeinsam += x["wert"]

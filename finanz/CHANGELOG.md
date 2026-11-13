@@ -1,5 +1,22 @@
 # Änderungen
 
+## 0.41.0 – 2026-11-13
+
+- **Säule 3a unter Vermögen:** neue Art «Säule 3a» – jedes 3a-Konto bzw. -Depot mit Person und Verlauf
+  - Guthaben, Anzahl und Anteile der 3a-Konten gehen automatisch in die Einstellungen der Person (Pensionslücke,
+    Finanzplan, Kapitalbezugssteuer); ohne 3a-Konten gilt weiter der Wert in den Einstellungen
+  - Karte «Säule 3a» mit geplantem Bezug je Konto; die Kapitalbezugssteuer rechnet gestaffelt im Verhältnis der
+    Kontostände. «Als 3a-Konto anlegen» übernimmt ein Guthaben aus den Einstellungen
+  - Bank-Import erkennt 3a-Konten (VIAC, frankly, finpension, «3a», «Vorsorgekonto»); 3a-Auszüge unter Vorsorge
+    lassen sich als Saldo eines 3a-Kontos übernehmen; früher als «Vorsorge» importierte 3a-Konten werden umgestellt
+- **Gebundene Vorsorge:** 3a und 3b zählen zum Nettovermögen, aber nicht mehr zum frei verfügbaren Vermögen
+  (neue Kennzahl und Sensor «Gebundene Vorsorge»). Behoben: Ein importiertes 3a-Konto zählte bisher als freies
+  Vermögen und bei der Pensionierung ein zweites Mal
+- 3a erscheint nicht mehr im Vermögen der Steuererklärung und nicht im Nachlass
+- **Steuerdokumente:** Bei gemeinsamer Erklärung ist die Person vorgewählt; fehlende Eingaben erscheinen nicht mehr
+  als Warnung unter «Vorschläge»
+- **Kinder:** Lebenslauf wird zwischengespeichert (Seite und Steuern schneller)
+
 ## 0.40.0 – 2026-11-13
 
 - **Lebenslauf der Kinder** auf der Seite Kinder: Phasen von der Geburt bis zur Selbständigkeit – Kleinkind, Kita,

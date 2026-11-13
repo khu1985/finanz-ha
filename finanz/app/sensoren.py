@@ -80,7 +80,8 @@ def berechnen(k: dict, db, heute: date | None = None) -> list[Sensor]:
     letzter = db.execute("SELECT MAX(datum) FROM saldi").fetchone()[0]
     s.append(_chf("Nettovermögen", "nettovermoegen", nv["total"], "mdi:scale-balance",
                   nach_art={vm.ARTEN.get(a, a): round(v) for a, v in nv["nach_art"].items()}, stand=letzter))
-    s.append(_chf("Freies Vermögen", "freies_vermoegen", nv["frei"], "mdi:wallet"))
+    s.append(_chf("Freies Vermögen", "freies_vermoegen", nv["verfuegbar"], "mdi:wallet"))
+    s.append(_chf("Gebundene Vorsorge", "gebundene_vorsorge", nv["gebunden"], "mdi:piggy-bank"))
     s.append(_chf("Liquidität", "liquiditaet", sum(x["wert"] for x in konten if x["art"] == "bank"), "mdi:bank"))
     s.append(Sensor("saldi_alter", "Alter der Saldi", (heute - date.fromisoformat(letzter)).days if letzter else None,
                     "d", "duration", "measurement", "mdi:calendar-clock", {"stand": letzter}))
@@ -252,6 +253,13 @@ def nebenaufgaben(k: dict, db) -> None:
         LOG.warning("Monatsstand: %s", e)
 
 
+def _3a_abgleichen(k: dict, db) -> None:
+    import dreia
+    import konfig
+    if dreia.abgleichen(k, db):
+        konfig.speichern(k)
+
+
 def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
     def schleife():
         time.sleep(10)
@@ -260,6 +268,7 @@ def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
                 import leistung as le
                 with verbinden() as db:
                     k = laden()
+                    _3a_abgleichen(k, db)
                     with le.Stoppuhr("hintergrund", "Kurse, Zinsen, Monatsstand"):
                         nebenaufgaben(k, db)
                     with le.Stoppuhr("hintergrund", "Sensoren schreiben"):

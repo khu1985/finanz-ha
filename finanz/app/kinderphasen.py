@@ -29,6 +29,8 @@ Vergleichswerte (CHF pro Monat, Stand der Quellen 2023–2026):
 """
 from __future__ import annotations
 
+import functools
+import json
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -284,10 +286,21 @@ def _hinweise(kind: dict, lauf: Lebenslauf, heute: date) -> list[str]:
     return h
 
 
+@functools.lru_cache(maxsize=64)
+def _lauf(kind_json: str, anzahl: int, heute: date) -> Lebenslauf | None:
+    """Zwischengespeichert: die Seite Kinder, Steuern und der Finanzplan fragen pro Jahr und Kind mehrfach."""
+    return lebenslauf(json.loads(kind_json), anzahl, heute)
+
+
+def von(kind: dict, anzahl: int = 1, heute: date | None = None) -> Lebenslauf | None:
+    return _lauf(json.dumps(kind, sort_keys=True, default=str), anzahl, heute or date.today())
+
+
 def alle(k: dict, heute: date | None = None) -> list[Lebenslauf]:
     import kinder as ki
     kinder = ki.liste(k)
-    return [lauf for lauf in (lebenslauf(c, len(kinder), heute) for c in kinder) if lauf]
+    return [lauf for lauf in (_lauf(json.dumps(c, sort_keys=True, default=str), len(kinder), heute or date.today())
+                              for c in kinder) if lauf]
 
 
 def jahre(k: dict, von: int, bis: int, heute: date | None = None) -> list[tuple[int, float, float]]:
@@ -324,7 +337,7 @@ def betreuung_jahr(kind: dict, jahr: int) -> float | None:
     """Eigene Betreuungskosten (Kita, Tagesstruktur) im Jahr aus dem Lebenslauf – None, wenn keine erfasst sind."""
     if not _hat_phasen(kind):
         return None
-    lauf = lebenslauf(kind, 1, date(jahr, 1, 1))
+    lauf = _lauf(json.dumps(kind, sort_keys=True, default=str), 1, date.today())
     if not lauf:
         return None
     return float(sum((p.betreuung_eigen or 0) * p.monate_im_jahr(jahr) for p in lauf.phasen

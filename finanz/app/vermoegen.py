@@ -8,12 +8,28 @@ from datetime import date, datetime
 from pathlib import Path
 
 ARTEN = {
-    "bank": "Bankkonto", "depot": "Wertschriften", "krypto": "Krypto", "vorsorge": "Vorsorge 3b (frei/verpfändet)", "immobilie": "Immobilie",
-    "hypothek": "Hypothek", "kredit": "Kredit", "sonstiges": "Sonstiges",
+    "bank": "Bankkonto", "depot": "Wertschriften", "krypto": "Krypto", "saeule3a": "Säule 3a",
+    "vorsorge": "Vorsorge 3b (Police)", "immobilie": "Immobilie", "hypothek": "Hypothek", "kredit": "Kredit",
+    "sonstiges": "Sonstiges",
 }
 SCHULDEN = {"hypothek", "kredit"}
-# Konten, die nicht ins freie Vermögen für die Pensionsplanung zählen (Immobilie/Hypothek)
-NICHT_FREI = {"immobilie", "hypothek"}
+# Gebundenes Vorsorgevermögen: zählt zum Nettovermögen, ist aber nicht jederzeit verfügbar (3a bis frühestens 5 Jahre
+# vor dem Referenzalter, 3b-Policen bis zum Ablauf bzw. verpfändet).
+GEBUNDEN = {"saeule3a", "vorsorge"}
+# Nicht im freien Vermögen der Pensionsplanung: Immobilie/Hypothek und die Säule 3a – sie kommt über ihr eigenes
+# Modell (Einstellungen → 3a, aus den 3a-Konten nachgeführt) bei der Pensionierung dazu. 3b-Policen laufen
+# typischerweise bis zur Pensionierung und zählen dort mit.
+NICHT_FREI = {"immobilie", "hypothek", "saeule3a"}
+DREI_A_ANBIETER = ("viac", "frankly", "finpension", "selma 3a", "descartes", "inyova 3a", "yuh 3a")
+
+
+def ist_3a(name: str, bank: str = "") -> bool:
+    """Name bzw. Anbieter eines Kontos sieht nach Säule 3a aus (nicht 3b)."""
+    t = f" {bank} {name} ".lower()
+    if "3b" in t or "freizügig" in t or "freizuegig" in t:
+        return False
+    return (" 3a" in t or "3a " in t or "3a-" in t or "säule 3" in t or "saeule 3" in t or "vorsorgekonto" in t
+            or "vorsorgefonds" in t or any(a in t for a in DREI_A_ANBIETER))
 
 
 def verbinden(pfad: Path) -> sqlite3.Connection:
@@ -45,6 +61,13 @@ def verbinden(pfad: Path) -> sqlite3.Connection:
         if spalte not in spalten:
             db.execute(f"ALTER TABLE konten ADD COLUMN {spalte} TEXT NOT NULL DEFAULT ''")
             db.commit()
+    # bis 0.40: 3a-Anbieter wurden als «Vorsorge» (3b) importiert → als Säule 3a einordnen (einmalig)
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE name = 'konten_3a_umgestellt'").fetchone():
+        for kid, name in db.execute("SELECT id, name FROM konten WHERE art = 'vorsorge'").fetchall():
+            if ist_3a(name):
+                db.execute("UPDATE konten SET art = 'saeule3a' WHERE id = ?", (kid,))
+        db.execute("CREATE TABLE konten_3a_umgestellt (am TEXT)")
+        db.commit()
     return db
 
 
@@ -256,10 +279,13 @@ def nettovermoegen(db) -> dict:
     ks = konten(db)
     total = sum(k["wert"] for k in ks)
     frei = sum(k["wert"] for k in ks if k["art"] not in NICHT_FREI)
+    gebunden = sum(k["wert"] for k in ks if k["art"] in GEBUNDEN)
     nach_art: dict[str, float] = {}
     for k in ks:
         nach_art[k["art"]] = nach_art.get(k["art"], 0) + k["wert"]
-    return {"total": round(total), "frei": round(frei), "nach_art": nach_art}
+    verfuegbar = sum(k["wert"] for k in ks if k["art"] not in NICHT_FREI | GEBUNDEN)
+    return {"total": round(total), "frei": round(frei), "gebunden": round(gebunden), "verfuegbar": round(verfuegbar),
+            "nach_art": nach_art}
 
 
 def verlauf(db, monate: int = 36) -> list[tuple[str, float]]:

@@ -225,6 +225,9 @@ class Handler(BaseHTTPRequestHandler):
             titel, funktion = SEITEN[pfad]
             k = konfig.laden()
             with db() as verbindung:
+                import dreia
+                if dreia.abgleichen(k, verbindung):          # 3a-Konten unter Vermögen → Einstellungen
+                    konfig.speichern(k)
                 inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
             meldung = unquote(q.get("m", [""])[0])
             html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
@@ -297,7 +300,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"meldung": meldung, "fehler": False, "ziel": ziel})
             self.weiter(ziel, meldung)
         except Exception as e:  # noqa: BLE001
-            LOG.warning("Aktion %s fehlgeschlagen: %s", pfad, e)
+            # ValueError = Eingabe fehlt oder ist ungültig (Meldung an die Person) – kein Fehler der App
+            (LOG.info if isinstance(e, ValueError) else LOG.warning)("Aktion %s fehlgeschlagen: %s", pfad, e)
             if self.headers.get("X-Einzeln"):
                 return self._json({"meldung": str(e), "fehler": True, "ziel": ziel})
             self.weiter(ziel, str(e), fehler=True)
@@ -342,6 +346,11 @@ class Handler(BaseHTTPRequestHandler):
             konfig.laden()  # prüft, ob sich alles mischen lässt
             LOG.info("Konfiguration als YAML gespeichert")
             return "Konfiguration gespeichert (vorherige Fassung als finanz.yaml.bak)."
+        if pfad == "vermoegen/3a_anlegen":
+            import dreia
+            with db() as v:
+                namen = dreia.anlegen(konfig.laden(), v)
+            return ("3a-Konten angelegt: " + ", ".join(namen) if namen else "Keine 3a-Guthaben ohne Konto."), "vermoegen#saeule3a"
         if pfad == "vermoegen/saldo":
             with db() as v:
                 kid = vm.konto_anlegen(v, form["konto"].strip(), form.get("art", "bank"), form.get("person", ""),
@@ -913,6 +922,9 @@ class Handler(BaseHTTPRequestHandler):
                     erledigt = dk.uebernehmen(k, dok, namen.index(form["person"]), gewaehlt)
                     if "guthaben_3b" in gewaehlt and "guthaben_3b" in dok["werte"]:
                         erledigt.append(dk.guthaben_3b_uebernehmen(k, v, dok, form["person"], form.get("konto_3b", "")))
+                    if "guthaben_3a" in gewaehlt and "guthaben_3a" in dok["werte"] and form.get("konto_3a"):
+                        import dreia
+                        erledigt.append(dreia.guthaben_uebernehmen(v, dok, form["person"], form.get("konto_3a", "")))
                     konfig.speichern(k)
                     v.execute("UPDATE vorsorge_dok SET uebernommen = ? WHERE id = ?",
                               (datetime.now().isoformat(timespec="seconds"), did))

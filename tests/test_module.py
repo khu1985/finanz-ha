@@ -1955,3 +1955,54 @@ def test_kinderphasen_alte_betreuung_und_erinnerungen(k):
     assert [p.betreuung_eigen for p in lauf.phasen[:3]] == [1000, 1000, None]
     e = kp.erinnerungen(k, date(2027, 12, 15))
     assert any("Kindergarten" in x.titel and "kostet A" in x.text for x in e)
+
+
+# ---------------------------------------------------------------- Säule 3a als Konten
+
+def test_3a_art_erkennen_und_umstellen(tmp_path):
+    assert vm.ist_3a("VIAC …1234") and vm.ist_3a("Vorsorgekonto 3a Musterbank") and vm.ist_3a("Konto", "frankly")
+    assert not vm.ist_3a("3b Musterversicherung") and not vm.ist_3a("Privatkonto") and not vm.ist_3a("Freizügigkeit 3a")
+    db = vm.verbinden(tmp_path / "t.sqlite")
+    vm.konto_anlegen(db, "finpension 3a", "vorsorge", "Anna")
+    vm.konto_anlegen(db, "3b Police Muster", "vorsorge", "Anna")
+    db.execute("DROP TABLE konten_3a_umgestellt")          # Stand vor 0.41: noch nicht umgestellt
+    db.commit()
+    db = vm.verbinden(tmp_path / "t.sqlite")
+    arten = {x["name"]: x["art"] for x in vm.konten(db)}
+    assert arten == {"finpension 3a": "saeule3a", "3b Police Muster": "vorsorge"}
+
+
+def test_3a_gebunden_nicht_frei():
+    db = vm.verbinden(":memory:")
+    for name, art, wert in (("Lohn", "bank", 10_000), ("3a A", "saeule3a", 30_000), ("3b A", "vorsorge", 5_000)):
+        vm.saldo_setzen(db, vm.konto_anlegen(db, name, art, "Anna"), "2026-10-31", wert)
+    nv = vm.nettovermoegen(db)
+    assert nv["total"] == 45_000 and nv["gebunden"] == 35_000 and nv["verfuegbar"] == 10_000
+    assert nv["frei"] == 15_000                            # 3a über das 3a-Modell, 3b zählt bei der Pensionierung mit
+
+
+def test_3a_abgleich_anlegen_und_bezugsplan(k):
+    import dreia
+    db = vm.verbinden(":memory:")
+    p1 = k["personen"][0]
+    p1["geburtsdatum"] = "1970-06-01"
+    p1["saeule3a"]["guthaben"] = 12_000
+    k["personen"][1]["saeule3a"]["guthaben"] = 0
+    assert [p["name"] for p in dreia.ohne_konto(k, db)] == [p1["name"]]
+    assert dreia.anlegen(k, db, date(2026, 11, 1)) == [f"3a {p1['name']}"]
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "3a Musterbank", "saeule3a", p1["name"]), "2026-10-31", 36_000)
+    assert dreia.abgleichen(k, db) and not dreia.abgleichen(k, db)
+    cfg = p1["saeule3a"]
+    assert (cfg["guthaben"], cfg["konten"], cfg["anteile"], cfg["aus_konten"]) == (48_000, 2, [0.25, 0.75], True)
+    plan = dreia.bezugsplan(k, db)
+    pj = st.pensionsjahr(p1)
+    assert [(b.konto, b.jahr) for b in plan] == [(f"3a {p1['name']}", pj - 1), ("3a Musterbank", pj)]
+    # Steuern: gestaffelt im Verhältnis der Kontostände
+    class E:
+        kapital = 0.0
+    class D:
+        kapital = 100_000.0
+    assert st._bezuege(p1, E, D, True) == {pj - 1: 25_000, pj: 75_000}
+    # Konten gelöscht → Wert bleibt, gilt wieder als von Hand
+    db.execute("DELETE FROM konten")
+    assert dreia.abgleichen(k, db) and "aus_konten" not in cfg and cfg["guthaben"] == 48_000

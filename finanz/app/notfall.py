@@ -88,7 +88,7 @@ def meldeliste(k: dict, db) -> list[tuple[str, str, str]]:
         pass
     try:
         for x in vm.konten(db):
-            if x["art"] in ("bank", "depot", "vorsorge", "hypothek", "kredit") and not x.get("aufgeloest"):
+            if x["art"] in ("bank", "depot", "saeule3a", "vorsorge", "hypothek", "kredit") and not x.get("aufgeloest"):
                 wozu = {"hypothek": "Hypothek: Schuldner melden, Zinsen weiter zahlen", "kredit": "Kredit melden"}.get(
                     x["art"], "Konto melden (Sperre bis zur Erbbescheinigung), Saldo am Todestag verlangen")
                 neu(str(x["name"]), wozu, str(x.get("person") or ""))

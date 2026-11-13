@@ -83,7 +83,7 @@ personen:
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
-| Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
+| Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
 | Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
@@ -115,7 +115,8 @@ personen:
   Sparbeitrag, Umwandlungssatz, Invaliden-, Partner- und Waisenrenten, Todesfallkapital, Jahreslohn, 3a-Saldo,
   3b-Rückkaufswert bzw. -Guthaben, Prämie, Erlebensfall- und Todesfallkapital sowie AHV-Beitragsjahre. Das
   3b-Guthaben wird als Saldo eines Vorsorge-Kontos unter «Vermögen» übernommen (Konto wählbar; eine gleichnamige
-  verpfändete 3b unter Wohnen wird nachgeführt), die 3b-Todesfallleistung als «Todesfallkapital Policen». Auf der Dokumentseite stehen
+  verpfändete 3b unter Wohnen wird nachgeführt), die 3b-Todesfallleistung als «Todesfallkapital Policen»; das
+  3a-Guthaben als Saldo eines 3a-Kontos (Feld leer lassen = nur Einstellungen). Auf der Dokumentseite stehen
   erkannte und heutige Werte nebeneinander; Person wählen, Werte prüfen, übernehmen. Dazu eine Einschätzung
   (Ersparnis eines Einkaufs, Umwandlungssatz, Beitragslücken, Partnerrente im Konkubinat).
 
@@ -177,7 +178,24 @@ Steuerdokument rechnet die App den deklarierten Eigenmietwert und Mietertrag auf
 
 ## Vermögen
 
-Konten mit Art (Bank, Wertschriften, Krypto, Vorsorge 3b, Immobilie, Hypothek, Kredit, Sonstiges) und Person.
+Konten mit Art (Bank, Wertschriften, Krypto, Säule 3a, Vorsorge 3b, Immobilie, Hypothek, Kredit, Sonstiges) und Person.
+
+| Kennzahl | Was zählt |
+|---|---|
+| Nettovermögen | alle Konten, Schulden negativ |
+| Frei verfügbar | ohne Immobilie, Hypothek, Säule 3a und Vorsorge 3b |
+| Gebundene Vorsorge | Säule 3a und Vorsorge 3b (Policen, verpfändet) |
+| freies Vermögen der Pensionsplanung (Pensionslücke, Finanzplan) | ohne Immobilie, Hypothek und Säule 3a – die 3a kommt über das 3a-Modell bei der Pensionierung dazu; 3b-Policen laufen typischerweise bis dahin und zählen mit |
+
+**Säule 3a.** Jedes 3a-Konto bzw. 3a-Depot als Konto der Art «Säule 3a» mit Person erfassen – von Hand, per
+Bank-Import (VIAC, frankly, finpension sowie Konten mit «3a» oder «Vorsorgekonto» im Namen werden erkannt) oder aus
+einem 3a-Auszug unter Vorsorge («3a-Konto unter Vermögen»). Hat eine Person 3a-Konten, führt die App Guthaben, Anzahl
+und Anteile der Konten in den Einstellungen nach (`personen[].saeule3a.guthaben`, `.konten`, `.anteile`); der Wert in
+den Einstellungen gilt nur ohne 3a-Konten. Die Karte «Säule 3a» zeigt die Konten je Person und den geplanten Bezug:
+ein Konto pro Jahr, frühestens 5 Jahre vor dem Referenzalter, das grösste im Pensionsjahr; die Kapitalbezugssteuer
+rechnet gestaffelt im Verhältnis der Kontostände. Personen mit 3a-Guthaben nur in den Einstellungen legen es mit
+«Als 3a-Konto anlegen» als Konto an. Bis 0.40 als «Vorsorge» importierte 3a-Konten werden beim Update einmalig
+umgestellt. Die 3a erscheint nicht im Vermögen der Steuererklärung und fällt nicht in den Nachlass (Begünstigung).
 **Anlage-Check.** Teilt das Finanzvermögen (Konten, Depot, Krypto, Übriges) in Töpfe: Notreserve (`wohnen.reserve`,
 sonst ein halber Jahresbedarf), Amortisation bei Fälligkeit (Ziel bzw. Maximum, soweit nicht aus Sparen und
 verpfändeter Vorsorge gedeckt; sicher und terminiert anlegen), geplante PK-Einkäufe und den langfristigen Topf mit
@@ -206,7 +224,7 @@ Import-Ordner legen. Die App erkennt Kodierung, Trennzeichen, Vorspann-Zeilen, I
 Saldo, Betrag oder Gutschrift/Belastung) und übernimmt den letzten Saldo jedes Monats. Der Kontoname entsteht
 automatisch (z. B. «Raiffeisen …7890») oder wird angegeben. Fehlt die Saldo-Spalte, den heutigen Kontostand als
 Endsaldo angeben; die App rechnet die Monatssaldi aus den Beträgen zurück. Hypotheken und Kredite zählen
-negativ. Das freie Vermögen (ohne Immobilie und Hypothek) fliesst in den Kapitalverzehr im Ruhestand.
+negativ. Das freie Vermögen der Pensionsplanung (siehe oben) fliesst in den Kapitalverzehr im Ruhestand.
 
 **camt.053 (ISO 20022).** Genauer als CSV ist der Export im Bankformat camt.053 (im E-Banking meist unter «Export»
 bzw. «Kontoauszug als XML/camt», oft mehrere Tagesauszüge als ZIP). Die App liest XML und ZIP direkt (auch camt.052
@@ -543,7 +561,7 @@ Die App liefert ihre Kennzahlen als Sensoren an Home Assistant – für Dashboar
 
 | Sensor | Inhalt |
 |---|---|
-| `sensor.finanz_nettovermoegen`, `_freies_vermoegen`, `_liquiditaet` | CHF; Aufteilung nach Art als Attribut |
+| `sensor.finanz_nettovermoegen`, `_freies_vermoegen` (frei verfügbar), `_gebundene_vorsorge` (3a, 3b), `_liquiditaet` | CHF; Aufteilung nach Art als Attribut |
 | `sensor.finanz_saldi_alter` | Tage seit den letzten Saldi |
 | `sensor.finanz_einkommen_ruhestand`, `_pensionsluecke`, `_ersatzquote` | Ruhestand (AHV, PK, Kapitalverzehr, Lücke im Mittel und nach 20 Jahren, Teuerung als Attribute) |
 | `sensor.finanz_fruehestes_pensionsalter` | frühestes Alter ohne Lücke; Einkommen je Alter als Attribut |

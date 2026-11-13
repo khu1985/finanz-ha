@@ -311,3 +311,19 @@ def test_lebenslauf_kinder_speichern(server, daten):
     _post(f"{server}/kinder", {"anzahl": "1", "name_0": "Anna", "geburtsdatum_0": "2022-03-01", "ausbildung_bis_0": "25"})
     c = konfig.laden()["haushalt"]["kinder"][0]
     assert c["phasen"]["kita"] == {"betreuung": 900} and c["ausbildung_bis"] == 25 and c["weg"] == "gymnasium"
+
+
+def test_saeule3a_unter_vermoegen(server, daten):
+    k = konfig.laden()
+    k["personen"][0]["saeule3a"]["guthaben"] = 20_000
+    konfig.speichern(k)
+    assert "Als 3a-Konto anlegen" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    code, ziel = _post(f"{server}/vermoegen/3a_anlegen", {})
+    assert code == 303 and "saeule3a" in ziel
+    p = k["personen"][0]["name"]
+    _post(f"{server}/vermoegen/saldo", {"konto": "3a Zweitkonto", "art": "saeule3a", "person": p,
+                                        "datum": "2026-10-31", "betrag": "5000"})
+    html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    assert "Bezug geplant" in html and "Gebundene Vorsorge" in html
+    cfg = konfig.laden()["personen"][0]["saeule3a"]
+    assert cfg["guthaben"] == 25_000 and cfg["konten"] == 2

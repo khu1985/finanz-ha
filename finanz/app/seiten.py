@@ -870,13 +870,50 @@ angeben.</p>
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv,.txt,.xml,.zip,application/xml,application/zip" multiple required style="max-width:360px">
 <button>Auszug importieren</button></div></form>"""
     arten_zeilen = [[vm.ARTEN.get(a, a), chf(v)] for a, v in sorted(nv["nach_art"].items(), key=lambda x: -x[1])]
-    return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["frei"]), "Freies Vermögen (ohne Immobilie/Hypothek)") + "</div>"
+    return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["verfuegbar"]), "Frei verfügbar (ohne Immobilie, Hypothek, Vorsorge)") + (kpi(chf(nv["gebunden"]), "Gebundene Vorsorge (3a, 3b)") if nv["gebunden"] else "") + "</div>"
             + karte("Konten", liste)
             + '<div class="raster">' + karte("Saldo erfassen", erfassen) + karte("Bank-Import", bank)
             + karte("CSV importieren (eigene Liste)", importieren) + "</div>"
             + '<div class="raster">' + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
             + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>"
-            + wertschriften_karte(k, db) + anlage_karte(k, db))
+            + dreia_karte(k, db) + wertschriften_karte(k, db) + anlage_karte(k, db))
+
+
+def dreia_karte(k: dict, db) -> str:
+    """Säule 3a: Konten je Person, Abgleich mit den Einstellungen und gestaffelter Bezug je Konto."""
+    import dreia
+    je = dreia.konten(k, db)
+    ohne = dreia.ohne_konto(k, db)
+    if not je and not ohne:
+        return ""
+    plan = {(b.person, b.konto): b.jahr for b in dreia.bezugsplan(k, db)}
+    zeilen = []
+    for p in k["personen"]:
+        for x in sorted(je.get(p["name"]) or [], key=lambda x: -x["wert"]):
+            zeilen.append([escape(p["name"]), escape(x["name"]), chf(x["wert"]),
+                           (f'{date.fromisoformat(x["datum"]):%d.%m.%Y}' if x.get("datum") else ""), str(plan.get((p["name"], x["name"]), ""))])
+    for x in je.get("") or []:
+        zeilen.append(["<span class=\"warn\">ohne Person</span>", escape(x["name"]), chf(x["wert"]), "", ""])
+    teile = []
+    if zeilen:
+        teile.append(tabelle(["Person", "Konto", "Guthaben", "Stand", "Bezug geplant"], zeilen, zahlen_ab=2))
+        teile.append('<p class="leise">Das Guthaben und die Anzahl Konten gehen automatisch in die Einstellungen der Person '
+                     '(Pensionslücke, Finanzplan, Kapitalbezugssteuer). Die 3a zählt zum Nettovermögen, aber nicht zum '
+                     'freien Vermögen – bei der Pensionierung kommt sie über das 3a-Modell dazu. Bezug: ein Konto pro Jahr, '
+                     'frühestens 5 Jahre vor dem Referenzalter, das grösste zuletzt.</p>')
+    wenige = [p["name"] for p in k["personen"] if 0 < len(je.get(p["name"]) or []) < 3]
+    if wenige:
+        teile.append(f'<p class="leise">{escape(", ".join(wenige))}: weniger als drei 3a-Konten – für einen gestaffelten '
+                     'Bezug (tiefere Kapitalbezugssteuer) neue Einzahlungen auf ein weiteres Konto lenken.</p>')
+    if je.get(""):
+        teile.append('<p class="warn">3a-Konten ohne Person zählen nirgends – unter «Konten» die Person setzen.</p>')
+    if ohne:
+        namen = ", ".join(escape(p["name"]) for p in ohne)
+        teile.append(f'<form method="post" action="vermoegen/3a_anlegen"><p>{namen}: 3a-Guthaben nur in den Einstellungen. '
+                     'Als Konto anlegen, damit Verlauf und gestaffelter Bezug je Konto möglich sind (Saldo von heute; '
+                     'weitere Konten danach unter «Saldo erfassen» mit Art «Säule 3a»).</p>'
+                     '<div class="zeile"><button>Als 3a-Konto anlegen</button></div></form>')
+    return f'<div id="saeule3a">{karte("Säule 3a", "".join(teile))}</div>'
 
 
 def konten_form(inhalt: str) -> str:
@@ -1402,6 +1439,13 @@ def vorsorge_dokument(k: dict, db, did: int) -> str:
         opts = "".join(f'<option value="{escape(n)}">' for n in bestehend)
         konto_3b = (f'<label>Konto unter «Vermögen» (Art Vorsorge 3b)<input name="konto_3b" list="konten3b" '
                     f'value="{escape(vorschlag)}"><datalist id="konten3b">{opts}</datalist></label>')
+    elif d["typ"] == "saeule3a":
+        import dreia
+        pname = next((p["name"] for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), d["person"] or "")
+        bestehend = [x["name"] for x in vm.konten(db) if x["art"] == "saeule3a"]
+        opts = "".join(f'<option value="{escape(n)}">' for n in bestehend)
+        konto_3b = (f'<label>3a-Konto unter «Vermögen» (leer = nur Einstellungen)<input name="konto_3a" list="konten3a" '
+                    f'value="{escape(dreia.konto_vorschlag(d, pname))}"><datalist id="konten3a">{opts}</datalist></label>')
     form = f"""<form method="post" action="vorsorge/dokument/{did}"><div class="felder">
 <label>Art<select name="typ">{typen}</select></label><label>Person<select name="person">{pers}</select></label>{konto_3b}</div>
 {tab}<div class="zeile"><button formaction="vorsorge/dokument/{did}/uebernehmen">Ausgewählte Werte übernehmen</button>
@@ -1703,9 +1747,12 @@ def steuer_dokument(k: dict, db, did: int) -> str:
         raise ValueError("Dokument nicht gefunden.")
     typen = "".join(f'<option value="{t}"{" selected" if t == d["typ"] else ""}>{escape(n)}</option>' for t, n in sd.TYPEN.items())
     namen = [p["name"] for p in k["personen"]]
+    # gemeinsame Erklärung (verheiratet) bzw. nur eine Person: ohne erkannte Person die erste vorwählen
+    gemeinsam = len(namen) == 1 or k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet"
+    vorwahl = d["person"] if any(vi.gleiche_person(n, d["person"]) for n in namen) else (namen[0] if gemeinsam and namen else "")
     pers = '<option value="">– Person wählen –</option>' + "".join(
-        f'<option{" selected" if vi.gleiche_person(n, d["person"]) else ""}>{escape(n)}</option>' for n in namen)
-    person = next((p for p in k["personen"] if vi.gleiche_person(p["name"], d["person"])), None)
+        f'<option{" selected" if vi.gleiche_person(n, vorwahl) else ""}>{escape(n)}</option>' for n in namen)
+    person = next((p for p in k["personen"] if vi.gleiche_person(p["name"], vorwahl)), None)
     einheit = st.einheit_von(k, person["name"] if person else None).st if person else {}
     gleiche = [x for x in sd.alle(db) if vi.gleiche_person(x["person"] or "Haushalt", d["person"] or "Haushalt")]
     grenz = sd.grenzsteuersatz({j: w for j, w in sd.vergleich(gleiche).get(d["person"] or "Haushalt", {}).items()})
@@ -2946,7 +2993,7 @@ def kinder(k: dict, db) -> str:
     laeufe = kp.alle(k)
     hinw = u.hinweise + [h for lauf in laeufe for h in lauf.hinweise]
     return (kpis + _lebenslauf_uebersicht(k, laeufe) + "".join(_lebenslauf_kind(i, c, lauf) for i, (c, lauf) in enumerate(
-                (c, kp.lebenslauf(c, len(liste_))) for c in liste_) if lauf)
+                (c, kp.von(c, len(liste_))) for c in liste_) if lauf)
             + karte("Hinweise", hinweisliste(hinw) + link)
             + karte("Zulagen und Steuern bis zur Selbständigkeit", zeit) + karte("Kinder erfassen", form)
             + _lebenslauf_quellen())

@@ -254,6 +254,8 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
 
     # Vermögen per 31.12.
     for x in konten:
+        if x["art"] == "saeule3a":                       # Säule 3a wird nicht als Vermögen deklariert
+            continue
         s = _saldo_per(db, x["id"], stichtag)
         beleg = {"bank": "Saldo- bzw. Zinsausweis", "depot": "Steuerauszug (Kurswerte 31.12.)",
                  "krypto": "Bestand und Kurswert per 31.12. (Kursliste ESTV)", "hypothek": "Zinsausweis mit Schuld per 31.12.",
