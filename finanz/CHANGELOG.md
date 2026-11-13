@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.41.2 – 2026-11-13
+
+- Kassenvergleich: Ersparnis bei gleichem Modell und gleicher Franchise wird genannt; Hinweistexte ohne
+  sichtbare HTML-Zeichen
+
 ## 0.41.1 – 2026-11-13
 
 - **Kassenvergleich prüft die heutige Prämie:** Liegt sie über dem, was die Grundversicherung mit derselben Franchise

@@ -2203,7 +2203,7 @@ def kassenvergleich_karte(k: dict, db) -> str:
         kopf = escape(p.name) + {"KIN": " · Kinderprämie", "JUG": " · junge Erwachsene (19–25)", "ERW": ""}[e["alter"]]
         zus = []
         if e.get("zu_hoch"):
-            zus.append(f"{licht(am.GELB, 'Prämie prüfen')} Erfasst sind {p.praemie_monat:.2f} pro Monat – die "
+            zus.append(f"Prämie prüfen: Erfasst sind {p.praemie_monat:.2f} pro Monat – die "
                        f"Grundversicherung mit Franchise {p.franchise} kostet laut BAG "
                        + (f"bei {escape(p.versicherer)} " if p.versicherer else "")
                        + f"höchstens {e['bezug_monat']:.2f}. Vermutlich sind Zusatzversicherungen oder mehrere Personen "
@@ -2219,12 +2219,14 @@ def kassenvergleich_karte(k: dict, db) -> str:
             zus.append(f"Gerechnet ohne Arzt- und Medikamentenkosten. Mit Franchise {beste.franchise} zahlst du im "
                        f"schlechtesten Fall bis CHF {chf(beste.franchise - p.franchise)} mehr Franchise "
                        "selbst als heute – erwartete Kosten unter Einstellungen bei der Krankenkasse eintragen "
-                       "(<code>kosten_jahr</code>), dann rechnet der Vergleich damit. Spalte «Höchstens» = Prämie + "
+                       "(kosten_jahr), dann rechnet der Vergleich damit. Spalte «Höchstens» = Prämie + "
                        "volle Franchise + maximaler Selbstbehalt.")
         if e["gleich"]:
             g = e["gleich"]
+            spar = (heute - g.kosten_jahr) if heute else 0
             zus.append(f"gleiches Modell und gleiche Franchise am günstigsten: {escape(g.kasse)} «{escape(g.bezeichnung)}» "
-                       f"{g.praemie_monat:.2f} pro Monat")
+                       f"{g.praemie_monat:.2f} pro Monat" + (f" – {chf(spar)} pro Jahr günstiger, ohne Modell oder Franchise "
+                                                            "zu ändern" if spar > 50 else ""))
         if e.get("eigene"):
             g = e["eigene"]
             zus.append(f"günstigste Variante bei der eigenen Kasse: «{escape(g.bezeichnung)}», Franchise {g.franchise}, "
