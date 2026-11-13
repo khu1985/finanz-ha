@@ -1733,3 +1733,20 @@ def test_marktzinsen_snb_und_offerten(k, db):
     assert hy.konfiguration(k, db)["fest"][5] == 1.55
     k["wohnen"]["aktiv"] = False
     assert mz.aktualisieren(k, db) is False
+
+
+def test_neue_erinnerungen_und_finanzplan_ampel(k, db):
+    from datetime import date
+    import ampel as am
+    import budget as bu
+    import erinnerungen as er
+    k["personen"][0]["name"] = "Anna Muster"
+    k["haushalt"]["bedarf_ruhestand"] = 400000
+    b = [(f"2026-{m:02d}-05", -29.9 if m < 10 else -34.9, "STREAMING AG") for m in range(1, 12)]
+    bu.speichern(db, "Bank", b, k)
+    titel = {e.titel for e in er.alle(k, db, date(2026, 11, 20))}
+    assert "Vor- und Nachname trennen" in titel and "Notfallordner und Verfügungen prüfen" in titel
+    assert "Finanzplan ist knapp" in titel and any(t.startswith("Teurer geworden") for t in titel)
+    assert "E-Steuerauszüge 2026 einlesen" in {e.titel for e in er.alle(k, db, date(2027, 2, 1))}
+    fp = next(a for a in am.bewerten(k, db, date(2026, 11, 20)) if a.bereich == "Finanzplan")
+    assert fp.status == am.ROT

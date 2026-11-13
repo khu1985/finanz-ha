@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.35.0 – 2026-11-13
+
+Aufgaben und Ampeln in der Übersicht kennen die neuen Funktionen:
+
+- **Krankenkasse vergleichen:** Hinweis, die BAG-Prämien des Folgejahres zu laden, bzw. die Ersparnis laut
+  Kassenvergleich
+- **Hypothek vorbereiten:** mit den aktuellen Richtzinsen und ihrer Entwicklung; Hinweis, Offerten zu erfassen
+- **Neue Aufgaben:** E-Steuerauszüge einlesen (Januar–März), Abo teurer geworden, grössere jährliche Zahlung steht
+  an, Finanzplan ist knapp, Notfallordner und Verfügungen jährlich prüfen, Vor- und Nachname trennen
+- **Neue Ampel «Finanzplan»:** wie oft das Geld in den simulierten Verläufen bis zum Endalter reicht
+
 ## 0.34.1 – 2026-11-13
 
 - **Marktzinsen:** Marge der SARON-Hypothek auch aus dem Mittel mit 3 Jahren Rahmenlaufzeit (das 5-jährige

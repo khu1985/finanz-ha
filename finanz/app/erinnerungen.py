@@ -96,6 +96,19 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
         spar = sum(e.ersparnis for e in kk.haushalt(k, vi.alle(db)))
         zusatz = (f" Franchise-Optimierung spart rund CHF {_chf(spar)} pro Jahr." if spar >= 50 else
                   " Prämien und Gesundheitskosten unter «Versicherungen» eintragen, um die beste Franchise zu berechnen.")
+        try:
+            import kkpraemien as kp
+            kanton = str(k["haushalt"].get("kanton") or "").upper()
+            if kanton and (j + 1) not in kp.jahre(db, kanton):
+                zusatz += f" Unter «Versicherungen» die Prämien {j + 1} aller Kassen vom BAG laden und vergleichen."
+            elif kanton:
+                v = kp.vergleich(k, db, vi.alle(db))
+                gewinn = sum(max(0.0, (e["heute"] or 0) - e["angebote"][0].kosten_jahr)
+                             for e in v["personen"] if e["heute"] and e["angebote"])
+                if gewinn >= 100:
+                    zusatz += f" Laut Kassenvergleich {v['jahr']} sind bis CHF {_chf(gewinn)} pro Jahr günstiger möglich."
+        except Exception as e_:  # noqa: BLE001
+            LOG.debug("Kassenvergleich für Erinnerung: %s", e_)
         erg.append(Erinnerung(f"kvg-{j}", "Krankenkasse vergleichen", date(j, 11, 30),
                               "Neue Prämien sind bekannt; Grundversicherung bis 30. November eingeschrieben kündigen, Franchise "
                               "oder Modell wechseln." + zusatz, "versicherungen"))
@@ -157,9 +170,24 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
         f = date.fromisoformat(str(w["hypothek_faellig"]))
         start = _monate_zurueck(f, 36)
         if start <= heute <= f:
+            markt = ""
+            try:
+                import marktzinsen as mz
+                akt = mz.aktuell(db)
+                if "fest10" in akt:
+                    t10 = mz.trend(db, "fest10")
+                    markt = (f" Richtzinsen heute: 5 J. {akt['fest5'][0]:.2f} %, 10 J. {akt['fest10'][0]:.2f} %"
+                             if "fest5" in akt else f" Richtzins 10 J. heute {akt['fest10'][0]:.2f} %")
+                    markt += (f" ({t10:+.2f} in 3 Monaten)." if t10 else ".")
+                if not mz.offerten(k, heute):
+                    markt += " Offerten unter «Szenarien» erfassen."
+            except Exception:  # noqa: BLE001
+                pass
             erg.append(Erinnerung(f"hypothek-{f}", f"Hypothek per {f:%d.%m.%Y} vorbereiten", _monate_zurueck(f, 12),
-                                  "Offerten einholen, Forward-Festhypothek prüfen, Amortisation und Strategie unter «Szenarien» festlegen.",
-                                  "szenarien"))
+                                  "Offerten einholen, Forward-Festhypothek prüfen, Amortisation und Strategie unter «Szenarien» "
+                                  "festlegen." + markt, "szenarien"))
+
+    erg.extend(_neuere(k, db, heute))
 
     # Eigene Erinnerungen
     for i, e in enumerate(cfg.get("eigene") or []):
@@ -173,6 +201,84 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
         erledigt = {r[0] for r in db.execute("SELECT schluessel FROM erinnerungen_erledigt")}
         erg = [e for e in erg if e.schluessel not in erledigt]
     return sorted(erg, key=lambda e: e.faellig)
+
+
+def _neuere(k: dict, db, heute: date) -> list[Erinnerung]:
+    """E-Steuerauszug, Abos, Finanzplan, Notfallordner und Namen – jede Quelle für sich abgesichert."""
+    j = heute.year
+    erg: list[Erinnerung] = []
+
+    def sicher(f):
+        try:
+            erg.extend(f())
+        except Exception as e:  # noqa: BLE001
+            LOG.debug("Erinnerung %s: %s", f.__name__, e)
+
+    def steuerauszug():
+        import esteuerauszug as es
+        if not (date(j, 1, 15) <= heute <= date(j, 3, 31)):
+            return []
+        vorjahr = [a for a in es.alle(db) if a["jahr"] == j - 1]
+        if vorjahr:
+            return []
+        return [Erinnerung(f"steuerauszug-{j}", f"E-Steuerauszüge {j - 1} einlesen", date(j, 2, 28),
+                           "Die Banken stellen den Steuerauszug im Januar bzw. Februar im E-Banking bereit. Unter «Steuern» "
+                           "einlesen (am besten die XML-Datei): Saldi per 31.12., Wertschriften, Erträge und "
+                           "Verrechnungssteuer für die Steuererklärung.", "steuern")]
+
+    def abos():
+        import abos as ab
+        import budget as bu
+        import versicherungen as vi
+        liste = ab.erkennen(bu.alle(db), vi.alle(db), heute)
+        r = []
+        for a in liste:
+            letzte = date.fromisoformat(a.letzte)
+            if a.aenderung and a.aenderung >= 5 and (heute - letzte).days <= 45:
+                r.append(Erinnerung(f"abo-teurer-{a.schluessel}-{a.letzte}", f"Teurer geworden: {a.name[:40]}", letzte + timedelta(days=30),
+                                    f"{a.aenderung:+.0f} % seit der letzten Zahlung ({a.vorher:.2f} → {a.betrag:.2f}, "
+                                    f"CHF {_chf(a.pro_jahr)} pro Jahr). Noch nötig – oder kündigen bzw. Angebot vergleichen?",
+                                    "budget"))
+            naechste = date.fromisoformat(a.naechste)
+            if a.rhythmus in ("jährlich", "halbjährlich") and a.betrag >= 500 and 0 <= (naechste - heute).days <= 30:
+                r.append(Erinnerung(f"abo-faellig-{a.schluessel}-{a.naechste}", f"Grössere Zahlung: {a.name[:40]}", naechste,
+                                    f"Erwartet rund CHF {_chf(a.betrag)} ({a.rhythmus}) – Liquidität auf dem Konto sicherstellen.",
+                                    "budget"))
+        return r
+
+    def finanzplan():
+        import finanzplan as fp
+        import vermoegen as vm
+        if not float(k["haushalt"].get("bedarf_ruhestand") or 0):
+            return []
+        p = fp.rechnen(k, vm.nettovermoegen(db)["frei"], j, pfade=300)
+        if p.erfolg >= 70:
+            return []
+        return [Erinnerung(f"finanzplan-{j}", "Finanzplan ist knapp", date(j, 12, 31),
+                           f"Nur in {p.erfolg:.0f} % der simulierten Verläufe reicht das Geld bis {p.end_alter}"
+                           + (f"; mit 90 % Sicherheit tragbar wären rund CHF {_chf(p.bedarf_sicher)} pro Jahr"
+                              if p.bedarf_sicher else "")
+                           + ". Hebel: mehr sparen, PK-Einkauf, später pensionieren oder Bedarf senken.", "finanzplan")]
+
+    def notfall():
+        if not (date(j, 11, 1) <= heute <= date(j, 12, 31)):
+            return []
+        return [Erinnerung(f"notfall-{j}", "Notfallordner und Verfügungen prüfen", date(j, 12, 31),
+                           "Einmal im Jahr: Kontakte, Konten und Policen im Notfallordner, Begünstigungen (PK, 3a, Policen), "
+                           "Testament und Vorsorgeauftrag noch aktuell? Nach Heirat, Geburt, Trennung, Haus- oder Stellenwechsel "
+                           "sofort.", "notfall")]
+
+    def namen():
+        offen = [p["name"] for p in k["personen"] if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1]
+        if not offen:
+            return []
+        return [Erinnerung(f"namen-{'-'.join(offen)}", "Vor- und Nachname trennen", heute,
+                           "In der App reicht der Vorname; Verfügungen und Schreiben brauchen den vollen Namen. Unter "
+                           "Einstellungen «Namen aufteilen».", "einstellungen")]
+
+    for f in (steuerauszug, abos, finanzplan, notfall, namen):
+        sicher(f)
+    return erg
 
 
 def _zuzug(k: dict, heute: date) -> list[Erinnerung]:

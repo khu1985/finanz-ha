@@ -6,6 +6,9 @@ from tausender import TS  # noqa: E402
 from dataclasses import dataclass
 from datetime import date
 
+import logging
+
+LOG = logging.getLogger("finanz")
 GRUEN, GELB, ROT, GRAU = "gruen", "gelb", "rot", "grau"
 RANG = {ROT: 3, GELB: 2, GRUEN: 1, GRAU: 0}
 TEXT = {GRUEN: "in Ordnung", GELB: "prüfen", ROT: "handeln", GRAU: "keine Daten"}
@@ -97,6 +100,16 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
     else:
         txt = f"Lücke im Mittel CHF {chf(lm)}/Jahr (Teuerung)"
     erg.append(Ampel("Ruhestand", s, txt, "vorsorge"))
+
+    # Finanzplan: reicht das Geld bis ins hohe Alter (Monte Carlo)?
+    if float(k["haushalt"].get("bedarf_ruhestand") or 0):
+        try:
+            import finanzplan as fp
+            p = fp.rechnen(k, nv["frei"], heute.year, pfade=300)
+            erg.append(Ampel("Finanzplan", GRUEN if p.erfolg >= 90 else GELB if p.erfolg >= 70 else ROT,
+                             f"reicht in {p.erfolg:.0f} % der Verläufe bis {p.end_alter}", "finanzplan"))
+        except Exception as e:  # noqa: BLE001
+            LOG.debug("Finanzplan-Ampel: %s", e)
 
     # Stammdaten: Plausibilität der Einstellungen
     try:

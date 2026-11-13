@@ -441,7 +441,7 @@ Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfä
 |---|---|---|
 | 3a einzahlen (pro Person mit Lohn) | ab 15. Oktober | 20. Dezember |
 | Geplanter PK-Einkauf dieses Jahres | ab 1. September | 10. Dezember |
-| Krankenkasse vergleichen | 20. September bis 30. November | 30. November |
+| Krankenkasse vergleichen (mit Hinweis, die BAG-Prämien des Folgejahres zu laden, bzw. der Ersparnis laut Kassenvergleich) | 20. September bis 30. November | 30. November |
 | Kündigungsfristen der Verträge | 60 Tage vorher | Fristende |
 | Steuererklärung | 2 Monate vor der ordentlichen Frist | Frist des Wohnkantons bzw. gewährte Erstreckung (siehe unten) |
 | PK-Einkauf prüfen (aus dem Optimierer, wenn kein Einkauf geplant) | ab 1. September | 10. Dezember |
@@ -450,7 +450,13 @@ Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfä
 | Weiteres 3a-Konto eröffnen (weniger als 3 Konten) | ab 15. Oktober | 20. Dezember |
 | Neue Vorsorgeausweise hochladen | Februar bis April | 31. März |
 | Kennzahlen prüfen | Januar | 31. Januar |
-| Hypothek vorbereiten | 36 Monate vor Fälligkeit | 12 Monate vor Fälligkeit |
+| Hypothek vorbereiten (mit aktuellen Richtzinsen und ihrer Entwicklung) | 36 Monate vor Fälligkeit | 12 Monate vor Fälligkeit |
+| E-Steuerauszüge des Vorjahres einlesen (solange keiner erfasst ist) | 15. Januar bis 31. März | 28. Februar |
+| Abo bzw. wiederkehrende Zahlung teurer geworden (≥ 5 %) | 45 Tage nach der Zahlung | 30 Tage danach |
+| Grössere jährliche oder halbjährliche Zahlung (ab CHF 500) | 30 Tage vorher | erwartetes Datum |
+| Finanzplan ist knapp (Geld reicht in unter 70 % der Verläufe) | laufend | 31. Dezember |
+| Notfallordner und Verfügungen prüfen | November und Dezember | 31. Dezember |
+| Vor- und Nachname trennen (voller Name im Vornamenfeld) | bis erledigt | sofort |
 | Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
 
 **Frist der Steuererklärung.** Die App kennt die ordentliche Frist und die spätestmögliche Erstreckung aller
@@ -718,6 +724,7 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Bereich | Grün | Gelb | Rot |
 |---|---|---|---|
 | Ruhestand | keine Lücke | Lücke bis 10 % des Bedarfs (Durchschnitt über die Entnahmejahre) | grössere Lücke |
+| Finanzplan | Geld reicht in ≥ 90 % der Verläufe bis zum Endalter | ≥ 70 % | darunter |
 | Liquidität | Konten ≥ Reserve | ≥ halbe Reserve | darunter |
 | Tragbarkeit | ≤ 33 % | bis 38 % | darüber |
 | Amortisation | Ziel erreicht | ≥ 80 % des Ziels | darunter |
