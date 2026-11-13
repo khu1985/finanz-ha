@@ -2691,9 +2691,40 @@ werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>kont
     return (kpis
             + karte("Ausgaben pro Monat", diagramm + hinweisliste(a.hinweise) + sparen_form)
             + '<div class="raster">' + karte("Nach Kategorie", kat_html) + karte("Monate", monat_html) + "</div>"
-            + abos_karte(k, db)
+            + abos_karte(k, db) + habe_karte(k, db)
             + karte("Kontoauszüge", konten_html + import_form)
             + karte("Ohne Kategorie", unb_html) + karte("Eigene Regeln", regel_html))
+
+
+def habe_karte(k: dict, db) -> str:
+    """Vergleich mit Schweizer Haushalten (Haushaltsbudgeterhebung des BFS)."""
+    import habe
+    v = habe.vergleichen(k, db)
+    if not v:
+        return ""
+    zeilen = []
+    ohne = [z.kategorie for z in v.zeilen if not z.eigen and (z.typ or z.klasse)]
+    for z in v.zeilen:
+        if not z.eigen:
+            continue
+        abw = ""
+        if z.abweichung is not None:
+            stufe = am.ROT if z.abweichung >= 50 else am.GELB if z.abweichung >= 25 else None
+            abw = (licht(stufe) if stufe else "") + f"{z.abweichung:+d} %"
+        zeilen.append([escape(z.kategorie) + ("*" if z.unsicher else ""), chf(z.eigen), chf(z.typ), chf(z.klasse), abw])
+    if v.sparquote is not None:
+        zeilen.append(["Sparquote", f"{v.sparquote:.0f} %", f"{v.sparquote_typ:.0f} %", f"{v.sparquote_klasse:.0f} %", ""])
+    tab = tabelle(["pro Monat", "Du", "Typ", "Einkommen", "±"], zeilen, zahlen_ab=1, responsiv=False)
+    if ohne:
+        tab += f'<p class="leise">Ohne eigene Buchungen (nicht verglichen): {escape(", ".join(ohne))}.</p>'
+    return karte("Vergleich mit Schweizer Haushalten", (
+        (hinweisliste(v.hinweise) if v.hinweise else "") + tab
+        + f'<p class="leise">«Typ» = {escape(v.typ)}, «Einkommen» = Haushalte mit einem Bruttoeinkommen von '
+          f'{escape(v.klasse)} pro Monat (deines: rund {chf(v.brutto_monat)}); ± gegenüber dem Mittel beider Gruppen; '
+          '* = Schätzung des BFS unsicher. Quelle: <a href="' + habe.LINK + '" target="_blank" rel="noopener">' + habe.QUELLE + '</a> – Mittelwerte, '
+          'in den Covid-Jahren 2020/21 waren Gastronomie, Ferien und Verkehr tiefer als üblich. Kinder und Betreuung, '
+          'Bargeld, Kreditkarte und Buchungen ohne Kategorie fehlen im Vergleich. Sparquote = Überschuss inkl. Sparen in '
+          '% der Einnahmen (beim BFS: Sparbetrag in % des Einkommens nach Sozialabzügen).</p>'))
 
 
 def abos_karte(k: dict, db) -> str:

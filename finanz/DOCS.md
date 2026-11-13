@@ -84,7 +84,7 @@ personen:
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Kinder erfassen, Zeitachse mit Zulagen, Betreuung und Steuerwirkung, Hinweise |
 | Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
-| Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, eigene Regeln |
+| Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
 | Finanzplan | Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
 | Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
@@ -252,6 +252,24 @@ Einnahmen und Ausgaben laufen.
   Zahlungen). Liste mit Rhythmus, letztem Betrag, Betrag pro Jahr und nächster Belastung; Preisänderungen seit der
   letzten Zahlung sind markiert, passende Versicherungsverträge verknüpft. Einkäufe mit schwankenden Beträgen und
   Umbuchungen zählen nicht; Zahlungen, die seit mehr als zwei Perioden fehlen, gelten als beendet.
+- **Vergleich mit Schweizer Haushalten:** Ausgaben pro Kategorie (Mittel pro Monat der importierten Monate) neben dem
+  Mittel von zwei Vergleichsgruppen aus der Haushaltsbudgeterhebung des BFS (2020–2021): gleicher Haushaltstyp
+  (allein bzw. Paar unter oder ab 65, Paar mit Kindern, Einelternhaushalt – aus Personen, Alter und Kindern) und gleiche
+  Einkommensklasse (Fünftel des Bruttoeinkommens, aus `lohn_brutto`). Gelb ab 25 %, rot ab 50 % über dem Mittel beider
+  Gruppen; Hinweise, wenn eine Kategorie über 30 % und mindestens CHF 100 über beiden Gruppen liegt (oder deutlich
+  darunter – dann fehlen oft Buchungen). Dazu die Sparquote. Nicht verglichen: Kinder und Betreuung, Bargeld,
+  Kreditkarte und Buchungen ohne Kategorie. Die BFS-Werte sind in der App eingebaut, es geht nichts ins Internet.
+
+  | App-Kategorie | BFS-Positionen |
+  |---|---|
+  | Wohnen | Wohnen und Energie |
+  | Lebensmittel | Nahrungsmittel und alkoholfreie Getränke, alkoholische Getränke und Tabak |
+  | Mobilität | Verkehr |
+  | Freizeit und Ferien | Unterhaltung, Erholung und Kultur; Gast- und Beherbergungsstätten |
+  | Einkäufe | Bekleidung und Schuhe; Wohnungseinrichtung und Haushaltsführung; andere Waren und Dienstleistungen |
+  | Telekom und Abos | Nachrichtenübermittlung |
+  | Krankenkasse | Prämien Grund- und Zusatzversicherung |
+  | Steuern, Gesundheit, Versicherungen, Spenden, Gebühren | gleichnamige Positionen |
 
 ## Versicherungen
 

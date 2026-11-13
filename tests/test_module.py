@@ -1811,3 +1811,28 @@ def test_zwischenspeicher(tmp_path):
     mem.execute("CREATE TABLE t (x INTEGER)")
     summe({"a": 1}, mem), summe({"a": 1}, mem)
     assert len(aufrufe) == n + 3                                    # im Arbeitsspeicher nie zwischengespeichert
+
+
+def test_vergleich_mit_schweizer_haushalten(k, db):
+    import budget as bu
+    import habe
+    assert habe.einkommensklasse(5000)[0] == "4669_7004" and habe.einkommensklasse(20000)[0] == "ab_13717"
+    k["personen"][0]["lohn_brutto"] = 90000
+    k["personen"][1]["lohn_brutto"] = 30000
+    k["haushalt"]["kinder"] = []
+    assert habe.haushaltstyp(k, 2026) == "paar_u65"
+    k["haushalt"]["kinder"] = [{"name": "Lia", "geburtsdatum": "2018-01-01", "eltern": "gemeinsam"}]
+    assert habe.haushaltstyp(k, 2026) == "paar_kinder"
+    b = []
+    for m in range(1, 13):
+        b += [(f"2025-{m:02d}-25", 8000.0, "Lohn"), (f"2025-{m:02d}-01", -3200.0, "Miete Verwaltung"),
+              (f"2025-{m:02d}-10", -900.0, "Migros"), (f"2025-{m:02d}-28", -31.0, "Monatsende")]
+    bu.speichern(db, "Bank", b, k)
+    db.execute("UPDATE buchungen SET kategorie = 'Wohnen' WHERE text LIKE 'Miete%'")
+    db.execute("UPDATE buchungen SET kategorie = 'Lebensmittel' WHERE text = 'Migros'")
+    db.commit()
+    v = habe.vergleichen(k, db, 2026)
+    wohnen = next(z for z in v.zeilen if z.kategorie == "Wohnen")
+    assert v.typ == "Paare mit Kindern" and v.klasse == "CHF 9'734–13'716"
+    assert wohnen.eigen == 3200 and wohnen.typ == 1626 and wohnen.abweichung > 50
+    assert any(h.startswith("Wohnen:") for h in v.hinweise) and v.sparquote is not None

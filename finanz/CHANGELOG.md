@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.38.0 – 2026-11-13
+
+- **Vergleich mit Schweizer Haushalten** im Budget: Ausgaben pro Kategorie und Sparquote neben dem Mittel von
+  Haushalten gleichen Typs (z. B. Paare mit Kindern) und gleicher Einkommensklasse – aus der Haushaltsbudgeterhebung
+  2020–2021 des Bundesamts für Statistik, fest in der App. Ampel und Hinweise, wo die eigenen Ausgaben deutlich
+  darüber liegen
+
 ## 0.37.0 – 2026-11-13
 
 Schneller, nach den ersten Messwerten aus Home Assistant (Übersicht bisher bis 23 s):
