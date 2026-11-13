@@ -32,7 +32,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Sensoren | Kennzahlen, Ampel, Erinnerungen und Fristen als `sensor.finanz_*` für Dashboards und Automationen |
 | Einstellungen | Formular mit Plausibilitäts-Ampel, YAML-Editor, Import-Ordner, Export, Dokumente neu sichten; Protokoll und Änderungen in der App |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: öffnen, Text-Ampel, Duplikate, löschen |
-| Vorschläge | Anonymisierte Verbesserungsvorschläge aus den eigenen Daten (wahlweise mit Textauszügen), erledigte werden nach Updates selbst abgehakt |
+| Vorschläge | Anonymisierte Verbesserungsvorschläge aus den eigenen Daten (wahlweise mit Textauszügen), erledigte werden nach Updates selbst abgehakt; Leistungsmessung (Ladezeiten, Rechenzeiten, System) pro Version |
 
 ## Installation
 
@@ -73,9 +73,9 @@ flowchart TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
         K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
-        Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, wertschriften,<br/>krankenkasse, kkpraemien, berater"]
+        Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
-        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
+        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
@@ -299,9 +299,11 @@ flowchart LR
     EI -- neu oder fällig --> N["Benachrichtigung<br/>Notify-Dienst oder Meldung"]
     Q["alle 15 Minuten<br/>und nach Änderungen"] --> SE["Sensoren schreiben<br/>sensor.finanz_*"]
     Q --> MS["erster Lauf im Monat<br/>Stand für den Jahresbericht"]
-    UP["Start nach einem App-Update"] --> NS["Dokumente neu sichten<br/>Policen, Vorsorge, Steuern, Buchungen"]
+    UP["Start nach einem App-Update"] --> NS["Dokumente neu sichten<br/>Erkennung mit gespeichertem Text"]
     Q --> KU["einmal pro Tag (optional)<br/>Wechselkurse der EZB"]
-    SEITE["jeder Seitenaufruf"] --> AMP["Ampeln neu bewerten<br/>Navigation, Übersicht"]
+    Q --> MZ["einmal pro Tag (bei Wohneigentum)<br/>SARON und Hypothekarzinsen der SNB"]
+    Q --> LE["Leistungsmessungen sichern<br/>pro Version"]
+    SEITE["jeder Seitenaufruf"] --> AMP["Ampeln, Erinnerungen, Finanzplan<br/>aus dem Zwischenspeicher, neu nur nach Änderungen"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]
 ```
 

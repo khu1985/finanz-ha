@@ -11,6 +11,8 @@ Schneller, nach den ersten Messwerten aus Home Assistant (Übersicht bisher bis 
 - **Neu sichten nach Updates** liest PDFs nicht mehr erneut aus, wenn ihr Text schon gespeichert ist – nur die
   Erkennung läuft neu
 - **Vorschläge «Leistung»:** Messwerte im Text nicht mehr als «‹Zahl›» unkenntlich (es sind nur Zeiten)
+- **Dokumentation:** Diagramme Architektur und laufende Abläufe (Marktzinsen, Zwischenspeicher, Leistung), Übersichten
+  zu Vorschlägen und Leistung
 
 ## 0.36.0 – 2026-11-13
 
