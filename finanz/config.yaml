@@ -1,7 +1,7 @@
 name: Finanzplanung
 version: "0.33.0"
 slug: finanz
-description: Finanzplanung für Schweizer Haushalte – Vorsorge, Steuern, Wohneigentum, Vermögen, Versicherungen und Anlageberater
+description: Finanzplanung für Schweizer Haushalte – Vorsorge, Steuern, Wohnen, Vermögen, Budget, Versicherungen, Finanzplan, Nachlass und Anlageberater
 url: https://github.com/khu1985/finanz-ha
 arch:
   - aarch64

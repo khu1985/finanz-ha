@@ -15,6 +15,7 @@ Was spezialisierte Anbieter (VZ, Kubera, Copilot, Comparis) können und bisher f
   die günstigste Variante bei der eigenen Kasse. Neue Einstellung «Prämienregion»
 - **Wiederkehrende Zahlungen und Abos** im Budget: Rhythmus, Betrag pro Jahr, nächste Belastung, Preisänderungen,
   verknüpfte Verträge
+- **Dokumentation:** README-Einleitung und App-Beschreibung im App-Store mit den neuen Bereichen
 
 ## 0.32.1 – 2026-11-13
 

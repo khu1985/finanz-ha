@@ -1,8 +1,9 @@
 # Finanzplanung – Home-Assistant-App
 
 Finanzplanung für einen Schweizer Haushalt (Ehepaar, Konkubinat oder Einzelperson) als App im Home Assistant:
-Vorsorge, Steuern, Wohneigentum, Vermögen, Versicherungen und Anlageberater – mit Ampeln, die zeigen, wo etwas
-ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in Home Assistant unter «Dokumentation»),
+Vorsorge, Steuern, Wohneigentum, Vermögen und Wertschriften, Budget, Versicherungen, Finanzplan bis ins hohe Alter,
+Nachlass und Verfügungen sowie Anlageberater – mit Ampeln, die zeigen, wo etwas ansteht. Alle Daten bleiben im Home
+Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-Steuerauszüge liest die App selbst. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in Home Assistant unter «Dokumentation»),
 Änderungen siehe [finanz/CHANGELOG.md](finanz/CHANGELOG.md).
 
 > Keine Anlage-, Steuer- oder Rechtsberatung. Schätzungen mit vereinfachten Modellen.
