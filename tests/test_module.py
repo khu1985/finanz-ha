@@ -1847,3 +1847,58 @@ def test_vergleich_ohne_buchungen(k, db):
     assert next(z for z in v.zeilen if z.kategorie == "Steuern").eigen > 0
     html = seiten.budget(k, db)
     assert "Vergleich mit Schweizer Haushalten" in html and "Noch keine Buchungen" in html
+
+
+def test_stellenverlust_alv(k, db):
+    from datetime import date
+    import lebensereignisse as le
+    k["haushalt"]["kinder"] = []
+    p = k["personen"][0]
+    p.update(geburtsdatum="1985-01-01", lohn_brutto=180000, sparen_monat=0)
+    s = le.stellenverlust(k, db, p["name"], date(2026, 6, 1))
+    assert s.versichert_monat == 12350 and s.satz == 70 and s.taggelder == 400 and s.wartetage == 20
+    assert abs(s.taggeld - 12350 * 0.7 / 21.7) < 0.01
+    assert any("höchstens CHF 148'200" in h for h in s.hinweise)
+    p["geburtsdatum"] = "1965-01-01"
+    assert le.stellenverlust(k, db, p["name"], date(2026, 6, 1)).taggelder == 640      # ab 55 und 4 Jahre vor AHV-Alter
+    k["haushalt"]["kinder"] = [{"name": "Lia", "geburtsdatum": "2015-01-01", "eltern": "gemeinsam"}]
+    assert le.stellenverlust(k, db, p["name"], date(2026, 6, 1)).satz == 80
+
+
+def test_trennung_und_aufteilung(k, db):
+    import lebensereignisse as le
+    a, b = k["personen"][0], k["personen"][1]
+    k["haushalt"]["zivilstand"] = "verheiratet"
+    a.update(eigengut=20000, lohn_brutto=120000)
+    b.update(eigengut=0, lohn_brutto=60000)
+    a["saeule3a"]["guthaben"], b["saeule3a"]["guthaben"] = 0, 0
+    a["pk"].update(altersguthaben=200000, guthaben_heirat=50000)
+    b["pk"].update(altersguthaben=60000, guthaben_heirat=10000)
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Konto A", "bank", a["name"]), "2026-01-31", 100000)
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Konto B", "bank", b["name"]), "2026-01-31", 20000)
+    t = le.trennung(k, db)
+    x, y = t.anteile
+    # Errungenschaft: A 100'000 − 20'000 = 80'000, B 20'000 → je 50'000; A behält Eigengut 20'000
+    assert (x.anspruch, y.anspruch) == (70000, 50000) and (x.ausgleich, y.ausgleich) == (-30000, 30000)
+    assert (x.pk_ausgleich, y.pk_ausgleich) == (-50000, 50000)                         # (150'000 − 50'000) / 2
+    k["haushalt"]["zivilstand"] = "ledig"
+    t = le.trennung(k, db)
+    assert t.anteile[0].ausgleich == 0 and t.anteile[0].pk_ausgleich == 0
+    auf = le.aufteilung(k, db, 3000)
+    gleich = next(v for v in auf.varianten if v.name.startswith("Gleich"))
+    assert abs(gleich.frei[a["name"]] - gleich.frei[b["name"]]) <= 1
+    prop = next(v for v in auf.varianten if v.name.startswith("Im Verhältnis"))
+    assert prop.beitraege[a["name"]] == 2000 and prop.beitraege[b["name"]] == 1000
+
+
+def test_lebensziele_im_finanzplan(k):
+    import finanzplan as fp
+    k["haushalt"]["bedarf_ruhestand"] = 70000
+    k["ziele"] = [{"name": "Weltreise", "betrag": 60000, "jahr": 2029, "art": "wunsch"},
+                  {"name": "alt", "betrag": 1000, "jahr": 2001}]
+    p = fp.rechnen(k, 20000, 2026, pfade=200)
+    assert [z["name"] for z in p.ziele] == ["Weltreise"] and p.ziele[0]["sparrate"] == 1667
+    assert p.erfolg_ohne_ziele is not None and p.erfolg <= p.erfolg_ohne_ziele
+    ohne = fp.rechnen({**k, "ziele": []}, 20000, 2026, simulation=False)
+    jahr_2030 = lambda plan: next(z.vermoegen for z in plan.jahre if z.jahr == 2030)  # noqa: E731
+    assert jahr_2030(ohne) - jahr_2030(fp.rechnen(k, 20000, 2026, simulation=False)) > 60000

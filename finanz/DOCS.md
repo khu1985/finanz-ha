@@ -14,7 +14,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 2. [Bedienung](#bedienung)
 3. [Seiten](#seiten)
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
-   [Versicherungen](#versicherungen) · [Finanzplan](#finanzplan) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
+   [Versicherungen](#versicherungen) · [Finanzplan](#finanzplan) · [Lebensereignisse](#lebensereignisse) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [E-Steuerauszug](#e-steuerauszug-der-bank) · [Steuererklärung](#steuererklärung-vorbereiten) · [Verfügungen](#verfügungen) · [Fragebögen](#fragebögen-zum-nachlass) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln) · [Plausibilität](#plausibilität-der-einstellungen) · [Vorschläge](#vorschläge-für-die-weiterentwicklung) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen) · [Dokumente neu sichten](#dokumente-neu-sichten) · [Uploads und Texterkennung](#uploads-und-dateigrösse)
@@ -58,7 +58,7 @@ personen:
 ## Bedienung
 
 - **Menü** in Gruppen – Überblick (Übersicht, Jahresbericht, Berater), Planung (Vorsorge, Steuern, Steuererklärung,
-  Wohnen, Kinder, Finanzplan, Szenarien, Nachlass, Verfügungen, Notfallordner), Bestand (Vermögen, Budget, Versicherungen), App
+  Wohnen, Kinder, Finanzplan, Lebensereignisse, Szenarien, Nachlass, Verfügungen, Notfallordner), Bestand (Vermögen, Budget, Versicherungen), App
   (Einstellungen, Dokumente, Vorschläge, Protokoll, Änderungen). Auf grossen Bildschirmen als Seitenleiste,
   auf Tablets als wischbare Leiste, auf dem Handy hinter dem Knopf «Menü». Ein farbiger Punkt markiert Seiten mit
   gelber oder roter Ampel; beim Protokoll steht die Zahl der Warnungen von heute.
@@ -86,7 +86,8 @@ personen:
 | Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
-| Finanzplan | Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
+| Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
+| Finanzplan | Lebensziele, Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
 | Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
@@ -334,6 +335,41 @@ sicheren Teil). Ergebnis: Anteil der Verläufe, in denen das Geld bis zum Endalt
 ab 70 %), Bandbreite des Vermögens (10 %, Median, 90 %), in welchem Jahr das Geld in den schlechtesten 10 % ausgeht,
 und der höchste Bedarf pro Jahr, der in 90 % der Verläufe reicht. Die Simulation ist reproduzierbar (fester
 Zufallsstartwert) – Änderungen am Plan zeigen so ihre echte Wirkung.
+
+**Lebensziele.** Unter «Lebensziele» Ziele mit Betrag (heutige Franken), Jahr und Wichtigkeit erfassen – z. B.
+Weltreise, Auto, Ausbildung der Kinder (Konfiguration `ziele`). Der Finanzplan zieht sie im Zieljahr vom Vermögen ab;
+die Karte zeigt die Sparrate pro Monat (Betrag ÷ Monate bis zum Ziel, ohne Zins), ob das freie Vermögen im mittleren
+Verlauf reicht, und wie stark die Ziele die Chance senken, dass das Geld bis ins Alter reicht.
+
+## Lebensereignisse
+
+Was passiert, wenn …? Näherungen für die Planung mit den eigenen Daten – keine Rechts- oder
+Sozialversicherungsauskunft.
+
+**Stellenverlust** (pro Person mit Lohn), nach dem Arbeitslosenversicherungsgesetz:
+
+| Grösse | Regel in der App |
+|---|---|
+| versicherter Verdienst | Bruttolohn, höchstens CHF 148'200 pro Jahr |
+| Taggeld | 80 % mit Unterhaltspflicht für Kinder unter 25 oder bei einem Taggeld bis CHF 140, sonst 70 %; 21,7 Taggelder pro Monat; netto rund 6,4 % weniger (AHV/IV/EO, Unfall, BVG-Risiko) |
+| Anzahl Taggelder | 200 bis 25 ohne Kinder, sonst 400 (18 Beitragsmonate), ab 55 Jahren 520; +120, wenn die Arbeitslosigkeit in den letzten 4 Jahren vor dem AHV-Alter beginnt |
+| Wartetage | mit Kindern 0 bzw. 5 (über CHF 5'000), sonst 5 bis 20 je nach Verdienst |
+| Lücke | Ausgaben des Haushalts (Budget, sonst Nettolöhne minus Sparpotenzial) − Lohn der anderen Person − Taggeld |
+| Reserve | Saldo der Bankkonten; wie viele Monate sie die Lücke deckt (Ampel rot unter 6, gelb unter 12) |
+
+Dazu: fehlende PK-Altersgutschriften bei voller Bezugsdauer, Hinweise zu RAV, Freizügigkeit und Krankentaggeld.
+
+**Trennung bzw. Scheidung** (zwei Personen): Vermögen heute je Person (eigene Konten und 3a, gemeinsame Konten
+hälftig, Liegenschaft nach `eigentum_anteil`). Verheiratet: Errungenschaftsbeteiligung – Eigengut bleibt
+(`personen[].eigengut`), die Errungenschaft beider wird hälftig geteilt; PK: Hälfte der Differenz der während der Ehe
+angesparten Guthaben (`pk.guthaben_heirat`). Konkubinat: jede Person behält ihr Vermögen, keine PK-Teilung. Dazu zwei
+Haushalte: Nettolohn neben den typischen Kosten eines Einpersonenhaushalts (BFS) und ob jemand das Haus allein tragen
+könnte. Unterhalt sowie Gerichts- und Anwaltskosten sind nicht gerechnet.
+
+**Geld im Paar:** gemeinsame Kosten (Wohnen, Lebensmittel, Kinder, Versicherungen, Telekom aus dem Budget, sonst
+das BFS-Mittel; fest unter `haushalt.gemeinsame_ausgaben_monat` oder auf der Seite eingeben) in drei Varianten: je die
+Hälfte, im Verhältnis zum Einkommen, gleich viel frei für beide. Dazu die voraussichtliche Rente beider (AHV + PK) und
+ein Hinweis, wenn die Person mit weniger Einkommen im Alter deutlich weniger hat – besonders im Konkubinat.
 
 ## Szenarien
 
@@ -959,6 +995,7 @@ oder **Einstellungen → Experte**.
 | `annahmen` | Lohnentwicklung (real), `teuerung`, Rendite |
 | `budget` | `regeln` (Stichwort → Kategorie) |
 | `wertschriften` | `ter` (laufende Fondskosten in % pro ISIN) |
+| `ziele` | Lebensziele: `name`, `betrag`, `jahr`, `art` (muss/wunsch) |
 | `finanzplan` | `bis_alter` (Standard 95) |
 | `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |

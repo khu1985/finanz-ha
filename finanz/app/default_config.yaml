@@ -16,6 +16,7 @@ haushalt:
       betreuung_bis: 12
       zulage_monat: 0              # Kinder-/Ausbildungszulage pro Monat (0 = Mindestansatz)
   bedarf_ruhestand: 96000        # gewünschtes Netto-Ausgabenbudget im Ruhestand (heutige Franken)
+  gemeinsame_ausgaben_monat: 0    # für die Kostenaufteilung im Paar; 0 = aus Budget bzw. BFS-Mittel
   entnahme_jahre: 25             # über wie viele Jahre Kapital (3a, PK-Kapital, Vermögen) verzehrt wird
   entnahme_rendite: 2.0          # Rendite auf dem Kapital während der Entnahme
 
@@ -29,6 +30,7 @@ personen:
     lohn_brutto: 110000
     pensum: 100                  # Arbeitspensum in % zum Bruttolohn
     eigentum_anteil: 0           # % Anteil an der Liegenschaft (0 = Rest zu gleichen Teilen)
+    eigengut: 0                  # Vermögen vor der Ehe, Erbschaften, Schenkungen (für das Güterrecht)
     sparen_monat: 0
     ahv:
       beitragsjahre_bisher: 18   # laut individuellem Konto (IK-Auszug)
@@ -37,6 +39,7 @@ personen:
     pk:
       altersguthaben: 180000
       stand: "2026-01-01"
+      guthaben_heirat: 0         # PK-Guthaben bei der Heirat (für die PK-Teilung bei Scheidung)
       sparbeitrag_jahr: 0        # AN + AG laut Vorsorgeausweis; 0 = BVG-Minimum
       zins: 1.25
       umwandlungssatz: 6.8
@@ -209,6 +212,8 @@ erinnerungen:
 sensoren:
   aktiv: true                      # Kennzahlen als sensor.finanz_* an Home Assistant liefern
   praefix: finanz
+
+ziele: []                          # Lebensziele: - {name: Weltreise, betrag: 30000, jahr: 2029, art: wunsch}
 
 wertschriften:
   ter: {}                          # laufende Fondskosten in % pro ISIN, z. B. {IE00B3RBWM25: 0.22}

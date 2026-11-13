@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.39.0 – 2026-11-13
+
+Aus Sicht einer Lebensberatung: Lebensereignisse und Ziele.
+
+- **Lebensereignisse** (neue Seite unter Planung):
+  - **Stellenverlust** pro Person: Taggeld nach Arbeitslosenversicherung (70/80 %, höchstens CHF 148'200 versichert,
+    Anzahl Taggelder nach Alter, Wartetage), Lücke zum Budget, wie lange die Reserve reicht, fehlende PK-Gutschriften
+  - **Trennung bzw. Scheidung:** Güterrecht (Eigengut, hälftige Errungenschaft), PK-Teilung, zwei Haushalte mit den
+    typischen Kosten allein, wer das Haus tragen könnte; im Konkubinat ohne Güterrecht und PK-Teilung
+  - **Geld im Paar:** gemeinsame Kosten je hälftig, im Verhältnis zum Einkommen oder so, dass beiden gleich viel
+    bleibt – mit der Vorsorgelücke der Person mit weniger Einkommen
+- **Lebensziele** im Finanzplan: Ziele mit Betrag, Jahr und Wichtigkeit; Sparrate, Deckung aus dem Vermögen und
+  Wirkung auf die Wahrscheinlichkeit, dass das Geld reicht
+- **Neue Einstellungen:** Eigengut und PK-Guthaben bei Heirat pro Person, gemeinsame Ausgaben pro Monat
+
 ## 0.38.1 – 2026-11-13
 
 - **Vergleich mit Schweizer Haushalten auch ohne Buchungen:** Die Vergleichswerte erscheinen sofort; eigene Werte

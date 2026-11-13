@@ -26,7 +26,7 @@ import wohnen as wo
 NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")]),
     ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
-                 ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("finanzplan", "Finanzplan"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
+                 ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("finanzplan", "Finanzplan"), ("lebensereignisse", "Lebensereignisse"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
                  ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("vorschlaege", "Vorschläge"),
@@ -969,10 +969,11 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "name", "Vorname (Anzeige in der App)"), (p + "nachname", "Nachname (für Verfügungen und Schreiben)"),
         (p + "geburtsdatum", "Geburtsdatum (JJJJ-MM-TT)"),
         (p + "pensionierung_alter", "Pensionierungsalter"), (p + "lohn_brutto", "Bruttolohn/Jahr"),
-        (p + "sparen_monat", "Sparpotenzial/Monat"),
+        (p + "sparen_monat", "Sparpotenzial/Monat"), (p + "eigengut", "Eigengut (vor der Ehe, Erbschaften)"),
         (p + "ahv.beitragsjahre_bisher", "AHV-Beitragsjahre bisher"), (p + "ahv.fehlende_jahre", "AHV fehlende Jahre"),
         (p + "ahv.einkommen_durchschnitt", "Ø AHV-Einkommen (0 = Lohn)"),
         (p + "pk.altersguthaben", "PK-Altersguthaben"), (p + "pk.stand", "Stand Ausweis (JJJJ-MM-TT)"),
+        (p + "pk.guthaben_heirat", "PK-Guthaben bei Heirat"),
         (p + "pk.sparbeitrag_jahr", "PK-Sparbeitrag/Jahr (0 = BVG-Minimum)"), (p + "pk.zins", "PK-Zins %"),
         (p + "pk.umwandlungssatz", "Umwandlungssatz %"), (p + "pk.einkauf_potenzial", "Einkaufspotenzial"),
         (p + "pk.kapitalbezug_anteil", "Kapitalbezug %"),
@@ -2344,7 +2345,110 @@ def finanzplan(k: dict, db) -> str:
                 'sich inkl. Steuern. Endalter unter <code>finanzplan.bis_alter</code> (Standard 95). Keine Prognose – '
                 'eine Bandbreite, wie sich Entscheide auswirken.</p>')
     return (kpis + karte("Vermögen über die Jahre", dg.linie(serien) + hinweisliste(p.hinweise))
-            + karte("Plan", tab + annahmen))
+            + ziele_karte(k, p) + karte("Plan", tab + annahmen))
+
+
+def ziele_karte(k: dict, p) -> str:
+    """Lebensziele mit Preis und Termin – im Finanzplan als Ausgabe im jeweiligen Jahr."""
+    zeilen = []
+    roh = list(k.get("ziele") or [])
+    for z in p.ziele:
+        i = next((n for n, r in enumerate(roh) if str(r.get("name")) == z["name"] and int(r.get("jahr") or 0) == z["jahr"]), -1)
+        zeilen.append([escape(z["name"]) + (' <small class="leise">(muss)</small>' if z["art"] == "muss" else ""),
+                       str(z["jahr"]), chf(z["betrag"]), chf(z["sparrate"]),
+                       licht(am.GRUEN) + " aus dem Vermögen gedeckt" if z["gedeckt"] else licht(am.GELB) + " dafür sparen",
+                       f'<form method="post" action="finanzplan/ziel_loeschen"><input type="hidden" name="i" value="{i}">'
+                       '<button class="zweit klein loeschen">Entfernen</button></form>'])
+    tab = (tabelle(["Ziel", "Jahr", "Betrag", "Sparrate/Monat", "Deckung", ""], zeilen, zahlen_ab=1, responsiv=True) if zeilen
+           else '<p class="leise">Noch keine Ziele. Was ist dir wichtig – eine grosse Reise, die Ausbildung der Kinder, '
+                'ein Auto, früher aufhören? Mit Preis und Jahr rechnet der Finanzplan sie mit ein.</p>')
+    vergleich = ""
+    if p.erfolg_ohne_ziele is not None:
+        vergleich = (f'<p>Mit den Zielen reicht das Geld in {p.erfolg:.0f} % der Verläufe, ohne sie in '
+                     f'{p.erfolg_ohne_ziele:.0f} %.</p>')
+    form = ('<details class="nicht-drucken"' + ("" if zeilen else " open") + '><summary>Ziel erfassen</summary>'
+            '<form method="post" action="finanzplan/ziel"><div class="felder">'
+            '<label>Was<input name="name" required placeholder="z. B. Weltreise"></label>'
+            '<label>Betrag (heutige Franken)<input name="betrag" inputmode="decimal" required></label>'
+            f'<label>Jahr<input name="jahr" inputmode="numeric" required value="{date.today().year + 3}"></label>'
+            '<label>Wichtigkeit<select name="art"><option value="wunsch">Wunsch</option>'
+            '<option value="muss">Muss</option></select></label></div>'
+            '<div class="zeile"><button>Ziel speichern</button></div></form></details>')
+    return karte("Lebensziele", vergleich + tab + form + '<p class="leise">Sparrate = Betrag geteilt durch die Monate bis '
+                 'zum Ziel, ohne Zins. «Aus dem Vermögen gedeckt» heisst: Das freie Vermögen im mittleren Verlauf ist im '
+                 'Zieljahr grösser als der Betrag.</p>')
+
+
+def lebensereignisse(k: dict, db, q: dict | None = None) -> str:
+    import lebensereignisse as le
+    teile = ['<p class="leise">Was passiert, wenn …? Näherungen für die Planung mit deinen Daten – keine Rechts- oder '
+             'Sozialversicherungsauskunft. Bei einem echten Fall RAV, Arbeitslosenkasse bzw. Fachstelle beiziehen.</p>']
+    # Stellenverlust
+    for p in k["personen"]:
+        if not float(p.get("lohn_brutto") or 0):
+            continue
+        s = le.stellenverlust(k, db, p["name"])
+        ampel = am.GRUEN if s.reicht_monate is None or s.reicht_monate >= 12 else am.GELB if s.reicht_monate >= 6 else am.ROT
+        kpis = ('<div class="kpis">'
+                + kpi(f"{s.satz} %", f"Taggeld CHF {s.taggeld:,.0f} brutto".replace(",", "'"))
+                + kpi(chf(s.alv_monat), "Arbeitslosenentschädigung netto/Monat")
+                + kpi(f"{s.taggelder}", f"Taggelder ≈ {s.bezug_monate:g} Monate")
+                + kpi(chf(s.luecke_alv, True) if s.luecke_alv > 0 else "keine", "Lücke pro Monat während des Bezugs")
+                + kpi("reicht" if s.reicht_monate is None else f"{s.reicht_monate:g} Mt.", "so lange deckt die Reserve",
+                      "", ampel)
+                + "</div>")
+        detail = tabelle(["", "pro Monat"], [
+            ["Ausgaben des Haushalts (" + escape(s.ausgaben_quelle) + ")", chf(s.ausgaben)],
+            ["Lohn der anderen Person(en), netto", chf(s.andere_einkommen)],
+            ["Arbeitslosenentschädigung, netto", chf(s.alv_monat)],
+            ["Saldo während des Bezugs", chf(-s.luecke_alv, True)],
+            ["Saldo danach (ohne neue Stelle)", chf(-s.luecke_danach, True)],
+            ["Reserve auf Bankkonten (gesamt)", chf(s.reserve)]], zahlen_ab=1)
+        teile.append(karte(f"Stellenverlust: {escape(p['name'])}", kpis + hinweisliste(s.hinweise) + detail))
+    # Trennung
+    t = le.trennung(k, db)
+    if t:
+        zeilen = [[escape(a.person), chf(a.vermoegen), chf(a.eigengut), chf(a.anspruch), chf(a.ausgleich, True),
+                   chf(a.pk_heute), chf(a.pk_ausgleich, True)] for a in t.anteile]
+        budget = [[escape(a.person), chf(a.netto_monat), chf(a.kosten_allein), chf(a.netto_monat - a.kosten_allein, True)]
+                  for a in t.anteile]
+        teile.append(karte("Trennung" + (" bzw. Scheidung" if t.verheiratet else " (Konkubinat)"), (
+            hinweisliste(t.hinweise)
+            + tabelle(["Person", "Vermögen heute", "Eigengut", "Anspruch", "Ausgleich", "PK heute", "PK-Teilung"],
+                      zeilen, zahlen_ab=1, responsiv=True)
+            + "<h2>Zwei Haushalte</h2>"
+            + tabelle(["Person", "Nettolohn/Monat", "typische Kosten allein (BFS)", "frei"], budget, zahlen_ab=1,
+                      responsiv=True)
+            + '<p class="leise">Vermögen heute: eigene Konten und 3a, gemeinsame Konten und Liegenschaft je nach Anteil. '
+              + ("Errungenschaftsbeteiligung: Eigengut bleibt, die Errungenschaft beider wird hälftig geteilt; PK: "
+                 "Hälfte der Differenz der während der Ehe angesparten Guthaben. " if t.verheiratet else "")
+              + 'Typische Kosten allein: Konsum, Versicherungen, Krankenkasse und Steuern eines Einpersonenhaushalts '
+                '(BFS 2020–2021). Unterhalt, Gerichts- und Anwaltskosten sind nicht gerechnet.</p>')))
+    # Geld im Paar
+    gem = None
+    try:
+        gem = float(((q or {}).get("gemeinsam") or [""])[0]) if (q or {}).get("gemeinsam") else None
+    except ValueError:
+        gem = None
+    a = le.aufteilung(k, db, gem)
+    if a:
+        namen = list(a.netto)
+        zeilen = [["Nettolohn (geschätzt)", *[chf(a.netto[n]) for n in namen], ""]]
+        for v in a.varianten:
+            zeilen.append([escape(v.name), *[(f"zahlt {chf(v.beitraege[n])}" if v.beitraege[n] >= 0 else
+                                              f"erhält {chf(-v.beitraege[n])}") + f" · frei {chf(v.frei[n])}"
+                                             for n in namen], ""])
+        zeilen.append(["Rente im Alter (AHV + PK, grob)", *[chf(a.renten[n]) + "/Jahr" for n in namen], ""])
+        form = (f'<form method="get" action="lebensereignisse" class="zeile nicht-drucken"><label>Gemeinsame Kosten pro Monat '
+                f'<input name="gemeinsam" inputmode="decimal" value="{a.gemeinsam}" style="width:7em"></label>'
+                '<button class="zweit">Neu rechnen</button></form>')
+        teile.append(karte("Geld im Paar: Kosten fair aufteilen", (
+            f'<p>Gemeinsame Kosten <b>{chf(a.gemeinsam)}</b> pro Monat ({escape(a.quelle)}).</p>'
+            + tabelle(["", *[escape(n) for n in namen], ""], zeilen, zahlen_ab=1, responsiv=True)
+            + hinweisliste(a.hinweise) + form
+            + '<p class="leise">Nettolohn ≈ 87 % des Bruttolohns. «Gleich viel frei»: Beide behalten nach den gemeinsamen '
+              'Kosten gleich viel für sich. Dauerhaft unter «gemeinsame_ausgaben_monat» in den Einstellungen.</p>')))
+    return "".join(teile)
 
 
 def wertschriften_karte(k: dict, db) -> str:

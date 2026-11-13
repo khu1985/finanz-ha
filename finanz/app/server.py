@@ -28,7 +28,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
+MIT_ABFRAGE = {"lebensereignisse", "nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -40,6 +40,7 @@ SEITEN = {
     "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
     "budget": ("Budget und Cashflow", seiten.budget),
     "finanzplan": ("Finanzplan", seiten.finanzplan),
+    "lebensereignisse": ("Lebensereignisse", seiten.lebensereignisse),
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
@@ -686,6 +687,27 @@ class Handler(BaseHTTPRequestHandler):
             return self._berater(pfad, form)
         if pfad.startswith("steuern"):
             return self._steuern(pfad, form)
+        if pfad == "finanzplan/ziel":
+            k = konfig.laden()
+            name = str(form.get("name") or "").strip()[:60]
+            betrag = vm.zahl(form.get("betrag") or "")
+            jahr = int(str(form.get("jahr") or "0").strip() or 0)
+            if not name or betrag <= 0 or not 2000 < jahr < 2150:
+                raise ValueError("Name, Betrag und Jahr angeben.")
+            k.setdefault("ziele", [])
+            k["ziele"] = list(k["ziele"] or []) + [{"name": name, "betrag": betrag, "jahr": jahr,
+                                                   "art": "muss" if form.get("art") == "muss" else "wunsch"}]
+            konfig.speichern(k)
+            return f"Ziel «{name}» gespeichert.", "finanzplan"
+        if pfad == "finanzplan/ziel_loeschen":
+            k = konfig.laden()
+            i = int(form.get("i") or -1)
+            liste = list(k.get("ziele") or [])
+            if 0 <= i < len(liste):
+                liste.pop(i)
+                k["ziele"] = liste
+                konfig.speichern(k)
+            return "Ziel entfernt.", "finanzplan"
         if pfad == "szenarien/marktzinsen":
             import marktzinsen as mz
             with db() as v:

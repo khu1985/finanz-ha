@@ -19,7 +19,8 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Kinder | Kinder erfassen (auch aus früheren Beziehungen), Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse und Erinnerungen |
 | Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Wertschriften pro Position (Anlageklasse, Region, Währung, Rendite, TER), Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial, wiederkehrende Zahlungen und Abos mit Preisänderungen, Vergleich mit Schweizer Haushalten gleichen Typs und Einkommens |
-| Finanzplan | Jahr für Jahr bis 95: Lohn bzw. Renten, Sparen und Entnahmen, Vermögen; 1000 simulierte Börsenverläufe, Wahrscheinlichkeit, dass das Geld reicht, mit 90 % Sicherheit tragbarer Bedarf |
+| Lebensereignisse | Stellenverlust mit Taggeld und Reserve, Trennung bzw. Scheidung (Güterrecht, PK-Teilung, zwei Haushalte), faire Kostenaufteilung im Paar mit Vorsorgelücke |
+| Finanzplan | Lebensziele mit Sparrate; Jahr für Jahr bis 95: Lohn bzw. Renten, Sparen und Entnahmen, Vermögen; 1000 simulierte Börsenverläufe, Wahrscheinlichkeit, dass das Geld reicht, mit 90 % Sicherheit tragbarer Bedarf |
 | Versicherungen | Policen als PDF (auch gescannt, mit Texterkennung) oder Liste, Erkennung inkl. Invaliditätsleistungen und kantonaler Gebäudeversicherungen, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell, alle Kassen mit den BAG-Prämien), Risiko Invalidität und Tod |
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien, aktuelle Marktzinsen der SNB und eigene Offerten); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
 | Jahresbericht | Monatliche Stände, Vergleich mit dem Vorjahr, Massnahmen, Drucken |
@@ -127,6 +128,7 @@ flowchart TB
 | `finanz/app/wertschriften.py` | Wertschriften pro Position: Anlageklasse, Region, Währung, Rendite, laufende Kosten |
 | `finanz/app/habe.py` | Vergleich mit Schweizer Haushalten (Haushaltsbudgeterhebung des BFS, Daten eingebaut) |
 | `finanz/app/abos.py` | Wiederkehrende Zahlungen und Abos aus den Buchungen erkennen |
+| `finanz/app/lebensereignisse.py` | Stellenverlust (Arbeitslosenversicherung), Trennung bzw. Scheidung, Kosten im Paar aufteilen |
 | `finanz/app/finanzplan.py` | Finanzplan Jahr für Jahr bis ins hohe Alter mit Monte-Carlo-Simulation |
 | `finanz/app/fruehpension.py` | Frühpensionierung 58–65 |
 | `finanz/app/anlage.py` | Anlage-Check |

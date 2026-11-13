@@ -45,6 +45,8 @@ class Plan:
     erfolg: float = 0.0        # % der Verläufe, in denen das Geld bis zum Endalter reicht
     perzentile: dict[int, list[tuple[int, float]]] = field(default_factory=dict)   # 10/50/90 → [(Jahr, Vermögen)]
     pleite_median: int | None = None   # in schlechten Verläufen (10 %): Jahr, in dem das Geld ausgeht
+    ziele: list[dict] = field(default_factory=list)    # Lebensziele mit Sparrate und Deckung
+    erfolg_ohne_ziele: float | None = None
     bedarf_sicher: float | None = None  # höchster Bedarf, der in 90 % der Verläufe reicht
     hinweise: list[str] = field(default_factory=list)
 
@@ -88,11 +90,13 @@ def _grundlagen(k: dict, vermoegen_frei: float, jetzt: int):
 
 
 def _verlauf(start: float, jahre: list[int], pension: int, kapital: float, sparen: float, renten: list[float],
-             bedarf: float, renditen: list[float]) -> list[float]:
-    """renten: Renten pro Jahr (gleiche Länge wie jahre, vorberechnet)."""
+             bedarf: float, renditen: list[float], ziele: dict[int, float] | None = None) -> list[float]:
+    """renten: Renten pro Jahr (gleiche Länge wie jahre, vorberechnet); ziele: Ausgaben für Lebensziele pro Jahr."""
     v = start
     erg = []
     for j, rente, r in zip(jahre, renten, renditen):
+        if ziele:
+            v -= ziele.get(j, 0.0)
         if j < pension:
             v = v * (1 + r) + sparen
         else:
@@ -119,7 +123,11 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
     jahre = list(range(jetzt, ende + 1))
     kapital = float(l0.kapital_netto)
     rl = [renten(j) if j >= pension else 0.0 for j in jahre]
-    det = _verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, [mu / 100] * len(jahre))
+    zl = ziele_liste(k, jetzt)
+    zj: dict[int, float] = {}
+    for z in zl:
+        zj[z["jahr"]] = zj.get(z["jahr"], 0.0) + z["betrag"]
+    det = _verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, [mu / 100] * len(jahre), zj)
     zeilen = []
     for j, v in zip(jahre, det):
         if j < pension:
@@ -132,9 +140,13 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
     plan = Plan(zeilen, pension, ende, end_alter, round(mu, 2), round(sigma, 1), bedarf, reicht_bis)
     if simulation and len(jahre) > 1:
         sims = _pfade(len(jahre), pfade, mu, sigma)
-        verlaeufe = [_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r) for r in sims]
-        ok = sum(1 for vl in verlaeufe if min(vl[jahre.index(pension):] if pension in jahre else vl) >= 0)
+        verlaeufe = [_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r, zj) for r in sims]
+        i0 = jahre.index(pension) if pension in jahre else 0
+        ok = sum(1 for vl in verlaeufe if min(vl[i0:]) >= 0)
         plan.erfolg = round(ok / len(verlaeufe) * 100, 1)
+        if zj:
+            ohne = sum(1 for r in sims if min(_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r)[i0:]) >= 0)
+            plan.erfolg_ohne_ziele = round(ohne / len(sims) * 100, 1)
         for p in (10, 50, 90):
             plan.perzentile[p] = []
         for i, j in enumerate(jahre):
@@ -145,17 +157,37 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
         jahre_pleite = sorted(next((j for j, v in zip(jahre, vl) if v < 0), ende + 1) for vl in schlecht)
         median = jahre_pleite[len(jahre_pleite) // 2]
         plan.pleite_median = median if median <= ende else None
-        plan.bedarf_sicher = _bedarf_sicher(start, jahre, pension, kapital, sparen, rl, sims[:200], bedarf)
+        plan.bedarf_sicher = _bedarf_sicher(start, jahre, pension, kapital, sparen, rl, sims[:200], bedarf, zj)
+    for z in zl:
+        i = jahre.index(z["jahr"]) if z["jahr"] in jahre else None
+        vorher = (det[i - 1] if i else start) if i is not None else None
+        monate = max(1, (z["jahr"] - jetzt) * 12)
+        plan.ziele.append({**z, "sparrate": round(z["betrag"] / monate), "monate": monate,
+                           "gedeckt": vorher is not None and vorher >= z["betrag"]})
     plan.hinweise = _hinweise(plan, k)
     return plan
 
 
-def _bedarf_sicher(start, jahre, pension, kapital, sparen, renten, sims, bedarf) -> float:
+def ziele_liste(k: dict, jetzt: int) -> list[dict]:
+    """Lebensziele aus der Konfiguration (`ziele`): Name, Betrag (heutige Franken), Jahr, muss/wunsch."""
+    erg = []
+    for z in k.get("ziele") or []:
+        try:
+            jahr, betrag = int(z.get("jahr")), float(z.get("betrag") or 0)
+        except (TypeError, ValueError):
+            continue
+        if betrag > 0 and jahr >= jetzt:
+            erg.append({"name": str(z.get("name") or "Ziel"), "betrag": betrag, "jahr": jahr,
+                        "art": "muss" if str(z.get("art")) == "muss" else "wunsch"})
+    return sorted(erg, key=lambda z: z["jahr"])
+
+
+def _bedarf_sicher(start, jahre, pension, kapital, sparen, renten, sims, bedarf, ziele=None) -> float:
     """Höchster Bedarf pro Jahr, der in 90 % der Verläufe bis zum Endalter reicht (Halbierungsverfahren)."""
     i0 = jahre.index(pension) if pension in jahre else 0
 
     def quote(b):
-        ok = sum(1 for r in sims if min(_verlauf(start, jahre, pension, kapital, sparen, renten, b, r)[i0:]) >= 0)
+        ok = sum(1 for r in sims if min(_verlauf(start, jahre, pension, kapital, sparen, renten, b, r, ziele)[i0:]) >= 0)
         return ok / len(sims)
     tief, hoch = 0.0, max(bedarf * 2, 50_000)
     for _ in range(11):
@@ -187,6 +219,13 @@ def _hinweise(p: Plan, k: dict) -> list[str]:
             diff = p.bedarf_sicher - p.bedarf
             h.append(f"Mit 90 % Sicherheit tragbar: rund CHF {chf(p.bedarf_sicher)} pro Jahr "
                      + (f"(CHF {chf(diff)} mehr als geplant)." if diff >= 0 else f"(CHF {chf(-diff)} weniger als geplant)."))
+    if p.ziele and p.erfolg_ohne_ziele is not None and p.erfolg_ohne_ziele - p.erfolg >= 5:
+        h.append(f"Die Lebensziele senken die Chance, dass das Geld reicht, von {p.erfolg_ohne_ziele:.0f} % auf "
+                 f"{p.erfolg:.0f} %. Wunsch-Ziele verschieben, verkleinern oder gezielt dafür sparen.")
+    for z in p.ziele:
+        if not z["gedeckt"]:
+            h.append(f"«{z['name']}» ({z['jahr']}): Das freie Vermögen reicht dann voraussichtlich nicht – rund "
+                     f"CHF {chf(z['sparrate'])} pro Monat dafür zurücklegen.")
     if not p.bedarf:
         h.append("Bedarf im Ruhestand fehlt (Einstellungen → Haushalt) – ohne ihn wird nichts entnommen.")
     return h
