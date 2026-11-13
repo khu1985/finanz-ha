@@ -1902,3 +1902,56 @@ def test_lebensziele_im_finanzplan(k):
     ohne = fp.rechnen({**k, "ziele": []}, 20000, 2026, simulation=False)
     jahr_2030 = lambda plan: next(z.vermoegen for z in plan.jahre if z.jahr == 2030)  # noqa: E731
     assert jahr_2030(ohne) - jahr_2030(fp.rechnen(k, 20000, 2026, simulation=False)) > 60000
+
+
+# ---------------------------------------------------------------- Lebenslauf der Kinder
+
+def test_kinderphasen_zeitplan_und_vergleich(k):
+    import kinderphasen as kp
+    _kinder(k, {"name": "A", "geburtsdatum": "2020-05-10", "kita_tage": 2},
+            {"name": "B", "geburtsdatum": "2020-09-10", "weg": "gymnasium", "auswaerts": True})
+    a, b = kp.alle(k, date(2026, 11, 13))
+    assert [p.schluessel for p in a.phasen] == ["kleinkind", "kita", "kindergarten", "primar", "sek1", "lehre"]
+    kg = next(p for p in a.phasen if p.schluessel == "kindergarten")
+    assert kg.von == date(2024, 8, 1) and a.selbstaendig == date(2038, 8, 1)       # Stichtag 31. Juli
+    assert next(p for p in b.phasen if p.schluessel == "kindergarten").von == date(2025, 8, 1)
+    assert [p.schluessel for p in b.phasen][-2:] == ["gymnasium", "studium"] and b.selbstaendig == date(2045, 8, 1)
+    kita = a.phasen[1]
+    assert kita.betreuung_vergleich == round(2 * 127 * 50 / 12) and kita.leben_vergleich == 475   # eines von 2 Kindern
+    assert b.phasen[-1].leben_vergleich == 1600 and b.phasen[-1].betreuung_vergleich == 290
+    assert a.aktuell.schluessel == "primar" and a.rest < sum(p.total for p in a.phasen)
+    assert kp.leben_vergleich(3) == 665 and kp.leben_vergleich(10, 3) == 660 and kp.leben_vergleich(15, 2) == 1035
+    assert any("Ausbildungsende" in h for h in b.hinweise)                          # Studium bis 24, Abzug bis 18
+
+
+def test_kinderphasen_eigene_kosten_steuern_finanzplan(k):
+    import finanzplan as fp
+    import kinder as ki
+    import kinderphasen as kp
+    _kinder(k, {"name": "A", "geburtsdatum": "2024-02-01", "kita_tage": 3, "ausbildung_bis": 18,
+                "phasen": {"kita": {"betreuung": 1500}, "primar": {"leben": 500}}})
+    c = ki.liste(k)[0]
+    lauf = kp.lebenslauf(c, 1, date(2026, 1, 1))
+    kita = next(p for p in lauf.phasen if p.schluessel == "kita")
+    assert kita.betreuung == 1500 and kita.betreuung_vergleich > 1500
+    assert ki.betreuung_jahr(c, 2026) == 18000 and ki.betreuung_jahr(c, 2028) == 1500 * 7 and ki.betreuung_jahr(c, 2029) == 0   # Kita bis Juli 2028
+    # Finanzplan: Veränderung gegenüber dem ersten Jahr, nach der Selbständigkeit sinken die Kosten
+    jahre = list(range(2026, 2050))
+    d = kp.finanzplan(k, jahre, 2060)
+    assert 2026 not in d and d[2045] < 0
+    p = fp.rechnen(k, 100_000, 2026, simulation=False)
+    assert p.kinder and any("Lebenslauf der Kinder" in h for h in p.hinweise)
+    k["finanzplan"] = {"kinderkosten": False}
+    assert kp.finanzplan(k, jahre, 2060) == {}
+
+
+def test_kinderphasen_alte_betreuung_und_erinnerungen(k):
+    import kinder as ki
+    import kinderphasen as kp
+    _kinder(k, {"name": "A", "geburtsdatum": "2023-09-20", "betreuung_jahr": 12000, "betreuung_bis": 6})
+    c = ki.liste(k)[0]
+    assert ki.betreuung_jahr(c, 2026) == 12000                                       # ohne Lebenslauf: alte Regel
+    lauf = kp.lebenslauf(c, 1, date(2026, 11, 13))
+    assert [p.betreuung_eigen for p in lauf.phasen[:3]] == [1000, 1000, None]
+    e = kp.erinnerungen(k, date(2027, 12, 15))
+    assert any("Kindergarten" in x.titel and "kostet A" in x.text for x in e)

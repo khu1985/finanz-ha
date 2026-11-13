@@ -292,3 +292,22 @@ def test_neue_seiten_und_praemien_upload(server, daten):
     code, ziel = _upload(f"{server}/versicherungen/praemien_laden", "datei", "Prämien_CH.csv", KK_2027.encode())
     assert code == 303 and "Pr%C3%A4mien%202027" in ziel or "Prämien 2027" in ziel
     assert "Alle Kassen im Vergleich" in urllib.request.urlopen(f"{server}/versicherungen").read().decode()
+
+
+def test_lebenslauf_kinder_speichern(server, daten):
+    k = konfig.laden()
+    k["haushalt"]["kinder"] = [{"name": "Anna", "geburtsdatum": "2022-03-01", "betreuung_jahr": 12000, "betreuung_bis": 6}]
+    konfig.speichern(k)
+    html = urllib.request.urlopen(f"{server}/kinder").read().decode()
+    assert "Lebenslauf der Kinder" in html and "Lebenslauf Anna" in html and "Vergleichswerte und Quellen" in html
+    assert 'name="b_kindergarten" inputmode="decimal" value="1000"' in html     # ältere Betreuungskosten übernommen
+    code, _ = _post(f"{server}/kinder/lebenslauf", {"i": "0", "weg": "gymnasium", "danach": "studium", "kita_tage": "2",
+                                                   "auswaerts": "1", "b_kita": "900", "l_primar": "750", "b_primar": "",
+                                                   "sek2_jahre": ""})
+    c = konfig.laden()["haushalt"]["kinder"][0]
+    assert code == 303 and c["weg"] == "gymnasium" and c["auswaerts"] is True and c["kita_tage"] == 2
+    assert c["phasen"] == {"kita": {"betreuung": 900}, "primar": {"leben": 750}} and "betreuung_jahr" not in c
+    # Stammdaten speichern lässt den Lebenslauf stehen
+    _post(f"{server}/kinder", {"anzahl": "1", "name_0": "Anna", "geburtsdatum_0": "2022-03-01", "ausbildung_bis_0": "25"})
+    c = konfig.laden()["haushalt"]["kinder"][0]
+    assert c["phasen"]["kita"] == {"betreuung": 900} and c["ausbildung_bis"] == 25 and c["weg"] == "gymnasium"

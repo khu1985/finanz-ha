@@ -82,7 +82,7 @@ personen:
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
-| Kinder | Kinder erfassen, Zeitachse mit Zulagen, Betreuung und Steuerwirkung, Hinweise |
+| Kinder | Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
 | Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
@@ -325,7 +325,7 @@ Jahr für Jahr von heute bis 95 (`finanzplan.bis_alter`) in heutigen Franken:
 
 | Phase | Rechnung |
 |---|---|
-| bis zur Pensionierung | freies Vermögen × (1 + reale Rendite) + Sparpotenzial (`personen[].sparen_monat` × 12); PK und 3a wachsen in ihren eigenen Modellen |
+| bis zur Pensionierung | freies Vermögen × (1 + reale Rendite) + Sparpotenzial (`personen[].sparen_monat` × 12) − Veränderung der Kinderkosten gegenüber heute (Lebenslauf der Kinder); PK und 3a wachsen in ihren eigenen Modellen |
 | Pensionierung | Kapital aus PK und 3a nach Kapitalbezugssteuer (gestaffelt) kommt dazu – wie bei der Pensionslücke |
 | Ruhestand | Entnahme = Bedarf im Ruhestand − (AHV + PK-Renten ohne Teuerungsausgleich + Renten aus dem Ausland + Kinderrenten); der Bedarf versteht sich inkl. Steuern |
 
@@ -513,6 +513,7 @@ Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfä
 | Finanzplan ist knapp (Geld reicht in unter 70 % der Verläufe) | laufend | 31. Dezember |
 | Notfallordner und Verfügungen prüfen | November und Dezember | 31. Dezember |
 | Vor- und Nachname trennen (voller Name im Vornamenfeld) | bis erledigt | sofort |
+| Phasenwechsel der Kinder: Kita-Platz, Kindergarten, Lehrstellensuche, Gymnasium, Studium (mit den neuen Kosten) | 60 Tage vorher | 6 bzw. 12 Monate vor Beginn |
 | Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
 
 **Frist der Steuererklärung.** Die App kennt die ordentliche Frist und die spätestmögliche Erstreckung aller
@@ -624,7 +625,7 @@ Auf der Seite **Kinder** (bzw. `haushalt.kinder[]`) pro Kind erfassen:
 | `obhut` | Konkubinat: Person mit Elterntarif und Kinderabzug; leer = höheres Einkommen |
 | `gutschrift` | Konkubinat: AHV-Erziehungsgutschrift `hälftig` oder ganz bei einer Person (Ehe immer hälftig) |
 | `ausbildung_bis` | unterhaltsberechtigt bis zu diesem Alter (18, in Ausbildung höchstens 25) |
-| `betreuung_jahr`, `betreuung_bis` | Kita, Tagesstruktur o. Ä. pro Jahr und bis zu welchem Alter |
+| `betreuung_jahr`, `betreuung_bis` | ältere Form: Kita, Tagesstruktur o. Ä. pro Jahr und bis zu welchem Alter – der Lebenslauf übernimmt die Beträge in die Phasen bis zu diesem Alter und ersetzt sie beim Speichern |
 | `zulage_monat` | Kinder- bzw. Ausbildungszulage; 0 = Mindestansatz 215 bzw. 268 |
 
 Wirkung:
@@ -642,7 +643,54 @@ Wirkung:
 - **Nachlass:** Pflichtteil nur für Nachkommen der verstorbenen Person.
 - **Krankenkasse:** Kinder erscheinen automatisch; Kinderfranchisen bis 18, ab 19 Erwachsenenfranchisen.
 - **Erinnerungen:** Ausbildungszulage mit 16, Ausbildungsbestätigung mit 18, Krankenkasse mit 19, Ende von
-  Kinderabzug und Zulagen.
+  Kinderabzug und Zulagen; Phasenwechsel (siehe Lebenslauf).
+
+### Lebenslauf der Kinder
+
+Pro Kind zeigt die Seite **Kinder** die Phasen von der Geburt bis zur Selbständigkeit als Zeitachse (alle Kinder
+untereinander, rote Linie = heute), die Kosten pro Jahr über alle Kinder und je Kind eine Tabelle mit eigenen
+Kosten und Vergleichswerten pro Phase.
+
+| Phase | Beginn und Dauer |
+|---|---|
+| Kleinkind | Geburt bis Kita bzw. Kindergarten |
+| Kita / Tagesfamilie | ab `kita_ab_monate` (Standard 4 Monate), nur mit `kita_tage` > 0 |
+| Kindergarten | 1. August des Jahres, in dem das Kind bis 31. Juli 4 wird (`einschulung` verschiebt um Jahre); 2 Jahre |
+| Primarschule, Sekundarstufe I | 6 bzw. 3 Jahre |
+| nach der Sek I (`weg`) | Berufslehre 3, Gymnasium 4 oder Fachmittelschule 3 Jahre (`sek2_jahre` für eine andere Dauer) |
+| danach (`danach`) | keine, Studium Uni/ETH 5 Jahre (Bachelor und Master) oder Fachhochschule 3 Jahre (`tertiaer_jahre`); `auswaerts` = nicht bei den Eltern |
+
+Pro Phase zwei Beträge pro Monat (`phasen.<phase>.betreuung` bzw. `.leben`; leer = Vergleichswert):
+
+| Betrag | Vergleichswert |
+|---|---|
+| Betreuung & Ausbildung | Kita zu Vollkosten rund CHF 127 pro Tag × `kita_tage` × 50 Wochen (INFRAS 2023; mit Subvention je nach Einkommen ab rund 12–25 pro Tag); Tagesstruktur `mittagstisch_tage` × 32 und `nachmittag_std` × 11.65 über 38 Schulwochen; Volksschule sonst gratis (Lager höchstens 10–16 pro Tag); Gymnasium/FMS 80 (rund 3'000 in vier Jahren plus Laptop); Lehre 40 (Schätzung); Studium/FH 290 (Semestergebühr rund 850, Material 100–200) |
+| Lebenshaltung | Zürcher Kinderkosten-Tabelle 2024 ohne Wohnen und Krankenkasse: 1–4 Jahre 665 / 475 / 430, 5–12 Jahre 800 / 680 / 660, 13–18 Jahre 1'145 / 1'035 / 1'035 (Einzelkind / eines von 2 / eines von 3 und mehr); auch danach, solange das Kind bei den Eltern wohnt; auswärts studieren 1'600 (Lebenskostenbudget Universität Basel 2026) |
+
+Wohnen und Krankenkasse fehlen absichtlich – sie stecken in Miete bzw. Hypothek und in den Prämien. Die Lehre zeigt
+den üblichen Lehrlingslohn (rund 600 / 800 / 1'000 pro Monat) als Hinweis; wer mit dem Lohn eigene Auslagen deckt,
+trägt tiefere eigene Beträge ein.
+
+Wirkung:
+
+- **Steuern:** Eigene Betreuungsbeträge bis zur Sekundarstufe I zählen als Drittbetreuung (Abzug bis 14 Jahre).
+  Vergleichswerte zählen dafür nicht.
+- **Finanzplan:** Die Veränderung der Kinderkosten gegenüber heute verändert das Sparpotenzial (z. B. mehr nach der
+  Kita, weniger während des Studiums); Kinderkosten nach der Pensionierung kommen zum Bedarf dazu.
+  `finanzplan.kinderkosten: false` schaltet das aus.
+- **Hinweise:** Ausbildungsende laut Lebenslauf weicht von «Unterhaltsberechtigt bis» ab; Betreuung deutlich über dem
+  Vergleich (Subvention prüfen); Lebenshaltung deutlich anders als der Vergleich; Kostenänderung beim nächsten
+  Phasenwechsel innerhalb eines Jahres.
+- **Erinnerungen:** Kita-Platz 6 Monate vor dem Start, Kindergarten 6 Monate vorher, Lehrstellensuche 12 Monate vor
+  Lehrbeginn, Übertritt Gymnasium und Studienbeginn 6 Monate vorher – jeweils mit den neuen Kosten pro Monat.
+
+Quellen: [Zürcher Kinderkosten-Tabelle 2024](https://www.zh.ch/content/dam/zhweb/bilder-dokumente/themen/familie/sorgerecht-unterhalt/kinderkosten_2024.pdf),
+[Kita- und Tagesstruktur-Kosten (familienleben.ch nach INFRAS)](https://www.familienleben.ch/kind/kindergarten-kinderkrippen/die-kosten-fuer-kita-und-kindergarten-in-der-schweiz-und-moegliche-reduktionen-eine-uebersicht-9643),
+[Elternbeiträge an Lager (Kanton Basel-Landschaft)](https://kanton.baselland.ch/bildungs-kultur-und-sportdirektion/bildung-handbuch/organisation-schulbetrieb/finanzen/schulreisen-schullager-projekt-und-kurswochen/pdf-1/20260127_def-merkblatt-schulreisen-lager-projektwochen.pdf),
+[Kosten Gymnasium (Kantonsschule Solothurn)](https://ksso.so.ch/fileadmin/ksso/02Bildungsangebot/gymnasium/Gym_1_Elternorientierung_2026_aktualisiert_vfinal.pdf),
+[Lehrlingslohn (Raiffeisen)](https://www.raiffeisen.ch/rch/de/wissen/lebensphasen/erster-lehrlingslohn.html),
+[Lebenskostenbudget Studium (Universität Basel)](https://www.unibas.ch/dam/jcr:f5650a4d-6e2e-4c06-bf98-aa8128ef5d11/FRM_gh_Lebenskostenbudget_aktuelle_Version_D_20260101.2026-01-21-10-58-14.pdf),
+[Stichtag und Eintrittsalter (EDK)](https://edk.ch/de/bildungssystem-ch/obligatorium/primarstufe).
 
 ## Teilzeit und Kinderbetreuung
 

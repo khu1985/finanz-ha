@@ -594,6 +594,40 @@ class Handler(BaseHTTPRequestHandler):
                 cl["notfallordner"] = {p["name"]: True for p in k["personen"]}
             konfig.speichern(k)
             return "Notfallordner gespeichert." + (" In der Nachlass-Checkliste abgehakt." if form.get("erledigt") else ""), "notfall"
+        if pfad == "kinder/lebenslauf":
+            import kinderphasen as kp
+            k = konfig.laden()
+            kinder = k["haushalt"].get("kinder") or []
+            try:
+                c = kinder[int(form.get("i", -1))]
+            except (ValueError, IndexError):
+                return "Kind nicht gefunden.", "kinder"
+            c["weg"] = str(form.get("weg") or "lehre") if str(form.get("weg")) in kp.WEGE else "lehre"
+            c["danach"] = str(form.get("danach")) if str(form.get("danach")) in kp.DANACH else "keine"
+            c["auswaerts"] = bool(form.get("auswaerts"))
+            for f in ("kita_tage", "mittagstisch_tage", "nachmittag_std"):
+                c[f] = max(0.0, min(7.0 if f != "nachmittag_std" else 60.0, vm.zahl(str(form.get(f) or "0"))))
+            for f, lo, hi in (("kita_ab_monate", 0, 60), ("einschulung", -1, 2), ("sek2_jahre", 1, 6), ("tertiaer_jahre", 1, 8)):
+                t = str(form.get(f, "")).strip()
+                if t:
+                    c[f] = int(max(lo, min(hi, round(vm.zahl(t)))))
+                else:
+                    c.pop(f, None)
+            phasen = {}
+            for schl in kp.PHASEN:
+                eintrag = {}
+                for kurz, feld in (("b", "betreuung"), ("l", "leben")):
+                    t = str(form.get(f"{kurz}_{schl}", "")).strip()
+                    if t:
+                        eintrag[feld] = vm.zahl(t)
+                if eintrag:
+                    phasen[schl] = eintrag
+            c["phasen"] = phasen
+            if phasen:                                   # ältere Angaben ersetzt der Lebenslauf
+                c.pop("betreuung_jahr", None)
+                c.pop("betreuung_bis", None)
+            konfig.speichern(k)
+            return f"Lebenslauf von {c.get('name') or 'Kind'} gespeichert.", "kinder"
         if pfad == "kinder":
             k = konfig.laden()
             alt = k["haushalt"].get("kinder") or []
@@ -611,11 +645,15 @@ class Handler(BaseHTTPRequestHandler):
                     if f"{f}_{i}" in form:
                         c[f] = str(form[f"{f}_{i}"]).strip()
                 for f in ("ausbildung_bis", "betreuung_bis"):
-                    c[f] = int(round(vm.zahl(str(form.get(f"{f}_{i}") or "0")))) if str(form.get(f"{f}_{i}", "")).strip() else 0
+                    if f"{f}_{i}" in form:
+                        t = str(form.get(f"{f}_{i}", "")).strip()
+                        c[f] = int(round(vm.zahl(t))) if t else 0
                 for f in ("betreuung_jahr", "zulage_monat"):
-                    c[f] = vm.zahl(str(form.get(f"{f}_{i}") or "0")) if str(form.get(f"{f}_{i}", "")).strip() else 0.0
-                c["ausbildung_bis"] = min(25, max(18, c["ausbildung_bis"] or 18))
-                c["betreuung_bis"] = c["betreuung_bis"] or 12
+                    if f"{f}_{i}" in form:
+                        t = str(form.get(f"{f}_{i}", "")).strip()
+                        c[f] = vm.zahl(t) if t else 0.0
+                c["ausbildung_bis"] = min(25, max(18, int(c.get("ausbildung_bis") or 18)))
+                c["betreuung_bis"] = c.get("betreuung_bis") or 12
                 neu.append(c)
             k["haushalt"]["kinder"] = neu
             konfig.speichern(k)

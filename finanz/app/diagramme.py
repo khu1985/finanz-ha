@@ -146,3 +146,52 @@ def balken_liste(daten: list[tuple[str, float]], einheit: str = "") -> str:
         f'<span class="hb-spur"><span class="hb-wert" style="width:{max(1.5, w / hi * 100):.1f}%"></span></span></div>'
         for n, w in sorted(daten, key=lambda x: -x[1]))
     return f'<div class="hbalken-liste">{zeilen}</div>'
+
+
+def zeitachse(zeilen: list[tuple[str, list[tuple]]], von: float, bis: float, heute: float | None = None,
+              legende: list[tuple[str, str, float]] | None = None) -> str:
+    """Balken je Zeile über die Zeit (z. B. Lebensphasen je Kind).
+
+    zeilen: [(Beschriftung, [(start, ende, kurz, titel, farbe, deckkraft), …])], Zeiten als Jahre mit Bruchteil.
+    legende: [(Text, Farbe, Deckkraft)] – unter dem Diagramm, auf dem Handy gut lesbar."""
+    if not zeilen or bis <= von:
+        return '<p class="leer">Noch keine Daten.</p>'
+    zh, oben, unten, links = 40, 8, 30, 104
+    hoehe = oben + zh * len(zeilen) + unten
+    bx = B - links - R
+
+    def px(t: float) -> float:
+        return links + (min(max(t, von), bis) - von) / (bis - von) * bx
+
+    teile = [f'<svg viewBox="0 0 {B} {hoehe}" role="img" aria-label="Zeitachse">']
+    spanne = bis - von
+    schritt = 2 if spanne <= 16 else 5 if spanne <= 40 else 10
+    j = int(von // schritt * schritt)
+    while j <= bis:
+        if j >= von:
+            x = px(j)
+            teile.append(f'<line class="gitter" x1="{x:.1f}" x2="{x:.1f}" y1="{oben}" y2="{hoehe - unten}"/>'
+                         f'<text class="achse" x="{x:.1f}" y="{hoehe - 10}" text-anchor="middle">{j}</text>')
+        j += schritt
+    for i, (name, balken) in enumerate(zeilen):
+        y = oben + i * zh + 4
+        teile.append(f'<text class="achse" x="{links - 8}" y="{y + zh / 2 + 1:.1f}" text-anchor="end" '
+                     f'>{escape(name[:9])}</text>')
+        for start, ende, kurz, titel, farbe, deck in balken:
+            x0, x1 = px(start), px(ende)
+            if x1 - x0 < 0.5:
+                continue
+            teile.append(f'<rect x="{x0:.1f}" y="{y:.1f}" width="{max(0.5, x1 - x0 - 1.5):.1f}" height="{zh - 10}" rx="4" '
+                         f'fill="{farbe}" fill-opacity="{deck}"><title>{escape(titel)}</title></rect>')
+            if x1 - x0 >= 9 * len(kurz) + 8:
+                teile.append(f'<text class="x2" x="{(x0 + x1) / 2:.1f}" y="{y + (zh - 10) / 2 + 5:.1f}" text-anchor="middle" '
+                             f'style="font-size:14px;fill:{"#fff" if deck >= 0.8 else "#1c2430"};font-weight:600">{escape(kurz)}</text>')
+    if heute is not None and von <= heute <= bis:
+        x = px(heute)
+        teile.append(f'<line class="ziel" x1="{x:.1f}" x2="{x:.1f}" y1="{oben - 4}" y2="{hoehe - unten + 2}"/>')
+    teile.append("</svg>")
+    leg = ""
+    if legende:
+        leg = '<div class="legende">' + "".join(
+            f'<span class="leg"><i style="background:{f};opacity:{d}"></i>{escape(t)}</span>' for t, f, d in legende) + "</div>"
+    return f'<figure class="diagramm">{"".join(teile)}{leg}</figure>'

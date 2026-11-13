@@ -16,7 +16,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
-| Kinder | Kinder erfassen (auch aus früheren Beziehungen), Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse und Erinnerungen |
+| Kinder | Lebenslauf je Kind von der Kita über Schule und Lehre bzw. Gymnasium bis zum Studium – mit eigenen Kosten und Vergleichswerten je Phase (Zürcher Kinderkosten-Tabelle, Kita-Vollkosten, Studienbudget); Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse, Finanzplan und Erinnerungen |
 | Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Wertschriften pro Position (Anlageklasse, Region, Währung, Rendite, TER), Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial, wiederkehrende Zahlungen und Abos mit Preisänderungen, Vergleich mit Schweizer Haushalten gleichen Typs und Einkommens |
 | Lebensereignisse | Stellenverlust mit Taggeld und Reserve, Trennung bzw. Scheidung (Güterrecht, PK-Teilung, zwei Haushalte), faire Kostenaufteilung im Paar mit Vorsorgelücke |
@@ -73,7 +73,7 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, kinderphasen, zuzug"]
         Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung"]
@@ -151,6 +151,7 @@ flowchart TB
 | `finanz/app/steuererklaerung.py` | Checkliste Steuererklärung |
 | `finanz/app/notfall.py` | Notfallordner, Meldeliste für den Todesfall |
 | `finanz/app/kinder.py` | Kinder: Abzüge, Gutschriften, Zulagen, Zeitachse |
+| `finanz/app/kinderphasen.py` | Lebenslauf der Kinder: Phasen von Kita bis Studium, eigene Kosten und Vergleichswerte, Kosten pro Jahr, Wirkung auf den Finanzplan |
 | `finanz/app/zuzug.py` | Zuzug in die Schweiz: AHV-Jahre, PK-Einkaufsgrenze, Quellensteuer, Fristen |
 | `finanz/app/tausender.py` | Tausendertrennzeichen |
 | `finanz/app/kantone.py` | Fristen der Steuererklärung aller Kantone |
@@ -330,7 +331,7 @@ flowchart TD
     DZ["Oktober–Dezember<br/>3a einzahlen (bis 20.12.), PK-Einkauf überweisen (bis 10.12.)"] --> J
     VT["laufend<br/>Kündigungsfristen 60 Tage vorher"] -.-> UE
     HY["36–12 Monate vor Fälligkeit<br/>Hypothekar-Strategie, Offerten, Forward"] -.-> UE
-    KD["Kinder mit 16, 18, 19 und Ende Ausbildung<br/>Zulagen, Bestätigung, Krankenkasse"] -.-> UE
+    KD["Kinder mit 16, 18, 19 und Ende Ausbildung<br/>Zulagen, Bestätigung, Krankenkasse;<br/>Kita, Kindergarten, Lehre, Studium"] -.-> UE
     NO["jährlich<br/>Notfallordner und Nachlass-Checkliste prüfen"] -.-> UE
     JB["Dezember–Januar<br/>Jahresbericht: Vergleich mit dem Vorjahr, Massnahmen"] -.-> J
     LG["rund 1 Jahr vor fälligen Erneuerungen<br/>Offerten, Förderbeiträge, Erneuerungsfonds"] -.-> UE

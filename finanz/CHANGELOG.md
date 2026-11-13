@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.40.0 – 2026-11-13
+
+- **Lebenslauf der Kinder** auf der Seite Kinder: Phasen von der Geburt bis zur Selbständigkeit – Kleinkind, Kita,
+  Kindergarten, Primarschule, Sekundarstufe I, Berufslehre bzw. Gymnasium oder Fachmittelschule, Studium bzw.
+  Fachhochschule. Beginn nach Stichtag 31. Juli, Einschulung verschiebbar, Dauer anpassbar
+  - **Zeitachse je Kind** (alle Kinder untereinander) und **Kosten pro Jahr** über alle Kinder
+  - **Kosten pro Phase:** Betreuung & Ausbildung sowie Lebenshaltung pro Monat; leere Felder rechnen mit
+    **Vergleichswerten** aus der Zürcher Kinderkosten-Tabelle, den Kita-Vollkosten (INFRAS), Tarifen für
+    Tagesstrukturen, Kosten am Gymnasium und dem Studienbudget der Universität Basel – mit Quellen
+  - Eigene Betreuungsbeträge zählen für den Steuerabzug; ältere Angaben «Betreuung pro Jahr bis Alter» werden
+    übernommen
+  - **Finanzplan:** Mehr- und Minderkosten der Kinder gegenüber heute verändern das Sparpotenzial
+  - **Hinweise und Erinnerungen** zu Phasenwechseln (Kita-Platz, Kindergarten, Lehrstellensuche, Gymnasium, Studium)
+    mit den neuen Kosten
+
 ## 0.39.0 – 2026-11-13
 
 Aus Sicht einer Lebensberatung: Lebensereignisse und Ziele.

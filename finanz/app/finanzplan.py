@@ -1,7 +1,7 @@
 """Finanzplan Jahr für Jahr bis ins hohe Alter – mit Simulation schwankender Renditen (Monte Carlo).
 
 Alles in heutigen Franken. Bis zur Pensionierung wächst das freie Vermögen mit der realen Rendite und dem
-Sparpotenzial (`personen[].sparen_monat`); PK und 3a laufen in ihren eigenen Modellen und kommen bei der
+Sparpotenzial (`personen[].sparen_monat`), das sich mit den Kosten der Kinder je Lebensphase verändert; PK und 3a laufen in ihren eigenen Modellen und kommen bei der
 Pensionierung nach Kapitalbezugssteuer dazu (wie bei der Pensionslücke). Danach deckt das Vermögen, was AHV,
 PK-Renten, Renten aus dem Ausland und Kinderrenten am Bedarf im Ruhestand nicht decken. Der Bedarf versteht sich
 inkl. Steuern (wie überall in der App).
@@ -47,6 +47,7 @@ class Plan:
     pleite_median: int | None = None   # in schlechten Verläufen (10 %): Jahr, in dem das Geld ausgeht
     ziele: list[dict] = field(default_factory=list)    # Lebensziele mit Sparrate und Deckung
     erfolg_ohne_ziele: float | None = None
+    kinder: dict[int, float] = field(default_factory=dict)   # Kinderkosten: Veränderung gegenüber heute (+ = teurer)
     bedarf_sicher: float | None = None  # höchster Bedarf, der in 90 % der Verläufe reicht
     hinweise: list[str] = field(default_factory=list)
 
@@ -127,25 +128,31 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
     zj: dict[int, float] = {}
     for z in zl:
         zj[z["jahr"]] = zj.get(z["jahr"], 0.0) + z["betrag"]
-    det = _verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, [mu / 100] * len(jahre), zj)
+    import kinderphasen as kp
+    kj = kp.finanzplan(k, jahre, pension)            # Kinderkosten: Veränderung gegenüber heute
+    alle = dict(kj)
+    for j, v in zj.items():
+        alle[j] = alle.get(j, 0.0) + v
+    det = _verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, [mu / 100] * len(jahre), alle)
     zeilen = []
     for j, v in zip(jahre, det):
         if j < pension:
-            zeilen.append(Jahr(j, alter(j), "Erwerb", lohn, sparen, 0.0, round(v)))
+            zeilen.append(Jahr(j, alter(j), "Erwerb", lohn, round(sparen - kj.get(j, 0.0)), 0.0, round(v)))
         else:
             rente = rl[jahre.index(j)]
-            zeilen.append(Jahr(j, alter(j), "Pension", round(rente), -round(max(0.0, bedarf - rente)),
+            zeilen.append(Jahr(j, alter(j), "Pension", round(rente), -round(max(0.0, bedarf - rente) + kj.get(j, 0.0)),
                                round(kapital) if j == pension else 0.0, round(v)))
     reicht_bis = next((j - 1 for j, v in zip(jahre, det) if v < 0), None)
     plan = Plan(zeilen, pension, ende, end_alter, round(mu, 2), round(sigma, 1), bedarf, reicht_bis)
+    plan.kinder = {j: round(v) for j, v in kj.items()}
     if simulation and len(jahre) > 1:
         sims = _pfade(len(jahre), pfade, mu, sigma)
-        verlaeufe = [_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r, zj) for r in sims]
+        verlaeufe = [_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r, alle) for r in sims]
         i0 = jahre.index(pension) if pension in jahre else 0
         ok = sum(1 for vl in verlaeufe if min(vl[i0:]) >= 0)
         plan.erfolg = round(ok / len(verlaeufe) * 100, 1)
         if zj:
-            ohne = sum(1 for r in sims if min(_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r)[i0:]) >= 0)
+            ohne = sum(1 for r in sims if min(_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r, kj)[i0:]) >= 0)
             plan.erfolg_ohne_ziele = round(ohne / len(sims) * 100, 1)
         for p in (10, 50, 90):
             plan.perzentile[p] = []
@@ -157,7 +164,7 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
         jahre_pleite = sorted(next((j for j, v in zip(jahre, vl) if v < 0), ende + 1) for vl in schlecht)
         median = jahre_pleite[len(jahre_pleite) // 2]
         plan.pleite_median = median if median <= ende else None
-        plan.bedarf_sicher = _bedarf_sicher(start, jahre, pension, kapital, sparen, rl, sims[:200], bedarf, zj)
+        plan.bedarf_sicher = _bedarf_sicher(start, jahre, pension, kapital, sparen, rl, sims[:200], bedarf, alle)
     for z in zl:
         i = jahre.index(z["jahr"]) if z["jahr"] in jahre else None
         vorher = (det[i - 1] if i else start) if i is not None else None
@@ -226,6 +233,18 @@ def _hinweise(p: Plan, k: dict) -> list[str]:
         if not z["gedeckt"]:
             h.append(f"«{z['name']}» ({z['jahr']}): Das freie Vermögen reicht dann voraussichtlich nicht – rund "
                      f"CHF {chf(z['sparrate'])} pro Monat dafür zurücklegen.")
+    vor = {j: v for j, v in p.kinder.items() if j < p.pension_jahr}
+    if vor:
+        hoch = max(vor, key=lambda j: vor[j])
+        tief = min(vor, key=lambda j: vor[j])
+        teile = []
+        if vor[hoch] > 0:
+            teile.append(f"{hoch} kosten die Kinder rund CHF {chf(vor[hoch])} mehr als heute")
+        if vor[tief] < 0:
+            teile.append(f"{tief} rund CHF {chf(-vor[tief])} weniger – das Sparpotenzial steigt entsprechend")
+        if teile:
+            h.append("Lebenslauf der Kinder: " + "; ".join(teile) + ". (Unter «Kinder» anpassen; "
+                     "`finanzplan.kinderkosten: false` schaltet das aus.)")
     if not p.bedarf:
         h.append("Bedarf im Ruhestand fehlt (Einstellungen → Haushalt) – ohne ihn wird nichts entnommen.")
     return h

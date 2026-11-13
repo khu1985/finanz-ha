@@ -6,7 +6,8 @@ Pro Kind unter `haushalt.kinder[]`:
 - obhut: Person, die im Konkubinat Kinderabzug und Elterntarif geltend macht (leer = höheres Einkommen)
 - gutschrift: AHV-Erziehungsgutschrift «hälftig» oder Name einer Person (Ehepaare immer hälftig)
 - ausbildung_bis: Alter, bis zu dem das Kind unterhaltsberechtigt ist (18, in Ausbildung höchstens 25)
-- betreuung_jahr, betreuung_bis: Kosten für Kita, Tagesstruktur o. Ä. pro Jahr und bis zu welchem Alter
+- betreuung_jahr, betreuung_bis: Kosten für Kita, Tagesstruktur o. Ä. pro Jahr und bis zu welchem Alter (ältere Form;
+  sobald im Lebenslauf eigene Beträge je Phase stehen, zählen diese – siehe kinderphasen.py)
 - zulage_monat: Kinder- bzw. Ausbildungszulage pro Monat (0 = Mindestansatz 215 bzw. 268)
 
 Regeln (Stand 2025/2026):
@@ -142,6 +143,11 @@ def zulage_jahr(kind: dict, jahr: int) -> float:
 
 
 def betreuung_jahr(kind: dict, jahr: int) -> float:
+    """Kita, Tagesstruktur o. Ä.: aus dem Lebenslauf (eigene Beträge je Phase), sonst Betrag pro Jahr bis zum Alter."""
+    import kinderphasen as kp
+    aus_lauf = kp.betreuung_jahr(kind, jahr)
+    if aus_lauf is not None:
+        return aus_lauf
     a = alter(kind, jahr)
     if a < 0 or a >= _zahl(kind.get("betreuung_bis"), 12):
         return 0.0

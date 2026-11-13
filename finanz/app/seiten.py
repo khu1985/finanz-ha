@@ -2905,8 +2905,6 @@ def kinder(k: dict, db) -> str:
                        f'<label>AHV-Erziehungsgutschrift{auswahl(f"gutschrift_{i}", c.get("gutschrift", "hälftig"), gutschr)}</label>']
         felder += [
             f'<label>Unterhaltsberechtigt bis Alter (18–25)<input name="ausbildung_bis_{i}" inputmode="numeric" value="{escape(z(c.get("ausbildung_bis", 18)))}"></label>',
-            f'<label>Betreuungskosten/Jahr (Kita, Tagesstruktur)<input name="betreuung_jahr_{i}" inputmode="decimal" value="{escape(z(c.get("betreuung_jahr", 0)))}"></label>',
-            f'<label>Betreuung bis Alter<input name="betreuung_bis_{i}" inputmode="numeric" value="{escape(z(c.get("betreuung_bis", 12)))}"></label>',
             f'<label>Zulage/Monat (0 = Mindestansatz)<input name="zulage_monat_{i}" inputmode="decimal" value="{escape(z(c.get("zulage_monat", 0)))}"></label>',
         ]
         loeschen = "" if neu else f'<label class="entfernen"><input type="checkbox" name="loeschen_{i}" value="1">Kind entfernen</label>'
@@ -2917,7 +2915,8 @@ def kinder(k: dict, db) -> str:
             + "".join(bloecke) + '<div class="zeile"><button>Kinder speichern</button></div></form>'
             '<p class="leise">Die Kinder fliessen in Steuern (Kinderabzug, Elterntarif, Betreuung), AHV '
             '(Erziehungsgutschriften, Kinder- und Waisenrenten), Risikoschutz, Nachlass (Pflichtteil), Krankenkasse und '
-            'Erinnerungen ein. Bei «nur …» zählt das Kind nur bei dieser Person (z. B. aus einer früheren Beziehung).</p>')
+            'Erinnerungen ein. Bei «nur …» zählt das Kind nur bei dieser Person (z. B. aus einer früheren Beziehung). '
+            'Kita, Tagesstruktur und Ausbildungskosten erfasst du im Lebenslauf des Kindes.</p>')
     if not liste_:
         return karte("Kinder erfassen", form)
     u = ki.uebersicht(k)
@@ -2943,8 +2942,154 @@ def kinder(k: dict, db) -> str:
             'Drittbetreuung bis 14 (höchstens ' + chf(float(k["kennzahlen"].get("bund_betreuung_max", 25800))) + '). '
             'Zulagen: Mindestansätze 215 bzw. 268 pro Monat, sofern nicht erfasst.</p>')
     link = '<p class="leise">Was ein tieferes Pensum statt Kita kostet: <a href="szenarien#teilzeit">Teilzeit-Rechner unter Szenarien</a>.</p>'
-    return (kpis + karte("Kinder", form) + karte("Hinweise", hinweisliste(u.hinweise) + link)
-            + karte("Zeitachse bis zur Selbständigkeit", zeit))
+    import kinderphasen as kp
+    laeufe = kp.alle(k)
+    hinw = u.hinweise + [h for lauf in laeufe for h in lauf.hinweise]
+    return (kpis + _lebenslauf_uebersicht(k, laeufe) + "".join(_lebenslauf_kind(i, c, lauf) for i, (c, lauf) in enumerate(
+                (c, kp.lebenslauf(c, len(liste_))) for c in liste_) if lauf)
+            + karte("Hinweise", hinweisliste(hinw) + link)
+            + karte("Zulagen und Steuern bis zur Selbständigkeit", zeit) + karte("Kinder erfassen", form)
+            + _lebenslauf_quellen())
+
+
+_PHASE_FARBE = {"kleinkind": (1, 0.5), "kita": (1, 1), "kindergarten": (2, 0.6), "primar": (2, 1), "sek1": (3, 1),
+                "lehre": (4, 1), "gymnasium": (4, 0.6), "fms": (4, 0.6), "studium": (5, 1), "fh": (5, 0.6)}
+
+
+def _jahr_bruch(d: date) -> float:
+    return d.year + (d.timetuple().tm_yday - 1) / 365.25
+
+
+def _lebenslauf_uebersicht(k: dict, laeufe: list) -> str:
+    import kinderphasen as kp
+    if not laeufe:
+        return ""
+    heute = date.today()
+    zeilen = []
+    for lauf in laeufe:
+        balken = []
+        for p in lauf.phasen:
+            nr, deck = _PHASE_FARBE.get(p.schluessel, (1, 1))
+            balken.append((_jahr_bruch(p.von), _jahr_bruch(p.bis), kp.KURZ[p.schluessel],
+                           f"{p.titel}: {p.von:%m.%Y}–{p.bis:%m.%Y}, CHF {p.monat:,.0f}/Monat".replace(",", "'"),
+                           f"var(--c{nr})", deck))
+        zeilen.append((lauf.name, balken))
+    von = min(_jahr_bruch(lauf.geburt) for lauf in laeufe)
+    bis = max(_jahr_bruch(lauf.selbstaendig) for lauf in laeufe)
+    gesehen = []
+    for lauf in laeufe:
+        for p in lauf.phasen:
+            if p.schluessel not in [g for g, *_ in gesehen]:
+                nr, deck = _PHASE_FARBE.get(p.schluessel, (1, 1))
+                gesehen.append((p.schluessel, kp.PHASEN[p.schluessel], f"var(--c{nr})", deck))
+    reihenfolge = list(kp.PHASEN)
+    legende = [(t, f, d) for _, t, f, d in sorted(gesehen, key=lambda x: reihenfolge.index(x[0]))]
+    achse = dg.zeitachse(zeilen, von, bis, _jahr_bruch(heute), legende)
+    ende = max(lauf.selbstaendig.year for lauf in laeufe)
+    werte = kp.jahre(k, heute.year, max(heute.year, ende))
+    saeulen = dg.saeulen([str(j)[2:] for j, *_ in werte], {"Betreuung & Ausbildung": [b for _, b, _ in werte],
+                                                          "Lebenshaltung": [lb for _, _, lb in werte]})
+    rest = sum(lauf.rest for lauf in laeufe)
+    rest_b = sum(lauf.rest_betreuung for lauf in laeufe)
+    dieses = werte[0][1] + werte[0][2] if werte else 0
+    spitze = max(werte, key=lambda w: w[1] + w[2]) if werte else None
+    kpis = '<div class="kpis">' + "".join([
+        kpi(chf(dieses), f"Kinderkosten {heute.year}"),
+        kpi(chf(rest), "Noch bis zur Selbständigkeit"),
+        kpi(chf(rest_b), "davon Betreuung & Ausbildung"),
+        *([kpi(chf(spitze[1] + spitze[2]), f"Teuerstes Jahr ({spitze[0]})")] if spitze else []),
+    ]) + "</div>"
+    jetzt = []
+    for lauf in laeufe:
+        p = lauf.aktuell
+        txt = (f"{escape(lauf.name)}: {escape(p.titel)} bis {p.bis:%m.%Y}" if p else
+               f"{escape(lauf.name)}: selbständig" if lauf.selbstaendig <= heute else f"{escape(lauf.name)}: noch nicht geboren")
+        jetzt.append(txt + (f", selbständig ab {lauf.selbstaendig:%m.%Y}" if lauf.selbstaendig > heute else ""))
+    erklaerung = ('<p class="leise">' + " · ".join(jetzt) + '</p><p class="leise">Kosten pro Jahr in heutigen Franken: '
+                  'eigene Beträge, wo erfasst, sonst Vergleichswerte. Ohne Wohnen und Krankenkasse (stecken in Miete bzw. '
+                  'Hypothek und Prämien). Die Veränderung gegenüber heute fliesst in den '
+                  '<a href="finanzplan">Finanzplan</a> ein.</p>')
+    return karte("Lebenslauf der Kinder", kpis + achse + erklaerung + saeulen)
+
+
+def _lebenslauf_kind(i: int, c: dict, lauf) -> str:
+    import kinderphasen as kp
+    heute = date.today()
+
+    def wahl(name, wert, optionen):
+        return (f'<select name="{name}">' + "".join(
+            f'<option value="{escape(v)}"{" selected" if str(wert) == v else ""}>{escape(t)}</option>' for v, t in optionen)
+            + "</select>")
+
+    def zahl(feld, std=""):
+        v = c.get(feld)
+        if v in (None, ""):
+            return std
+        try:
+            f = float(v)
+            return str(int(f)) if f == int(f) else str(f)
+        except (TypeError, ValueError):
+            return str(v)
+
+    weg = str(c.get("weg") or "lehre")
+    danach = str(c.get("danach") or ("studium" if weg == "gymnasium" else "keine"))
+    felder = [
+        f'<label>Nach der Sekundarstufe I{wahl("weg", weg, [(s, t) for s, (t, _) in kp.WEGE.items()])}</label>',
+        f'<label>Danach{wahl("danach", danach, [(s, t) for s, (t, _) in kp.DANACH.items()])}</label>',
+        f'<label>Kita-Tage pro Woche (0 = keine Kita)<input name="kita_tage" inputmode="decimal" value="{zahl("kita_tage", "0")}"></label>',
+        f'<label>Kita ab Alter in Monaten<input name="kita_ab_monate" inputmode="numeric" value="{zahl("kita_ab_monate", "4")}"></label>',
+        f'<label>Mittagstisch Tage pro Woche (Schule)<input name="mittagstisch_tage" inputmode="decimal" value="{zahl("mittagstisch_tage", "0")}"></label>',
+        f'<label>Nachmittagsbetreuung Std. pro Woche<input name="nachmittag_std" inputmode="decimal" value="{zahl("nachmittag_std", "0")}"></label>',
+        f'<label>Einschulung später (+) / früher (−), Jahre<input name="einschulung" inputmode="numeric" value="{zahl("einschulung", "0")}"></label>',
+        f'<label>Dauer Lehre/Mittelschule, Jahre (leer = üblich)<input name="sek2_jahre" inputmode="numeric" value="{zahl("sek2_jahre")}"></label>',
+        f'<label>Dauer Studium, Jahre (leer = üblich)<input name="tertiaer_jahre" inputmode="numeric" value="{zahl("tertiaer_jahre")}"></label>',
+        f'<label class="entfernen"><input type="checkbox" name="auswaerts" value="1"{" checked" if c.get("auswaerts") else ""}>'
+        'Studium auswärts wohnend</label>',
+    ]
+
+    def feld(name, eigen, vergleich):
+        wert = "" if eigen is None else (str(int(eigen)) if float(eigen) == int(eigen) else str(eigen))
+        return (f'<input name="{name}" inputmode="decimal" value="{escape(wert)}" placeholder="{int(vergleich)}" '
+                f'style="max-width:7em" aria-label="CHF pro Monat">')
+
+    zeilen = []
+    for p in lauf.phasen:
+        jetzt = p is lauf.aktuell
+        vorbei = p.bis <= heute
+        titel = (f"<b>{escape(p.titel)}</b>" if jetzt else escape(p.titel)) + (" <span class=\"gut\">jetzt</span>" if jetzt else "")
+        alter_ = f"{p.alter_von}–{p.alter_bis}" if p.alter_bis > p.alter_von else str(p.alter_von)
+        titel += f'<br><span class="leise">{p.von:%m.%Y}–{p.bis:%m.%Y}, Alter {alter_}</span>'
+        if p.notiz:
+            titel += f'<br><span class="leise">{escape(p.notiz)}</span>'
+        zeilen.append([
+            titel if not vorbei else f'<span class="leise">{titel}</span>',
+            feld(f"b_{p.schluessel}", p.betreuung_eigen, p.betreuung_vergleich),
+            feld(f"l_{p.schluessel}", p.leben_eigen, p.leben_vergleich),
+            chf(p.vergleich),
+            chf(p.monat),
+            chf(p.total),
+        ])
+    zeilen.append(["<b>Total von der Geburt bis zur Selbständigkeit</b>", "", "", "", "",
+                   f"<b>{chf(sum(p.total for p in lauf.phasen))}</b>"])
+    tab = tabelle(["Phase", "Betreuung & Ausbildung/Monat", "Lebenshaltung/Monat", "Vergleich/Monat", "Gerechnet/Monat",
+                   "Total Phase"], zeilen, zahlen_ab=1)
+    kopf = (f'<p class="leise">Selbständig ab {lauf.selbstaendig:%m.%Y} (Alter {kp._alter(lauf.geburt, lauf.selbstaendig)}) · '
+            f'ab heute noch CHF {chf(lauf.rest)}. Leere Felder rechnen mit dem Vergleichswert (grau).</p>')
+    form = (f'<form method="post" action="kinder/lebenslauf"><input type="hidden" name="i" value="{i}">'
+            f'<div class="felder">{"".join(felder)}</div>{tab}'
+            '<div class="zeile"><button>Lebenslauf speichern</button></div></form>')
+    return karte(f"Lebenslauf {c.get('name') or 'Kind'}", kopf + form)
+
+
+def _lebenslauf_quellen() -> str:
+    import kinderphasen as kp
+    links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in kp.QUELLEN)
+    text = ('<p class="leise">Lebenshaltung ohne Wohnen und Krankenkasse nach Altersgruppe (1–4, 5–12, 13–18) und Anzahl '
+            'Kinder; Kita zu Vollkosten (rund CHF 127 pro Tag, 50 Wochen); Mittagstisch rund CHF 32, Betreuung CHF 11.65 '
+            'pro Stunde (38 Schulwochen); Gymnasium rund CHF 80, Lehre CHF 40 (Schätzung), Studium CHF 290 pro Monat '
+            '(Semestergebühr und Material); auswärts studieren rund CHF 1\'600 Lebenshaltung. Subventionen, '
+            'Betreuungsgutscheine und Gemeindetarife senken die Betreuungskosten oft stark – eigene Beträge erfassen.</p>')
+    return karte("Vergleichswerte und Quellen", text + f"<ul>{links}</ul>")
 
 
 # ---------------------------------------------------------------- Steuererklärung
