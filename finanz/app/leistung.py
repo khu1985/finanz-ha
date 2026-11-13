@@ -210,7 +210,17 @@ def system(db, daten: Path) -> dict:
         "dokumente": sum(_ordner(daten / o) for o in ("versicherungen", "vorsorge", "steuern")),
         "log": (daten / "finanz.log").stat().st_size if (daten / "finanz.log").exists() else 0,
         "zeilen": zeilen,
+        "treffer": _treffer(),
     }
+
+
+def _treffer() -> float | None:
+    try:
+        import zwischenspeicher as zs
+        n = zs.TREFFER["ja"] + zs.TREFFER["nein"]
+        return zs.TREFFER["ja"] / n * 100 if n else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _mb(b: float) -> str:
@@ -256,6 +266,7 @@ def bericht_text(db, daten: Path, anzahl: int = 12) -> list[str]:
     ms, vorher = messungen(db)
     s = system(db, daten)
     zeilen = [f"System: {s['kerne']} Kerne, RAM {_mb(s['ram_total'])} (frei {_mb(s['ram_frei'])}), App {_mb(s['prozess'])}, "
+              + (f"Zwischenspeicher {s['treffer']:.0f} % Treffer, " if s.get("treffer") is not None else "") +
               f"Last {s['last'][0]}/{s['last'][1]}/{s['last'][2]}, Datenbank {_mb(s['db'])}, Dokumente {_mb(s['dokumente'])}",
               "Datensätze: " + ", ".join(f"{t} {n}" for t, n in s["zeilen"].items() if n)]
     for m in ms[:anzahl]:

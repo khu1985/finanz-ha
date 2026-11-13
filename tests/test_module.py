@@ -1780,3 +1780,34 @@ def test_leistung_messen_und_vorschlagen(db, tmp_path):
     s = le.system(db, tmp_path)
     assert s["kerne"] >= 1 and "zeilen" in s
     assert any(z.startswith("System:") for z in le.bericht_text(db, tmp_path))
+
+
+def test_zwischenspeicher(tmp_path):
+    import sqlite3
+    import time as _t
+    import zwischenspeicher as zs
+    zs.leeren()
+    db = sqlite3.connect(tmp_path / "z.sqlite")
+    db.execute("CREATE TABLE t (x INTEGER)")
+    db.commit()
+    aufrufe = []
+
+    @zs.speichernd("test.summe")
+    def summe(k, db_):
+        aufrufe.append(1)
+        return {"s": sum(r[0] for r in db_.execute("SELECT x FROM t")), "k": k["a"]}
+    assert summe({"a": 1}, db) == {"s": 0, "k": 1} and summe({"a": 1}, db)["s"] == 0 and len(aufrufe) == 1
+    summe({"a": 1}, db)["s"] = 99                                  # Kopie – der Speicher bleibt unverändert
+    assert summe({"a": 1}, db)["s"] == 0
+    assert summe({"a": 2}, db)["k"] == 2 and len(aufrufe) == 2     # andere Konfiguration
+    _t.sleep(0.01)
+    db.execute("INSERT INTO t VALUES (5)")
+    assert summe({"a": 1}, db)["s"] == 5                           # offene Transaktion: neu gerechnet
+    db.commit()
+    n = len(aufrufe)
+    assert summe({"a": 1}, db)["s"] == 5 and len(aufrufe) == n + 1  # Änderung gespeichert: neuer Stand
+    assert summe({"a": 1}, db)["s"] == 5 and len(aufrufe) == n + 1
+    mem = sqlite3.connect(":memory:")
+    mem.execute("CREATE TABLE t (x INTEGER)")
+    summe({"a": 1}, mem), summe({"a": 1}, mem)
+    assert len(aufrufe) == n + 3                                    # im Arbeitsspeicher nie zwischengespeichert

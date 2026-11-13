@@ -985,6 +985,8 @@ def main():
             importordner.einlesen(ordner, v)
     except Exception as e:  # noqa: BLE001
         LOG.warning("Import-Ordner: %s", e)
+    import zwischenspeicher
+    zwischenspeicher.einschalten()
     import leistung
     leistung.instrumentieren()
     import erinnerungen

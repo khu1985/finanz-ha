@@ -3323,6 +3323,7 @@ def leistung_karte(db) -> str:
             + kpi(mb(s["ram_frei"]), f"RAM frei von {mb(s['ram_total'])}")
             + kpi(mb(s["prozess"]), f"Speicher der App · läuft seit {s['laufzeit_h']:g} h")
             + kpi(mb(s["db"] + s["dokumente"]), f"Daten (Datenbank {mb(s['db'])}, Dokumente {mb(s['dokumente'])})")
+            + (kpi(f"{s['treffer']:.0f} %", "aus dem Zwischenspeicher") if s.get("treffer") is not None else "")
             + "</div>")
     arten = {"seite": "Seite", "aktion": "Aktion", "funktion": "Berechnung", "hintergrund": "Hintergrund"}
 

@@ -821,6 +821,14 @@ Die Karte «Leistung» zeigt alles mit Ampel und dem Mittel der Vorversion. Dara
 deutlich langsamer wurde, Texterkennung über einer Minute pro Dokument, Datenbank über 100 MB, knapper
 Arbeitsspeicher oder hohe Last. Die Messwerte (nur Zeiten und Mengen, keine Inhalte) stehen im Text zum Weitergeben.
 
+**Zwischenspeicher.** Ampeln, Erinnerungen, Finanzplan, Steuererklärung, Pensionslücke und die Vertragsliste laufen
+auf fast jeder Seite und im Hintergrund. Ihre Ergebnisse verwendet die App wieder, bis sich etwas ändert: jede
+gespeicherte Änderung an Datenbank oder Konfiguration (auch aus dem Hintergrund) gilt sofort, spätestens nach 10
+Minuten wird ohnehin neu gerechnet. Die Karte «Leistung» zeigt den Anteil der Treffer.
+
+**Neu sichten** liest den Text eines Dokuments nur noch neu, wenn bisher keiner gespeichert ist (z. B. bei Scans);
+sonst läuft nur die Erkennung mit dem gespeicherten Text – das PDF ändert sich ja nicht.
+
 ## Dokumente verwalten und löschen
 
 Unter **App → Dokumente** stehen alle hochgeladenen Policen, Vorsorge- und Steuerdokumente sowie die Buchungen pro

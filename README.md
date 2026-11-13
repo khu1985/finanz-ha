@@ -136,6 +136,7 @@ flowchart TB
 | `finanz/app/ocr.py` | Texterkennung (tesseract) für gescannte PDFs |
 | `finanz/app/fragebogen.py` | Detail-Fragebögen zur Nachlass-Checkliste für den Notfallordner |
 | `finanz/app/verfuegungen.py` | Entwürfe für Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug |
+| `finanz/app/zwischenspeicher.py` | Ergebnisse teurer Berechnungen wiederverwenden, bis sich Daten oder Konfiguration ändern |
 | `finanz/app/leistung.py` | Leistung messen: Ladezeiten, Rechenzeiten, Hintergrundaufgaben, System und Datenmengen |
 | `finanz/app/vorschlaege.py` | Verbesserungsvorschläge aus den eigenen Daten, anonymisiert zum Weitergeben; Textauszüge, Verlauf und «erledigt» |
 | `finanz/app/pruefung.py` | Plausibilität der Einstellungen (Ampel pro Feld) |

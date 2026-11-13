@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.37.0 – 2026-11-13
+
+Schneller, nach den ersten Messwerten aus Home Assistant (Übersicht bisher bis 23 s):
+
+- **Zwischenspeicher:** Ampeln, Erinnerungen, Finanzplan, Steuererklärung, Pensionslücke, PK-Einkauf-Optimierung
+  und Vertragsliste werden nicht mehr bei jeder Seite und jedem Hintergrundlauf neu gerechnet, sondern erst, wenn
+  sich Daten oder Konfiguration ändern. Lokal lädt die Übersicht doppelt so schnell; auf dem Raspberry Pi bzw.
+  Home Assistant Green ist der Gewinn grösser
+- **Neu sichten nach Updates** liest PDFs nicht mehr erneut aus, wenn ihr Text schon gespeichert ist – nur die
+  Erkennung läuft neu
+- **Vorschläge «Leistung»:** Messwerte im Text nicht mehr als «‹Zahl›» unkenntlich (es sind nur Zeiten)
+
 ## 0.36.0 – 2026-11-13
 
 - **Leistung messen** (Seite Vorschläge): Ladezeit jeder Seite und Aktion, Rechenzeit der grossen Berechnungen und

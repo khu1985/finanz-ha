@@ -524,7 +524,8 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
     except Exception:  # noqa: BLE001
         LOG.exception("Vorschläge: Leistung nicht ausgewertet")
     private = _private_texte(k, db)
-    liste = [Vorschlag(bereich, anonymisieren(titel, private), anonymisieren(detail, private), anzahl, gewicht)
+    liste = [Vorschlag(bereich, titel, detail, anzahl, gewicht) if bereich == "Leistung"      # nur Zeiten und Mengen
+             else Vorschlag(bereich, anonymisieren(titel, private), anonymisieren(detail, private), anzahl, gewicht)
              for (bereich, titel, detail), (anzahl, gewicht) in erg.items()]
     try:
         verlauf_nachfuehren(db, liste)

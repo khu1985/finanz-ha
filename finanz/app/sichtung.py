@@ -107,9 +107,14 @@ def letzte(db) -> Bericht | None:
 
 
 def _lesen(pfad: Path, dateiname: str, vorher: str = "") -> str | None:
+    """Text für die Erkennung: der gespeicherte, wenn er brauchbar ist (das PDF ändert sich nicht – nur die Erkennung
+    wird mit einer neuen Version besser); sonst neu auslesen (bzw. per OCR)."""
+    import ocr
     import versicherungen as vi
     if not pfad.exists():
         return None
+    if vorher and not ocr.braucht_ocr(vorher):
+        return vorher
     return vi.text_auslesen(dateiname, pfad.read_bytes(), vorher or "")
 
 
