@@ -1735,7 +1735,7 @@ def test_marktzinsen_snb_und_offerten(k, db):
     assert mz.aktualisieren(k, db) is False
 
 
-def test_neue_erinnerungen_und_finanzplan_ampel(k, db):
+def test_neue_erinnerungen_und_finanzplan_ampel(k, daten, db):
     from datetime import date
     import ampel as am
     import budget as bu
