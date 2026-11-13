@@ -83,6 +83,7 @@ personen:
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
+| Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
@@ -203,6 +204,30 @@ Aktienquote nach Risikoprofil (tief 25 %, mittel 50 %, hoch 75 %; Renditeannahme
 Konten, in Aktien und Krypto (Richtwert höchstens 5 %), der mögliche Mehrertrag pro Jahr und bis zur Pensionierung,
 Hinweise zu Klumpenrisiko (Arbeitgeberaktien) und Hypothekarzins. Risikoprofil und Zinsen auf der Karte einstellbar
 (`anlage`). Keine Produktempfehlungen.
+
+## Sparen und Anlegen
+
+Die Seite **Sparen & Anlegen** führt Anlage-Check, Vorsorge, Steuern und Finanzplan zu einer Reihenfolge zusammen –
+eine übliche Faustregel mit den eigenen Zahlen, keine Anlageberatung:
+
+| Schritt | Was die App rechnet |
+|---|---|
+| 1. Notreserve | Lücke zur Reserve (`wohnen.reserve`, sonst halber Jahresbedarf), über 12 Monate auffüllen |
+| 2. Teure Schulden | Konten der Art «Kredit» (Konsumkredit, Leasing), zuerst tilgen |
+| 3. Säule 3a | Was dieses Jahr pro erwerbstätige Person noch offen ist, mit der Steuerersparnis; im Sparplan das Maximum pro Monat |
+| 4. Zweckgebunden | fehlender Betrag für die Amortisation bis zur Fälligkeit und Lebensziele (Finanzplan) bis zum Zieljahr |
+| 5. PK-Einkauf | Potenzial, Steuerersparnis auf einem Beispielbetrag; lohnt sich meist ab 25 % Grenzsteuersatz; 3 Jahre Sperrfrist für Kapitalbezug und WEF |
+| 6. Langfristig | Rest, mit der Aktienquote des Risikoprofils |
+
+- **Jetzt vom Konto:** Geld über Notreserve und zweckgebundenem Betrag wird in derselben Reihenfolge eingesetzt
+  (Kredit tilgen, 3a dieses Jahr, Ziele zurücklegen, der Rest langfristig).
+- **Sparplan pro Monat:** verteilt das Sparpotenzial (`personen[].sparen_monat`) auf die Schritte; reicht es für
+  1–4 nicht, steht der fehlende Betrag als Hinweis.
+- **Aufteilung Soll-Ist:** langfristiger Topf (Konten und Depot ohne Reserve und Zweck, plus Krypto) – Aktien gegen
+  das Ziel und welche Anlageklasse beim nächsten Kauf dran ist (ausgleichen über Käufe statt Verkäufe). Mit
+  Wertschriften-Positionen auch der Schweiz-Anteil am Depot (üblich rund 20–40 %).
+- **Produktarten** pro Topf und worauf zu achten ist (Kosten, Einlagensicherung, Laufzeit, Steuern) – keine Produkte
+  oder Anbieter. Fonds mit Kosten über 0,5 % pro Jahr aus den Wertschriften werden aufgelistet.
 
 Saldi von Hand, als eigene Liste oder per **Bank-Import**; ein Saldo pro Konto und Tag, neuere ersetzen ältere.
 

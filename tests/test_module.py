@@ -2020,3 +2020,40 @@ def test_kassenvergleich_praemie_unplausibel(k, db):
     e = next(x for x in kp.vergleich(k, db, [police])["personen"] if x["person"].name == "Person 1")
     assert e["person"].praemie_monat == 900 and e["person"].kosten_jahr == 1000 and e["person"].franchise == 300
     assert e["zu_hoch"] and e["bezug_monat"] == 450 and e["heute_kvg"] == 450 * 12 + 300 + 70
+
+
+# ---------------------------------------------------------------- Sparen und Anlegen
+
+def test_sparplan_reihenfolge_und_verteilung(k):
+    import sparplan as sp
+    db = vm.verbinden(":memory:")
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Lohn", "bank", ""), "2026-10-31", 80_000)
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Depot", "depot", ""), "2026-10-31", 30_000)
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Leasing", "kredit", ""), "2026-10-31", -12_000)
+    k["ziele"] = [{"name": "Auto", "betrag": 20_000, "jahr": 2029}]
+    for p in k["personen"]:
+        p["sparen_monat"] = 1500
+    k["personen"][0]["saeule3a"]["beitrag_jahr"] = 3000
+    k["wohnen"]["aktiv"] = False
+    p = sp.rechnen(k, db, date(2026, 11, 13))
+    s = {x.nr: x for x in p.schritte}
+    reserve = 50_000                                                    # Vorlage: Bedarf/2
+    assert s[1].status == sp.ERLEDIGT and p.ueberschuss == 80_000 - reserve
+    assert s[2].jetzt == 12_000 and s[2].monat == 0                     # Kredit sofort vom Konto
+    assert s[3].status == sp.TEILWEISE and s[3].jetzt == 4258 and s[3].monat == round(2 * 7258 / 12)
+    assert s[4].jetzt == 30_000 - 12_000 - 4258 and s[4].monat > 0     # Rest des Überschusses fürs Auto
+    assert sum(x.monat for x in p.schritte) == 3000 and s[6].monat == 3000 - s[3].monat - s[4].monat
+    assert [x.name for x in p.klassen][0].startswith("Aktien") and p.naechster_kauf
+    assert any(a.topf == "Säule 3a" for a in p.produktarten)
+
+
+def test_sparplan_ohne_sparpotenzial_und_reserve_luecke(k):
+    import sparplan as sp
+    db = vm.verbinden(":memory:")
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Lohn", "bank", ""), "2026-10-31", 10_000)
+    k["wohnen"]["aktiv"] = False
+    for p in k["personen"]:
+        p["sparen_monat"] = 0
+    p = sp.rechnen(k, db, date(2026, 11, 13))
+    assert p.schritte[0].status == sp.OFFEN and p.schritte[0].einmalig == 40_000
+    assert any("Kein Sparpotenzial" in h for h in p.hinweise) and not any("reicht" in h for h in p.hinweise)

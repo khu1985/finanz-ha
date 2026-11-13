@@ -327,3 +327,8 @@ def test_saeule3a_unter_vermoegen(server, daten):
     assert "Bezug geplant" in html and "Gebundene Vorsorge" in html
     cfg = konfig.laden()["personen"][0]["saeule3a"]
     assert cfg["guthaben"] == 25_000 and cfg["konten"] == 2
+
+
+def test_seite_sparen_und_anlegen(server, daten):
+    html = urllib.request.urlopen(f"{server}/sparplan").read().decode()
+    assert "Reihenfolge für den nächsten Franken" in html and "Produktarten" in html and "Sparplan pro Monat" in html

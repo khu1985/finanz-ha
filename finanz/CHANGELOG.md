@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.42.0 – 2026-11-13
+
+- Neue Seite **Sparen & Anlegen** (unter Bestand):
+  - **Reihenfolge für den nächsten Franken:** Notreserve, teure Schulden, Säule 3a (mit Steuerersparnis),
+    zweckgebunden (Amortisation, Lebensziele), PK-Einkauf (ab 25 % Grenzsteuersatz), langfristig – je mit Stand
+    und Link zur passenden Seite
+  - **Jetzt vom Konto:** Geld über Reserve und Zweck wird in derselben Reihenfolge eingesetzt
+  - **Sparplan pro Monat:** das Sparpotenzial auf die Schritte verteilt, mit Hinweis, wenn es nicht reicht
+  - **Aufteilung Soll-Ist** im langfristigen Topf und welche Anlageklasse beim nächsten Kauf dran ist; Schweiz-Anteil
+    im Depot
+  - **Produktarten** pro Topf und worauf zu achten ist; teure Fonds (über 0,5 % Kosten) aus den Wertschriften
+- Anlage-Check: Hinweis zum Kursrisiko nennt das Fälligkeitsdatum der Hypothek statt fest 2030
+
 ## 0.41.2 – 2026-11-13
 
 - Kassenvergleich: Ersparnis bei gleichem Modell und gleicher Franchise wird genannt; Hinweistexte ohne

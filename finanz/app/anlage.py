@@ -138,7 +138,8 @@ def pruefen(k: dict, db, heute: date | None = None) -> Check:
                     "im Euroraum)." if anteil >= 10 else
                     f"Fremdwährungen: {anteil:.0f} % des Finanzvermögens ({teile}) – kleines Währungsrisiko.")
     if zweck and depot > anlegbar + 1:
-        hinw.append("Ein Teil des Depots wird bis zur Fälligkeit für die Amortisation gebraucht – Kursrisiko vor 2030 begrenzen.")
+        hinw.append("Ein Teil des Depots wird bis zur Fälligkeit für die Amortisation gebraucht – Kursrisiko vor "
+                    f"{a.faellig:%m.%Y} begrenzen." if a else "Ein Teil des Depots ist zweckgebunden – Kursrisiko begrenzen.")
     hinw.append("Arbeitgeberaktien (z. B. Mitarbeiterprogramme) erhöhen das Klumpenrisiko, weil Lohn und Vermögen vom gleichen "
                 f"Unternehmen abhängen – Anteil am Finanzvermögen höchstens rund {cfg['einzeltitel_max']} %.")
     if w.get("aktiv") and float(w.get("hypothek_zins", 0) or 0) > float(cfg["zins_sicher"]):

@@ -17,6 +17,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Kinder | Lebenslauf je Kind von der Kita über Schule und Lehre bzw. Gymnasium bis zum Studium – mit eigenen Kosten und Vergleichswerten je Phase (Zürcher Kinderkosten-Tabelle, Kita-Vollkosten, Studienbudget); Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse, Finanzplan und Erinnerungen |
+| Sparen & Anlegen | Reihenfolge für den nächsten Franken – Notreserve, teure Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig – mit «jetzt vom Konto» und Sparplan pro Monat, Soll-Ist der Aufteilung und Produktarten (keine Produktempfehlungen) |
 | Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Säule 3a je Konto (gebunden, mit Bezugsplan), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Wertschriften pro Position (Anlageklasse, Region, Währung, Rendite, TER), Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial, wiederkehrende Zahlungen und Abos mit Preisänderungen, Vergleich mit Schweizer Haushalten gleichen Typs und Einkommens |
 | Lebensereignisse | Stellenverlust mit Taggeld und Reserve, Trennung bzw. Scheidung (Güterrecht, PK-Teilung, zwei Haushalte), faire Kostenaufteilung im Paar mit Vorsorgelücke |
@@ -74,7 +75,7 @@ flowchart TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
         K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, kinderphasen, zuzug"]
-        Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
+        Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, sparplan, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
@@ -133,6 +134,7 @@ flowchart TB
 | `finanz/app/finanzplan.py` | Finanzplan Jahr für Jahr bis ins hohe Alter mit Monte-Carlo-Simulation |
 | `finanz/app/fruehpension.py` | Frühpensionierung 58–65 |
 | `finanz/app/anlage.py` | Anlage-Check |
+| `finanz/app/sparplan.py` | Sparen und Anlegen: Reihenfolge, Sparplan pro Monat, Soll-Ist, Produktarten |
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |

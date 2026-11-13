@@ -28,7 +28,8 @@ NAVIGATION = [
     ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
                  ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("finanzplan", "Finanzplan"), ("lebensereignisse", "Lebensereignisse"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
                  ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
-    ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
+    ("Bestand", [("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen"), ("budget", "Budget"),
+                 ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("vorschlaege", "Vorschläge"),
              ("protokoll", "Protokoll"),
              ("aenderungen", "Änderungen")]),
@@ -2596,6 +2597,63 @@ def anlage_karte(k: dict, db) -> str:
             'Verlusttoleranz und Einkommenssicherheit ab.</p>')
     return karte("Anlage-Check", f'<div class="kpis">{kpis}</div>' + tab + toepfe + hinweisliste(c.hinweise) + form + fuss)
 
+
+
+def sparplan(k: dict, db) -> str:
+    """Sparen und Anlegen: Reihenfolge, Sparplan pro Monat, Soll-Ist und Produktarten."""
+    import sparplan as sp
+    p = sp.rechnen(k, db)
+    farbe = {sp.ERLEDIGT: am.GRUEN, sp.TEILWEISE: am.GELB, sp.OFFEN: am.GELB, sp.ENTFAELLT: ""}
+    erster = next((s for s in p.schritte if s.status in (sp.OFFEN, sp.TEILWEISE)), None)
+    drei = next((s for s in p.schritte if s.nr == 3), None)
+    lang = next(s for s in p.schritte if s.nr == 6)
+    kpis = '<div class="kpis">' + "".join([
+        kpi(chf(p.sparpotenzial), "Sparpotenzial pro Monat"),
+        kpi(f"{erster.nr}. {escape(erster.titel)}" if erster else "alles erledigt", "nächster Schritt"),
+        kpi(chf(lang.monat), "pro Monat langfristig anlegen"),
+        *([kpi(chf(drei.einmalig), "3a dieses Jahr noch offen", "", am.GELB)] if drei and drei.einmalig > 50 else []),
+    ]) + "</div>"
+    zeilen = []
+    for s in p.schritte:
+        punkt = licht(farbe[s.status], s.status) if farbe[s.status] else '<span class="leise">–</span>'
+        titel = f'{punkt} <b>{s.nr}. {escape(s.titel)}</b>' + (f' <a href="{s.seite}">→</a>' if s.seite else "")
+        text = escape(s.text) + (f'<br><span class="leise">{escape(s.nutzen)}</span>' if s.nutzen else "")
+        if s.status == sp.ENTFAELLT:
+            titel, text = f'<span class="leise">{titel}</span>', f'<span class="leise">{text}</span>'
+        zeilen.append([titel, f"<div>{text}</div>", chf(s.jetzt) if s.jetzt else "", chf(s.monat) if s.monat else ""])
+    reihenfolge = (tabelle(["Schritt", "Stand", "Jetzt vom Konto", "Sparplan/Monat"], zeilen, zahlen_ab=2)
+                   + (f'<p class="leise">«Jetzt vom Konto»: CHF {chf(p.ueberschuss)} liegen über Notreserve und '
+                      'zweckgebundenem Geld auf Konten – in derselben Reihenfolge eingesetzt.</p>' if p.ueberschuss else "")
+                   + '<p class="leise">Die Reihenfolge ist eine übliche Faustregel: zuerst Sicherheit, dann die steuerlich '
+                   'günstigen Gefässe, dann das Anlegen. Sie ersetzt keine Beratung.</p>')
+    verteilung = [(f"{s.nr}. {s.titel}", s.monat) for s in p.schritte if s.monat]
+    plan_text = (dg.balken_liste(verteilung) if verteilung else
+                 '<p class="leise">Kein Sparpotenzial erfasst.</p>')
+    plan_text += ('<p class="leise">Verteilt das Sparpotenzial in der Reihenfolge oben: Lücken in Reserve und Schulden über '
+                  '12 Monate, 3a mit dem Maximum pro erwerbstätige Person, Amortisation bis zur Fälligkeit, Lebensziele bis '
+                  'zum Zieljahr, der Rest langfristig. Am einfachsten als Daueraufträge kurz nach dem Lohn.</p>')
+    teile = [kpis, karte("Reihenfolge für den nächsten Franken", reihenfolge), karte("Sparplan pro Monat", plan_text)]
+    if p.klassen:
+        z = [[escape(x.name), chf(x.ist), chf(x.soll), chf(x.diff, vorzeichen=True)] for x in p.klassen]
+        si = (tabelle(["Langfristiger Topf", "Ist", "Soll", "Differenz"], z, zahlen_ab=1, responsiv=False)
+              + dg.saeulen(["Ist", "Soll"], {x.name: [x.ist, x.soll] for x in p.klassen})
+              + f"<p><b>Nächster Kauf:</b> {escape(p.naechster_kauf)}</p>"
+              + '<p class="leise">Langfristiger Topf = Konten und Depot ohne Notreserve, zweckgebundenes Geld und den Betrag '
+                '«jetzt vom Konto» für Schulden, 3a und Ziele, plus Krypto. '
+                'Ziel nach Risikoprofil (unter Vermögen → Anlage-Check). Ausgleichen über neue Käufe statt Verkäufe spart '
+                'Kosten.</p>')
+        teile.append(karte("Aufteilung Soll-Ist", si))
+    z = [[escape(a.topf), escape(a.art), escape(a.achten)] for a in p.produktarten]
+    pa = (tabelle(["Topf", "Produktart", "Worauf achten"], z)
+          + '<p class="leise">Produktarten, keine Produkte oder Anbieter. Kosten und Bedingungen selbst vergleichen.</p>')
+    if p.teure_fonds:
+        pa += "<h3>Teure Fonds im Depot</h3>" + tabelle(
+            ["Fonds", "Kosten (TER)", "Wert", "Kosten/Jahr"],
+            [[escape(n), f"{t:.2f} %", chf(w), chf(w * t / 100)] for n, t, w in p.teure_fonds[:8]], zahlen_ab=1)
+    teile.append(karte("Produktarten", pa))
+    if p.hinweise:
+        teile.append(karte("Hinweise", hinweisliste(p.hinweise)))
+    return "".join(teile)
 
 
 # ---------------------------------------------------------------- Sensoren

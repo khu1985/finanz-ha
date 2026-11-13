@@ -40,6 +40,7 @@ SEITEN = {
     "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
     "budget": ("Budget und Cashflow", seiten.budget),
     "finanzplan": ("Finanzplan", seiten.finanzplan),
+    "sparplan": ("Sparen & Anlegen", seiten.sparplan),
     "lebensereignisse": ("Lebensereignisse", seiten.lebensereignisse),
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
