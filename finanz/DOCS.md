@@ -14,7 +14,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 2. [Bedienung](#bedienung)
 3. [Seiten](#seiten)
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
-   [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
+   [Versicherungen](#versicherungen) · [Finanzplan](#finanzplan) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
 5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [E-Steuerauszug](#e-steuerauszug-der-bank) · [Steuererklärung](#steuererklärung-vorbereiten) · [Verfügungen](#verfügungen) · [Fragebögen](#fragebögen-zum-nachlass) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln) · [Plausibilität](#plausibilität-der-einstellungen) · [Vorschläge](#vorschläge-für-die-weiterentwicklung) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen) · [Dokumente neu sichten](#dokumente-neu-sichten) · [Uploads und Texterkennung](#uploads-und-dateigrösse)
@@ -58,7 +58,7 @@ personen:
 ## Bedienung
 
 - **Menü** in Gruppen – Überblick (Übersicht, Jahresbericht, Berater), Planung (Vorsorge, Steuern, Steuererklärung,
-  Wohnen, Kinder, Szenarien, Nachlass, Verfügungen, Notfallordner), Bestand (Vermögen, Budget, Versicherungen), App
+  Wohnen, Kinder, Finanzplan, Szenarien, Nachlass, Verfügungen, Notfallordner), Bestand (Vermögen, Budget, Versicherungen), App
   (Einstellungen, Dokumente, Vorschläge, Protokoll, Änderungen). Auf grossen Bildschirmen als Seitenleiste,
   auf Tablets als wischbare Leiste, auf dem Handy hinter dem Knopf «Menü». Ein farbiger Punkt markiert Seiten mit
   gelber oder roter Ampel; beim Protokoll steht die Zahl der Warnungen von heute.
@@ -83,9 +83,10 @@ personen:
 | Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Kinder erfassen, Zeitachse mit Zulagen, Betreuung und Steuerwirkung, Hinweise |
-| Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
-| Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, eigene Regeln |
-| Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
+| Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
+| Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, eigene Regeln |
+| Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
+| Finanzplan | Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
 | Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
@@ -212,6 +213,22 @@ und camt.054, alle Versionen): Buchungsdatum, Betrag mit Soll/Haben, Gegenpartei
 Sammelaufträge aufgeteilt in Einzelzahlungen, vorgemerkte Buchungen nicht gezählt, doppelte Tagesauszüge nur einmal.
 Die Monatssaldi kommen aus dem Schlusssaldo. Im Import-Ordner als `bank*.xml`, `konto*.zip` oder `camt*.zip`.
 
+### Wertschriften pro Position
+
+Mit dem E-Steuerauszug (XML) kommen die Titel jedes Depots mit Stückzahl, Kurs und Wert per 31.12. dazu; sonst eine
+eigene Liste unter «Vermögen → Wertschriften» bzw. als `depot*.csv` im Import-Ordner
+(`Datum;Depot;ISIN;Name;Kategorie;Währung;Menge;Kurs;Wert CHF`, Kategorie z. B. SHARE, FUND, BOND).
+
+| Anzeige | Wie |
+|---|---|
+| Aufteilung | nach Anlageklasse (Aktien, Obligationen, Immobilien, Rohstoffe, Geldmarkt), Region und Währung; bei Fonds aus dem Namen geschätzt («World», «Emerging», «SPI», «Bond» …) |
+| Rendite | Wertänderung plus Erträge gegenüber dem Vorjahres-Stichtag, nur bei gleicher Stückzahl |
+| Kosten | laufende Fondskosten (TER) pro ISIN eintragen (`wertschriften.ter`); Einzeltitel ohne Fondskosten |
+| Hinweise | Einzeltitel über 10 %, mehr als 60 % Fremdwährung oder Schweiz, Fonds ohne TER, Kosten über 0,6 % |
+
+Mit Positionen rechnet der Anlage-Check mit der echten Aktienquote statt mit dem ganzen Depot. Kurse in Echtzeit
+gibt es nicht – Stand ist der Stichtag des Imports.
+
 ## Budget und Cashflow
 
 Der Bank-Import (Seite Budget, Vermögen oder Import-Ordner) speichert neben den Monatssaldi die einzelnen Buchungen;
@@ -230,6 +247,11 @@ Einnahmen und Ausgaben laufen.
   übernehmen» verteilt den gesparten Betrag nach Bruttolohn auf die Personen.
 - Ampel: grün = gespart wie geplant, gelb = weniger als 90 % des Plans oder unter 6 Monaten Daten, rot = mehr
   ausgegeben als eingenommen.
+- **Wiederkehrende Zahlungen:** gleiche Gegenpartei, fester Betrag und regelmässiger Abstand (wöchentlich bis
+  jährlich; mindestens 4 wöchentliche, 3 monatliche bzw. vierteljährliche oder 2 halbjährliche bzw. jährliche
+  Zahlungen). Liste mit Rhythmus, letztem Betrag, Betrag pro Jahr und nächster Belastung; Preisänderungen seit der
+  letzten Zahlung sind markiert, passende Versicherungsverträge verknüpft. Einkäufe mit schwankenden Beträgen und
+  Umbuchungen zählen nicht; Zahlungen, die seit mehr als zwei Perioden fehlen, gelten als beendet.
 
 ## Versicherungen
 
@@ -249,6 +271,13 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
   höchstens 50 % der Prämie). Ergebnis: optimale Franchise, Ersparnis, Kosten bei 0 bis 10'000 Franken
   Gesundheitskosten, ab welchen Kosten die tiefste Franchise lohnt, Hinweise zu Hausarzt/Telmed (`rabatt_modell`) und
   Unfall sistieren. Eigene Offerten unter `krankenkasse.personen[].angebote` (`{2500: 380.50}`). Wechsel bis 30. November.
+- **Alle Kassen im Vergleich:** Mit «Prämien … vom BAG laden» holt die App die offiziellen Prämien aller Kassen
+  (Datei Prämien_CH.csv von opendata.swiss, rund 25 MB; behalten werden nur die Prämien des Wohnkantons). Ohne
+  Internet die Datei hochladen oder als `praemien*.csv` in den Import-Ordner legen. Pro Person: die fünf günstigsten
+  Angebote über alle Modelle und Franchisen nach Gesamtkosten (Prämie + Franchise + Selbstbehalt bei den erwarteten
+  Gesundheitskosten), das günstigste bei gleichem Modell und gleicher Franchise, die günstigste Variante bei der
+  eigenen Kasse und die Ersparnis gegenüber heute. Prämienregion aus der KVG-Police oder unter Einstellungen
+  (`krankenkasse.region`); Altersklasse (Kind, 19–25, ab 26) aus dem Geburtsdatum im Prämienjahr.
 - **Krankenkassen-Policen:** Policen mit Grund- und Zusatzversicherung im gleichen PDF werden seitenweise gelesen
   (Monatsprämie, Modell, Franchise, Unfalldeckung und Unfallanteil, versicherte Person und Geburtsdatum,
   Versicherten-Nr., gültig ab, erste Anlaufstelle, Prämienregion); die Zusatzversicherung wird ein eigener Vertrag
@@ -268,6 +297,23 @@ Wartefrist in Tagen → Monate); beim Neu-Sichten werden auch bei von Hand bearb
 eingetragene Werte bleiben. Die Renten laufender, einer Person zugeordneter Policen zählen in «Risiko Invalidität und
 Tod» als «Extern», solange in den Einstellungen `risiko.iv_rente_extern` 0 ist; Hinweise bei Wartefrist über 24 Monaten
 und bei reinen Unfallpolicen.
+
+## Finanzplan
+
+Jahr für Jahr von heute bis 95 (`finanzplan.bis_alter`) in heutigen Franken:
+
+| Phase | Rechnung |
+|---|---|
+| bis zur Pensionierung | freies Vermögen × (1 + reale Rendite) + Sparpotenzial (`personen[].sparen_monat` × 12); PK und 3a wachsen in ihren eigenen Modellen |
+| Pensionierung | Kapital aus PK und 3a nach Kapitalbezugssteuer (gestaffelt) kommt dazu – wie bei der Pensionslücke |
+| Ruhestand | Entnahme = Bedarf im Ruhestand − (AHV + PK-Renten ohne Teuerungsausgleich + Renten aus dem Ausland + Kinderrenten); der Bedarf versteht sich inkl. Steuern |
+
+**Simulation (Monte Carlo):** 1000 Verläufe mit zufälligen Jahresrenditen (lognormal; Mittelwert = Rendite des
+Risikoprofils aus dem Anlage-Check minus Teuerung; Schwankung nach Aktienquote: 16 % für Aktien, 4 % für den
+sicheren Teil). Ergebnis: Anteil der Verläufe, in denen das Geld bis zum Endalter reicht (Ampel grün ab 90 %, gelb
+ab 70 %), Bandbreite des Vermögens (10 %, Median, 90 %), in welchem Jahr das Geld in den schlechtesten 10 % ausgeht,
+und der höchste Bedarf pro Jahr, der in 90 % der Verläufe reicht. Die Simulation ist reproduzierbar (fester
+Zufallsstartwert) – Änderungen am Plan zeigen so ihre echte Wirkung.
 
 ## Szenarien
 
@@ -815,6 +861,8 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 | `bank*.csv`, `konto*.csv` (auch `.xml`/`.zip` im Format camt.053, `camt*.zip`) | Kontoauszug aus dem E-Banking (Monatssaldi und Buchungen) |
 | `versicherungen*.csv` | Versicherungsliste (`Versicherung;Anbieter;Betrag;Person;Summe;Notiz`) |
 | `versicherung*.pdf`, `police*.pdf` | Versicherungsvertrag analysieren |
+| `depot*.csv` | Wertschriften-Positionen (`Datum;Depot;ISIN;Name;Kategorie;Währung;Menge;Kurs;Wert CHF`) |
+| `praemien*.csv` | Prämien aller Krankenkassen (Prämien_CH.csv des BAG) |
 | `steuerauszug*.xml`, `steuerauszug*.pdf` | E-Steuerauszug der Bank (eCH-0196): Saldi per 31.12. ins Vermögen, Totale in die Steuererklärung |
 | `steuer*.pdf`, `veranlagung*.pdf` | Steuerdokument analysieren |
 | übrige `*.pdf` | Vorsorgedokument (Vorsorgeausweis, 3a-, 3b-, IK-Auszug) analysieren |
@@ -831,7 +879,7 @@ oder **Einstellungen → Experte**.
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
-| `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil` |
+| `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil`, `region` (Prämienregion; leer = aus der Police) |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |
 | `fruehpension` | `pk_kuerzung_uws` |
 | `waehrungen` | `kurse`, `automatisch` |
@@ -843,6 +891,8 @@ oder **Einstellungen → Experte**.
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung (real), `teuerung`, Rendite |
 | `budget` | `regeln` (Stichwort → Kategorie) |
+| `wertschriften` | `ter` (laufende Fondskosten in % pro ISIN) |
+| `finanzplan` | `bis_alter` (Standard 95) |
 | `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
 
@@ -908,13 +958,14 @@ Richtung des gewählten KI-Anbieters.
 | Datei / Ordner | Inhalt |
 |---|---|
 | `finanz.yaml` | Konfiguration; frühere Fassung als `finanz.yaml.bak` |
-| `finanz.sqlite` | Konten, Saldi, Buchungen, Verträge, Vorsorge- und Steuerdokumente, E-Steuerauszüge, Monatsstände, Kurse, Beratungen, erledigte und gesendete Erinnerungen, Status und Verlauf der Vorschläge |
+| `finanz.sqlite` | Konten, Saldi, Buchungen, Verträge, Vorsorge- und Steuerdokumente, E-Steuerauszüge, Wertschriften-Positionen, Krankenkassen-Prämien des Kantons, Monatsstände, Kurse, Beratungen, erledigte und gesendete Erinnerungen, Status und Verlauf der Vorschläge |
 | `versicherungen/`, `vorsorge/`, `steuern/` | hochgeladene PDFs |
 | `import/` | Import-Ordner, erledigte Dateien unter `import/erledigt/` |
 | `finanz.log` | Protokoll (rotiert bei 1 MB) |
 
 Alles liegt im Konfigurationsordner der App und ist im Home-Assistant-Backup enthalten. Ohne KI braucht die App
-kein Internet. Sie läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
+kein Internet; nur die Wechselkurse der EZB (optional, täglich) und die Krankenkassen-Prämien des BAG (auf Knopfdruck)
+werden geholt – dabei gehen keine eigenen Daten hinaus. Sie läuft nur über Ingress (kein offener Port) und mit eigenem AppArmor-Profil (`apparmor.txt`) –
 zusammen Sicherheitsbewertung 8. `homeassistant_api` wird nur für die optionale KI-Aufgabe und die
 Benachrichtigungen und Sensoren genutzt.
 

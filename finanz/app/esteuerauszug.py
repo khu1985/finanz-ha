@@ -29,6 +29,7 @@ class Posten:
     ertrag_b: float = 0.0    # ohne Verrechnungssteuer (bei Schulden: Schuldzinsen)
     vst: float = 0.0
     titel: int = 0           # Anzahl Wertschriften im Depot
+    positionen: list = field(default_factory=list)   # Depot: Titel mit Menge, Kurs, Wert (für «Wertschriften»)
 
 
 @dataclass
@@ -118,9 +119,18 @@ def aus_xml(xml: bytes) -> Steuerauszug:
         werte = [tw for t in titel for tw in _kinder(t, "taxValue")]
         zahlungen = [p for t in titel for p in _kinder(t, "payment")]
         steuerwert = _summe(werte, "value")
+        positionen = []
+        for t in titel:
+            tw = next(iter(_kinder(t, "taxValue")), None)
+            pz = _kinder(t, "payment")
+            positionen.append({"isin": t.get("isin") or "", "valor": t.get("valorNumber") or "",
+                               "name": t.get("securityName") or "", "kategorie": t.get("securityCategory") or "",
+                               "waehrung": (t.get("currency") or "CHF").upper(), "land": t.get("country") or "",
+                               "menge": _z(tw, "quantity"), "kurs": _z(tw, "unitPrice"), "wert": _z(tw, "value"),
+                               "ertrag": round(_summe(pz, "grossRevenueA") + _summe(pz, "grossRevenueB"), 2)})
         s.posten.append(Posten("depot", "Depot", d.get("depotNumber") or "", "CHF", steuerwert, steuerwert,
                                _summe(zahlungen, "grossRevenueA"), _summe(zahlungen, "grossRevenueB"),
-                               _summe(zahlungen, "withHoldingTaxClaim"), len(titel)))
+                               _summe(zahlungen, "withHoldingTaxClaim"), len(titel), positionen))
     for k in _alle(w, "liabilityAccount"):
         tw = next(iter(_kinder(k, "taxValue")), None)
         zinsen = _z(k, "totalGrossRevenueB") or _summe(_kinder(k, "payment"), "grossRevenueB")
@@ -223,6 +233,11 @@ def speichern(db, s: Steuerauszug, person: str = "") -> tuple[int, int]:
             kid = vm.konto_anlegen(db, kontoname(s, p), art, person, p.waehrung if p.art == "bank" else "CHF")
             vm.saldo_setzen(db, kid, s.stichtag, -abs(p.saldo) if art in vm.SCHULDEN else p.saldo)
             n += 1
+            if p.positionen:
+                import wertschriften as ws
+                ws.speichern(db, [ws.Position(s.stichtag, kontoname(s, p), x["isin"], x["name"], x["kategorie"],
+                                              x["waehrung"], x["land"], x["menge"], x["kurs"], x["wert"], x["ertrag"])
+                                  for x in p.positionen], "steuerauszug")
     db.commit()
     return cur.lastrowid, n
 

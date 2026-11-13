@@ -16,9 +16,10 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Kinder | Kinder erfassen (auch aus früheren Beziehungen), Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse und Erinnerungen |
-| Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
-| Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial |
-| Versicherungen | Policen als PDF (auch gescannt, mit Texterkennung) oder Liste, Erkennung inkl. Invaliditätsleistungen und kantonaler Gebäudeversicherungen, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell), Risiko Invalidität und Tod |
+| Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Wertschriften pro Position (Anlageklasse, Region, Währung, Rendite, TER), Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
+| Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial, wiederkehrende Zahlungen und Abos mit Preisänderungen |
+| Finanzplan | Jahr für Jahr bis 95: Lohn bzw. Renten, Sparen und Entnahmen, Vermögen; 1000 simulierte Börsenverläufe, Wahrscheinlichkeit, dass das Geld reicht, mit 90 % Sicherheit tragbarer Bedarf |
+| Versicherungen | Policen als PDF (auch gescannt, mit Texterkennung) oder Liste, Erkennung inkl. Invaliditätsleistungen und kantonaler Gebäudeversicherungen, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell, alle Kassen mit den BAG-Prämien), Risiko Invalidität und Tod |
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
 | Jahresbericht | Monatliche Stände, Vergleich mit dem Vorjahr, Massnahmen, Drucken |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen, Werten aus der App und Saldi per 31.12. |
@@ -69,9 +70,9 @@ flowchart TB
     subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
-        D["Dokumente<br/>bankimport, camt, budget, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
+        D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
         K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
-        Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
+        Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, wertschriften,<br/>krankenkasse, kkpraemien, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
@@ -92,6 +93,7 @@ flowchart TB
     K & Z & C --> A --> SE
     Z -. optional .-> HA
     EZB["EZB-Referenzkurse<br/>(optional)"] -. täglich .-> K
+    BAG["BAG-Prämien<br/>(auf Knopfdruck)"] -. jährlich .-> Z
     A -. stündlich und alle 15 Minuten .-> HA
     S --> L
 ```
@@ -118,6 +120,10 @@ flowchart TB
 | `finanz/app/camt.py` | Kontoauszüge im Bankformat camt.053/052/054 (ISO 20022, XML oder ZIP) lesen |
 | `finanz/app/esteuerauszug.py` | E-Steuerauszug der Bank (eCH-0196) lesen: Konten, Depots, Schulden, Erträge, Verrechnungssteuer |
 | `finanz/app/krankenkasse.py` | Franchise- und Modell-Optimierung der Grundversicherung |
+| `finanz/app/kkpraemien.py` | Prämien aller Krankenkassen (offene Daten des BAG) laden und pro Person vergleichen |
+| `finanz/app/wertschriften.py` | Wertschriften pro Position: Anlageklasse, Region, Währung, Rendite, laufende Kosten |
+| `finanz/app/abos.py` | Wiederkehrende Zahlungen und Abos aus den Buchungen erkennen |
+| `finanz/app/finanzplan.py` | Finanzplan Jahr für Jahr bis ins hohe Alter mit Monte-Carlo-Simulation |
 | `finanz/app/fruehpension.py` | Frühpensionierung 58–65 |
 | `finanz/app/anlage.py` | Anlage-Check |
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
@@ -352,7 +358,8 @@ README und DOCS.md fehlt.
 `tests/` prüft Rechenkern, Dokumenterkennung und Web-App mit erfundenen Daten, z. B. Eckwerte der Rentenskala,
 Ehepaar-Plafond und Konkubinat, Bundessteuer an Tarifgrenzen, Kantonssteuer-Kurve, Staffelung, Tragbarkeit,
 Erkennung von Policen, Vorsorgeausweisen und Steuerdokumenten aus erzeugten PDFs, camt.053 und E-Steuerauszug
-(erfundene Beispiele in `tests/daten/`), Anonymisierung der Vorschläge, Kündigungsfristen nach VVG,
+(erfundene Beispiele in `tests/daten/`), BAG-Prämien in beiden Formaten, Wertschriften, Abos, Finanzplan,
+Anonymisierung der Vorschläge, Kündigungsfristen nach VVG,
 Ampel-Schwellen, PK-Einkauf-Optimierung, Heiratsvergleich, Hypothekar-Strategie, Bank-Import (Beispielauszüge in
 `tests/bank/`), Erinnerungen und Benachrichtigungen, Import-Ordner sowie alle Seiten und Uploads hinter
 einem Ingress-Pfad.

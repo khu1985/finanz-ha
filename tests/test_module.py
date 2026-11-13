@@ -1621,3 +1621,84 @@ def test_person_umbenennen_fuehrt_alles_nach(k, db):
     assert k["personen"][0]["name"] == "Anna Muster"                 # der Name selbst wird vom Aufrufer gesetzt
     assert vw.person_umbenennen_db(db, "Anna Muster", "Anna") == 1
     assert db.execute("SELECT person FROM konten WHERE id = ?", (kid,)).fetchone()[0] == "Anna"
+
+
+KK_2027 = ("﻿Versicherer,Kanton,Hoheitsgebiet,Geschäftsjahr,Erhebungsjahr,Region,Altersklasse,Unfalleinschluss,Tarif,"
+           "Tariftyp,Altersuntergruppe,Franchisestufe,Franchise,Prämie,isBaseP,isBaseF,Tarifbezeichnung\n"
+           "8,BL,P_OKPCH,2027,2026,PR_REG_1,AKA_03_ERW,OHN_UNF,B1,BASE,E1,FRASTU_01,FRA_01_E_0300,500.0,1,1,Standard\n"
+           "8,BL,P_OKPCH,2027,2026,PR_REG_1,AKA_03_ERW,OHN_UNF,B1,BASE,E1,FRASTU_06,FRA_06_E_2500,380.0,0,0,Standard\n"
+           "312,BL,P_OKPCH,2027,2026,PR_REG_1,AKA_03_ERW,OHN_UNF,HMO,PRAXIS,E1,FRASTU_01,FRA_01_E_0300,450.0,0,1,HMO\n"
+           "312,BL,P_OKPCH,2027,2026,PR_REG_2,AKA_03_ERW,OHN_UNF,HMO,PRAXIS,E1,FRASTU_01,FRA_01_E_0300,420.0,0,1,HMO\n"
+           "312,ZH,P_OKPCH,2027,2026,PR_REG_1,AKA_03_ERW,OHN_UNF,HMO,PRAXIS,E1,FRASTU_01,FRA_01_E_0300,600.0,0,1,HMO\n")
+KK_2026 = ("Versicherer,Kanton,Hoheitsgebiet,Geschäftsjahr,Erhebungsjahr,Region,Altersklasse,Unfalleinschluss,Tarif,"
+           "Tariftyp,Altersuntergruppe,Franchisestufe,Franchise,Prämie,isBaseP,isBaseF,Tarifbezeichnung\n"
+           "8,BL,CH,2026,2025,PR-REG CH1,AKL-ERW,OHN-UNF,B1,TAR-BASE,E1,FRAST1,FRA-300,480.0,1,1,Standard\n")
+
+
+def test_kassenvergleich_bag_praemien(k, db):
+    import kkpraemien as kp
+    assert kp.einlesen(db, KK_2026.encode(), "BL") == (2026, 1)
+    assert kp.einlesen(db, KK_2027.encode(), "bl") == (2027, 4)          # nur der Kanton
+    assert kp.jahre(db, "BL") == [2027, 2026]
+    a = kp.angebote(db, "BL", 1, "ERW", False, 0)
+    assert [(x.kasse, x.franchise) for x in a] == [("CSS", 2500), ("Atupri", 300), ("CSS", 300)]
+    a = kp.angebote(db, "BL", 1, "ERW", False, 5000)                       # hohe Kosten: tiefe Franchise lohnt
+    assert (a[0].kasse, a[0].franchise) == ("Atupri", 300)
+    assert kp.angebote(db, "BL", 1, "ERW", False, 0, 2026)[0].praemie_monat == 480
+    k["haushalt"]["kanton"] = "BL"
+    vertraege = [{"sparte": "kvg", "notiz": "Prämienregion BL 2", "person": "Person 1"}]
+    assert kp.region_aus_policen(vertraege, "BL") == 2
+    k["krankenkasse"]["region"] = "1"
+    erg = kp.vergleich(k, db, [])
+    assert erg["jahr"] == 2027 and erg["region"] == 1 and erg["personen"][0]["angebote"]
+
+
+def test_wertschriften_positionen(k, db):
+    from pathlib import Path
+    import esteuerauszug as es
+    import wertschriften as ws
+    es.speichern(db, es.lesen((Path(__file__).parent / "daten" / "esteuerauszug_beispiel.xml").read_bytes()))
+    u = ws.uebersicht(k, db)
+    assert u.wert == 40000 and u.waehrungen == {"CHF": 25000, "USD": 15000} and u.ohne_ter == 1
+    k["wertschriften"] = {"ter": {"CH0000000001": 0.4}}
+    assert ws.uebersicht(k, db).kosten == 100
+    neu = ws.csv_lesen("Datum;Depot;ISIN;Name;Kategorie;Währung;Menge;Kurs;Wert CHF\n"
+                       "31.12.2026;Raiffeisen Depot …3456;CH0000000001;Fonds A;FUND;CHF;100;270;27000\n"
+                       "31.12.2026;Raiffeisen Depot …3456;CH0000000003;Swiss Bond Index Fund;FUND;CHF;10;100;1000\n".encode())
+    ws.speichern(db, neu, "csv")
+    u = ws.uebersicht(k, db)
+    assert u.stichtag == "2026-12-31" and u.vorjahr == "2025-12-31"
+    fonds_a = next(p for p in u.positionen if p.isin == "CH0000000001")
+    assert fonds_a.rendite == 8.0 and u.klassen == {"Aktien": 27000, "Obligationen": 1000}
+    assert ws.aktienwert(k, db) == 27000
+
+
+def test_wiederkehrende_zahlungen():
+    import abos
+    from datetime import date
+    b = []
+    for m in range(1, 13):
+        b.append({"datum": f"2026-{m:02d}-05", "betrag": -29.9 if m < 9 else -34.9, "text": f"STREAMING AG Karte 1234 {m}",
+                  "kategorie": "Telekom und Abos"})
+        b.append({"datum": f"2026-{m:02d}-1{m % 9}", "betrag": -float(40 + m * 7), "text": "Grossverteiler Musterhausen",
+                  "kategorie": "Lebensmittel"})
+    for m in (1, 4, 7, 10):
+        b.append({"datum": f"2026-{m:02d}-01", "betrag": -412.3, "text": "Musterkasse Gesundheit QR 99", "kategorie": "KK"})
+    erg = {a.schluessel: a for a in abos.erkennen(b, [{"versicherer": "Musterkasse", "sparte": "kvg"}], date(2026, 12, 10))}
+    assert set(erg) == {"streaming", "musterkasse gesundheit"}
+    s = erg["streaming"]
+    assert (s.rhythmus, s.betrag, s.aenderung, s.naechste) == ("monatlich", 34.9, 16.7, "2027-01-04")
+    q = erg["musterkasse gesundheit"]
+    assert q.rhythmus == "vierteljährlich" and q.pro_jahr == 1649.2 and q.vertrag == "Musterkasse (kvg)"
+
+
+def test_finanzplan_monte_carlo(k):
+    import finanzplan as fp
+    k["haushalt"]["bedarf_ruhestand"] = 60000
+    p = fp.rechnen(k, 300000, 2026, pfade=300)
+    assert p.jahre[0].jahr == 2026 and p.end_jahr >= p.pension_jahr and p.erfolg == 100
+    assert p.bedarf_sicher and p.bedarf_sicher > 60000
+    k["haushalt"]["bedarf_ruhestand"] = 400000
+    q = fp.rechnen(k, 0, 2026, pfade=300)
+    assert q.erfolg < 10 and q.reicht_bis and q.reicht_bis < q.end_jahr
+    assert q.perzentile[10][-1][1] <= q.perzentile[90][-1][1]

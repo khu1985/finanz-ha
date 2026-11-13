@@ -8,9 +8,9 @@ flowchart TB
     subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
-        D["Dokumente<br/>bankimport, camt, budget, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
+        D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
         K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
-        Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
+        Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, wertschriften,<br/>krankenkasse, kkpraemien, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
@@ -31,5 +31,6 @@ flowchart TB
     K & Z & C --> A --> SE
     Z -. optional .-> HA
     EZB["EZB-Referenzkurse<br/>(optional)"] -. täglich .-> K
+    BAG["BAG-Prämien<br/>(auf Knopfdruck)"] -. jährlich .-> Z
     A -. stündlich und alle 15 Minuten .-> HA
     S --> L

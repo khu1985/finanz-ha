@@ -280,3 +280,15 @@ def test_namen_aufteilen_und_umbenennen(server, daten):
     code, _ = _post(f"{server}/einstellungen", {"personen.0.name": "Anni"})
     assert konfig.laden()["personen"][0]["name"] == "Anni"
     assert v.execute("SELECT person FROM konten WHERE name = 'Sparen'").fetchone()[0] == "Anni"
+
+
+def test_neue_seiten_und_praemien_upload(server, daten):
+    k = konfig.laden()
+    k["haushalt"]["kanton"] = "BL"
+    konfig.speichern(k)
+    for pfad in ("finanzplan", "vermoegen", "budget", "versicherungen"):
+        assert urllib.request.urlopen(f"{server}/{pfad}").status == 200
+    from test_module import KK_2027
+    code, ziel = _upload(f"{server}/versicherungen/praemien_laden", "datei", "Prämien_CH.csv", KK_2027.encode())
+    assert code == 303 and "Pr%C3%A4mien%202027" in ziel or "Prämien 2027" in ziel
+    assert "Alle Kassen im Vergleich" in urllib.request.urlopen(f"{server}/versicherungen").read().decode()

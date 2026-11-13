@@ -105,7 +105,12 @@ def pruefen(k: dict, db, heute: date | None = None) -> Check:
         toepfe.append(Topf("Übriges (z. B. Genossenschaftsanteile)", sonst, "offen", "Nicht kurzfristig verfügbar"))
     toepfe.append(Topf("Langfristig", anlegbar, "über 10 Jahre",
                        f"Breit diversifiziert, kostengünstig, rund {quote:.0f} % Aktien (Profil «{risiko}»)"))
-    aktien_ist = (depot + krypto) / finanz * 100 if finanz else 0.0
+    try:
+        import wertschriften as ws
+        aktien = ws.aktienwert(k, db)          # mit erfassten Positionen: nur der Aktienteil des Depots
+    except Exception:  # noqa: BLE001
+        aktien = None
+    aktien_ist = ((depot if aktien is None else min(aktien, depot or aktien)) + krypto) / finanz * 100 if finanz else 0.0
     langfristig_ist = depot
     rendite = float(cfg["rendite"][risiko])
     nicht_angelegt = max(0.0, anlegbar - langfristig_ist)

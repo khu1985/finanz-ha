@@ -198,6 +198,7 @@ krankenkasse:
   personen: []                     # [{name, praemie_monat, franchise, kosten_jahr, modell, unfall, angebote: {2500: 380.5}}]
   rabatt_modell: 12                # typischer Rabatt Hausarzt/Telmed gegenüber Standard in %
   unfall_anteil: 7                 # Anteil Unfalldeckung an der Prämie in %
+  region: ""                       # Prämienregion (steht auf der Police); leer = aus der KVG-Police
 
 erinnerungen:
   benachrichtigung: ""             # leer = aus; «persistent» = Meldung in HA; sonst Notify-Dienst, z. B. notify.mobile_app_iphone
@@ -208,6 +209,9 @@ erinnerungen:
 sensoren:
   aktiv: true                      # Kennzahlen als sensor.finanz_* an Home Assistant liefern
   praefix: finanz
+
+wertschriften:
+  ter: {}                          # laufende Fondskosten in % pro ISIN, z. B. {IE00B3RBWM25: 0.22}
 
 ocr:                               # Texterkennung für gescannte PDFs
   sprachen: deu                    # z. B. deu+fra (jede Sprache kostet Zeit)

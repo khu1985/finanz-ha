@@ -1,5 +1,21 @@
 # Änderungen
 
+## 0.33.0 – 2026-11-13
+
+Was spezialisierte Anbieter (VZ, Kubera, Copilot, Comparis) können und bisher fehlte:
+
+- **Finanzplan** (neue Seite unter Planung): Jahr für Jahr bis 95 – Lohn bzw. Renten, Sparen und Entnahmen,
+  Vermögen. 1000 simulierte Börsenverläufe zeigen die Bandbreite, wie wahrscheinlich das Geld reicht, wann es in
+  schlechten Verläufen ausgeht und welcher Bedarf mit 90 % Sicherheit tragbar ist
+- **Wertschriften pro Position** unter Vermögen: aus dem E-Steuerauszug (XML) oder einer eigenen Liste; Aufteilung
+  nach Anlageklasse, Region und Währung, Rendite gegenüber dem Vorjahr, laufende Fondskosten (TER), Hinweise zu
+  Klumpenrisiken. Der Anlage-Check rechnet mit der echten Aktienquote
+- **Alle Krankenkassen im Vergleich:** offizielle Prämien des BAG laden (oder Datei hochladen) – pro Person die
+  günstigsten Angebote über alle Modelle und Franchisen nach Gesamtkosten, das günstigste bei gleichem Modell und
+  die günstigste Variante bei der eigenen Kasse. Neue Einstellung «Prämienregion»
+- **Wiederkehrende Zahlungen und Abos** im Budget: Rhythmus, Betrag pro Jahr, nächste Belastung, Preisänderungen,
+  verknüpfte Verträge
+
 ## 0.32.1 – 2026-11-13
 
 Dokumentation geprüft und nachgeführt:

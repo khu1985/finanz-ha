@@ -38,6 +38,7 @@ SEITEN = {
     "berater": ("Anlageberater", seiten.berater),
     "nachlass": ("Nachlass und Absicherung", seiten.nachlass),
     "budget": ("Budget und Cashflow", seiten.budget),
+    "finanzplan": ("Finanzplan", seiten.finanzplan),
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
@@ -699,6 +700,22 @@ class Handler(BaseHTTPRequestHandler):
                 if len(ids) == 1 and not kvg and not doppelt:
                     return "Vertrag analysiert – bitte die erkannten Werte prüfen.", f"versicherungen/{ids[0]}"
                 return f"{len(ids)} Dokument(e) analysiert.{zusatz}"
+            if pfad == "versicherungen/praemien_laden":
+                import kkpraemien as kp
+                k = konfig.laden()
+                kanton = str(k["haushalt"].get("kanton") or "").upper()
+                if not kanton:
+                    raise ValueError("Zuerst den Wohnkanton unter Einstellungen eintragen.")
+                datei = form.get("datei")
+                if datei:
+                    jahr, n = kp.einlesen(v, datei, kanton)
+                else:
+                    try:
+                        jahr, n = kp.herunterladen(v, kanton)
+                    except OSError as e:
+                        raise ValueError(f"Prämien nicht geladen ({e}). Ohne Internet die Datei Prämien_CH.csv hochladen.") from e
+                LOG.info("Krankenkassen-Prämien %s für %s: %d Zeilen", jahr, kanton, n)
+                return f"Prämien {jahr} für Kanton {kanton} geladen ({n} Tarife).", "versicherungen"
             if pfad == "versicherungen/krankenkasse":
                 k = konfig.laden()
                 liste = []
@@ -792,6 +809,23 @@ class Handler(BaseHTTPRequestHandler):
         daten = konfig.datenordner()
         teile = pfad.split("/")
         with db() as v:
+            if pfad == "vermoegen/wertschriften":
+                import wertschriften as ws
+                n = ws.speichern(v, ws.csv_lesen(form.get("datei") or b""), "csv")
+                return f"{n} Positionen importiert.", "vermoegen#wertschriften"
+            if pfad == "vermoegen/wertschriften/ter":
+                k = konfig.laden()
+                ter = (k.setdefault("wertschriften", {}).get("ter") or {})
+                for feld, wert in form.items():
+                    if feld.startswith("ter_"):
+                        w = str(wert.decode() if isinstance(wert, bytes) else wert).strip().replace(",", ".")
+                        if w:
+                            ter[feld[4:].upper()] = float(w)
+                        else:
+                            ter.pop(feld[4:].upper(), None)
+                k["wertschriften"]["ter"] = ter
+                konfig.speichern(k)
+                return "Kosten gespeichert.", "vermoegen#wertschriften"
             if pfad == "steuern/steuerauszug":
                 import esteuerauszug as es
                 teile_ = []

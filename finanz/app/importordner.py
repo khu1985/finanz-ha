@@ -5,6 +5,8 @@
 - versicherungen*.csv        → Versicherungsliste (ohne PDF)
 - bank*.csv, konto*.csv      → Kontoauszug aus dem E-Banking (Monatssaldi); auch .xml/.zip (camt.053)
 - versicherung*.pdf, police* → Versicherungsvertrag hochladen und analysieren
+- depot*.csv                → Wertschriften-Positionen (Datum;Depot;ISIN;Name;Kategorie;Währung;Menge;Kurs;Wert CHF)
+- praemien*.csv             → Krankenkassen-Prämien des BAG (Prämien_CH.csv) für den Vergleich
 - steuerauszug*.xml/.pdf     → E-Steuerauszug der Bank (eCH-0196): Saldi per 31.12. ins Vermögen
 - steuer*.pdf, veranlagung*  → Steuererklärung / Veranlagung analysieren
 - übrige *.pdf               → Vorsorgedokument (Vorsorgeausweis, 3a-, IK-Auszug)
@@ -54,6 +56,14 @@ def einlesen(daten: Path, db) -> list[str]:
                 a, n = bi.aus_datei(db, inhalt, pfad.name)
                 nb = bu.speichern(db, a.konto_vorschlag, bi.buchungen_lesen(inhalt), konfig.laden())
                 meldungen.append(f"{pfad.name}: {n} Monatssaldi, {nb} Buchungen für {a.konto_vorschlag}")
+            elif name.startswith(("depot", "wertschriften")) and name.endswith(".csv"):
+                import wertschriften as ws
+                meldungen.append(f"{pfad.name}: {ws.speichern(db, ws.csv_lesen(inhalt), 'csv')} Wertschriften-Positionen")
+            elif name.startswith(("praemien", "prämien")) and name.endswith(".csv"):
+                import kkpraemien as kp
+                kanton = str(konfig.laden()["haushalt"].get("kanton") or "").upper()
+                jahr, n = kp.einlesen(db, inhalt, kanton)
+                meldungen.append(f"{pfad.name}: Krankenkassen-Prämien {jahr} ({n} Tarife)")
             elif name.startswith("steuerauszug") and name.endswith((".xml", ".pdf")):
                 import esteuerauszug as es
                 s = es.lesen(inhalt, pfad.name)

@@ -26,7 +26,7 @@ import wohnen as wo
 NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")]),
     ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
-                 ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
+                 ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("finanzplan", "Finanzplan"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
                  ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
     ("Bestand", [("vermoegen", "Vermögen"), ("budget", "Budget"), ("versicherungen", "Versicherungen")]),
     ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("vorschlaege", "Vorschläge"),
@@ -225,6 +225,7 @@ STATUS_TEXTE = [
     ("vorsorge/hochladen", "Vorsorgedokumente werden hochgeladen und analysiert …"),
     ("steuern/hochladen", "Steuerdokumente werden hochgeladen und analysiert …"),
     ("steuern/steuerauszug", "Steuerauszug wird gelesen …"),
+    ("versicherungen/praemien_laden", "Prämien werden geladen (rund 25 MB) …"),
     ("importordner", "Import-Ordner wird eingelesen …"),
     ("import", "Daten werden importiert …"),
     ("liste", "Liste wird importiert …"),
@@ -875,7 +876,7 @@ angeben.</p>
             + karte("CSV importieren (eigene Liste)", importieren) + "</div>"
             + '<div class="raster">' + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
             + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>"
-            + anlage_karte(k, db))
+            + wertschriften_karte(k, db) + anlage_karte(k, db))
 
 
 def konten_form(inhalt: str) -> str:
@@ -999,6 +1000,7 @@ def _felder_person(i: int) -> list[tuple]:
 
 FELDER_HAUSHALT = [
     ("haushalt.name", "Name"), ("haushalt.zivilstand", "Zivilstand (verheiratet/ledig)"), ("haushalt.kanton", "Kanton"),
+    ("krankenkasse.region", "Prämienregion Krankenkasse (leer = aus der Police)"),
     ("haushalt.bedarf_ruhestand", "Bedarf im Ruhestand/Jahr"), ("haushalt.entnahme_jahre", "Kapitalverzehr Jahre"),
     ("haushalt.entnahme_rendite", "Rendite im Ruhestand %"), ("annahmen.lohnentwicklung", "Reale Lohnentwicklung %"), ("annahmen.teuerung", "Teuerung %"),
 ]
@@ -1180,7 +1182,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
 <div class="zeile"><input type="file" name="datei" accept=".csv,text/csv" required style="max-width:360px"><button>Importieren</button></div></form>"""
     if not vertraege:
         return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte(
-            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + krankenkasse_karte(k, db) + risiko_karte(k, [])
+            "Liste importieren", liste_import) + "</div>" + karte("Deckungscheck", _deckung(k, [])) + krankenkasse_karte(k, db) + kassenvergleich_karte(k, db) + risiko_karte(k, [])
     zeilen = []
     for v in vertraege:
         t = vi.naechster_termin(v, heute)
@@ -1221,7 +1223,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
             + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>"
             + '<div class="raster">' + karte("Kündigungstermine", termin_html) + karte("Prämien nach Sparte", sparten) + "</div>"
             + karte("Deckungscheck", _deckung(k, vertraege))
-            + krankenkasse_karte(k, db) + risiko_karte(k, vertraege))
+            + krankenkasse_karte(k, db) + kassenvergleich_karte(k, db) + risiko_karte(k, vertraege))
 
 
 def _deckung(k: dict, vertraege: list[dict]) -> str:
@@ -2050,6 +2052,69 @@ def fristen_karte(k: dict) -> str:
 
 # ---------------------------------------------------------------- Krankenkasse
 
+def kassenvergleich_karte(k: dict, db) -> str:
+    """Alle Kassen im Vergleich mit den offenen Prämiendaten des BAG."""
+    import kkpraemien as kp
+    vertraege = vi.alle(db)
+    kanton = str(k["haushalt"].get("kanton") or "").upper()
+    laden = ('<form method="post" action="versicherungen/praemien_laden" class="zeile nicht-drucken">'
+             f'<button>Prämien {date.today().year + 1 if date.today().month >= 10 else date.today().year} vom BAG laden'
+             '</button></form>'
+             '<details class="nicht-drucken"><summary>Ohne Internet: Datei hochladen</summary>'
+             f'<p class="leise">Prämien_CH.csv von <a href="{kp.QUELLE}" target="_blank" rel="noopener">opendata.swiss</a> '
+             'herunterladen und hier hochladen (oder als <code>praemien*.csv</code> in den Import-Ordner legen).</p>'
+             '<form method="post" action="versicherungen/praemien_laden" enctype="multipart/form-data" class="zeile">'
+             '<input type="file" name="datei" accept=".csv,text/csv" required><button class="zweit">Einlesen</button>'
+             '</form></details>')
+    if not kanton:
+        return karte("Alle Kassen im Vergleich", '<p class="leise">Zuerst den Wohnkanton unter Einstellungen eintragen.</p>')
+    v = kp.vergleich(k, db, vertraege)
+    if not v["jahr"]:
+        return karte("Alle Kassen im Vergleich", (
+            '<p>Vergleicht die Grundversicherung aller Kassen mit den offiziellen Prämien des BAG – für deinen Kanton, '
+            'deine Prämienregion und Altersklasse, über alle Modelle und Franchisen, mit deinen erwarteten '
+            'Gesundheitskosten. Die Datei (rund 25 MB) wird einmal geladen; behalten werden nur die Prämien deines '
+            'Kantons.</p>' + laden))
+    teile = [f'<p class="leise">Prämien {v["jahr"]} · Kanton {escape(kanton)}'
+             + (f' · Region {v["region"]}' if v.get("region") is not None else "") + ' · Quelle BAG (priminfo). '
+             'Gesamtkosten = Prämie + Franchise und Selbstbehalt bei den erwarteten Gesundheitskosten.</p>']
+    if v.get("region") is None:
+        teile.append(f'<p>{licht(am.GELB, "Region fehlt")} Dein Kanton hat mehrere Prämienregionen '
+                     f'({", ".join(str(r) for r in v.get("regionen") or [])}). Region unter Einstellungen '
+                     '(<code>krankenkasse.region</code>) eintragen – sie steht auf der Police.</p>')
+    for e in v["personen"]:
+        p = e["person"]
+        if not e["angebote"]:
+            continue
+        beste = e["angebote"][0]
+        zeilen = []
+        for a in e["angebote"][:5]:
+            zeilen.append([f'{escape(a.kasse)}<br><small class="leise">{escape(a.bezeichnung or a.tarif)} · '
+                           f'{escape(a.modell)}</small>', f"{a.franchise:,}".replace(",", "'"),
+                           f"{a.praemie_monat:.2f}", chf(a.kosten_jahr)])
+        kopf = escape(p.name) + {"KIN": " · Kinderprämie", "JUG": " · junge Erwachsene (19–25)", "ERW": ""}[e["alter"]]
+        zus = []
+        if e["heute"]:
+            diff = e["heute"] - beste.kosten_jahr
+            zus.append(f"heute {chf(e['heute'])} pro Jahr ({escape(p.versicherer or 'Police')}, Franchise "
+                       f"{p.franchise}) → günstigstes Angebot {chf(beste.kosten_jahr)}: "
+                       + (f"{chf(diff)} günstiger" if diff > 50 else "kaum Unterschied"))
+        if e["gleich"]:
+            g = e["gleich"]
+            zus.append(f"gleiches Modell und gleiche Franchise am günstigsten: {escape(g.kasse)} «{escape(g.bezeichnung)}» "
+                       f"{g.praemie_monat:.2f} pro Monat")
+        if e.get("eigene"):
+            g = e["eigene"]
+            zus.append(f"günstigste Variante bei der eigenen Kasse: «{escape(g.bezeichnung)}», Franchise {g.franchise}, "
+                       f"{chf(g.kosten_jahr)} pro Jahr")
+        teile.append(f"<h2>{kopf}</h2>" + (hinweisliste(zus) if zus else "")
+                     + tabelle(["Kasse", "Franchise", "Prämie/Mt.", "Total/Jahr"], zeilen, zahlen_ab=1, responsiv=False))
+    teile.append('<p class="leise">Wechsel der Grundversicherung bis 30. November (eingeschrieben, Eingang zählt). Die '
+                 'Grundversicherung muss jede Kasse aufnehmen; Zusatzversicherungen erst kündigen, wenn die neue Kasse '
+                 'sie zugesagt hat. Hausarzt-, HMO- und Telmed-Modelle binden an die erste Anlaufstelle.</p>')
+    return karte("Alle Kassen im Vergleich", "".join(teile) + laden)
+
+
 def krankenkasse_karte(k: dict, db) -> str:
     import krankenkasse as kk
     vertraege = vi.alle(db)
@@ -2186,6 +2251,89 @@ def fruehpension_karte(k: dict, db) -> str:
 
 
 # ---------------------------------------------------------------- Anlage-Check
+
+def finanzplan(k: dict, db) -> str:
+    import finanzplan as fp
+    try:
+        p = fp.rechnen(k, vm.nettovermoegen(db)["frei"])
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("finanz").exception("Finanzplan")
+        return karte("Finanzplan", f'<p class="leer">Finanzplan nicht berechenbar: {escape(str(e))}</p>')
+    ampel = am.GRUEN if p.erfolg >= 90 else am.GELB if p.erfolg >= 70 else am.ROT
+    kpis = ('<div class="kpis">'
+            + kpi(f"{p.erfolg:.0f} %", f"Verläufe, in denen das Geld bis {p.end_alter} reicht", "", ampel)
+            + kpi(chf(p.bedarf), "Bedarf im Ruhestand pro Jahr")
+            + (kpi(chf(p.bedarf_sicher), "mit 90 % Sicherheit tragbar") if p.bedarf_sicher is not None else "")
+            + kpi(chf(p.jahre[[z.jahr for z in p.jahre].index(p.pension_jahr)].vermoegen)
+                  if p.pension_jahr in [z.jahr for z in p.jahre] else "–", f"Vermögen bei Pensionierung {p.pension_jahr}")
+            + "</div>")
+    serien = {"mittlere Rendite": [(z.jahr, max(0, z.vermoegen)) for z in p.jahre]}
+    if p.perzentile:
+        serien = {"gute Jahre (90 %)": p.perzentile[90], "Median": p.perzentile[50],
+                  "schlechte Jahre (10 %)": p.perzentile[10], **serien}
+    zeilen = [[str(z.jahr), escape(z.alter), z.phase, chf(z.einkommen), chf(z.sparen, True),
+               chf(z.kapital) if z.kapital else "", chf(z.vermoegen)] for z in p.jahre]
+    tab = ("<details><summary>Jahr für Jahr</summary>"
+           + tabelle(["Jahr", "Alter", "Phase", "Lohn bzw. Renten", "Sparen / Entnahme", "Kapital PK/3a", "Vermögen Ende Jahr"],
+                     zeilen, zahlen_ab=3, responsiv=True) + "</details>")
+    annahmen = (f'<p class="leise">Heutige Franken. Reale Rendite {p.rendite_real:g} % pro Jahr (Risikoprofil unter '
+                f'Vermögen → Anlage-Check, minus Teuerung), Schwankung {p.sigma:g} %; {fp.PFADE} simulierte Verläufe. '
+                'Bis zur Pensionierung wächst das freie Vermögen mit dem Sparpotenzial; PK und 3a kommen bei der '
+                'Pensionierung nach Kapitalbezugssteuer dazu. Danach deckt das Vermögen, was AHV, PK-Renten (ohne '
+                'Teuerungsausgleich), Renten aus dem Ausland und Kinderrenten am Bedarf nicht decken; der Bedarf versteht '
+                'sich inkl. Steuern. Endalter unter <code>finanzplan.bis_alter</code> (Standard 95). Keine Prognose – '
+                'eine Bandbreite, wie sich Entscheide auswirken.</p>')
+    return (kpis + karte("Vermögen über die Jahre", dg.linie(serien) + hinweisliste(p.hinweise))
+            + karte("Plan", tab + annahmen))
+
+
+def wertschriften_karte(k: dict, db) -> str:
+    import wertschriften as ws
+    importieren = ('<details class="nicht-drucken"><summary>Positionen importieren</summary>'
+                   '<p class="leise">Am einfachsten kommen die Positionen mit dem E-Steuerauszug der Bank (XML) unter '
+                   '«Steuern». Sonst eine eigene Liste (z. B. Export des Depots) mit Kopfzeile '
+                   '<code>Datum;Depot;ISIN;Name;Kategorie;Währung;Menge;Kurs;Wert CHF</code> – Kategorie z. B. SHARE, FUND, '
+                   'BOND. Import-Ordner: <code>depot*.csv</code>.</p>'
+                   '<form method="post" action="vermoegen/wertschriften" enctype="multipart/form-data" class="zeile">'
+                   '<input type="file" name="datei" accept=".csv,text/csv" required><button class="zweit">Importieren</button>'
+                   '</form></details>')
+    u = ws.uebersicht(k, db)
+    if not u:
+        return '<div id="wertschriften"></div>' + karte("Wertschriften", '<p class="leise">Noch keine Positionen. Mit Positionen zeigt die App Anlageklassen, '
+                     'Regionen, Währungen, Rendite und laufende Kosten – und der Anlage-Check rechnet mit der echten '
+                     'Aktienquote.</p>' + importieren)
+    kpis = ('<div class="kpis">' + kpi(chf(u.wert), f"Wert per {u.stichtag[8:10]}.{u.stichtag[5:7]}.{u.stichtag[:4]}")
+            + kpi(f"{sum(v for kl, v in u.klassen.items() if kl in ws.AKTIENARTIG) / u.wert * 100:.0f} %" if u.wert else "–",
+                  "Aktienquote")
+            + kpi(f"{sum(v for w, v in u.waehrungen.items() if w != 'CHF') / u.wert * 100:.0f} %" if u.wert else "–",
+                  "Fremdwährungen")
+            + kpi("?" if u.ohne_ter and not u.kosten else chf(u.kosten) + ("+" if u.ohne_ter else ""),
+                  "laufende Kosten pro Jahr (TER)")
+            + (kpi(f"{u.rendite:+.1f} %", "Rendite seit Vorjahr (unveränderte Positionen)") if u.rendite is not None else "")
+            + "</div>")
+    aufteilung = ('<div class="raster">' + "".join(
+        f"<div><h2>{titel}</h2>{dg.balken_liste(list(d.items()))}</div>"
+        for titel, d in (("Anlageklasse", u.klassen), ("Region", u.regionen), ("Währung", u.waehrungen))) + "</div>")
+    zeilen = []
+    for p in u.positionen:
+        ter = (f'<input name="ter_{escape(p.isin)}" value="{"" if p.ter is None else f"{p.ter:g}"}" inputmode="decimal" '
+               'style="width:5em" placeholder="%">') if p.fonds and p.isin else ("–" if not p.fonds else "")
+        zeilen.append([escape(p.name) + (f'<br><small class="leise">{escape(p.isin)} · {escape(p.depot)}</small>'
+                                         if p.isin else f'<br><small class="leise">{escape(p.depot)}</small>'),
+                       escape(p.klasse) + (" (Fonds)" if p.fonds else ""), escape(p.region), escape(p.waehrung),
+                       f"{p.menge:g}", chf(p.wert), f"{p.anteil:.1f} %",
+                       "" if p.rendite is None else f"{p.rendite:+.1f} %", ter])
+    tab = ('<form method="post" action="vermoegen/wertschriften/ter">'
+           + tabelle(["Titel", "Klasse", "Region", "Währung", "Menge", "Wert", "Anteil", "Rendite", "TER %"], zeilen,
+                     zahlen_ab=4, responsiv=True)
+           + '<div class="zeile nicht-drucken"><button class="zweit">Kosten (TER) speichern</button></div></form>')
+    h = ws.hinweise(u)
+    return '<div id="wertschriften"></div>' + karte("Wertschriften", kpis + aufteilung + (hinweisliste(h) if h else "") + tab
+                 + '<p class="leise">Rendite = Wertänderung plus Erträge gegenüber dem Vorjahr, nur für Positionen mit gleicher '
+                 'Stückzahl. Anlageklasse und Region bei Fonds aus dem Namen geschätzt. Keine Kurse in Echtzeit – Stand ist '
+                 'der Stichtag des Imports.</p>' + importieren)
+
 
 def anlage_karte(k: dict, db) -> str:
     import anlage as an
@@ -2484,8 +2632,40 @@ werden erkannt. Auch über den Import-Ordner (<code>bank*.csv</code>, <code>kont
     return (kpis
             + karte("Ausgaben pro Monat", diagramm + hinweisliste(a.hinweise) + sparen_form)
             + '<div class="raster">' + karte("Nach Kategorie", kat_html) + karte("Monate", monat_html) + "</div>"
+            + abos_karte(k, db)
             + karte("Kontoauszüge", konten_html + import_form)
             + karte("Ohne Kategorie", unb_html) + karte("Eigene Regeln", regel_html))
+
+
+def abos_karte(k: dict, db) -> str:
+    import abos as ab
+    import budget as bu
+    liste = ab.erkennen(bu.alle(db), vi.alle(db))
+    if not liste:
+        return ""
+    zeilen = []
+    for a in liste:
+        aend = ""
+        if a.aenderung:
+            aend = f' <span class="{"schlecht" if a.aenderung > 0 else "gut"}">{a.aenderung:+.0f} %</span>'
+        zeilen.append([escape(a.name) + (f'<br><small class="leise">Vertrag: {escape(a.vertrag)}</small>' if a.vertrag else ""),
+                       escape(a.kategorie), escape(a.rhythmus), chf(a.betrag) + aend, chf(a.pro_jahr),
+                       f"{a.naechste[8:10]}.{a.naechste[5:7]}.{a.naechste[:4]}"])
+    teurer = [a for a in liste if a.aenderung and a.aenderung > 3]
+    hinw = [f"{escape(a.name)}: {a.aenderung:+.0f} % seit der letzten Zahlung ({a.vorher:.2f} → {a.betrag:.2f})"
+            for a in teurer[:5]]
+    ohne = [a for a in liste if a.kategorie in (bu.UEBRIGES,) or "abo" in a.kategorie.lower() or "telekom" in a.kategorie.lower()]
+    if ohne:
+        hinw.append(f"{len(ohne)} wiederkehrende {'Zahlung' if len(ohne) == 1 else 'Zahlungen'} für Abos, Telekom oder ohne Kategorie – "
+                    f"{chf(sum(a.pro_jahr for a in ohne))} pro Jahr. Noch alle genutzt?")
+    return karte(f"Wiederkehrende Zahlungen ({len(liste)})", (
+        '<div class="kpis">' + kpi(chf(ab.summe(liste)), "pro Jahr") + kpi(chf(ab.summe(liste) / 12), "pro Monat") + "</div>"
+        + (hinweisliste(hinw) if hinw else "")
+        + tabelle(["Gegenpartei", "Kategorie", "Rhythmus", "Letzter Betrag", "Pro Jahr", "Nächste"], zeilen, zahlen_ab=3,
+                  responsiv=True)
+        + '<p class="leise">Erkannt an gleicher Gegenpartei, festem Betrag und regelmässigem Abstand (wöchentlich bis '
+          'jährlich, mindestens 2–4 Zahlungen). Einkäufe mit schwankenden Beträgen zählen nicht. Kündigen musst du '
+          'beim Anbieter; Versicherungen stehen mit Fristen unter «Versicherungen».</p>'))
 
 
 # ---------------------------------------------------------------- Kinder
