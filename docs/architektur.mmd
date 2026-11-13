@@ -1,24 +1,24 @@
 flowchart TB
     subgraph Quellen
         direction LR
-        F["Formulare<br/>Einstellungen, Kinder, Notfallordner"]
-        I["Import-Ordner<br/>finanz.yaml, CSV, PDF"]
-        U["Uploads<br/>Kontoauszüge, Policen,<br/>Vorsorge- und Steuerdokumente"]
+        F["Formulare<br/>Einstellungen, Kinder, Fragebögen,<br/>Verfügungen, Notfallordner"]
+        I["Import-Ordner<br/>finanz.yaml, CSV, camt, PDF"]
+        U["Uploads<br/>Kontoauszüge, Policen, Vorsorge- und<br/>Steuerdokumente, E-Steuerauszug"]
     end
     subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
-        D["Dokumente<br/>bankimport, budget, versicherungen,<br/>dokumente, steuerdokumente"]
+        D["Dokumente<br/>bankimport, camt, budget, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
         K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
         Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
-        C["Checklisten und Bericht<br/>nachlass, steuererklaerung, notfall,<br/>bericht (Monatsstände)"]
+        C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
         direction LR
         Y[("finanz.yaml")]
-        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente,<br/>Monatsstände, Kurse")]
+        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente,<br/>Steuerauszüge, Monatsstände, Kurse")]
         P[("PDFs")]
         L[("finanz.log")]
     end

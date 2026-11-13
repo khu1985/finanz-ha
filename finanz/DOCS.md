@@ -16,8 +16,8 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
-5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [Steuererklärung](#steuererklärung-vorbereiten) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
-6. [Ampeln](#ampeln) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen) · [Vorschläge](#vorschläge-für-die-weiterentwicklung)
+5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [E-Steuerauszug](#e-steuerauszug-der-bank) · [Steuererklärung](#steuererklärung-vorbereiten) · [Verfügungen](#verfügungen) · [Fragebögen](#fragebögen-zum-nachlass) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
+6. [Ampeln](#ampeln) · [Plausibilität](#plausibilität-der-einstellungen) · [Vorschläge](#vorschläge-für-die-weiterentwicklung) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen) · [Dokumente neu sichten](#dokumente-neu-sichten) · [Uploads und Texterkennung](#uploads-und-dateigrösse)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
 9. [Rechenmodell](#rechenmodell)
@@ -28,28 +28,28 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 ## Erste Schritte
 
 1. **Daten erfassen** – eine der beiden Varianten:
-   - **Einstellungen** öffnen und die Musterwerte im Formular ersetzen: pro Person Geburtsdatum, Bruttolohn,
+   - **Einstellungen** öffnen und die Musterwerte im Formular ersetzen: pro Person Vorname (Anzeige in der App) und
+     Nachname (für Verfügungen und Schreiben), Geburtsdatum, Bruttolohn,
      Sparpotenzial, AHV-Beitragsjahre, Werte aus dem Vorsorgeausweis, 3a; Steuern aus der letzten Veranlagung;
      Wohneigentum.
    - Eine vorbereitete `finanz.yaml` unter **Einstellungen → Experte** einfügen oder in den
      [Import-Ordner](#persönliche-daten-und-import-ordner) kopieren.
 2. **Dokumente hochladen** – die App liest die Werte aus und übernimmt sie auf Knopfdruck:
    - Vorsorgeausweise, 3a- und IK-Auszüge unter **Vorsorge**
-   - Steuererklärungen und Veranlagungen unter **Steuern**
+   - Steuererklärungen, Veranlagungen und den E-Steuerauszug der Bank unter **Steuern**
    - Versicherungspolicen unter **Versicherungen** (oder eine Liste als CSV)
-3. **Vermögen** erfassen: Kontoauszüge aus dem E-Banking als CSV importieren, Saldi von Hand oder als eigene Liste
-   (`Datum;Konto;Saldo;Art;Person`).
-4. Die **Übersicht** und ihre Ampeln zeigen, wo etwas zu tun ist. Werte mit «TODO» in der Konfiguration sind
+3. **Vermögen** erfassen: Kontoauszüge aus dem E-Banking als camt.053 (XML/ZIP) oder CSV importieren, Saldi von Hand
+   oder als eigene Liste (`Datum;Konto;Saldo;Art;Person`).
+4. **Kinder** auf der Seite Kinder erfassen (Geburtsdatum, Kind von, Betreuung).
+5. Die **Übersicht** und ihre Ampeln zeigen, wo etwas zu tun ist. Werte mit «TODO» in der Konfiguration sind
    Platzhalter; ihre Zahl steht in der Statuszeile.
 
-Kinder, geplante PK-Einkäufe, verpfändete Vorsorge oder eine weitere Person werden im YAML-Editor erfasst, z. B.:
+Geplante PK-Einkäufe, verpfändete Vorsorge oder eine weitere Person werden im YAML-Editor erfasst, z. B.:
 
 ```yaml
-haushalt:
-  kinder:
-    - {name: Lea, geburtsjahr: 2018}
 personen:
-  - name: Person 1
+  - name: Anna
+    nachname: Muster
     pk:
       einkauf_geplant:
         - {jahr: 2027, betrag: 20000}
@@ -57,8 +57,9 @@ personen:
 
 ## Bedienung
 
-- **Menü** in Gruppen – Überblick (Übersicht, Berater), Planung (Vorsorge, Steuern, Wohnen, Szenarien), Bestand
-  (Vermögen, Versicherungen), App (Einstellungen, Protokoll, Änderungen). Auf grossen Bildschirmen als Seitenleiste,
+- **Menü** in Gruppen – Überblick (Übersicht, Jahresbericht, Berater), Planung (Vorsorge, Steuern, Steuererklärung,
+  Wohnen, Kinder, Szenarien, Nachlass, Verfügungen, Notfallordner), Bestand (Vermögen, Budget, Versicherungen), App
+  (Einstellungen, Dokumente, Vorschläge, Protokoll, Änderungen). Auf grossen Bildschirmen als Seitenleiste,
   auf Tablets als wischbare Leiste, auf dem Handy hinter dem Knopf «Menü». Ein farbiger Punkt markiert Seiten mit
   gelber oder roter Ampel; beim Protokoll steht die Zahl der Warnungen von heute.
 - **Version** neben «Finanzen» öffnet die Änderungen.
@@ -79,21 +80,21 @@ personen:
 | Jahresbericht | Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Übersicht | Ampeln, anstehende Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
-| Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, Kapitalbezug |
+| Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Kinder erfassen, Zeitachse mit Zulagen, Betreuung und Steuerwirkung, Hinweise |
-| Vermögen | Konten (auch in Fremdwährung), Saldi, Anlage-Check, Bank-Import, CSV-Import, Verlauf, Aufteilung nach Art |
+| Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, eigene Regeln |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell), Risiko Invalidität und Tod, Prämien |
 | Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
-| Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
-| Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag und 3a-Begünstigung mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text zum Abschreiben bzw. Drucken |
-| Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte |
+| Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
+| Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
+| Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
-| Einstellungen | Formular, Import-Ordner, YAML-Editor, Export und Import von `finanz.yaml` |
+| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld, Namen aufteilen, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
-| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App; kopieren, herunterladen oder als GitHub-Issue öffnen |
+| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
 | Änderungen | Changelog der installierten Version |
 
@@ -814,6 +815,7 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 | `bank*.csv`, `konto*.csv` (auch `.xml`/`.zip` im Format camt.053, `camt*.zip`) | Kontoauszug aus dem E-Banking (Monatssaldi und Buchungen) |
 | `versicherungen*.csv` | Versicherungsliste (`Versicherung;Anbieter;Betrag;Person;Summe;Notiz`) |
 | `versicherung*.pdf`, `police*.pdf` | Versicherungsvertrag analysieren |
+| `steuerauszug*.xml`, `steuerauszug*.pdf` | E-Steuerauszug der Bank (eCH-0196): Saldi per 31.12. ins Vermögen, Totale in die Steuererklärung |
 | `steuer*.pdf`, `veranlagung*.pdf` | Steuerdokument analysieren |
 | übrige `*.pdf` | Vorsorgedokument (Vorsorgeausweis, 3a-, 3b-, IK-Auszug) analysieren |
 
@@ -834,12 +836,14 @@ oder **Einstellungen → Experte**.
 | `fruehpension` | `pk_kuerzung_uws` |
 | `waehrungen` | `kurse`, `automatisch` |
 | `notfall` | `kontakte[]`, `ablage`, `notizen` (Seite Notfallordner) |
-| `nachlass` | `zusammen_seit`, `anteil_immobilie`, `erbschaftssteuer` (überschreibt den Kanton), `checkliste` |
+| `nachlass` | `zusammen_seit`, `anteil_immobilie`, `erbschaftssteuer` (überschreibt den Kanton), `checkliste`, `fragebogen` (Antworten der Fragebögen) |
+| `verfuegungen` | Antworten der Entwürfe pro Art und Person bzw. Haushalt (siehe [Verfügungen](#verfügungen)) |
 | `sensoren` | `aktiv`, `praefix` |
 | `ki` | `aktiv`, `entity` |
 | `berater` | `situation`, eigene `profile` |
 | `annahmen` | Lohnentwicklung (real), `teuerung`, Rendite |
 | `budget` | `regeln` (Stichwort → Kategorie) |
+| `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
 
 Die Kennzahlen werden in der Regel alle zwei Jahre (AHV/BVG) bzw. jährlich (3a, Steuertarif, Abzüge) angepasst
@@ -885,8 +889,10 @@ höchstens 15 Jahren bzw. bis zur Pensionierung) ÷ (Bruttoeinkommen + 80 % der 
 Belehnung höchstens 80 %, mindestens 10 % Eigenmittel ohne PK. Wegfall Eigenmietwert: heute versteuerter Saldo
 (Eigenmietwert − Schuldzinsen − 20 % Unterhaltspauschale) × Grenzsteuersatz.
 
-**Erkennung von Dokumenten.** Lokal mit Mustern aus der Textebene des PDFs (erste 40 Seiten). Gescannte PDFs ohne
-Text werden gespeichert; die Werte dann von Hand eintragen oder per KI auslesen, sofern das PDF Text enthält.
+**Erkennung von Dokumenten.** Lokal mit Mustern aus der Textebene des PDFs (erste 40 Seiten); gescannte PDFs ohne
+Text zuerst per Texterkennung (siehe [Uploads und Texterkennung](#uploads-und-dateigrösse)). Kontoauszüge im Format
+camt.053 und E-Steuerauszüge als XML (eCH-0196) werden direkt aus den Datenfeldern gelesen. Nicht erkannte Werte von
+Hand eintragen oder per KI auslesen.
 
 ## KI (optional)
 
@@ -902,7 +908,7 @@ Richtung des gewählten KI-Anbieters.
 | Datei / Ordner | Inhalt |
 |---|---|
 | `finanz.yaml` | Konfiguration; frühere Fassung als `finanz.yaml.bak` |
-| `finanz.sqlite` | Konten, Saldi, Verträge, Vorsorge- und Steuerdokumente, Beratungen, erledigte und gesendete Erinnerungen |
+| `finanz.sqlite` | Konten, Saldi, Buchungen, Verträge, Vorsorge- und Steuerdokumente, E-Steuerauszüge, Monatsstände, Kurse, Beratungen, erledigte und gesendete Erinnerungen, Status und Verlauf der Vorschläge |
 | `versicherungen/`, `vorsorge/`, `steuern/` | hochgeladene PDFs |
 | `import/` | Import-Ordner, erledigte Dateien unter `import/erledigt/` |
 | `finanz.log` | Protokoll (rotiert bei 1 MB) |
@@ -931,8 +937,10 @@ Empfehlungen:
   Details im Protokoll der App; Konfiguration im YAML-Editor korrigieren oder `finanz.yaml.bak` zurückholen.
 - **Dokument erkennt nichts:** «Ausgelesener Text» auf der Dokumentseite prüfen. Ist er leer, fand auch die
   Texterkennung nichts (unscharfer oder schräger Scan) – neu scannen (300 dpi, gerade) und nochmals hochladen.
-- **Bank-Import meldet «Keine Kopfzeile»:** Den Auszug als CSV (nicht PDF/Excel) exportieren; die Kopfzeile muss
-  eine Datums- und eine Betrags- oder Saldo-Spalte enthalten.
+- **Bank-Import meldet «Keine Kopfzeile»:** Den Auszug als camt.053 (XML/ZIP) oder CSV exportieren, nicht als PDF
+  oder Excel; eine CSV-Kopfzeile muss eine Datums- und eine Betrags- oder Saldo-Spalte enthalten.
+- **E-Steuerauszug liefert nur Totale:** Aus dem PDF liest die App nur die Summen. Für Konten und Depots die XML-Datei
+  der Bank einlesen (falls angeboten).
 - **Keine Benachrichtigung:** Namen des Notify-Dienstes in Home Assistant unter Entwicklerwerkzeuge → Aktionen prüfen;
   Fehler stehen im Protokoll.
 - **Import-Ordner liest nichts:** Dateinamen prüfen (siehe Tabelle); fehlerhafte Dateien bleiben im Ordner, der

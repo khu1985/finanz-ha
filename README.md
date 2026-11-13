@@ -13,21 +13,24 @@ ansteht. Bedienung und Rechenmodell siehe [finanz/DOCS.md](finanz/DOCS.md) (in H
 |---|---|
 | Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
-| Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich |
+| Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Kinder | Kinder erfassen (auch aus früheren Beziehungen), Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse und Erinnerungen |
-| Vermögen | Konten und Saldi (auch EUR, USD, GBP), Bank-Import aus E-Banking-CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
+| Vermögen | Konten und Saldi (auch EUR, USD, GBP) mit Kontoseite (umbenennen, zusammenführen, auflösen), Bank-Import im Format camt.053 oder als CSV, eigene Listen, Nettovermögen und Verlauf, Anlage-Check (Reserve, Amortisation, langfristiger Topf) |
 | Budget | Buchungen aus dem Bank-Import kategorisieren, Ausgaben nach Kategorie und Monat, Sparquote, Abgleich mit dem Sparpotenzial |
-| Versicherungen | Policen als PDF oder Liste, Erkennung, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell), Risiko Invalidität und Tod |
+| Versicherungen | Policen als PDF (auch gescannt, mit Texterkennung) oder Liste, Erkennung inkl. Invaliditätsleistungen und kantonaler Gebäudeversicherungen, Deckungscheck, Kündigungstermine, Krankenkasse (optimale Franchise und Modell), Risiko Invalidität und Tod |
 | Szenarien | PK-Einkäufe optimal auf Jahre verteilen; Teilzeit und Kinderbetreuung (Netto, Steuern, Kita, AHV, PK); Frühpensionierung 58–65; Hypothekar-Strategie (SARON, Fest, Staffelung, Zinsszenarien); Vergleich verheiratet ↔ Konkubinat inkl. Individualbesteuerung ab 2032 |
 | Jahresbericht | Monatliche Stände, Vergleich mit dem Vorjahr, Massnahmen, Drucken |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen, Werten aus der App und Saldi per 31.12. |
-| Notfallordner | Druckbare Übersicht für Angehörige mit Konten, Vorsorge, Policen, Kontakten, Ablageorten und ersten Schritten |
-| Nachlass | Was der Partner im Todesfall erhält (Erbteil, Erbschaftssteuer, AHV/PK, Liegenschaft), Checkliste Testament, Begünstigungen, Vorsorgeauftrag |
+| Notfallordner | Druckbare Übersicht für Angehörige mit Konten, Vorsorge, Policen, Kontakten, Ablageorten, ersten Schritten, Antworten der Fragebögen und Meldeliste für den Todesfall |
+| Nachlass | Was der Partner im Todesfall erhält (Erbteil, Erbschaftssteuer, AHV/PK, Liegenschaft), Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Detail-Fragebögen pro Punkt |
+| Verfügungen | Entwürfe mit Fragen und Optionen: Testament (Pflichtteile, Verteilung), Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug – mit Vor- und Nachnamen |
 | Erinnerungen | 3a, PK-Einkauf (inkl. optimaler Betrag), 3a-Lücken, Liegenschaftsunterhalt, Krankenkasse, Kündigungsfristen, Steuererklärung mit Frist des Wohnkantons, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
 | Sensoren | Kennzahlen, Ampel, Erinnerungen und Fristen als `sensor.finanz_*` für Dashboards und Automationen |
-| Einstellungen | Formular, YAML-Editor, Import-Ordner, Export; Protokoll und Änderungen in der App |
+| Einstellungen | Formular mit Plausibilitäts-Ampel, YAML-Editor, Import-Ordner, Export, Dokumente neu sichten; Protokoll und Änderungen in der App |
+| Dokumente | Alle hochgeladenen Dokumente und Buchungen: öffnen, Text-Ampel, Duplikate, löschen |
+| Vorschläge | Anonymisierte Verbesserungsvorschläge aus den eigenen Daten (wahlweise mit Textauszügen), erledigte werden nach Updates selbst abgehakt |
 
 ## Installation
 
@@ -42,8 +45,8 @@ sich nebeneinander installieren; jede hat ihren eigenen Konfigurationsordner.
 
 Persönliche Daten (Löhne, Guthaben, Saldi, Policen, Ausweise, Steuerunterlagen) gehören **nicht** in dieses
 Repository. Sie werden in der App erfasst oder in den Import-Ordner `/addon_configs/<…>_finanz/import/` kopiert
-(Samba, File editor, Studio Code Server). Die App liest `finanz.yaml`, `vermoegen*.csv`, `versicherungen*.csv` und PDFs
-beim Start oder per Knopf ein. Alles liegt danach im Konfigurationsordner der App und ist im Home-Assistant-Backup
+(Samba, File editor, Studio Code Server). Die App liest `finanz.yaml`, `vermoegen*.csv`, `versicherungen*.csv`, Kontoauszüge (`bank*`,
+`konto*`, `camt*` als CSV, XML oder ZIP), E-Steuerauszüge (`steuerauszug*`) und PDFs beim Start oder per Knopf ein. Alles liegt danach im Konfigurationsordner der App und ist im Home-Assistant-Backup
 enthalten. `.gitignore` schliesst die Datendateien aus; die Tests arbeiten nur mit erfundenen Daten.
 
 ## Architektur
@@ -59,24 +62,24 @@ Ohne KI braucht sie kein Internet; mit KI geht der Auftrag über die KI-Aufgabe 
 flowchart TB
     subgraph Quellen
         direction LR
-        F["Formulare<br/>Einstellungen, Kinder, Notfallordner"]
-        I["Import-Ordner<br/>finanz.yaml, CSV, PDF"]
-        U["Uploads<br/>Kontoauszüge, Policen,<br/>Vorsorge- und Steuerdokumente"]
+        F["Formulare<br/>Einstellungen, Kinder, Fragebögen,<br/>Verfügungen, Notfallordner"]
+        I["Import-Ordner<br/>finanz.yaml, CSV, camt, PDF"]
+        U["Uploads<br/>Kontoauszüge, Policen, Vorsorge- und<br/>Steuerdokumente, E-Steuerauszug"]
     end
     subgraph App["Finanz-App (Container im Home Assistant, Ingress, AppArmor)"]
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
-        D["Dokumente<br/>bankimport, budget, versicherungen,<br/>dokumente, steuerdokumente"]
+        D["Dokumente<br/>bankimport, camt, budget, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
         K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, zuzug"]
         Z["Szenarien<br/>szenarien, teilzeit, fruehpension,<br/>hypothek, anlage, krankenkasse, berater"]
-        C["Checklisten und Bericht<br/>nachlass, steuererklaerung, notfall,<br/>bericht (Monatsstände)"]
+        C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
         direction LR
         Y[("finanz.yaml")]
-        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente,<br/>Monatsstände, Kurse")]
+        DB[("finanz.sqlite<br/>Saldi, Buchungen, Dokumente,<br/>Steuerauszüge, Monatsstände, Kurse")]
         P[("PDFs")]
         L[("finanz.log")]
     end
@@ -106,12 +109,12 @@ flowchart TB
 | `finanz/app/vorsorge.py` | AHV, Pensionskasse, 3a, Pensionslücke |
 | `finanz/app/steuern.py` | Bundessteuertarif, Kantonssteuer-Kurve, Steuereinheiten (Ehe/Konkubinat), Kapitalbezug |
 | `finanz/app/wohnen.py` | Tragbarkeit, maximaler Kaufpreis, Eigenmietwert |
-| `finanz/app/vermoegen.py` | Konten, Saldi, CSV-Import, Verlauf |
+| `finanz/app/vermoegen.py` | Konten, Saldi, Kontoverwaltung (umbenennen, zusammenführen, auflösen), CSV-Import, Verlauf |
 | `finanz/app/versicherungen.py` | Policen, Erkennung, Deckungscheck, Kündigungstermine, Risiko, KI-Aufgabe |
 | `finanz/app/dokumente.py` | Vorsorgeausweis, 3a-, 3b- und IK-Auszug |
 | `finanz/app/steuerdokumente.py` | Steuererklärung, Veranlagung, Mehrjahresvergleich, Abgleich |
 | `finanz/app/hypothek.py` | Hypothekar-Strategie über Zinsszenarien |
-| `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen |
+| `finanz/app/bankimport.py` | Kontoauszüge aus dem E-Banking einlesen (CSV; camt.053 über `camt.py`) |
 | `finanz/app/camt.py` | Kontoauszüge im Bankformat camt.053/052/054 (ISO 20022, XML oder ZIP) lesen |
 | `finanz/app/esteuerauszug.py` | E-Steuerauszug der Bank (eCH-0196) lesen: Konten, Depots, Schulden, Erträge, Verrechnungssteuer |
 | `finanz/app/krankenkasse.py` | Franchise- und Modell-Optimierung der Grundversicherung |
@@ -123,8 +126,8 @@ flowchart TB
 | `finanz/app/verwaltung.py` | Übersicht, Duplikate und Löschen aller Dokumente |
 | `finanz/app/ocr.py` | Texterkennung (tesseract) für gescannte PDFs |
 | `finanz/app/fragebogen.py` | Detail-Fragebögen zur Nachlass-Checkliste für den Notfallordner |
-| `finanz/app/verfuegungen.py` | Entwürfe für Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung |
-| `finanz/app/vorschlaege.py` | Verbesserungsvorschläge aus den eigenen Daten, anonymisiert zum Weitergeben |
+| `finanz/app/verfuegungen.py` | Entwürfe für Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug |
+| `finanz/app/vorschlaege.py` | Verbesserungsvorschläge aus den eigenen Daten, anonymisiert zum Weitergeben; Textauszüge, Verlauf und «erledigt» |
 | `finanz/app/pruefung.py` | Plausibilität der Einstellungen (Ampel pro Feld) |
 | `finanz/app/sichtung.py` | Gespeicherte Dokumente nach Updates neu sichten |
 | `finanz/app/bericht.py` | Monatsstände und Jahresbericht |
@@ -132,7 +135,7 @@ flowchart TB
 | `finanz/app/immobilie.py` | Wert der Liegenschaft und Erneuerungsplanung |
 | `finanz/app/teilzeit.py` | Teilzeit-Rechner |
 | `finanz/app/steuererklaerung.py` | Checkliste Steuererklärung |
-| `finanz/app/notfall.py` | Notfallordner |
+| `finanz/app/notfall.py` | Notfallordner, Meldeliste für den Todesfall |
 | `finanz/app/kinder.py` | Kinder: Abzüge, Gutschriften, Zulagen, Zeitachse |
 | `finanz/app/zuzug.py` | Zuzug in die Schweiz: AHV-Jahre, PK-Einkaufsgrenze, Quellensteuer, Fristen |
 | `finanz/app/tausender.py` | Tausendertrennzeichen |
@@ -141,7 +144,7 @@ flowchart TB
 | `finanz/app/szenarien.py` | PK-Einkauf-Optimierung, Vergleich verheiratet ↔ Konkubinat |
 | `finanz/app/berater.py` | Beraterprofile, Fakten, Amortisations-Szenario, Beratungen |
 | `finanz/app/importordner.py` | Import-Ordner für persönliche Dateien |
-| `finanz/app/konfig.py`, `finanz/app/meta.py` | Konfiguration laden/speichern, Version, Changelog, Protokoll |
+| `finanz/app/konfig.py`, `finanz/app/meta.py` | Konfiguration laden/speichern, Namen (Vorname/voller Name, Umbenennen), Version, Changelog, Protokoll |
 | `finanz/app/diagramme.py` | Linien- und Säulendiagramme als SVG |
 | `finanz/app/default_config.yaml` | Vorlage mit Musterhaushalt und Kennzahlen 2026 |
 
@@ -249,9 +252,11 @@ Details zu Formeln und Annahmen: [finanz/DOCS.md → Rechenmodell](finanz/DOCS.m
 
 ```mermaid
 flowchart LR
-    U["PDF oder CSV<br/>Upload oder Import-Ordner"] --> T["Text auslesen<br/>pypdf, Kodierung"]
+    U["PDF, CSV oder XML<br/>Upload oder Import-Ordner"] --> T["Text auslesen<br/>pypdf, Kodierung;<br/>gescannt: OCR (tesseract)"]
     T --> E{"Art erkennen"}
-    E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>letzter Saldo je Monat,<br/>Buchungen mit Kategorie"]
+    E -- Kontoauszug --> B["Bank, IBAN, Spalten<br/>bzw. camt.053-Felder,<br/>letzter Saldo je Monat,<br/>Buchungen mit Kategorie"]
+    E -- E-Steuerauszug --> ES["eCH-0196: Konten, Depots,<br/>Schulden per 31.12.,<br/>Erträge, Verrechnungssteuer"]
+    ES --> DB
     E -- Police --> V["Versicherer, Sparte, Prämie,<br/>Daten, Fristen, Summen"]
     E -- Vorsorge --> VO["Altersguthaben, Einkauf,<br/>Prognose 65, Risikoleistungen,<br/>3a, 3b-Rückkaufswert"]
     E -- Steuern --> S["Periode, steuerbares Einkommen<br/>und Vermögen, Steuern, Abzüge"]
@@ -301,7 +306,7 @@ flowchart LR
 flowchart TD
     M["monatlich<br/>Kontoauszüge importieren: Saldi und Buchungen"] --> UE["Übersicht, Budget und Ampeln aktuell"]
     J["Januar<br/>Kennzahlen prüfen (AHV, BVG, 3a, Tarif, Kinderabzug)"] --> F
-    F["Februar–März<br/>Vorsorgeausweise hochladen und übernehmen"] --> SE
+    F["Februar–März<br/>Vorsorgeausweise und E-Steuerauszüge einlesen"] --> SE
     SE["bis Frist (Standard 31. März)<br/>Checkliste Steuererklärung, einreichen und hochladen"] --> VE
     VE["nach Veranlagung<br/>Veranlagung hochladen: Abgleich, Grenzsteuersatz"] --> SZ
     SZ["Szenarien<br/>PK-Einkauf optimieren, Plan übernehmen"] --> KV
@@ -346,7 +351,8 @@ README und DOCS.md fehlt.
 
 `tests/` prüft Rechenkern, Dokumenterkennung und Web-App mit erfundenen Daten, z. B. Eckwerte der Rentenskala,
 Ehepaar-Plafond und Konkubinat, Bundessteuer an Tarifgrenzen, Kantonssteuer-Kurve, Staffelung, Tragbarkeit,
-Erkennung von Policen, Vorsorgeausweisen und Steuerdokumenten aus erzeugten PDFs, Kündigungsfristen nach VVG,
+Erkennung von Policen, Vorsorgeausweisen und Steuerdokumenten aus erzeugten PDFs, camt.053 und E-Steuerauszug
+(erfundene Beispiele in `tests/daten/`), Anonymisierung der Vorschläge, Kündigungsfristen nach VVG,
 Ampel-Schwellen, PK-Einkauf-Optimierung, Heiratsvergleich, Hypothekar-Strategie, Bank-Import (Beispielauszüge in
 `tests/bank/`), Erinnerungen und Benachrichtigungen, Import-Ordner sowie alle Seiten und Uploads hinter
 einem Ingress-Pfad.

@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.32.1 – 2026-11-13
+
+Dokumentation geprüft und nachgeführt:
+
+- **Übersichten** (Inhalt, Menü, Seiten, Funktionen, Module) mit E-Steuerauszug, camt.053, Verfügungen, Fragebögen,
+  Meldeliste, Kontoseite, Vorschlägen und Dokumenten
+- **Erste Schritte** mit Vor- und Nachname, Kinder-Seite und camt.053; veraltetes YAML-Beispiel ersetzt
+- **Konfiguration** um `verfuegungen`, `nachlass.fragebogen` und `ocr` ergänzt; Import-Ordner um `steuerauszug*`
+- **Rechenmodell und Fehlersuche:** Texterkennung, camt.053 und E-Steuerauszug statt «gescannte PDFs werden nicht
+  gelesen»
+- **Diagramme** Architektur, Dokumentverarbeitung und Jahreslauf aktualisiert
+
 ## 0.32.0 – 2026-11-12
 
 - **Vorname in der App, voller Name in Schreiben:** neues Feld «Nachname» pro Person und Kind. Verfügungen, Verträge,
