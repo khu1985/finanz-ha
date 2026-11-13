@@ -15,7 +15,7 @@ jobs:
     name: Wie im Home Assistant (Python 3.12, gleiche Pakete)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -26,7 +26,7 @@ jobs:
     name: Neueste Paketversionen
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
@@ -44,7 +44,7 @@ jobs:
     name: App-Image bauen und starten
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Image bauen
         run: docker build -t finanz-test finanz
       - name: Starten und Startseite abrufen
