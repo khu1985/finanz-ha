@@ -2077,7 +2077,7 @@ def test_usability_html_pruefung():
     assert us.pruefen_html(gut) == []
 
 
-def test_usability_kontrast_und_alle_seiten(k):
+def test_usability_kontrast_und_alle_seiten(k, daten):
     import seiten
     import usability as us
     assert round(us.kontrast("#ffffff", "#000000")) == 21
