@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.44.2 – 2026-11-14
+
+- **Sparkonten mit Bezugslimite:** pro Bankkonto Bezug ohne Kündigung (pro Jahr oder Monat), Kündigungsfrist und
+  Rückzugskommission erfassen (Kontoseite); die Kontenliste zeigt die Limite. Der Anlage-Check weist darauf hin, wenn
+  die Notreserve deswegen nicht sofort verfügbar ist; «Jetzt vom Konto» unter Sparen & Anlegen setzt nur ein, was ohne
+  Kündigung beziehbar ist, und nennt die Frist für den Rest
+
 ## 0.44.1 – 2026-11-14
 
 - **Mehr Währungen für Konten:** alle 58, die Revolut oder Wise als Guthaben führen (z. B. AED, AUD, CAD, CZK, DKK,

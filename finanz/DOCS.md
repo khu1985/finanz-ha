@@ -209,6 +209,12 @@ ein Konto pro Jahr, frühestens 5 Jahre vor dem Referenzalter, das grösste im P
 rechnet gestaffelt im Verhältnis der Kontostände. Personen mit 3a-Guthaben nur in den Einstellungen legen es mit
 «Als 3a-Konto anlegen» als Konto an. Bis 0.40 als «Vorsorge» importierte 3a-Konten werden beim Update einmalig
 umgestellt. Die 3a erscheint nicht im Vermögen der Steuererklärung und fällt nicht in den Nachlass (Begünstigung).
+**Sparkonten mit Bezugslimite.** Auf der Kontoseite (Konto anklicken → «Sparkonto: Bezugslimite und Kündigung»)
+pro Bankkonto erfassen, wie viel ohne Kündigung bezogen werden kann (pro Kalenderjahr oder Monat, in der
+Kontowährung; 0 = ohne Limite), die Kündigungsfrist für mehr und eine allfällige Rückzugskommission. Die Kontenliste
+zeigt die Limite. Damit rechnen: der Anlage-Check (Hinweis, wenn die Notreserve nicht sofort verfügbar ist) und Sparen &
+Anlegen («Jetzt vom Konto» nur, soweit ohne Kündigung beziehbar; der Rest mit Hinweis auf die Frist).
+
 **Anlage-Check.** Teilt das Finanzvermögen (Konten, Depot, Krypto, Übriges) in Töpfe: Notreserve (`wohnen.reserve`,
 sonst ein halber Jahresbedarf), Amortisation bei Fälligkeit (Ziel bzw. Maximum, soweit nicht aus Sparen und
 verpfändeter Vorsorge gedeckt; sicher und terminiert anlegen), geplante PK-Einkäufe und den langfristigen Topf mit

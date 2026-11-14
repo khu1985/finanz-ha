@@ -63,6 +63,7 @@ class Plan:
     produktarten: list[Produktart]
     teure_fonds: list[tuple[str, float, float]] = field(default_factory=list)   # (Name, TER, Wert)
     hinweise: list[str] = field(default_factory=list)
+    gesperrt: float = 0.0          # davon wegen Bezugslimiten erst nach Kündigung verfügbar
 
 
 def _chf(v: float) -> str:
@@ -95,6 +96,9 @@ def rechnen(k: dict, db, heute: date | None = None) -> Plan:
     zweck_heute = sum(t.betrag for t in c.toepfe if t.name.startswith(("Amortisation", "Geplante")))
     frei = max(0.0, c.liquide - reserve - zweck_heute)
     ueberschuss = frei
+    lq = vm.liquiditaet(db)
+    gesperrt = max(0.0, frei - lq["sofort"])           # Bezugslimiten auf Sparkonten: Rest erst nach Kündigung
+    frei = min(frei, lq["sofort"])
 
     def sofort(betrag: float) -> float:
         nonlocal frei
@@ -259,7 +263,13 @@ def rechnen(k: dict, db, heute: date | None = None) -> Plan:
         hinw.append(f"{len(teure)} Fonds mit Kosten über {TER_HOCH:g} % pro Jahr (zusammen rund CHF {_chf(kosten)} pro Jahr) – "
                     "beim nächsten Kauf kostengünstige Indexfonds bzw. ETF vorziehen; Verkauf nur, wenn Steuer- und "
                     "Handelskosten tiefer sind als die eingesparten Gebühren.")
-    return Plan(schritte, round(spar), ungedeckt, round(ueberschuss), klassen, naechster, produktarten(k, c), teure, hinw)
+    if gesperrt > 0:
+        hinw.append(f"Von den CHF {_chf(ueberschuss)} über Reserve und Zweck sind wegen Bezugslimiten auf Sparkonten "
+                    f"CHF {_chf(gesperrt)} erst nach Kündigung"
+                    + (f" ({lq['kuendigung_monate']} Monate)" if lq["kuendigung_monate"] else "")
+                    + " verfügbar – rechtzeitig kündigen, wenn das Geld umgeschichtet werden soll.")
+    return Plan(schritte, round(spar), ungedeckt, round(ueberschuss), klassen, naechster, produktarten(k, c), teure, hinw,
+                round(gesperrt))
 
 
 def _soll_ist(k: dict, db, c, verwendet: float = 0.0) -> tuple[list[Klasse], str, str]:

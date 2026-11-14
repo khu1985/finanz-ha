@@ -2111,3 +2111,26 @@ def test_waehrungen_revolut_und_wise():
     assert round(k["BGN"][0], 4) == round(0.92 / 1.95583, 4) and "fest an EUR" in k["XOF"][1]
     assert wg.erkennen("PENSIONSKASSE Konto in SEK, Saldo SEK 1'000") == "SEK"      # «PEN» in «PENSION» zählt nicht
     assert wg.erkennen("Kontoauszug CHF") == "CHF"
+
+
+def test_sparkonto_bezugslimite(k):
+    import anlage as an
+    import sparplan as sp
+    db = vm.verbinden(":memory:")
+    priv = vm.konto_anlegen(db, "Privatkonto", "bank", "")
+    spar = vm.konto_anlegen(db, "Sparkonto Musterbank", "bank", "")
+    vm.saldo_setzen(db, priv, "2026-10-31", 10_000)
+    vm.saldo_setzen(db, spar, "2026-10-31", 100_000)
+    vm.bezug_aendern(db, spar, 25_000, "jahr", 3, 2)
+    lq = vm.liquiditaet(db)
+    assert lq["total"] == 110_000 and lq["sofort"] == 35_000 and lq["gesperrt"] == 75_000 and lq["kuendigung_monate"] == 3
+    vm.bezug_aendern(db, spar, 5_000, "monat", 3, 0)
+    assert vm.liquiditaet(db, 3)["sofort"] == 25_000
+    vm.bezug_aendern(db, spar, 25_000, "jahr", 3, 2)
+    k["wohnen"]["aktiv"] = False
+    c = an.pruefen(k, db, date(2026, 11, 13))
+    reserve = next(t.betrag for t in c.toepfe if t.name == "Notreserve")
+    assert reserve > 35_000 and any("Bezugslimiten" in h for h in c.hinweise)
+    p = sp.rechnen(k, db, date(2026, 11, 13))
+    assert p.ueberschuss == 110_000 - reserve and p.gesperrt == p.ueberschuss - min(p.ueberschuss, 35_000)
+    assert any("erst nach Kündigung (3 Monate)" in h for h in p.hinweise)

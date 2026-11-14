@@ -348,3 +348,20 @@ def test_usability_unter_vorschlaegen(server, daten):
     assert "Usability-Score" in html and 'action="vorschlaege/usability"' in html
     code, ziel = _post(f"{server}/vorschlaege/usability", {})
     assert code == 303 and ziel.endswith("#usability")
+
+
+def test_sparkonto_limite_speichern(server, daten):
+    _post(f"{server}/vermoegen/saldo", {"konto": "Sparkonto", "art": "bank", "person": "", "datum": "2026-10-31",
+                                        "betrag": "50000", "waehrung": "CHF"})
+    import vermoegen as vm
+    with vm.verbinden(daten / "finanz.sqlite") as v:
+        kid = next(x["id"] for x in vm.konten(v) if x["name"] == "Sparkonto")
+    assert "Bezugslimite und Kündigung" in urllib.request.urlopen(f"{server}/vermoegen/konto/{kid}").read().decode()
+    code, _ = _post(f"{server}/vermoegen/konto/{kid}/speichern", {
+        "name": "Sparkonto", "art": "bank", "person": "", "waehrung": "CHF", "notiz": "",
+        "bezug_limit": "25'000", "bezug_zeitraum": "jahr", "kuendigung_monate": "3", "rueckzug_prozent": "2"})
+    with vm.verbinden(daten / "finanz.sqlite") as v:
+        x = next(x for x in vm.konten(v) if x["name"] == "Sparkonto")
+    assert code == 303 and x["bezug_limit"] == 25000 and x["kuendigung_monate"] == 3
+    assert "Bezug 25&#x27;000 pro Jahr" in urllib.request.urlopen(f"{server}/vermoegen").read().decode() or \
+        "Bezug 25'000 pro Jahr" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()

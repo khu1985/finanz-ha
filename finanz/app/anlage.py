@@ -120,6 +120,14 @@ def pruefen(k: dict, db, heute: date | None = None) -> Check:
     hinw = []
     if liquide < reserve:
         hinw.append(f"Konten (CHF {_chf(liquide)}) unter der Notreserve von CHF {_chf(reserve)}.")
+    else:
+        lq = vm.liquiditaet(db)
+        if lq["sofort"] < reserve:
+            frist = (f"nach {lq['kuendigung_monate']} Monaten Kündigungsfrist" if lq["kuendigung_monate"] else "nach Kündigung")
+            hinw.append(f"Von der Notreserve sind wegen Bezugslimiten auf Sparkonten nur CHF {_chf(lq['sofort'])} sofort "
+                        f"verfügbar; der Rest erst {frist}"
+                        + (f" oder mit {lq['rueckzug_prozent']:g} % Rückzugskommission" if lq["rueckzug_prozent"] else "")
+                        + " – einen Teil auf ein Konto ohne Limite legen.")
     if nicht_angelegt > 20000:
         hinw.append(f"Rund CHF {_chf(nicht_angelegt)} liegen ohne Zweck auf Konten. Langfristig angelegt (Annahme {rendite:g} % "
                     f"statt {cfg['zins_konto']:g} %) wären das rund CHF {_chf(opp)} pro Jahr bzw. CHF {_chf(opp_h)} bis zur Pensionierung.")

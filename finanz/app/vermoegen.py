@@ -61,6 +61,12 @@ def verbinden(pfad: Path) -> sqlite3.Connection:
         if spalte not in spalten:
             db.execute(f"ALTER TABLE konten ADD COLUMN {spalte} TEXT NOT NULL DEFAULT ''")
             db.commit()
+    # Sparkonten: Bezugslimite (Kontowährung) pro Monat bzw. Jahr ohne Kündigung, Kündigungsfrist, Rückzugskommission
+    for spalte, typ in (("bezug_limit", "REAL NOT NULL DEFAULT 0"), ("bezug_zeitraum", "TEXT NOT NULL DEFAULT 'jahr'"),
+                        ("kuendigung_monate", "INTEGER NOT NULL DEFAULT 0"), ("rueckzug_prozent", "REAL NOT NULL DEFAULT 0")):
+        if spalte not in spalten:
+            db.execute(f"ALTER TABLE konten ADD COLUMN {spalte} {typ}")
+            db.commit()
     # bis 0.40: 3a-Anbieter wurden als «Vorsorge» (3b) importiert → als Säule 3a einordnen (einmalig)
     if not db.execute("SELECT 1 FROM sqlite_master WHERE name = 'konten_3a_umgestellt'").fetchone():
         for kid, name in db.execute("SELECT id, name FROM konten WHERE art = 'vorsorge'").fetchall():
@@ -140,6 +146,38 @@ def saldi(db, konto_id: int) -> list[dict]:
     """Alle Saldi eines Kontos, neueste zuerst."""
     return [dict(r) for r in db.execute("SELECT datum, betrag FROM saldi WHERE konto_id = ? ORDER BY datum DESC",
                                         (konto_id,))]
+
+
+def bezug_aendern(db, konto_id: int, limit: float, zeitraum: str, kuendigung: int, rueckzug: float) -> None:
+    """Bezugslimite eines Sparkontos (0 = ohne Limite), Kündigungsfrist in Monaten, Rückzugskommission in %."""
+    db.execute("UPDATE konten SET bezug_limit = ?, bezug_zeitraum = ?, kuendigung_monate = ?, rueckzug_prozent = ? "
+               "WHERE id = ?", (max(0.0, float(limit or 0)), "monat" if zeitraum == "monat" else "jahr",
+                                max(0, int(kuendigung or 0)), max(0.0, float(rueckzug or 0)), konto_id))
+    db.commit()
+
+
+def sofort(x: dict, monate: int = 1) -> float:
+    """Wie viel (CHF) von einem Konto innerhalb von `monate` ohne Kündigung bezogen werden kann – nur Bankkonten."""
+    wert = max(0.0, float(x.get("wert") or 0))
+    limit = float(x.get("bezug_limit") or 0)
+    if x.get("art") != "bank" or limit <= 0 or not wert:
+        return wert
+    betrag = abs(float(x.get("betrag") or 0))
+    kurs = wert / betrag if betrag else 1.0
+    frei = limit * (monate if x.get("bezug_zeitraum") == "monat" else 1) * kurs
+    return min(wert, frei)
+
+
+def liquiditaet(db, monate: int = 1) -> dict:
+    """Bankkonten: total, sofort verfügbar (innert `monate`), Rest mit Kündigungsfrist und die eingeschränkten Konten."""
+    ks = [x for x in konten(db) if x["art"] == "bank" and not x.get("aufgeloest")]
+    total = sum(max(0.0, x["wert"]) for x in ks)
+    frei = sum(sofort(x, monate) for x in ks)
+    eingeschraenkt = [x for x in ks if sofort(x, monate) < max(0.0, x["wert"]) - 0.5]
+    frist = max((int(x.get("kuendigung_monate") or 0) for x in eingeschraenkt), default=0)
+    kommission = max((float(x.get("rueckzug_prozent") or 0) for x in eingeschraenkt), default=0.0)
+    return {"total": round(total), "sofort": round(frei), "gesperrt": round(total - frei), "konten": eingeschraenkt,
+            "kuendigung_monate": frist, "rueckzug_prozent": kommission}
 
 
 def konto_aendern(db, konto_id: int, name: str, art: str, person: str, waehrung: str, notiz: str = "") -> None:
@@ -254,7 +292,8 @@ def _vorzeichen(art: str, betrag: float) -> float:
 def konten(db) -> list[dict]:
     rows = db.execute(
         """
-        SELECT k.id, k.name, k.art, k.person, k.waehrung, k.notiz, k.aufgeloest, s.datum, s.betrag,
+        SELECT k.id, k.name, k.art, k.person, k.waehrung, k.notiz, k.aufgeloest, k.bezug_limit, k.bezug_zeitraum,
+               k.kuendigung_monate, k.rueckzug_prozent, s.datum, s.betrag,
                (SELECT COUNT(*) FROM saldi WHERE konto_id = k.id) AS anzahl
         FROM konten k
         LEFT JOIN saldi s ON s.konto_id = k.id

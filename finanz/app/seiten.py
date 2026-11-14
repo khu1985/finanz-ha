@@ -900,7 +900,11 @@ def vermoegen(k: dict, db) -> str:
         saldo = chf(x["wert"]) + (f'<br><small class="leise">{w} {chf(abs(x["betrag"] or 0))} × {kurse.get(w, (1, ""))[0]:.4f}</small>'
                                   if w != "CHF" else "")
         name = (f'<a href="vermoegen/konto/{x["id"]}">{escape(x["name"])}</a>'
-                + (f'<br><small class="leise">{escape(x["notiz"])}</small>' if x.get("notiz") else ""))
+                + (f'<br><small class="leise">{escape(x["notiz"])}</small>' if x.get("notiz") else "")
+                + (f'<br><small class="leise">Bezug {chf(float(x["bezug_limit"]))} pro '
+                   f'{"Monat" if x.get("bezug_zeitraum") == "monat" else "Jahr"}'
+                   + (f", sonst {int(x['kuendigung_monate'])} Mt. Kündigung" if x.get("kuendigung_monate") else "")
+                   + "</small>" if float(x.get("bezug_limit") or 0) > 0 and x["art"] == "bank" else ""))
         stand = ("<span>" + escape(x["datum"] or "–")
                  + (f' <small class="leise">({x["anzahl"]})</small>' if x["anzahl"] > 1 else "") + "</span>")
         return [auswahl_zelle(f"k:{x['id']}"), name, vm.ARTEN.get(x["art"], x["art"]), escape(x["person"] or "gemeinsam"),
@@ -1027,13 +1031,28 @@ def konto(k: dict, db, kid: int) -> str:
             + "".join(f'<option{" selected" if p == x["person"] else ""}>{escape(p)}</option>' for p in personen))
     waehr = "".join(f'<option value="{o}"{" selected" if o == w else ""}>{escape(wg.name(o))}</option>'
                     for o in wg.WAEHRUNGEN + ([w] if w and w not in wg.WAEHRUNGEN else []))
+    lim = float(x.get("bezug_limit") or 0)
+    zr = x.get("bezug_zeitraum") or "jahr"
+    bezug = (f'<details{" open" if lim else ""}><summary>Sparkonto: Bezugslimite und Kündigung</summary>'
+             '<div class="felder">'
+             f'<label>Bezug ohne Kündigung ({escape(w)}; 0 = ohne Limite)<input name="bezug_limit" inputmode="decimal" '
+             f'value="{lim:g}"></label>'
+             f'<label>pro<select name="bezug_zeitraum"><option value="jahr"{" selected" if zr == "jahr" else ""}>Kalenderjahr'
+             f'</option><option value="monat"{" selected" if zr == "monat" else ""}>Monat</option></select></label>'
+             f'<label>Kündigungsfrist für mehr (Monate)<input name="kuendigung_monate" inputmode="numeric" '
+             f'value="{int(x.get("kuendigung_monate") or 0)}"></label>'
+             f'<label>Rückzugskommission ohne Kündigung (%)<input name="rueckzug_prozent" inputmode="decimal" '
+             f'value="{float(x.get("rueckzug_prozent") or 0):g}"></label></div>'
+             '<p class="leise">Typisch für Sparkonten: z. B. CHF 25\'000 pro Kalenderjahr frei, darüber 3 Monate Kündigung '
+             'oder 1–2 % Kommission. Die Notreserve und «Jetzt vom Konto» unter Sparen &amp; Anlegen rechnen damit.</p>'
+             '</details>') if x["art"] == "bank" else ""
     stamm = f"""<form method="post" action="{a}/speichern"><div class="felder">
 <label>Name<input name="name" value="{escape(x['name'])}" required></label>
 <label>Art<select name="art">{arten}</select></label>
 <label>Person<select name="person">{pers}</select></label>
 <label>Währung<select name="waehrung">{waehr}</select></label>
-<label class="breit">Notiz (z. B. IBAN-Ende, Zweck, Kündigungsfrist)<input name="notiz" value="{escape(x.get('notiz') or '')}"></label>
-</div><div class="zeile"><button>Speichern</button></div></form>
+<label class="breit">Notiz (z. B. IBAN-Ende, Zweck)<input name="notiz" value="{escape(x.get('notiz') or '')}"></label>
+</div>{bezug}<div class="zeile"><button>Speichern</button></div></form>
 <p class="leise">Beim Umbenennen wandern die Buchungen im Budget mit.</p>"""
     zeilen = [[auswahl_zelle(s["datum"]),
                f'<input type="date" name="d_{s["datum"]}" value="{s["datum"]}" aria-label="Datum">',

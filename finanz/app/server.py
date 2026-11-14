@@ -454,6 +454,10 @@ class Handler(BaseHTTPRequestHandler):
                 if was == "speichern":
                     vm.konto_aendern(v, kid, form.get("name", ""), form.get("art", "bank"), form.get("person", ""),
                                      form.get("waehrung", "CHF"), form.get("notiz", ""))
+                    if "bezug_limit" in form:
+                        vm.bezug_aendern(v, kid, vm.zahl(form.get("bezug_limit") or "0"), form.get("bezug_zeitraum", "jahr"),
+                                         int(vm.zahl(form.get("kuendigung_monate") or "0")),
+                                         vm.zahl(form.get("rueckzug_prozent") or "0"))
                     return "Konto gespeichert.", zurueck
                 if was == "saldi":
                     alt = [s["datum"] for s in vm.saldi(v, kid)]
