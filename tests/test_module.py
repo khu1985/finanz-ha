@@ -2099,3 +2099,15 @@ def test_sparplan_hypothek_ist_keine_teure_schuld(k):
     vm.saldo_setzen(db, vm.konto_anlegen(db, "Hypothek Musterbank", "hypothek", ""), "2026-10-31", -600_000)
     s2 = sp.rechnen(k, db, date(2026, 11, 13)).schritte[1]
     assert s2.status == sp.ENTFAELLT and "Hypothek (CHF 600'000) zählt nicht" in s2.text
+
+
+def test_waehrungen_revolut_und_wise():
+    import waehrung as wg
+    revolut = "AED AUD BGN CAD CHF CLP COP CZK DKK EGP EUR GBP HKD HUF ILS INR ISK JPY KRW KZT MAD MXN NOK NZD PHP PLN QAR " \
+              "RON RSD SAR SEK SGD THB TRY USD ZAR".split()
+    assert set(revolut) <= set(wg.WAEHRUNGEN) and {"KES", "NGN", "VND", "XOF", "UAH"} <= set(wg.WAEHRUNGEN)
+    assert wg.WAEHRUNGEN[:4] == ["CHF", "EUR", "USD", "GBP"] and wg.name("sek") == "SEK – Schwedische Krone"
+    k = wg.kurse()
+    assert round(k["BGN"][0], 4) == round(0.92 / 1.95583, 4) and "fest an EUR" in k["XOF"][1]
+    assert wg.erkennen("PENSIONSKASSE Konto in SEK, Saldo SEK 1'000") == "SEK"      # «PEN» in «PENSION» zählt nicht
+    assert wg.erkennen("Kontoauszug CHF") == "CHF"

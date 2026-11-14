@@ -284,7 +284,7 @@ def _person(k, p, feld, wert, z, leer, kz, heute):
     if feld == "zuzug.rente_ausland_waehrung":
         import waehrung as wg
         if str(wert or "CHF").upper() not in wg.WAEHRUNGEN:
-            return ROT, "Währung unbekannt (CHF, EUR, USD, GBP)"
+            return ROT, "Währung unbekannt (ISO-Code wie CHF, EUR, USD, GBP)"
     if feld == "zuzug.nov_beantragt":
         import zuzug as zz
         if zz.quellensteuer(p, k) and not wert and lohn < 120000:

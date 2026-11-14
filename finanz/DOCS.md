@@ -637,7 +637,8 @@ Erinnerungen). «Drucken» erzeugt eine Fassung ohne Menü.
 
 ## Konten in Fremdwährung
 
-Jedes Konto hat eine Währung (CHF, EUR, USD, GBP; in der Kontenliste unter «Vermögen» umstellbar, beim Erfassen,
+Jedes Konto hat eine Währung – alle 58, die Revolut oder Wise als Guthaben führen (CHF, EUR, USD, GBP und z. B. AED,
+AUD, CAD, CZK, DKK, HKD, HUF, JPY, NOK, PLN, SEK, SGD, THB, TRY, ZAR …; in der Kontenliste unter «Vermögen» umstellbar, beim Erfassen,
 im CSV als Spalte `Währung` und beim Bank-Import automatisch erkannt). Saldi bleiben in der Kontowährung gespeichert;
 alle Auswertungen rechnen in Franken.
 
@@ -647,7 +648,10 @@ alle Auswertungen rechnen in Franken.
 | `waehrungen.automatisch` | `true` = einmal pro Tag den Referenzkurs der EZB holen (frankfurter.dev; Internet nötig, es werden keine eigenen Daten gesendet) |
 | `personen[].zuzug.rente_ausland_waehrung` | Währung der Rente aus dem Ausland, z. B. EUR laut Renteninformation |
 
-Ohne Kurs rechnet die App 1:1 und zeigt einen Hinweis. Der Verlauf rechnet frühere Saldi mit dem heutigen Kurs. Der
+Tageskurse der EZB gibt es für AUD, CAD, CNY, CZK, DKK, EUR, GBP, HKD, HUF, IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR,
+NOK, NZD, PHP, PLN, RON, SEK, SGD, THB, TRY, USD und ZAR; BGN und XOF rechnet die App über den festen Kurs zum Euro.
+Für alle übrigen (z. B. AED, SAR, QAR, KES) den Kurs unter `waehrungen.kurse` eintragen. Ohne Kurs rechnet die App 1:1
+und zeigt einen Hinweis. Der Verlauf rechnet frühere Saldi mit dem heutigen Kurs. Der
 Anlage-Check zeigt den Anteil in Fremdwährung (ab 10 % mit Hinweis auf das Währungsrisiko); die Steuer-Checkliste
 erinnert an die Umrechnung zum Kurs der ESTV-Kursliste per 31.12.
 

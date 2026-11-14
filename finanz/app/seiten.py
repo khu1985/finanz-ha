@@ -933,7 +933,7 @@ def vermoegen(k: dict, db) -> str:
 <label>Person<select name="person">{pers}</select></label>
 <label>Datum<input type="date" name="datum" value="{heute}" required></label>
 <label>Saldo (in der Kontowährung)<input name="betrag" inputmode="decimal" required placeholder="12'500.00"></label>
-<label>Währung (bei neuem Konto)<select name="waehrung">{"".join(f"<option>{w}</option>" for w in __import__("waehrung").WAEHRUNGEN)}</select></label>
+<label>Währung (bei neuem Konto)<select name="waehrung">{"".join(f'<option value="{w}">{escape(__import__("waehrung").name(w))}</option>' for w in __import__("waehrung").WAEHRUNGEN)}</select></label>
 </div><div class="zeile"><button>Saldo speichern</button></div></form>"""
     importieren = """<form method="post" action="vermoegen/import" enctype="multipart/form-data">
 <p class="leise">CSV mit den Spalten <code>Datum;Konto;Saldo</code>, optional <code>Art;Person;Währung</code>.
@@ -1025,7 +1025,8 @@ def konto(k: dict, db, kid: int) -> str:
     arten = "".join(f'<option value="{s}"{" selected" if s == x["art"] else ""}>{n}</option>' for s, n in vm.ARTEN.items())
     pers = (f'<option value=""{"" if x["person"] else " selected"}>gemeinsam</option>'
             + "".join(f'<option{" selected" if p == x["person"] else ""}>{escape(p)}</option>' for p in personen))
-    waehr = "".join(f'<option{" selected" if o == w else ""}>{o}</option>' for o in wg.WAEHRUNGEN)
+    waehr = "".join(f'<option value="{o}"{" selected" if o == w else ""}>{escape(wg.name(o))}</option>'
+                    for o in wg.WAEHRUNGEN + ([w] if w and w not in wg.WAEHRUNGEN else []))
     stamm = f"""<form method="post" action="{a}/speichern"><div class="felder">
 <label>Name<input name="name" value="{escape(x['name'])}" required></label>
 <label>Art<select name="art">{arten}</select></label>

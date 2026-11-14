@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.44.1 – 2026-11-14
+
+- **Mehr Währungen für Konten:** alle 58, die Revolut oder Wise als Guthaben führen (z. B. AED, AUD, CAD, CZK, DKK,
+  HKD, JPY, NOK, PLN, SEK, SGD, THB, TRY, ZAR), in der Auswahl mit Namen. Tageskurse der EZB für 28 davon; BGN und
+  XOF über den festen Kurs zum Euro; für die übrigen eigenen Kurs unter `waehrungen.kurse` eintragen
+- Währungserkennung im Bank-Import nur noch für ganze Codes (z. B. «PEN» in «Pension» zählt nicht)
+
 ## 0.44.0 – 2026-11-14
 
 - **Usability-Score unter Vorschläge:** Die App zeigt alle Seiten mit den eigenen Daten an und prüft sie einmal am
