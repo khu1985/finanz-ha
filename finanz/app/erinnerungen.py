@@ -271,7 +271,8 @@ def _neuere(k: dict, db, heute: date) -> list[Erinnerung]:
                            "sofort.", "notfall")]
 
     def namen():
-        offen = [p["name"] for p in k["personen"] if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1]
+        offen = [p["name"] for p in k["personen"] if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1
+                 and not str(p.get("name")).split()[-1].isdigit()]
         if not offen:
             return []
         return [Erinnerung(f"namen-{'-'.join(offen)}", "Vor- und Nachname trennen", heute,

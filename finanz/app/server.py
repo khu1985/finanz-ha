@@ -327,7 +327,9 @@ class Handler(BaseHTTPRequestHandler):
                     meldung += " " + _umbenennen(k, alt_, p["name"])
             konfig.speichern(k)
             LOG.info("Einstellungen gespeichert")
-            return meldung
+            bereich = form.get("bereich") or ""
+            bereich = bereich.decode() if isinstance(bereich, bytes) else str(bereich)
+            return meldung, ("einstellungen#b-" + bereich if bereich.isalnum() else "einstellungen")
         if pfad == "einstellungen/namen_trennen":
             k = konfig.laden()
             teile_ = []

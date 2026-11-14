@@ -332,3 +332,12 @@ def test_saeule3a_unter_vermoegen(server, daten):
 def test_seite_sparen_und_anlegen(server, daten):
     html = urllib.request.urlopen(f"{server}/sparplan").read().decode()
     assert "Reihenfolge für den nächsten Franken" in html and "Produktarten" in html and "Sparplan pro Monat" in html
+
+
+def test_einstellungen_speichern_pro_bereich(server, daten):
+    html = urllib.request.urlopen(f"{server}/einstellungen").read().decode()
+    assert 'name="bereich" value="wohnen"' in html and 'id="speicherleiste"' in html
+    # «Namen aufteilen» (eigenes Formular) steht vor dem grossen Formular
+    assert html.index('id="einstellungen-form"') > html.rfind("einstellungen/namen_trennen") if "namen_trennen" in html else True
+    code, ziel = _post(f"{server}/einstellungen", {"bereich": "wohnen", "wohnen.kaufpreis": "777000"})
+    assert code == 303 and ziel.endswith("#b-wohnen") and konfig.laden()["wohnen"]["kaufpreis"] == 777000

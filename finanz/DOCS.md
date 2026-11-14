@@ -107,7 +107,7 @@ personen:
 | Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
 | Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
-| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld, Namen aufteilen, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
+| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
 | Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |

@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.43.2 – 2026-11-14
+
+- **Einstellungen:** «Speichern» in jedem Bereich (Haushalt, jede Person, Steuern, Wohnen, KI, Erinnerungen,
+  Sensoren); nach dem Speichern bleibt die Seite beim Bereich. Sobald etwas geändert ist, erscheint unten eine Leiste
+  «Ungespeicherte Änderungen – Speichern», und beim Verlassen ohne Speichern fragt der Browser nach
+- Behoben: Stand der Hinweis «Vor- und Nachname» oben, waren die Felder nicht im Formular – Speichern hatte keine
+  Wirkung. Namen wie «Person 1» gelten nicht mehr als Vor- und Nachname
+- Meldungen nach dem Speichern erscheinen oben eingeblendet, wenn die Seite zu einem Bereich springt
+
 ## 0.43.1 – 2026-11-14
 
 - Menü (Seitenleiste und Handy): Gruppen durch Linien getrennt, Gruppentitel kräftiger, Seiten eingerückt mit einer

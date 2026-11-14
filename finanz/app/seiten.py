@@ -85,6 +85,14 @@ nav button.gl .ampel{width:8px;height:8px;box-shadow:none}
 .reiter a{padding:8px 14px;color:var(--leise);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;
 white-space:nowrap;margin-bottom:-1px}
 .reiter a.aktiv{color:var(--text);border-bottom-color:var(--akzent)}
+.speicherleiste{position:sticky;bottom:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;
+margin:12px 0;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--karte);
+border:1px solid var(--akzent);border-radius:12px;box-shadow:0 -4px 16px rgba(0,0,0,.15);font-weight:600}
+.speicherleiste[hidden]{display:none}
+[id^="b-"]{scroll-margin-top:80px}
+.meldung.schwebend{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:20;
+max-width:min(560px,calc(100vw - 32px));box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .4s}
+.meldung.weg{opacity:0;pointer-events:none}
 .reiter .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 @media (min-width:1200px){
@@ -360,7 +368,8 @@ JS = """
     document.querySelectorAll('button').forEach(function(b){ b.disabled = false; }); });
   var m = document.querySelector('.meldung:not(.fehler)');
   if (m) setTimeout(function(){ m.classList.add('weg'); }, 6000);
-  if (location.search.indexOf('m=') >= 0 && history.replaceState) history.replaceState(null, '', location.pathname);
+  if (location.search.indexOf('m=') >= 0 && history.replaceState) history.replaceState(null, '', location.pathname + location.hash);
+  if (location.hash) addEventListener('load', function(){ var z = document.getElementById(location.hash.slice(1)); if (z) z.scrollIntoView(); });
 })();
 """
 
@@ -378,7 +387,9 @@ if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener
 setzen(h.getAttribute('data-wahl')||'auto')})();
 (function(){var a=document.querySelector('nav a.aktiv');if(a&&innerWidth<1200&&innerWidth>=760)a.scrollIntoView({block:'nearest',inline:'center'})})();
 document.querySelectorAll('nav button.gl').forEach(function(b){b.addEventListener('click',function(){
-var g=b.parentNode;var zu=g.classList.toggle('zu');b.setAttribute('aria-expanded',zu?'false':'true')})});"""
+var g=b.parentNode;var zu=g.classList.toggle('zu');b.setAttribute('aria-expanded',zu?'false':'true')})});
+(function(){var m=document.querySelector('main .meldung');if(m&&location.hash){m.classList.add('schwebend');
+setTimeout(function(){m.classList.add('weg')},4000)}})();"""
 
 MENU_KNOPF = ("<button id=\"menu\" type=\"button\" aria-expanded=\"false\" aria-controls=\"nav\" "
               "onclick=\"var s=document.getElementById('side');var o=s.classList.toggle('offen');"
@@ -1188,8 +1199,10 @@ def _feld(k: dict, pfad: str, text: str) -> str:
 
 
 def einstellungen(k: dict, db) -> str:
-    def gruppe(titel, felder):
-        return karte(titel, '<div class="felder">' + "".join(_feld(k, p, t) for p, t in felder) + "</div>")
+    def gruppe(titel, felder, anker):
+        knopf = (f'<div class="zeile"><button name="bereich" value="{anker}">Speichern</button></div>')
+        return (f'<div id="b-{anker}">' + karte(titel, '<div class="felder">' + "".join(_feld(k, p, t) for p, t in felder)
+                                                + "</div>" + knopf) + "</div>")
 
     import pruefung
     zf = pruefung.zusammenfassung(k, alle_felder(k))
@@ -1208,7 +1221,8 @@ def einstellungen(k: dict, db) -> str:
         offen = karte("Zu prüfen", f'<ul class="hinweise">{liste_(am.ROT)}{liste_(am.GELB)}</ul>'
                       '<p class="leise">Grün: plausibel · Gelb: wahrscheinlich falsch, veraltet oder fehlt (gerechnet wird '
                       'trotzdem) · Rot: wichtiger Wert fehlt oder ist unmöglich · Grau: optional bzw. Standard.</p>')
-    zu_trennen = [p["name"] for p in k["personen"] if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1]
+    zu_trennen = [p["name"] for p in k["personen"] if not p.get("nachname") and len(str(p.get("name") or "").split()) > 1
+                  and not str(p.get("name")).split()[-1].isdigit()]
     trennen = ""
     if zu_trennen:
         vorschau = ", ".join(f"«{escape(n)}» → {escape(konfig.namen_trennen(n)[0])} · {escape(konfig.namen_trennen(n)[1])}"
@@ -1219,14 +1233,25 @@ def einstellungen(k: dict, db) -> str:
             'nachgeführt.</p><form method="post" action="einstellungen/namen_trennen" class="zeile">'
             '<button>Namen aufteilen</button></form><p class="leise">Doppelte Nachnamen ohne Bindestrich danach unter der '
             'Person korrigieren.</p>'))
-    teile = [kpis, trennen, offen, gruppe("Haushalt", FELDER_HAUSHALT)]
+    teile = [gruppe("Haushalt", FELDER_HAUSHALT, "haushalt")]
     for i, p in enumerate(k["personen"]):
-        teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i)))
-    teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN), gruppe("Wohnen", FELDER_WOHNEN),
-              gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI),
-              gruppe("Erinnerungen", FELDER_ERINNERUNG), gruppe("Sensoren", FELDER_SENSOREN)]
-    formular = ('<form method="post" action="einstellungen">' + "".join(teile)
-                + '<div class="zeile"><button>Speichern</button></div></form>')
+        teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i), f"person{i}"))
+    teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN, "steuern"),
+              gruppe("Wohnen", FELDER_WOHNEN, "wohnen"),
+              gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI, "ki"),
+              gruppe("Erinnerungen", FELDER_ERINNERUNG, "erinnerungen"), gruppe("Sensoren", FELDER_SENSOREN, "sensoren")]
+    # Leiste unten, sobald etwas geändert ist; Warnung beim Verlassen ohne Speichern
+    leiste = ('<div class="speicherleiste" id="speicherleiste" hidden><span>Ungespeicherte Änderungen</span>'
+              '<button>Speichern</button></div>')
+    skript = """<script>(function(){var f=document.getElementById('einstellungen-form');if(!f)return;
+var l=document.getElementById('speicherleiste'),geaendert=false;
+function an(){if(!geaendert){geaendert=true;l.hidden=false}}
+f.addEventListener('input',an);f.addEventListener('change',an);
+f.addEventListener('submit',function(){geaendert=false});
+addEventListener('beforeunload',function(e){if(geaendert){e.preventDefault();e.returnValue=''}})})();</script>"""
+    # «Namen aufteilen» hat ein eigenes Formular – darf nicht im grossen Formular stecken
+    formular = (kpis + trennen + offen + '<form method="post" action="einstellungen" id="einstellungen-form">' + "".join(teile)
+                + leiste + "</form>" + skript)
     text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
     experte = f"""<details><summary>Alles als YAML bearbeiten (Kinder, PK-Einkäufe, Kennzahlen, Personen hinzufügen/entfernen)</summary>
 <form method="post" action="einstellungen/yaml"><textarea name="yaml" spellcheck="false">{text}</textarea>
