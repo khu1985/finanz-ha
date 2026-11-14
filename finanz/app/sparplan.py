@@ -111,11 +111,17 @@ def rechnen(k: dict, db, heute: date | None = None) -> Plan:
                             luecke, nehmen(b), b, "Schutz vor Notverkäufen und Konsumkrediten", "vermoegen"))
 
     # 2. teure Schulden (Konsumkredit, Leasing, Kreditkarte)
-    schuld = sum(abs(x["wert"]) for x in vm.konten(db) if x["art"] == "kredit" and not x.get("aufgeloest"))
+    konten = [x for x in vm.konten(db) if not x.get("aufgeloest")]
+    schuld = sum(abs(x["wert"]) for x in konten if x["art"] == "kredit")
+    hypo = sum(abs(x["wert"]) for x in konten if x["art"] == "hypothek")
     j2 = sofort(schuld)
     b = (schuld - j2) / 12
     schritte.append(Schritt(2, "Teure Schulden tilgen", ENTFAELLT if schuld <= 0 else OFFEN,
-                            "Keine Kredite erfasst." if schuld <= 0 else
+                            ("Keine Konsumkredite oder Leasing erfasst (Konten der Art «Kredit»)."
+                             + (f" Die Hypothek (CHF {_chf(hypo)}) zählt nicht als teure Schuld: Der Zins ist tief und "
+                                "steuerlich abziehbar. Die Amortisation steht unter Schritt 4, ob tilgen oder anlegen "
+                                "unter Wohnen bzw. Szenarien → Hypothekar-Strategie." if hypo else ""))
+                            if schuld <= 0 else
                             f"Kredite CHF {_chf(schuld)} – Zinsen von 5–10 % schlägt keine Anlage; zuerst tilgen"
                             + (" (aus dem Konto möglich)." if j2 >= schuld else "."),
                             schuld, nehmen(b), b, "sicherer «Ertrag» in Höhe des Kreditzinses", "vermoegen", j2))

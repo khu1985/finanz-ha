@@ -13,6 +13,8 @@
 - Formulare ab 8 Feldern blenden bei Änderungen unten «Ungespeicherte Änderungen – Speichern» ein und fragen beim
   Verlassen nach
 - Diagramme und Eingabefelder der Krankenkasse haben eine Beschreibung für Screenreader
+- Sparen & Anlegen: Schritt «Teure Schulden» erklärt, warum die Hypothek nicht dazu zählt und wo die
+  Amortisation bzw. die Hypothekar-Strategie steht (statt «Keine Kredite erfasst»)
 
 ## 0.43.2 – 2026-11-14
 

@@ -2091,3 +2091,11 @@ def test_usability_kontrast_und_alle_seiten(k, daten):
     us.sichern(db, e)
     assert us.letztes(db)[0].score == e.score and us.bericht_text(db)[0].startswith("Usability-Score")
     assert not us.faellig(db, "9.9.9", e.zeit[:10]) and us.faellig(db, "9.9.10", e.zeit[:10])
+
+
+def test_sparplan_hypothek_ist_keine_teure_schuld(k):
+    import sparplan as sp
+    db = vm.verbinden(":memory:")
+    vm.saldo_setzen(db, vm.konto_anlegen(db, "Hypothek Musterbank", "hypothek", ""), "2026-10-31", -600_000)
+    s2 = sp.rechnen(k, db, date(2026, 11, 13)).schritte[1]
+    assert s2.status == sp.ENTFAELLT and "Hypothek (CHF 600'000) zählt nicht" in s2.text
