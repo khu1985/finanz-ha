@@ -195,3 +195,25 @@ def zeitachse(zeilen: list[tuple[str, list[tuple]]], von: float, bis: float, heu
         leg = '<div class="legende">' + "".join(
             f'<span class="leg"><i style="background:{f};opacity:{d}"></i>{escape(t)}</span>' for t, f, d in legende) + "</div>"
     return f'<figure class="diagramm">{"".join(teile)}{leg}</figure>'
+
+
+def gestapelt(zeilen: list[tuple[str, dict[str, float], str]], teile: list[tuple[str, str, str, float]]) -> str:
+    """Gestapelte horizontale Balken pro Zeile (z. B. Vermögen pro Person nach Art) – HTML, auch auf dem Handy lesbar.
+
+    zeilen: [(Beschriftung, {Teil: Wert}, Text rechts)]; teile: [(Schlüssel, Bezeichnung, Farbe, Deckkraft)]."""
+    zeilen = [z for z in zeilen if sum(max(0.0, v) for v in z[1].values()) > 0]
+    if not zeilen:
+        return '<p class="leer">Noch keine Daten.</p>'
+    hi = max(sum(max(0.0, v) for v in w.values()) for _, w, _ in zeilen) or 1
+    html = []
+    for name, werte, text in zeilen:
+        seg = "".join(
+            f'<span class="st-teil" style="width:{werte[s] / hi * 100:.2f}%;background:{f};opacity:{d}" '
+            f'title="{escape(t)}: {format(werte[s], ",.0f").replace(",", "’")}"></span>'
+            for s, t, f, d in teile if werte.get(s, 0) > 0)
+        html.append(f'<div class="hbalken"><span class="hb-name">{escape(name)}</span>'
+                    f'<span class="hb-zahl">{text}</span><span class="hb-spur st-spur">{seg}</span></div>')
+    benutzt = {s for _, w, _ in zeilen for s, v in w.items() if v > 0}
+    leg = "".join(f'<span class="leg"><i style="background:{f};opacity:{d}"></i>{escape(t)}</span>'
+                  for s, t, f, d in teile if s in benutzt)
+    return f'<div class="hbalken-liste">{"".join(html)}</div><div class="legende">{leg}</div>'

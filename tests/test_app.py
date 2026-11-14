@@ -395,3 +395,17 @@ def test_solar_seite(server, daten):
     assert code == 303 and c["investition"] == 30000 and c["aktiv"] is True
     html = urllib.request.urlopen(f"{server}/solar").read().decode()
     assert "Investition und Rendite" in html and "PV: Module" in html
+
+
+def test_vermoegen_pro_person(server, daten):
+    k = konfig.laden()
+    p0, p1 = k["personen"][0]["name"], k["personen"][1]["name"]
+    for konto, art, person, betrag in [("Muster Privat", "bank", p0, "30000"), ("Muster Depot", "depot", p1, "50000"),
+                                       ("Haus", "immobilie", "", "800000"), ("Hypothek", "hypothek", "", "500000")]:
+        _post(f"{server}/vermoegen/saldo", {"konto": konto, "art": art, "person": person, "datum": "2026-10-31",
+                                            "betrag": betrag})
+    html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    i = html.index("Vermögen pro Person")
+    teil = html[i:i + 6000]
+    assert "gemeinsam" in teil and "st-teil" in teil and "Wertschriften, Krypto" in teil
+    assert "nach Schulden" in teil and "je zur Hälfte" in teil

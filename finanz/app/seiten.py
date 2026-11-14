@@ -208,6 +208,8 @@ label.wahl input{width:auto;margin-top:3px;flex:none}
 .hb-spur{grid-column:1/-1;background:var(--linie);border-radius:4px;height:10px;overflow:hidden}
 .hb-wert{display:block;height:100%;background:var(--akzent);border-radius:4px}
 .hb-zahl{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.hb-zahl small{color:var(--leise)}
+.st-spur{display:flex;height:16px;gap:1px;background:transparent}.st-teil{display:block;height:100%}
+.st-teil:first-child{border-radius:4px 0 0 4px}.st-teil:last-child{border-radius:0 4px 4px 0}
 table.matrix td,table.matrix th{white-space:nowrap}
 @media (max-width:640px){table.matrix{font-size:12px}table.matrix td,table.matrix th{padding:6px 5px}}
 .vorschlag{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-size:inherit;color:inherit;padding:8px 0;border-bottom:1px solid var(--linie)}
@@ -1022,12 +1024,73 @@ angeben.</p>
 <button>Auszug importieren</button></div></form>"""
     arten_zeilen = [[vm.ARTEN.get(a, a), chf(v)] for a, v in sorted(nv["nach_art"].items(), key=lambda x: -x[1])]
     return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["verfuegbar"]), "Frei verfügbar (ohne Immobilie, Hypothek, Vorsorge)") + (kpi(chf(nv["gebunden"]), "Gebundene Vorsorge (3a, 3b)") if nv["gebunden"] else "") + "</div>"
+            + personen_karte(k, db, ks)
             + karte("Konten", liste)
             + '<div class="raster">' + karte("Saldo erfassen", erfassen) + karte("Bank-Import", bank)
             + karte("CSV importieren (eigene Liste)", importieren) + "</div>"
             + '<div class="raster">' + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
             + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>"
             + dreia_karte(k, db) + wertschriften_karte(k, db) + anlage_karte(k, db))
+
+
+PERSONEN_TEILE = [("konten", "Konten", "var(--c1)", 1), ("wertschriften", "Wertschriften, Krypto", "var(--c2)", 1),
+                  ("saeule3a", "Säule 3a", "var(--c3)", 1), ("vorsorge", "Vorsorge 3b", "var(--c3)", 0.6),
+                  ("immobilie", "Immobilie", "var(--c4)", 1), ("fahrzeug", "Fahrzeug", "var(--c5)", 1),
+                  ("sonstiges", "Sonstiges", "var(--leise)", 0.6), ("pk", "Pensionskasse (nicht im Nettovermögen)",
+                                                                    "var(--c3)", 0.3)]
+_TEIL_VON_ART = {"bank": "konten", "depot": "wertschriften", "krypto": "wertschriften", "saeule3a": "saeule3a",
+                 "vorsorge": "vorsorge", "immobilie": "immobilie", "fahrzeug": "fahrzeug", "sonstiges": "sonstiges"}
+
+
+def personen_karte(k: dict, db, ks: list | None = None) -> str:
+    """Vermögen pro Person (und gemeinsam) nach Art, Schulden abgezogen; Pensionskasse als Zusatz."""
+    from versicherungen import gleiche_person
+    ks = [x for x in (ks if ks is not None else vm.konten(db)) if not x.get("aufgeloest")]
+    namen = [p["name"] for p in k["personen"]]
+    gruppen: dict[str, dict[str, float]] = {n: {} for n in namen}
+    gruppen["gemeinsam"] = {}
+    schulden = {n: 0.0 for n in list(gruppen)}
+    for x in ks:
+        wem = next((n for n in namen if x.get("person") and gleiche_person(n, x["person"])), "gemeinsam")
+        if x["art"] in vm.SCHULDEN:
+            schulden[wem] += -x["wert"]
+            continue
+        teil = _TEIL_VON_ART.get(x["art"], "sonstiges")
+        gruppen[wem][teil] = gruppen[wem].get(teil, 0.0) + max(0.0, x["wert"])
+    for p in k["personen"]:
+        pk_ = float((p.get("pk") or {}).get("altersguthaben") or 0)
+        if pk_:
+            gruppen[p["name"]]["pk"] = pk_
+    zeilen = []
+    for name, werte in gruppen.items():
+        netto = sum(v for s, v in werte.items() if s != "pk") - schulden[name]
+        text = f"<b>{chf(netto)}</b>" + (f' <small>nach Schulden {chf(-schulden[name])}</small>' if schulden[name] else "")
+        if werte.get("pk"):
+            text += f' <small>+ PK {chf(werte["pk"])}</small>'
+        zeilen.append((name, werte, text))
+    if not any(sum(w.values()) for _, w, _ in zeilen):
+        return ""
+    gem = sum(sum(v for s, v in w.items() if s != "pk") for n, w, _ in zeilen if n == "gemeinsam") - schulden["gemeinsam"]
+    haelfte = ""
+    if gem and len(namen) == 2:
+        teile = []
+        for n in namen:
+            eigen = sum(v for s, v in gruppen[n].items() if s != "pk") - schulden[n]
+            teile.append(f"{escape(n)} {chf(eigen + gem / 2)}")
+        haelfte = (f'<p class="leise">Mit dem Gemeinsamen je zur Hälfte: {" · ".join(teile)}. Wem was rechtlich gehört '
+                   '(Eigengut, Errungenschaft), zeigen <a href="lebensereignisse">Lebensereignisse</a> und '
+                   '<a href="nachlass">Nachlass</a>.</p>')
+    offen = [x["name"] for x in ks if not (x.get("person") or "").strip()
+             and x["art"] not in vm.SCHULDEN | {"immobilie", "fahrzeug"}]
+    if offen and len(namen) > 1:
+        haelfte += (f'<p class="warn" style="font-size:14px">{len(offen)} {"Konto" if len(offen) == 1 else "Konten"} ohne Person '
+                    f'({escape(", ".join(offen[:3]))}{" …" if len(offen) > 3 else ""}) '
+                    f'{"zählt" if len(offen) == 1 else "zählen"} als gemeinsam. '
+                    'Die Person setzt du in der Kontoliste unten unter «Verwalten».</p>')
+    return karte("Vermögen pro Person", dg.gestapelt(zeilen, PERSONEN_TEILE) + haelfte
+                 + '<p class="leise">Zuordnung über die Person des Kontos (unter «Konten» änderbar); Hypothek und Kredite '
+                   'abgezogen. Die Pensionskasse (Altersguthaben laut Einstellungen) steht hell daneben – sie gehört der '
+                   'Person, zählt aber nicht zum Nettovermögen.</p>')
 
 
 def dreia_karte(k: dict, db) -> str:

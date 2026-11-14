@@ -103,7 +103,7 @@ personen:
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
-| Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
+| Vermögen | Vermögen pro Person (Diagramm), Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Solar & vZEV | Werte der vZEV-App (Verkauf an Mieter, Eigenverbrauch, Einspeisung), Nutzen nach Unterhalt und Steuern, Investition mit Abzug und Rendite, Komponenten, offene Rechnungen |
 | Fahrzeuge | Wert (als Konto unter Vermögen), Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, MFK und Leasingende als Erinnerung |
@@ -208,6 +208,13 @@ Konten mit Art (Bank, Wertschriften, Krypto, Säule 3a, Vorsorge 3b, Immobilie, 
 | Frei verfügbar | ohne Immobilie, Hypothek, Säule 3a und Vorsorge 3b |
 | Gebundene Vorsorge | Säule 3a und Vorsorge 3b (Policen, verpfändet) |
 | freies Vermögen der Pensionsplanung (Pensionslücke, Finanzplan) | ohne Immobilie, Hypothek und Säule 3a – die 3a kommt über das 3a-Modell bei der Pensionierung dazu; 3b-Policen laufen typischerweise bis dahin und zählen mit |
+
+**Vermögen pro Person.** Direkt unter den Kennzahlen zeigt ein gestapelter Balken je Person und für «gemeinsam», was
+wem gehört – aufgeteilt in Konten, Wertschriften, Säule 3a, Vorsorge 3b, Immobilie, Fahrzeug und Sonstiges, Hypothek
+und Kredite abgezogen. Die Zuordnung kommt aus der Person des Kontos (Konten ohne Person zählen als gemeinsam; ein
+Hinweis nennt sie). Hell daneben steht das Pensionskassen-Guthaben aus den Einstellungen: Es gehört der Person, zählt
+aber nicht zum Nettovermögen. Bei zwei Personen rechnet die Karte zusätzlich aus, wie viel jede hat, wenn das
+Gemeinsame je zur Hälfte geteilt wird – als Anhaltspunkt für Nachlass und Lebensereignisse.
 
 **Säule 3a.** Jedes 3a-Konto bzw. 3a-Depot als Konto der Art «Säule 3a» mit Person erfassen – von Hand, per
 Bank-Import (VIAC, frankly, finpension sowie Konten mit «3a» oder «Vorsorgekonto» im Namen werden erkannt) oder aus

@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.48.0 – 2026-11-14
+
+- **Vermögen pro Person:** neue Karte oben auf «Vermögen» mit gestapeltem Balken je Person und «gemeinsam» (Konten,
+  Wertschriften, Säule 3a, Vorsorge 3b, Immobilie, Fahrzeug, Sonstiges; Schulden abgezogen). Das
+  Pensionskassen-Guthaben steht hell daneben (gehört der Person, zählt nicht zum Nettovermögen). Bei zwei Personen
+  zeigt die Karte die Aufteilung mit dem Gemeinsamen je zur Hälfte; Konten ohne Person werden genannt.
+
 ## 0.47.1 – 2026-11-14
 
 - **Neue Ampeln** (Übersicht und Punkte im Menü): Sparen (nächster offener Schritt), Kinder (Ausbildungsende im
