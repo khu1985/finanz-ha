@@ -59,10 +59,15 @@ def bauteile(k: dict, heute: date | None = None) -> list[dict]:
     heute = heute or date.today()
     c = konfiguration(k)
     eigen = c.get("bauteile") or []
+    try:
+        import solar
+        pv = solar.komponenten(k)                    # Module, Wechselrichter, Batterie der Solaranlage
+    except Exception:  # noqa: BLE001
+        pv = []
     if eigen:
         return [{"name": str(b.get("name", "Bauteil")), "letzte": int(_zahl(b.get("letzte"))),
                  "lebensdauer": max(1, int(_zahl(b.get("lebensdauer"), 20))), "kosten": _zahl(b.get("kosten"))}
-                for b in eigen]
+                for b in eigen] + pv
     nw = neuwert(k)
     baujahr = int(_zahl(c.get("baujahr")))
     wohnung = str(c.get("art", "haus")) == "wohnung"
@@ -72,7 +77,7 @@ def bauteile(k: dict, heute: date | None = None) -> list[dict]:
             continue
         letzte = baujahr or heute.year - dauer // 2
         erg.append({"name": name, "letzte": letzte, "lebensdauer": dauer, "kosten": round(nw * anteil / 100, -2)})
-    return erg
+    return erg + pv
 
 
 @dataclass

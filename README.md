@@ -16,6 +16,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
 | Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
+| Solar & vZEV | Werte der vZEV-App über Home Assistant: Ertrag, Rendite, Steuern (Abzug der Investition, Einspeisung netto), Komponenten in der Erneuerungsplanung, Einnahmen im Finanzplan |
 | Fahrzeuge | Wert als steuerbares Vermögen, Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, Erinnerungen für MFK und Leasingende |
 | Kinder | Lebenslauf je Kind von der Kita über Schule und Lehre bzw. Gymnasium bis zum Studium – mit eigenen Kosten und Vergleichswerten je Phase (Zürcher Kinderkosten-Tabelle, Kita-Vollkosten, Studienbudget); Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse, Finanzplan und Erinnerungen |
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken – Notreserve, teure Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig – mit «jetzt vom Konto» und Sparplan pro Monat, Soll-Ist der Aufteilung und Produktarten (keine Produktempfehlungen) |
@@ -155,6 +156,7 @@ flowchart TB
 | `finanz/app/teilzeit.py` | Teilzeit-Rechner |
 | `finanz/app/steuererklaerung.py` | Checkliste Steuererklärung |
 | `finanz/app/notfall.py` | Notfallordner, Meldeliste für den Todesfall |
+| `finanz/app/solar.py` | Solaranlage und vZEV: Sensoren der vZEV-App, Rendite, Steuern, Komponenten, Finanzplan |
 | `finanz/app/fahrzeuge.py` | Fahrzeuge: Wert, Kosten, Leasing, Ersatz, MFK |
 | `finanz/app/kinder.py` | Kinder: Abzüge, Gutschriften, Zulagen, Zeitachse |
 | `finanz/app/kinderphasen.py` | Lebenslauf der Kinder: Phasen von Kita bis Studium, eigene Kosten und Vergleichswerte, Kosten pro Jahr, Wirkung auf den Finanzplan |

@@ -43,6 +43,7 @@ SEITEN = {
     "sparplan": ("Sparen & Anlegen", seiten.sparplan),
     "lebensereignisse": ("Lebensereignisse", seiten.lebensereignisse),
     "fahrzeuge": ("Fahrzeuge", seiten.fahrzeuge),
+    "solar": ("Solar & vZEV", seiten.solar),
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuern", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
@@ -233,7 +234,8 @@ class Handler(BaseHTTPRequestHandler):
             with db() as verbindung:
                 import dreia
                 import fahrzeuge
-                if dreia.abgleichen(k, verbindung):          # 3a-Konten unter Vermögen → Einstellungen
+                import solar
+                if dreia.abgleichen(k, verbindung) | solar.abgleichen(k, verbindung):   # 3a-Konten, vZEV-Werte
                     konfig.speichern(k)
                 fahrzeuge.abgleichen(k, verbindung)          # Fahrzeugwert als Konto (steuerbares Vermögen)
                 inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
@@ -755,6 +757,32 @@ class Handler(BaseHTTPRequestHandler):
             return self._berater(pfad, form)
         if pfad.startswith("steuern"):
             return self._steuern(pfad, form)
+        if pfad == "solar/speichern":
+            k = konfig.laden()
+            c = dict(k.get("solar") or {})
+            for feld, _, typ in seiten.SOLAR_FELDER:
+                t = str(form.get(feld) or "").strip()
+                if t:
+                    c[feld] = vm.zahl(t) if typ == "zahl" else t[:40]
+                else:
+                    c.pop(feld, None)
+            c["gebaeude_bestehend"] = bool(form.get("gebaeude_bestehend"))
+            c["aktiv"] = True
+            k["solar"] = c
+            konfig.speichern(k)
+            return "Angaben zur Solaranlage gespeichert.", "solar"
+        if pfad == "solar/holen":
+            import solar
+            k = konfig.laden()
+            k.setdefault("solar", {})["aktiv"] = True
+            with db() as v:
+                n = solar.holen(k, v)
+                solar.abgleichen(k, v)
+            konfig.speichern(k)
+            if not n:
+                raise ValueError("Keine Werte gefunden – läuft die vZEV-App und schreibt sie Sensoren "
+                                 "(sensor.vzev_wertschoepfung_jahr)?")
+            return f"{n} Werte aus der vZEV-App übernommen.", "solar"
         if pfad == "fahrzeuge/speichern":
             import fahrzeuge as fz
             k = konfig.laden()

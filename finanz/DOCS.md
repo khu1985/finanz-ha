@@ -65,7 +65,7 @@ personen:
   | Geld | Budget, Vermögen, Sparen & Anlegen |
   | Steuern | Steuern mit den Reitern «Planung und Dokumente» und «Steuererklärung» |
   | Zukunft | Vorsorge, Finanzplan, Szenarien, Lebensereignisse |
-  | Familie & Wohnen | Kinder, Wohnen, Fahrzeuge, Versicherungen |
+  | Familie & Wohnen | Kinder, Wohnen, Solar & vZEV, Fahrzeuge, Versicherungen |
   | Absicherung | Nachlass, Verfügungen, Notfallordner |
   | App | Dokumente, Einstellungen (mit den Reitern Daten & Import, Protokoll und Änderungen), Vorschläge |
 
@@ -102,6 +102,7 @@ personen:
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
+| Solar & vZEV | Werte der vZEV-App (Verkauf an Mieter, Eigenverbrauch, Einspeisung), Nutzen nach Unterhalt und Steuern, Investition mit Abzug und Rendite, Komponenten, offene Rechnungen |
 | Fahrzeuge | Wert (als Konto unter Vermögen), Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, MFK und Leasingende als Erinnerung |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
 | Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
@@ -227,6 +228,28 @@ Aktienquote nach Risikoprofil (tief 25 %, mittel 50 %, hoch 75 %; Renditeannahme
 Konten, in Aktien und Krypto (Richtwert höchstens 5 %), der mögliche Mehrertrag pro Jahr und bis zur Pensionierung,
 Hinweise zu Klumpenrisiko (Arbeitgeberaktien) und Hypothekarzins. Risikoprofil und Zinsen auf der Karte einstellbar
 (`anlage`). Keine Produktempfehlungen.
+
+## Solaranlage und vZEV
+
+Die Seite **Solar & vZEV** verbindet die Finanzplanung mit der vZEV-App. Diese schreibt ihre Kennzahlen als Sensoren
+nach Home Assistant; die Finanz-App liest einmal am Tag (oder mit «Werte aus der vZEV-App holen»)
+`sensor.vzev_wertschoepfung_jahr` (Attribute Verkauf an Mieter, Eigenverbrauch, Einspeisung), `_produktion_jahr`,
+`_offene_rechnungen` und `_ueberfaellig` und speichert sie. Gilt das Vorjahr als abgeschlossen (Stand im Dezember),
+rechnet sie damit, sonst mit dem laufenden Jahr, hochgerechnet mit der typischen Monatsverteilung der Produktion. Die
+Jahreswerte landen zusätzlich unter `solar.werte_vzev`. Ohne vZEV-App die Jahreswerte von Hand eintragen.
+
+Angaben unter `solar`: Investition, Jahr, Förderung (Einmalvergütung), Leistung, Unterhalt (Standard 1 % der Investition
+pro Jahr), Lebensdauer (25 Jahre), eigene Stromkosten, Wechselrichter und Batterie (Jahr, Kosten), Präfix der Sensoren,
+ob das Gebäude bei Auftrag schon mindestens zwei volle Jahre stand.
+
+| Wo | Was |
+|---|---|
+| Solar & vZEV | Ertrag pro Jahr (Mieter, Eigenverbrauch, Einspeisung − Unterhalt − Steuern zum Grenzsteuersatz), Investition minus Förderung minus Steuerersparnis, Jahre bis zur Amortisation, Rendite (interner Zinsfuss über die Lebensdauer, 0,5 % weniger Leistung pro Jahr), offene Rechnungen |
+| Steuern | Kanton BL: Investition an bestehenden Gebäuden zu 100 % abziehbar wie Unterhalt (nur effektive Kosten; Förderung mindert; Übertrag auf zwei Folgejahre); Einspeisung netto (Vergütung − privater Strombezug) unter «Übrige Einkünfte»; Verkauf an Mieter als Einkommen gerechnet (Einordnung mit der Steuerverwaltung klären) |
+| Steuererklärung | Punkte «Stromverkauf und Einspeisung» (mit Werten) und im Investitionsjahr «Solaranlage als Energiesparmassnahme» |
+| Wohnen | Module (Lebensdauer der Anlage, Standard 25 Jahre), Wechselrichter (12 Jahre) und Batterie (12 Jahre) in der Erneuerungsplanung |
+| Finanzplan | Verkauf und Einspeisung nach Unterhalt und Steuern ab der Pensionierung als Einnahme, solange die Anlage läuft; nach der Lebensdauer fällt der Ertrag samt tieferer Stromkosten weg |
+| Erinnerungen | Januar–März: vZEV-Jahresabrechnung für die Steuererklärung; überfällige Rechnungen der Mieter |
 
 ## Fahrzeuge
 

@@ -29,7 +29,7 @@ NAVIGATION = [
     ("Steuern", [("steuern", "Steuern")]),
     ("Zukunft", [("vorsorge", "Vorsorge"), ("finanzplan", "Finanzplan"), ("szenarien", "Szenarien"),
                  ("lebensereignisse", "Lebensereignisse")]),
-    ("Familie & Wohnen", [("kinder", "Kinder"), ("wohnen", "Wohnen"), ("fahrzeuge", "Fahrzeuge"),
+    ("Familie & Wohnen", [("kinder", "Kinder"), ("wohnen", "Wohnen"), ("solar", "Solar & vZEV"), ("fahrzeuge", "Fahrzeuge"),
                           ("versicherungen", "Versicherungen")]),
     ("Absicherung", [("nachlass", "Nachlass"), ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
     ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
@@ -2958,6 +2958,98 @@ def fahrzeuge(k: dict, db) -> str:
         'Vignette 40. Versicherung aus den Motorfahrzeug-Policen unter Versicherungen, sonst eigene Angabe. Der Ersatz '
         'erscheint als Lebensziel im Finanzplan und unter Sparen &amp; Anlegen. MFK: nach 5, dann 3, danach alle 2 Jahre.'
         f'</p><ul>{links}</ul>')))
+    return "".join(teile)
+
+
+SOLAR_FELDER = [
+    ("investition", "Investition (CHF)", "zahl"), ("investition_jahr", "Jahr der Investition", "zahl"),
+    ("foerderung", "Förderung / Einmalvergütung (CHF)", "zahl"), ("leistung_kwp", "Leistung (kWp)", "zahl"),
+    ("unterhalt_jahr", "Unterhalt pro Jahr (leer = 1 % der Investition)", "zahl"),
+    ("lebensdauer", "Lebensdauer in Jahren (leer = 25)", "zahl"),
+    ("strombezug_jahr", "Eigene Stromkosten pro Jahr (BL: Einspeisung netto)", "zahl"),
+    ("wechselrichter_jahr", "Wechselrichter eingebaut (Jahr)", "zahl"),
+    ("wechselrichter_kosten", "Wechselrichter Kosten (leer = 12 % der Investition)", "zahl"),
+    ("batterie_jahr", "Batterie eingebaut (Jahr)", "zahl"), ("batterie_kosten", "Batterie Kosten", "zahl"),
+    ("sensor_praefix", "Präfix der vZEV-Sensoren (leer = vzev)", "text"),
+    ("mieter_jahr", "Von Hand: Verkauf an Mieter pro Jahr", "zahl"),
+    ("eigen_jahr", "Von Hand: Wert Eigenverbrauch pro Jahr", "zahl"),
+    ("export_jahr", "Von Hand: Einspeisevergütung pro Jahr", "zahl"),
+]
+
+
+def solar(k: dict, db) -> str:
+    """Solaranlage und vZEV: Werte aus der vZEV-App, Rendite, Steuern, Komponenten, Finanzplan."""
+    import solar as so
+    c = so.cfg(k)
+    a = so.auswerten(k, db)
+    teile = []
+    if a:
+        j = a.jahr
+        teile.append('<div class="kpis">' + "".join([
+            kpi(chf(j.total) if j else "–", "Wertschöpfung pro Jahr"),
+            kpi(chf(a.nutzen_jahr), "Nutzen nach Unterhalt und Steuern"),
+            kpi(f"{a.rendite:g} %" if a.rendite is not None else "–", "Rendite pro Jahr (über die Lebensdauer)"),
+            kpi(f"{a.amortisation_jahre:g} Jahre" if a.amortisation_jahre else "–", "bis die Anlage bezahlt ist"),
+        ]) + "</div>")
+        if j:
+            z = [["Verkauf an Mieter", chf(j.mieter), "Einnahme, steuerbar"],
+                 ["Eigenverbrauch", chf(j.eigen), "tiefere Stromrechnung, nicht steuerbar"],
+                 ["Einspeisung", chf(j.export), "Einnahme, in BL netto steuerbar"],
+                 ["− Unterhalt", chf(-a.unterhalt), "Reinigung, Versicherung, Zähler, Reparaturen"],
+                 ["− Steuern auf den Ertrag", chf(-a.steuer_ertrag), f"auf rund CHF {chf(a.einkommen_steuerbar)} "
+                                                                     "zum Grenzsteuersatz"],
+                 ["<b>Nutzen pro Jahr</b>", f"<b>{chf(a.nutzen_jahr)}</b>", ""]]
+            prod = f" · Produktion rund {chf(j.produktion)} kWh" if j.produktion else ""
+            teile.append(karte("Ertrag pro Jahr", tabelle(["Posten", "CHF", ""], z, zahlen_ab=1)
+                               + f'<p class="leise">Quelle: {escape(j.quelle)}{prod}.</p>'))
+        if a.investition:
+            z = [["Investition", chf(a.investition)], ["− Förderung", chf(-a.foerderung)],
+                 ["− Steuerersparnis durch den Abzug", chf(-a.steuer_ersparnis)],
+                 ["<b>Netto bezahlt</b>", f"<b>{chf(a.netto_investition)}</b>"]]
+            teile.append(karte("Investition und Rendite", tabelle(["", "CHF"], z)
+                               + f'<p class="leise">Rendite: interner Zinsfuss über {a.lebensdauer} Jahre mit '
+                                 f'{so._zahl(c.get("degradation"), 0.5):g} % weniger Leistung pro Jahr'
+                               + (f", Ende der Lebensdauer um {a.ende_jahr}" if a.ende_jahr else "") + '. Zum Vergleich: '
+                                 'Amortisieren der Hypothek «bringt» den Hypothekarzins nach Steuern.</p>'))
+        if a.komponenten:
+            z = [[escape(b["name"]), str(b["letzte"]), str(b["letzte"] + b["lebensdauer"]), chf(b["kosten"])]
+                 for b in a.komponenten]
+            teile.append(karte("Komponenten", tabelle(["Teil", "eingebaut", "Ersatz um", "Kosten"], z, zahlen_ab=3)
+                               + '<p class="leise">Erscheinen in der Erneuerungsplanung unter <a href="wohnen">Wohnen</a>. '
+                                 'Im <a href="finanzplan">Finanzplan</a> zählen Verkauf und Einspeisung ab der '
+                                 'Pensionierung als Einnahme, solange die Anlage läuft.</p>'))
+        if a.offene or a.ueberfaellig:
+            teile.append(karte("Rechnungen an die Mieter", f"<p>Offen CHF {chf(a.offene)}"
+                               + (f", davon {a.ueberfaellig} überfällig" if a.ueberfaellig else "")
+                               + ' – Details in der vZEV-App.</p>'))
+        teile.append(karte("Hinweise", hinweisliste(a.hinweise)))
+    felder = []
+    for feld, text, typ in SOLAR_FELDER:
+        w = c.get(feld)
+        w = "" if w in (None, "") else str(w)
+        art = ' inputmode="decimal"' if typ == "zahl" else ""
+        felder.append(f'<label>{escape(text)}<input name="{feld}"{art} value="{escape(w)}"></label>')
+    felder.append(f'<label class="entfernen"><input type="checkbox" name="gebaeude_bestehend" value="1"'
+                  f'{"" if c.get("gebaeude_bestehend") is False else " checked"}>Gebäude stand bei Auftrag schon mindestens '
+                  'zwei volle Jahre (Abzug als Energiesparmassnahme)</label>')
+    form = (f'<form method="post" action="solar/speichern"><div class="felder">{"".join(felder)}</div>'
+            '<div class="zeile"><button>Speichern</button></div></form>'
+            '<form method="post" action="solar/holen" class="zeile nicht-drucken"><button class="zweit">Werte aus der vZEV-App '
+            'holen</button></form>')
+    teile.append(karte("Angaben zur Anlage", (f"<details{'' if a else ' open'}><summary>Bearbeiten</summary>{form}</details>"
+                       '<p class="leise">Die laufenden Werte kommen aus den Sensoren der vZEV-App '
+                       '(<code>sensor.vzev_wertschoepfung_jahr</code> mit Verkauf an Mieter, Eigenverbrauch und '
+                       'Einspeisung, <code>_produktion_jahr</code>, <code>_offene_rechnungen</code>, '
+                       '<code>_ueberfaellig</code>) – einmal am Tag. Ohne vZEV-App die Jahreswerte von Hand eintragen.</p>')))
+    links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in so.QUELLEN)
+    teile.append(karte("Steuern (Kanton BL) und Quellen", (
+        '<ul class="hinweise"><li>Investition an einem bestehenden Gebäude: zu 100 % abziehbar wie Unterhalt (nur mit '
+        'effektiven Kosten, nicht neben der Pauschale; nicht bei Bau zeitnah zum Neubau); Förderung mindert den Abzug; '
+        'was das Einkommen übersteigt, in die nächste oder übernächste Steuerperiode übertragen.</li>'
+        '<li>Einspeisung: Nettoertrag (Vergütung minus privater Strombezug) unter «Übrige Einkünfte»; negativ nicht '
+        'abziehbar.</li><li>Stromverkauf an Mieter: als Einkommen gerechnet – Einordnung mit der Steuerverwaltung '
+        'klären.</li><li>Eigenverbrauch: nicht steuerbar.</li></ul>'
+        f'<ul>{links}</ul>')))
     return "".join(teile)
 
 

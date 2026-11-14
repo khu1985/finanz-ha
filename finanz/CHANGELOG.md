@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.47.0 – 2026-11-14
+
+- **Solar & vZEV** (neue Seite unter Familie & Wohnen): Die Finanz-App liest die Sensoren der vZEV-App aus Home
+  Assistant (Wertschöpfung mit Verkauf an Mieter, Eigenverbrauch und Einspeisung, Produktion, offene Rechnungen) –
+  einmal am Tag oder auf Knopfdruck; ohne vZEV-App Jahreswerte von Hand
+  - Ertrag nach Unterhalt und Steuern, Investition minus Förderung und Steuerersparnis, Amortisation und Rendite
+  - Steuern BL: Abzug der Investition als Energiesparmassnahme, Einspeisung netto; Punkte in der Checkliste der
+    Steuererklärung
+  - Module, Wechselrichter und Batterie in der Erneuerungsplanung unter Wohnen
+  - Finanzplan: Ertrag ab der Pensionierung als Einnahme, Wegfall nach der Lebensdauer
+  - Erinnerungen: Jahresabrechnung für die Steuererklärung, überfällige Rechnungen
+
 ## 0.46.0 – 2026-11-14
 
 - **Fahrzeuge** (neue Seite unter Familie & Wohnen): pro Auto Wert, Kosten pro Jahr und pro Kilometer (Wertverlust bzw.

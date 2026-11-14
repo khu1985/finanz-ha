@@ -2167,3 +2167,49 @@ def test_fahrzeuge_wert_kosten_ersatz(k):
     assert nv["total"] == a.wert and nv["frei"] == 0 and nv["verfuegbar"] == 0
     assert fz.mfk_naechste(date(2015, 6, 1), date(2026, 11, 14)) == date(2027, 6, 1)    # 2020, 2023, 2025, 2027 …
     assert any(e.titel == "Leasingende Muster E" for e in fz.erinnerungen(k, date(2027, 1, 10)))
+
+
+# ---------------------------------------------------------------- Solaranlage / vZEV
+
+def test_solar_werte_aus_vzev_und_rendite(k):
+    import solar
+    db = vm.verbinden(":memory:")
+    k["solar"] = {"aktiv": True, "investition": 30000, "investition_jahr": 2024, "foerderung": 6000,
+                  "strombezug_jahr": 800, "batterie_kosten": 9000, "batterie_jahr": 2025}
+    # Sensoren der vZEV-App: Stand am 15.6. (laufendes Jahr) → hochgerechnet
+    solar.einlesen(db, {"wertschoepfung_jahr": {"state": "2400", "attributes": {"mieter_chf": 1200, "eigen_chf": 800,
+                                                                                 "export_chf": 400}},
+                        "produktion_jahr": {"state": "6000"}, "ueberfaellig": {"state": "2"},
+                        "offene_rechnungen": {"state": "350.5"}}, date(2026, 6, 15))
+    j = solar.jahreswerte(k, db, date(2026, 6, 16))
+    anteil = solar._anteil_bis(date(2026, 6, 15))
+    assert 0.4 < anteil < 0.6 and round(j.mieter) == round(1200 / anteil) and "hochgerechnet" in j.quelle
+    # volles Vorjahr hat Vorrang
+    solar.einlesen(db, {"wertschoepfung_jahr": {"state": "4000", "attributes": {"mieter_chf": 2000, "eigen_chf": 1500,
+                                                                                 "export_chf": 500}}}, date(2025, 12, 31))
+    j = solar.jahreswerte(k, db, date(2026, 6, 16))
+    assert (j.mieter, j.eigen, j.export) == (2000, 1500, 500) and "Jahr 2025" in j.quelle
+    a = solar.auswerten(k, db, date(2026, 6, 16))
+    assert a.abzug == 24000 and a.steuer_ersparnis > 0 and a.einkommen_steuerbar == 2000 + 0  # Einspeisung netto 500−800
+    assert a.nutzen_jahr == round(4000 - 300 - a.steuer_ertrag) and a.rendite and a.amortisation_jahre
+    assert a.offene == 350.5 and a.ueberfaellig == 2 and any("überfällige" in h for h in a.hinweise)
+    assert [b["name"] for b in solar.komponenten(k)] == ["PV: Module", "PV: Wechselrichter", "PV: Batterie"]
+    # in die Konfiguration übernommen → Finanzplan ohne Datenbank
+    assert solar.abgleichen(k, db, date(2026, 6, 16)) and k["solar"]["werte_vzev"]["mieter"] == 2000
+    vor, ein = solar.finanzplan(k, None, list(range(2026, 2060)), 2040)
+    assert 2040 in ein and 2049 in ein and 2050 not in ein and 2050 in vor        # Lebensdauer 25 → bis 2049
+
+
+def test_solar_in_finanzplan_steuererklaerung_und_erneuerung(k, daten):
+    import finanzplan as fp
+    import immobilie as im
+    import steuererklaerung as se
+    k["solar"] = {"aktiv": True, "investition": 30000, "investition_jahr": 2025, "mieter_jahr": 2000, "eigen_jahr": 1500,
+                  "export_jahr": 500, "lebensdauer": 40}
+    p = fp.rechnen(k, 100_000, 2026, simulation=False)
+    assert p.solar and min(p.solar) == p.pension_jahr
+    assert any(b["name"] == "PV: Wechselrichter" for b in im.bauteile(k))
+    db = vm.verbinden(":memory:")
+    c = se.erstellen(k, db, 2025, date(2026, 2, 1))
+    schl = {x.schluessel for x in c.punkte}
+    assert {"solar_ertrag", "solar_investition"} <= schl

@@ -252,6 +252,31 @@ def erstellen(k: dict, db, jahr: int | None = None, heute: date | None = None) -
                          + (" und Mieteinnahmen" if ls["mieteinnahmen"] else "") + "; Wahl pro Jahr, Staat und Bund "
                          "getrennt)", status="beleg"))
 
+    # Solaranlage / vZEV
+    try:
+        import solar
+        a = solar.auswerten(k, db, stichtag)
+    except Exception:  # noqa: BLE001
+        a = None
+    if a:
+        if a.jahr:
+            wert = (f"Verkauf an Mieter CHF {_chf(a.jahr.mieter)}, Einspeisung CHF {_chf(a.jahr.export)}"
+                    + (f" (netto nach Strombezug, BL)" if solar.cfg(k).get("strombezug_jahr") else "")
+                    + f" – steuerbar rund CHF {_chf(a.einkommen_steuerbar)} ({a.jahr.quelle})")
+        else:
+            wert = ""
+        pkt.append(Punkt("solar_ertrag", "Einkommen", "Stromverkauf und Einspeisung (Solaranlage, vZEV)",
+                         "Jahresabrechnung der vZEV-App bzw. Abrechnung des Netzbetreibers; in BL Einspeisung netto "
+                         "(Vergütung minus privater Strombezug) unter «Übrige Einkünfte»", wert,
+                         "daten" if wert else "beleg"))
+        inv_jahr = int(solar._zahl(solar.cfg(k).get("investition_jahr")))
+        if inv_jahr == jahr and a.abzug:
+            pkt.append(Punkt("solar_investition", "Liegenschaft", "Solaranlage als Energiesparmassnahme",
+                             "Rechnungen der Anlage, Förderzusage (Einmalvergütung mindert den Abzug); nur mit "
+                             "effektiven Unterhaltskosten statt Pauschale, Rest auf die nächsten zwei Jahre übertragbar",
+                             f"Abzug CHF {_chf(a.abzug)} (Investition {_chf(a.investition)} − Förderung "
+                             f"{_chf(a.foerderung)})", "daten"))
+
     # Vermögen per 31.12.
     for x in konten:
         if x["art"] == "saeule3a":                       # Säule 3a wird nicht als Vermögen deklariert

@@ -47,7 +47,8 @@ class Plan:
     pleite_median: int | None = None   # in schlechten Verläufen (10 %): Jahr, in dem das Geld ausgeht
     ziele: list[dict] = field(default_factory=list)    # Lebensziele mit Sparrate und Deckung
     erfolg_ohne_ziele: float | None = None
-    kinder: dict[int, float] = field(default_factory=dict)   # Kinderkosten: Veränderung gegenüber heute (+ = teurer)
+    kinder: dict[int, float] = field(default_factory=dict)
+    solar: dict[int, float] = field(default_factory=dict)      # Einnahmen der Solaranlage ab der Pensionierung   # Kinderkosten: Veränderung gegenüber heute (+ = teurer)
     bedarf_sicher: float | None = None  # höchster Bedarf, der in 90 % der Verläufe reicht
     hinweise: list[str] = field(default_factory=list)
 
@@ -123,13 +124,18 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
     mu, sigma = _annahmen(k)
     jahre = list(range(jetzt, ende + 1))
     kapital = float(l0.kapital_netto)
-    rl = [renten(j) if j >= pension else 0.0 for j in jahre]
+    import solar
+    solar_vor, solar_ein = solar.finanzplan(k, None, jahre, pension)   # Solaranlage/vZEV
+    rl = [(renten(j) + solar_ein.get(j, 0.0)) if j >= pension else 0.0 for j in jahre]
     zl = ziele_liste(k, jetzt)
     zj: dict[int, float] = {}
     for z in zl:
         zj[z["jahr"]] = zj.get(z["jahr"], 0.0) + z["betrag"]
     import kinderphasen as kp
     kj = kp.finanzplan(k, jahre, pension)            # Kinderkosten: Veränderung gegenüber heute
+    nur_kinder = dict(kj)
+    for j, v in solar_vor.items():                   # Wegfall des Solarertrags nach der Lebensdauer
+        kj[j] = kj.get(j, 0.0) + v
     alle = dict(kj)
     for j, v in zj.items():
         alle[j] = alle.get(j, 0.0) + v
@@ -144,7 +150,8 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
                                round(kapital) if j == pension else 0.0, round(v)))
     reicht_bis = next((j - 1 for j, v in zip(jahre, det) if v < 0), None)
     plan = Plan(zeilen, pension, ende, end_alter, round(mu, 2), round(sigma, 1), bedarf, reicht_bis)
-    plan.kinder = {j: round(v) for j, v in kj.items()}
+    plan.kinder = {j: round(v) for j, v in nur_kinder.items()}
+    plan.solar = {j: round(v) for j, v in solar_ein.items()}
     if simulation and len(jahre) > 1:
         sims = _pfade(len(jahre), pfade, mu, sigma)
         verlaeufe = [_verlauf(start, jahre, pension, kapital, sparen, rl, bedarf, r, alle) for r in sims]

@@ -386,3 +386,12 @@ def test_fahrzeuge_seite(server, daten):
     assert "Fahrzeug Muster Kombi" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
     _post(f"{server}/fahrzeuge/loeschen", {"i": "0"})
     assert konfig.laden()["fahrzeuge"] == []
+
+
+def test_solar_seite(server, daten):
+    code, _ = _post(f"{server}/solar/speichern", {"investition": "30'000", "investition_jahr": "2025", "mieter_jahr": "2000",
+                                                 "gebaeude_bestehend": "1"})
+    c = konfig.laden()["solar"]
+    assert code == 303 and c["investition"] == 30000 and c["aktiv"] is True
+    html = urllib.request.urlopen(f"{server}/solar").read().decode()
+    assert "Investition und Rendite" in html and "PV: Module" in html

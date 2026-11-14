@@ -246,6 +246,12 @@ def nebenaufgaben(k: dict, db) -> None:
     except Exception as e:  # noqa: BLE001
         LOG.warning("Marktzinsen: %s", e)
     try:
+        import solar
+        if solar.aktualisieren(k, db):
+            LOG.info("Werte der vZEV-App (Solaranlage) übernommen")
+    except Exception as e:  # noqa: BLE001
+        LOG.warning("vZEV-Werte: %s", e)
+    try:
         import bericht
         if bericht.automatisch(k, db):
             LOG.info("Monatsstand für den Jahresbericht gespeichert")
@@ -257,7 +263,8 @@ def _3a_abgleichen(k: dict, db) -> None:
     import dreia
     import fahrzeuge
     import konfig
-    if dreia.abgleichen(k, db):
+    import solar
+    if dreia.abgleichen(k, db) | solar.abgleichen(k, db):
         konfig.speichern(k)
     fahrzeuge.abgleichen(k, db)
 
