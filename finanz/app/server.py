@@ -43,7 +43,7 @@ SEITEN = {
     "sparplan": ("Sparen & Anlegen", seiten.sparplan),
     "lebensereignisse": ("Lebensereignisse", seiten.lebensereignisse),
     "kinder": ("Kinder", seiten.kinder),
-    "steuererklaerung": ("Steuererklärung vorbereiten", seiten.steuererklaerung),
+    "steuererklaerung": ("Steuern", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
     "dokumente": ("Dokumente", seiten.dokumente),

@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.43.0 – 2026-11-14
+
+- **Menü neu gruppiert:** Überblick, Geld (Budget, Vermögen, Sparen & Anlegen), Steuern, Zukunft (Vorsorge,
+  Finanzplan, Szenarien, Lebensereignisse), Familie & Wohnen (Kinder, Wohnen, Versicherungen), Absicherung
+  (Nachlass, Verfügungen, Notfallordner), App (Dokumente, Einstellungen, Vorschläge)
+- **Aufklappbare Gruppen** in der Seitenleiste und im Handy-Menü: offen sind der Überblick und die Gruppe der
+  aktuellen Seite; zugeklappte Gruppen zeigen einen Ampel-Punkt, wenn eine Seite darin Handlungsbedarf hat
+- **Steuern** und **Steuererklärung** sind eine Seite mit zwei Reitern; **Protokoll** und **Änderungen** sind Reiter
+  bei den Einstellungen (Warnungen von heute als Zahl). Adressen bleiben gleich
+
 ## 0.42.0 – 2026-11-13
 
 - Neue Seite **Sparen & Anlegen** (unter Bestand):

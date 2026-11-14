@@ -25,15 +25,32 @@ import wohnen as wo
 
 NAVIGATION = [
     ("Überblick", [("", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")]),
-    ("Planung", [("vorsorge", "Vorsorge"), ("steuern", "Steuern"), ("steuererklaerung", "Steuererklärung"),
-                 ("wohnen", "Wohnen"), ("kinder", "Kinder"), ("finanzplan", "Finanzplan"), ("lebensereignisse", "Lebensereignisse"), ("szenarien", "Szenarien"), ("nachlass", "Nachlass"),
-                 ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
-    ("Bestand", [("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen"), ("budget", "Budget"),
-                 ("versicherungen", "Versicherungen")]),
-    ("App", [("einstellungen", "Einstellungen"), ("dokumente", "Dokumente"), ("vorschlaege", "Vorschläge"),
-             ("protokoll", "Protokoll"),
-             ("aenderungen", "Änderungen")]),
+    ("Geld", [("budget", "Budget"), ("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen")]),
+    ("Steuern", [("steuern", "Steuern")]),
+    ("Zukunft", [("vorsorge", "Vorsorge"), ("finanzplan", "Finanzplan"), ("szenarien", "Szenarien"),
+                 ("lebensereignisse", "Lebensereignisse")]),
+    ("Familie & Wohnen", [("kinder", "Kinder"), ("wohnen", "Wohnen"), ("versicherungen", "Versicherungen")]),
+    ("Absicherung", [("nachlass", "Nachlass"), ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
+    ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
 ]
+# Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
+MENU_ALIAS = {"steuererklaerung": "steuern", "protokoll": "einstellungen", "aenderungen": "einstellungen"}
+OFFEN_IMMER = {"Überblick"}
+# Seiten, die als Reiter einer Seite erscheinen
+REITER = [
+    [("steuern", "Planung und Dokumente"), ("steuererklaerung", "Steuererklärung")],
+    [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
+]
+
+
+def reiter(pfad: str, warnungen: int = 0) -> str:
+    for gruppe in REITER:
+        if any(pfad == p for p, _ in gruppe):
+            return '<div class="reiter" role="navigation" aria-label="Reiter">' + "".join(
+                f'<a href="{p}" class="{"aktiv" if p == pfad else ""}"{" aria-current=\"page\"" if p == pfad else ""}>'
+                f'{escape(t)}' + (f'<span class="zahl" title="Warnungen heute">{warnungen}</span>'
+                                  if p == "protokoll" and warnungen else "") + "</a>" for p, t in gruppe) + "</div>"
+    return ""
 NAV = [e for _, gruppe in NAVIGATION for e in gruppe]
 
 CSS = """
@@ -57,13 +74,24 @@ nav a{display:inline-flex;align-items:center;padding:8px 10px;border-radius:8px;
 white-space:nowrap;font-weight:500}
 nav a:hover{background:var(--bg);color:var(--text)}
 nav a.aktiv{background:color-mix(in srgb,var(--akzent) 16%,transparent);color:var(--text)}
-nav .gl{display:none;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--leise);font-weight:600}
+nav .gl{display:none;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--leise);font-weight:600;
+font-family:inherit;background:none;border:0;text-align:left;min-height:0;padding:0}
+nav button.gl{cursor:pointer;align-items:center;gap:6px;width:calc(100% - 20px)}
+nav button.gl::after{content:"▾";margin-left:auto;font-size:12px;transition:transform .15s}
+nav .grp.zu button.gl::after{transform:rotate(-90deg)}
+nav .grp:not(.zu) button.gl .ampel{display:none}
+nav button.gl .ampel{width:8px;height:8px;box-shadow:none}
+.reiter{display:flex;gap:4px;border-bottom:1px solid var(--linie);margin:-4px 0 16px;overflow-x:auto}
+.reiter a{padding:8px 14px;color:var(--leise);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;
+white-space:nowrap;margin-bottom:-1px}
+.reiter a.aktiv{color:var(--text);border-bottom-color:var(--akzent)}
+.reiter .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 @media (min-width:1200px){
  .app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
  .side{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--linie);padding:20px 12px}
  .top{padding:0 10px;flex-wrap:wrap;gap:6px 8px}.marke{white-space:normal;flex-basis:100%}
- nav .gl{display:block;margin:18px 10px 4px}nav a{display:flex}
+ nav .gl{display:flex;margin:18px 10px 4px}nav a{display:flex}nav .grp.zu a{display:none}nav .grp.einzeln{margin-top:14px}
  main{padding:24px 32px}}
 @media (max-width:1199px){
  .side{position:sticky;top:0;z-index:5;border-bottom:1px solid var(--linie);padding:10px 16px 0;padding-top:calc(10px + env(safe-area-inset-top))}
@@ -72,9 +100,9 @@ nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;pad
 @media (max-width:759px){
  #menu{display:inline-flex}.marke{flex:1 1 0}nav{display:none}
  .side{padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
- .side.offen nav{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;padding:8px 0 12px;max-height:calc(100vh - 70px);overflow-y:auto}
- .side.offen nav .grp{display:block;border:0;margin:0;padding:0}.side.offen nav .gl{display:block;margin:10px 10px 2px}
- .side.offen nav a{display:flex}}
+ .side.offen nav{display:grid;grid-template-columns:1fr;align-items:start;gap:2px;padding:8px 0 12px;max-height:calc(100vh - 70px);overflow-y:auto}
+ .side.offen nav .grp{display:block;border:0;margin:0;padding:0}.side.offen nav .gl{display:flex;margin:10px 10px 2px}
+ .side.offen nav a{display:flex}.side.offen nav .grp.zu a{display:none}}
 footer{max-width:1100px;margin:8px auto 0;padding:16px 16px calc(24px + env(safe-area-inset-bottom));
 color:var(--leise);font-size:12px;text-align:center}footer a{color:var(--leise)}
 #lade{position:fixed;top:0;left:0;height:3px;width:0;background:var(--akzent);z-index:20;opacity:0}
@@ -336,7 +364,9 @@ var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('cont
 b.addEventListener('click',function(){var t=h.getAttribute('data-wahl')||'auto';setzen(folge[(folge.indexOf(t)+1)%3])});
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){if((h.getAttribute('data-wahl')||'auto')==='auto')setzen('auto')});
 setzen(h.getAttribute('data-wahl')||'auto')})();
-(function(){var a=document.querySelector('nav a.aktiv');if(a&&innerWidth<1200&&innerWidth>=760)a.scrollIntoView({block:'nearest',inline:'center'})})();"""
+(function(){var a=document.querySelector('nav a.aktiv');if(a&&innerWidth<1200&&innerWidth>=760)a.scrollIntoView({block:'nearest',inline:'center'})})();
+document.querySelectorAll('nav button.gl').forEach(function(b){b.addEventListener('click',function(){
+var g=b.parentNode;var zu=g.classList.toggle('zu');b.setAttribute('aria-expanded',zu?'false':'true')})});"""
 
 MENU_KNOPF = ("<button id=\"menu\" type=\"button\" aria-expanded=\"false\" aria-controls=\"nav\" "
               "onclick=\"var s=document.getElementById('side');var o=s.classList.toggle('offen');"
@@ -361,15 +391,31 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
     ampeln = ampeln or {}
     warnungen = _warnungen_heute()
     gruppen = []
+    menu_pfad = next((ziel for quelle, ziel in MENU_ALIAS.items() if pfad == quelle or pfad.startswith(quelle + "/")),
+                     pfad)
     for gruppe, eintraege in NAVIGATION:
-        links = []
+        links, stati, offen = [], [], gruppe in OFFEN_IMMER
         for p, n in eintraege:
-            aktiv = p == pfad or (bool(p) and pfad.startswith(p + "/"))
-            punkt = licht(ampeln[p]) if ampeln.get(p) in (am.GELB, am.ROT) else ""
-            zahl = f'<span class="zahl" title="Warnungen heute">{warnungen}</span>' if p == "protokoll" and warnungen else ""
+            aktiv = p == menu_pfad or (bool(p) and menu_pfad.startswith(p + "/"))
+            offen = offen or aktiv
+            st_ = am.schlechteste([ampeln[q] for q in [p] + [q for q, z in MENU_ALIAS.items() if z == p] if ampeln.get(q)])
+            stati.append(st_)
+            punkt = licht(st_) if st_ in (am.GELB, am.ROT) else ""
+            zahl = (f'<span class="zahl" title="Warnungen heute im Protokoll">{warnungen}</span>'
+                    if p == "einstellungen" and warnungen else "")
             aktuell = ' aria-current="page"' if aktiv else ""
             links.append(f'<a href="{p or "./"}" class="{"aktiv" if aktiv else ""}"{aktuell}>{punkt}{n}{zahl}</a>')
-        gruppen.append(f'<div class="grp"><span class="gl">{gruppe}</span>{"".join(links)}</div>')
+        gst = am.schlechteste(stati) if stati else ""
+        gpunkt = licht(gst) if gst in (am.GELB, am.ROT) else ""
+        if len(eintraege) == 1:                         # eine Seite: kein eigener Gruppenkopf
+            gruppen.append(f'<div class="grp einzeln">{"".join(links)}</div>')
+            continue
+        if gruppe in OFFEN_IMMER:
+            kopf = f'<span class="gl">{gruppe}</span>'
+        else:
+            kopf = (f'<button type="button" class="gl" aria-expanded="{"true" if offen else "false"}">'
+                    f'<span>{gruppe}</span>{gpunkt}</button>')
+        gruppen.append(f'<div class="grp{"" if offen else " zu"}">{kopf}{"".join(links)}</div>')
     m = f'<div class="meldung{" fehler" if fehler else ""}" role="status">{escape(meldung)}</div>' if meldung else ""
     if 'id="sichtung-laeuft"' not in inhalt:
         m += sichtung_fortschritt()
@@ -382,7 +428,7 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
 <button id="thema" type="button" title="Darstellung umstellen: Auto (wie das Gerät) → Hell → Dunkel" aria-label="Darstellung umstellen">Auto</button>
 {MENU_KNOPF}</div>
 <nav id="nav" aria-label="Hauptmenü">{"".join(gruppen)}</nav></aside>
-<div class="inhalt"><main><h1>{escape(titel)}</h1>{m}{inhalt}</main>
+<div class="inhalt"><main><h1>{escape(titel)}</h1>{reiter(pfad, warnungen)}{m}{inhalt}</main>
 <footer>Finanzplanung v{escape(v)} · <a href="aenderungen">Änderungen</a> · <a href="protokoll">Protokoll</a>
 <br>Keine Anlage-, Steuer- oder Rechtsberatung.</footer></div></div>
 <div id="status" aria-live="polite"><div class="status-box"><div class="spinner"></div><p id="status-text">Bitte warten …</p></div></div>

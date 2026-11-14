@@ -57,11 +57,23 @@ personen:
 
 ## Bedienung
 
-- **Menü** in Gruppen – Überblick (Übersicht, Jahresbericht, Berater), Planung (Vorsorge, Steuern, Steuererklärung,
-  Wohnen, Kinder, Finanzplan, Lebensereignisse, Szenarien, Nachlass, Verfügungen, Notfallordner), Bestand (Vermögen, Budget, Versicherungen), App
-  (Einstellungen, Dokumente, Vorschläge, Protokoll, Änderungen). Auf grossen Bildschirmen als Seitenleiste,
-  auf Tablets als wischbare Leiste, auf dem Handy hinter dem Knopf «Menü». Ein farbiger Punkt markiert Seiten mit
-  gelber oder roter Ampel; beim Protokoll steht die Zahl der Warnungen von heute.
+- **Menü** in Gruppen nach der Frage, mit der man die App öffnet:
+
+  | Gruppe | Seiten |
+  |---|---|
+  | Überblick | Übersicht, Jahresbericht, Berater |
+  | Geld | Budget, Vermögen, Sparen & Anlegen |
+  | Steuern | Steuern mit den Reitern «Planung und Dokumente» und «Steuererklärung» |
+  | Zukunft | Vorsorge, Finanzplan, Szenarien, Lebensereignisse |
+  | Familie & Wohnen | Kinder, Wohnen, Versicherungen |
+  | Absicherung | Nachlass, Verfügungen, Notfallordner |
+  | App | Dokumente, Einstellungen (mit den Reitern Protokoll und Änderungen), Vorschläge |
+
+  Auf grossen Bildschirmen als Seitenleiste, auf dem Handy hinter dem Knopf «Menü» – dort sind die Gruppen
+  aufklappbar: offen ist der Überblick und die Gruppe der aktuellen Seite, ein Klick auf den Gruppentitel öffnet bzw.
+  schliesst sie. Auf Tablets eine wischbare Leiste mit allen Seiten. Ein farbiger Punkt markiert Seiten (und
+  zugeklappte Gruppen) mit gelber oder roter Ampel; bei Einstellungen bzw. dem Reiter Protokoll steht die Zahl der
+  Warnungen von heute. Adressen und Lesezeichen bleiben gleich.
 - **Version** neben «Finanzen» öffnet die Änderungen.
 - **Darstellung:** Der Knopf daneben wechselt zwischen Auto (wie das Gerät), Hell und Dunkel; die Wahl bleibt im
   Browser gespeichert.
@@ -774,6 +786,8 @@ App nicht (im App-Image fehlt ein Barcode-Leser) – darum ist die XML-Datei der
 Einlesen derselben Bank und desselben Jahres ersetzt den früheren Auszug.
 
 ## Steuererklärung vorbereiten
+
+Reiter «Steuererklärung» auf der Seite Steuern.
 
 Die Seite **Steuererklärung** erstellt pro Steuerjahr (ab Oktober das laufende, sonst das Vorjahr) eine Checkliste aus
 den Daten der App. Jeder Punkt ist markiert als «aus der App» (Wert vorhanden), «Beleg» (Dokument bereitlegen) oder
