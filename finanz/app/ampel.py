@@ -255,6 +255,58 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         erg.append(Ampel("Anlage", GELB if brach > 20000 or c.krypto_anteil > float(an.konfiguration(k)["krypto_max"]) else GRUEN,
                          f"CHF {chf(brach)} ohne Zweck auf Konten" if brach > 20000 else "Aufteilung passt", "vermoegen"))
 
+    # Sparen & Anlegen: nächster offener Schritt
+    try:
+        import sparplan as sp
+        p_ = sp.rechnen(k, db, heute)
+        erster = next((s for s in p_.schritte if s.status in (sp.OFFEN, sp.TEILWEISE) and s.nr <= 4), None)
+        st_ = GELB if (erster and erster.nr <= 2) or p_.ungedeckt > 0 else GRUEN
+        erg.append(Ampel("Sparen", st_, (f"nächster Schritt: {erster.nr}. {erster.titel}" if erster else "Reihenfolge erfüllt")
+                         + (f"; Sparpotenzial reicht nicht (−{chf(p_.ungedeckt)}/Monat)" if p_.ungedeckt > 0 else ""),
+                         "sparplan"))
+    except Exception as e:  # noqa: BLE001
+        LOG.debug("Ampel Sparen: %s", e)
+
+    # Kinder: Lebenslauf
+    try:
+        import kinderphasen as kp
+        laeufe = kp.alle(k, heute)
+        if laeufe:
+            hinw = [h for lauf in laeufe for h in lauf.hinweise]
+            ausb = [h for h in hinw if "Ausbildungsende" in h]
+            erg.append(Ampel("Kinder", GELB if ausb else GRUEN,
+                             "Ausbildungsende im Lebenslauf und unter Kinder abgleichen" if ausb else
+                             f"{len(laeufe)} Kind(er) im Lebenslauf erfasst", "kinder"))
+    except Exception as e:  # noqa: BLE001
+        LOG.debug("Ampel Kinder: %s", e)
+
+    # Fahrzeuge
+    try:
+        import fahrzeuge as fz
+        autos = fz.alle(k, db, heute)
+        if autos:
+            bald = [a for a in autos if (a.mfk and 0 <= (a.mfk - heute).days <= 60)
+                    or (a.leasing_ende and 0 <= (a.leasing_ende - heute).days <= 180)]
+            ohne = [a for a in autos if "Versicherung" not in a.kosten]
+            erg.append(Ampel("Fahrzeuge", GELB if bald or ohne else GRUEN,
+                             (f"MFK bzw. Leasingende bald: {', '.join(a.name for a in bald)}" if bald else
+                              f"Versicherung fehlt: {', '.join(a.name for a in ohne)}" if ohne else
+                              f"{len(autos)} Fahrzeug(e), CHF {chf(sum(a.total for a in autos))} pro Jahr"), "fahrzeuge"))
+    except Exception as e:  # noqa: BLE001
+        LOG.debug("Ampel Fahrzeuge: %s", e)
+
+    # Solaranlage / vZEV
+    try:
+        import solar
+        sa = solar.auswerten(k, db, heute)
+        if sa:
+            st_ = ROT if sa.ueberfaellig else GELB if not sa.jahr or not sa.investition else GRUEN
+            erg.append(Ampel("Solar & vZEV", st_, (f"{sa.ueberfaellig} Rechnung(en) überfällig" if sa.ueberfaellig else
+                                                    "Werte der vZEV-App bzw. Investition fehlen" if st_ == GELB else
+                                                    f"Nutzen CHF {chf(sa.nutzen_jahr)} pro Jahr"), "solar"))
+    except Exception as e:  # noqa: BLE001
+        LOG.debug("Ampel Solar: %s", e)
+
     # Nachlass (nur bei Paaren)
     if len(k["personen"]) >= 2:
         import nachlass as nl

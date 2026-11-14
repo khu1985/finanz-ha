@@ -13,10 +13,10 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
 1. [Erste Schritte](#erste-schritte)
 2. [Bedienung](#bedienung)
 3. [Seiten](#seiten)
-4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Budget](#budget-und-cashflow) ·
+4. [Vorsorge](#vorsorge) · [Steuern](#steuern) · [Wohnen](#wohnen) · [Vermögen](#vermögen) · [Solar und vZEV](#solaranlage-und-vzev) · [Fahrzeuge](#fahrzeuge) · [Sparen und Anlegen](#sparen-und-anlegen) · [Budget](#budget-und-cashflow) ·
    [Versicherungen](#versicherungen) · [Finanzplan](#finanzplan) · [Lebensereignisse](#lebensereignisse) · [Szenarien](#szenarien) · [Anlageberater](#anlageberater) ·
    [Nachlass](#nachlass-und-absicherung) · [Erinnerungen](#erinnerungen) · [Sensoren](#sensoren-in-home-assistant)
-5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [E-Steuerauszug](#e-steuerauszug-der-bank) · [Steuererklärung](#steuererklärung-vorbereiten) · [Verfügungen](#verfügungen) · [Fragebögen](#fragebögen-zum-nachlass) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
+5. [Jahresbericht](#jahresbericht) · [Fremdwährungen](#konten-in-fremdwährung) · [Liegenschaft](#liegenschaft-wert-und-erneuerung) · [Kinder](#kinder) · [Lebenslauf der Kinder](#lebenslauf-der-kinder) · [Teilzeit](#teilzeit-und-kinderbetreuung) · [E-Steuerauszug](#e-steuerauszug-der-bank) · [Steuererklärung](#steuererklärung-vorbereiten) · [Verfügungen](#verfügungen) · [Fragebögen](#fragebögen-zum-nachlass) · [Notfallordner](#notfallordner) · [Zuzug in die Schweiz](#zuzug-in-die-schweiz) · [Nicht verheiratet (Konkubinat)](#nicht-verheiratet-konkubinat)
 6. [Ampeln](#ampeln) · [Plausibilität](#plausibilität-der-einstellungen) · [Vorschläge](#vorschläge-für-die-weiterentwicklung) · [Dokumente verwalten und löschen](#dokumente-verwalten-und-löschen) · [Dokumente neu sichten](#dokumente-neu-sichten) · [Uploads und Texterkennung](#uploads-und-dateigrösse)
 7. [Persönliche Daten und Import-Ordner](#persönliche-daten-und-import-ordner)
 8. [Konfiguration](#konfiguration)
@@ -40,8 +40,11 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    - Versicherungspolicen unter **Versicherungen** (oder eine Liste als CSV)
 3. **Vermögen** erfassen: Kontoauszüge aus dem E-Banking als camt.053 (XML/ZIP) oder CSV importieren, Saldi von Hand
    oder als eigene Liste (`Datum;Konto;Saldo;Art;Person`).
-4. **Kinder** auf der Seite Kinder erfassen (Geburtsdatum, Kind von, Betreuung).
-5. Die **Übersicht** und ihre Ampeln zeigen, wo etwas zu tun ist. Werte mit «TODO» in der Konfiguration sind
+4. **Kinder** auf der Seite Kinder erfassen (Geburtsdatum, Kind von) und im Lebenslauf Kita, Tagesstruktur und
+   Ausbildungsweg ergänzen.
+5. Nach Bedarf: **Fahrzeuge**, **Solar & vZEV** (Werte aus der vZEV-App), 3a-Konten und Sparkonten mit Bezugslimite
+   unter **Vermögen**, Lebensziele im **Finanzplan**.
+6. Die **Übersicht** und ihre Ampeln zeigen, wo etwas zu tun ist. Werte mit «TODO» in der Konfiguration sind
    Platzhalter; ihre Zahl steht in der Statuszeile.
 
 Geplante PK-Einkäufe, verpfändete Vorsorge oder eine weitere Person werden im YAML-Editor erfasst, z. B.:
@@ -623,6 +626,11 @@ Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfä
 | Notfallordner und Verfügungen prüfen | November und Dezember | 31. Dezember |
 | Vor- und Nachname trennen (voller Name im Vornamenfeld) | bis erledigt | sofort |
 | Phasenwechsel der Kinder: Kita-Platz, Kindergarten, Lehrstellensuche, Gymnasium, Studium (mit den neuen Kosten) | 60 Tage vorher | 6 bzw. 12 Monate vor Beginn |
+| MFK eines Fahrzeugs (nach 5, dann 3, danach alle 2 Jahre) | 90 Tage vorher | Monat der Prüfung |
+| Leasingende eines Fahrzeugs | 6 Monate vorher | Ende des Leasings |
+| Autobahnvignette des neuen Jahres (mit Fahrzeugen) | Dezember | 31. Januar |
+| vZEV-Jahresabrechnung für die Steuererklärung (mit Solaranlage) | Januar bis März | 31. März |
+| Überfällige vZEV-Rechnungen der Mieter (aus der vZEV-App) | solange überfällig | sofort |
 | Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
 
 **Frist der Steuererklärung.** Die App kennt die ordentliche Frist und die spätestmögliche Erstreckung aller
@@ -956,6 +964,10 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Krankenkasse | Franchisen passen | Optimierung spart ≥ 200 pro Jahr | – |
 | Budget | gespart wie geplant | unter 90 % des Plans oder unter 6 Monaten Daten | mehr ausgegeben als eingenommen |
 | Anlage | Aufteilung passt | über 20'000 ohne Zweck auf Konten oder Krypto über dem Richtwert | – |
+| Sparen | Reihenfolge erfüllt | Notreserve oder teure Schulden offen bzw. Sparpotenzial reicht für Reserve, Schulden, 3a und Ziele nicht | – |
+| Kinder | Lebenslauf passt | Ausbildungsende im Lebenslauf weicht von «Unterhaltsberechtigt bis» ab | – |
+| Fahrzeuge | alles erfasst | MFK in 60 Tagen, Leasingende in 6 Monaten oder Versicherung fehlt | – |
+| Solar & vZEV | Werte und Investition erfasst | Werte der vZEV-App oder Investition fehlen | Rechnungen der Mieter überfällig |
 | Nachlass | Checkliste erledigt | Punkte offen | Konkubinat ohne Testament beider Personen |
 | Steuererklärung | alle Punkte bereit | Punkte offen (in den 5 Monaten vor der Frist) | Punkte offen, Frist in 14 Tagen |
 | Einstellungen | alle Werte plausibel | Werte prüfen | wichtige Werte fehlen oder sind unmöglich |
@@ -1162,8 +1174,8 @@ oder **Einstellungen → Experte**.
 
 | Abschnitt | Inhalt |
 |---|---|
-| `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder)), Bedarf im Ruhestand, Kapitalverzehr |
-| `personen[]` | `name` (Vorname, Anzeige in der App), `nachname` (für Verfügungen und Schreiben), Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a`, `zuzug` |
+| `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder) und [Lebenslauf](#lebenslauf-der-kinder)), Bedarf im Ruhestand, Kapitalverzehr |
+| `personen[]` | `name` (Vorname, Anzeige in der App), `nachname` (für Verfügungen und Schreiben), Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` (mit 3a-Konten unter Vermögen nachgeführt: `guthaben`, `konten`, `anteile`), `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
@@ -1180,8 +1192,10 @@ oder **Einstellungen → Experte**.
 | `annahmen` | Lohnentwicklung (real), `teuerung`, Rendite |
 | `budget` | `regeln` (Stichwort → Kategorie) |
 | `wertschriften` | `ter` (laufende Fondskosten in % pro ISIN) |
-| `ziele` | Lebensziele: `name`, `betrag`, `jahr`, `art` (muss/wunsch) |
-| `finanzplan` | `bis_alter` (Standard 95) |
+| `ziele` | Lebensziele: `name`, `betrag`, `jahr`, `art` (muss/wunsch); der Ersatz von Fahrzeugen kommt automatisch dazu |
+| `finanzplan` | `bis_alter` (Standard 95), `kinderkosten` (`false` = Kinderkosten nicht einrechnen) |
+| `fahrzeuge` | pro Auto Name, Antrieb, Halter/in, Erstzulassung, Kauf, Wert, Kilometer, Verbrauch, Gewicht, Kosten, Leasing, Ersatz (siehe [Fahrzeuge](#fahrzeuge)) |
+| `solar` | Solaranlage und vZEV: Investition, Förderung, Komponenten, Stromkosten, Präfix der vZEV-Sensoren, Jahreswerte von Hand; `werte_vzev` füllt die App (siehe [Solar und vZEV](#solaranlage-und-vzev)) |
 | `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
 

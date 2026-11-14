@@ -76,10 +76,10 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, kinderphasen, zuzug"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, dreia, waehrung, kinder, kinderphasen,<br/>fahrzeuge, solar, zuzug"]
         Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, sparplan, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
-        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung"]
+        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung, usability"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
@@ -101,6 +101,7 @@ flowchart TB
     BAG["BAG-Prämien<br/>(auf Knopfdruck)"] -. jährlich .-> Z
     SNB["SNB-Datenportal<br/>SARON, Hypothekarzinsen"] -. täglich .-> Z
     A -. stündlich und alle 15 Minuten .-> HA
+    VZ["vZEV-App<br/>sensor.vzev_* über Home Assistant"] -. täglich .-> K
     S --> L
 ```
 
@@ -315,6 +316,9 @@ flowchart LR
     Q --> KU["einmal pro Tag (optional)<br/>Wechselkurse der EZB"]
     Q --> MZ["einmal pro Tag (bei Wohneigentum)<br/>SARON und Hypothekarzinsen der SNB"]
     Q --> LE["Leistungsmessungen sichern<br/>pro Version"]
+    Q --> VZ["einmal pro Tag (mit Solaranlage)<br/>Werte der vZEV-App aus Home Assistant"]
+    Q --> US["einmal pro Tag<br/>Usability aller Seiten prüfen"]
+    Q --> AB["3a-Konten und Fahrzeugwerte<br/>in Einstellungen bzw. Vermögen nachführen"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln, Erinnerungen, Finanzplan<br/>aus dem Zwischenspeicher, neu nur nach Änderungen"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]
 ```
@@ -341,6 +345,8 @@ flowchart TD
     HY["36–12 Monate vor Fälligkeit<br/>Hypothekar-Strategie, Offerten, Forward"] -.-> UE
     KD["Kinder mit 16, 18, 19 und Ende Ausbildung<br/>Zulagen, Bestätigung, Krankenkasse;<br/>Kita, Kindergarten, Lehre, Studium"] -.-> UE
     NO["jährlich<br/>Notfallordner und Nachlass-Checkliste prüfen"] -.-> UE
+    FZ["Fahrzeuge<br/>MFK, Leasingende, Vignette im Dezember"] -.-> UE
+    PV["Januar–März<br/>vZEV-Jahresabrechnung für die Steuererklärung"] -.-> SE
     JB["Dezember–Januar<br/>Jahresbericht: Vergleich mit dem Vorjahr, Massnahmen"] -.-> J
     LG["rund 1 Jahr vor fälligen Erneuerungen<br/>Offerten, Förderbeiträge, Erneuerungsfonds"] -.-> UE
 ```

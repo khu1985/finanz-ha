@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.47.1 – 2026-11-14
+
+- **Neue Ampeln** (Übersicht und Punkte im Menü): Sparen (nächster offener Schritt), Kinder (Ausbildungsende im
+  Lebenslauf), Fahrzeuge (MFK, Leasingende, fehlende Versicherung), Solar & vZEV (überfällige Rechnungen, fehlende
+  Werte)
+- Dokumentation nachgeführt: Inhaltsverzeichnis, Erste Schritte, Erinnerungen, Ampeln, Konfiguration und Diagramme
+  (Architektur, laufende Abläufe, Jahreslauf) mit Sparen & Anlegen, Säule 3a als Konten, Sparkonten, Fahrzeugen,
+  Solar & vZEV und Usability
+
 ## 0.47.0 – 2026-11-14
 
 - **Solar & vZEV** (neue Seite unter Familie & Wohnen): Die Finanz-App liest die Sensoren der vZEV-App aus Home

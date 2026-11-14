@@ -9,10 +9,10 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, waehrung, kinder, kinderphasen, zuzug"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, dreia, waehrung, kinder, kinderphasen,<br/>fahrzeuge, solar, zuzug"]
         Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, sparplan, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
-        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung"]
+        A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung, usability"]
         SE["seiten.py<br/>Seiten, Diagramme, Druckansicht"]
     end
     subgraph Daten["Konfigurationsordner (im Backup)"]
@@ -34,4 +34,5 @@ flowchart TB
     BAG["BAG-Prämien<br/>(auf Knopfdruck)"] -. jährlich .-> Z
     SNB["SNB-Datenportal<br/>SARON, Hypothekarzinsen"] -. täglich .-> Z
     A -. stündlich und alle 15 Minuten .-> HA
+    VZ["vZEV-App<br/>sensor.vzev_* über Home Assistant"] -. täglich .-> K
     S --> L

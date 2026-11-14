@@ -9,5 +9,8 @@ flowchart LR
     Q --> KU["einmal pro Tag (optional)<br/>Wechselkurse der EZB"]
     Q --> MZ["einmal pro Tag (bei Wohneigentum)<br/>SARON und Hypothekarzinsen der SNB"]
     Q --> LE["Leistungsmessungen sichern<br/>pro Version"]
+    Q --> VZ["einmal pro Tag (mit Solaranlage)<br/>Werte der vZEV-App aus Home Assistant"]
+    Q --> US["einmal pro Tag<br/>Usability aller Seiten prüfen"]
+    Q --> AB["3a-Konten und Fahrzeugwerte<br/>in Einstellungen bzw. Vermögen nachführen"]
     SEITE["jeder Seitenaufruf"] --> AMP["Ampeln, Erinnerungen, Finanzplan<br/>aus dem Zwischenspeicher, neu nur nach Änderungen"]
     LOG["jede Aktion"] --> PR["Protokoll<br/>rotiert bei 1 MB"]
