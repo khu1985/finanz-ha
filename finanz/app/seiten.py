@@ -91,7 +91,14 @@ nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;pad
  .app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
  .side{position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--linie);padding:20px 12px}
  .top{padding:0 10px;flex-wrap:wrap;gap:6px 8px}.marke{white-space:normal;flex-basis:100%}
- nav .gl{display:flex;margin:18px 10px 4px}nav a{display:flex}nav .grp.zu a{display:none}nav .grp.einzeln{margin-top:14px}
+ nav a{display:flex}nav .grp.zu a{display:none}
+ nav .grp{display:block;border:0;border-top:1px solid var(--linie);margin:0;padding:4px 0 6px}nav .grp:first-child{border-top:0}
+ nav .gl{display:flex;margin:0;padding:10px 10px 6px;width:100%;color:var(--text);font-size:12px;letter-spacing:.07em}
+ nav .grp:not(.einzeln) a{margin-left:12px;padding-left:12px;border-left:2px solid var(--linie);border-radius:0 8px 8px 0}
+ nav .grp:not(.einzeln) a.aktiv{border-left-color:var(--akzent)}
+ nav .grp.einzeln{padding:6px 0}nav .grp.einzeln a{font-weight:600;color:var(--text)}
+ nav .grp.zu{padding-bottom:0}nav .grp.zu .gl{padding-bottom:10px}
+ nav{margin-top:12px}
  main{padding:24px 32px}}
 @media (max-width:1199px){
  .side{position:sticky;top:0;z-index:5;border-bottom:1px solid var(--linie);padding:10px 16px 0;padding-top:calc(10px + env(safe-area-inset-top))}
@@ -100,9 +107,14 @@ nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;pad
 @media (max-width:759px){
  #menu{display:inline-flex}.marke{flex:1 1 0}nav{display:none}
  .side{padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
- .side.offen nav{display:grid;grid-template-columns:1fr;align-items:start;gap:2px;padding:8px 0 12px;max-height:calc(100vh - 70px);overflow-y:auto}
- .side.offen nav .grp{display:block;border:0;margin:0;padding:0}.side.offen nav .gl{display:flex;margin:10px 10px 2px}
- .side.offen nav a{display:flex}.side.offen nav .grp.zu a{display:none}}
+ .side.offen nav{display:grid;grid-template-columns:1fr;align-items:start;gap:0;padding:8px 0 12px;max-height:calc(100vh - 70px);overflow-y:auto}
+ .side.offen nav a{display:flex}.side.offen nav .grp.zu a{display:none}
+ .side.offen nav .grp{display:block;border:0;border-top:1px solid var(--linie);margin:0;padding:4px 0 6px}.side.offen nav .grp:first-child{border-top:0}
+ .side.offen nav .gl{display:flex;margin:0;padding:10px 10px 6px;width:100%;color:var(--text);font-size:12px;letter-spacing:.07em}
+ .side.offen nav .grp:not(.einzeln) a{margin-left:12px;padding-left:12px;border-left:2px solid var(--linie);border-radius:0 8px 8px 0}
+ .side.offen nav .grp:not(.einzeln) a.aktiv{border-left-color:var(--akzent)}
+ .side.offen nav .grp.einzeln{padding:6px 0}.side.offen nav .grp.einzeln a{font-weight:600;color:var(--text)}
+ .side.offen nav .grp.zu{padding-bottom:0}.side.offen nav .grp.zu .gl{padding-bottom:10px}}
 footer{max-width:1100px;margin:8px auto 0;padding:16px 16px calc(24px + env(safe-area-inset-bottom));
 color:var(--leise);font-size:12px;text-align:center}footer a{color:var(--leise)}
 #lade{position:fixed;top:0;left:0;height:3px;width:0;background:var(--akzent);z-index:20;opacity:0}

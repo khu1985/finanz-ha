@@ -69,8 +69,8 @@ personen:
   | Absicherung | Nachlass, Verfügungen, Notfallordner |
   | App | Dokumente, Einstellungen (mit den Reitern Protokoll und Änderungen), Vorschläge |
 
-  Auf grossen Bildschirmen als Seitenleiste, auf dem Handy hinter dem Knopf «Menü» – dort sind die Gruppen
-  aufklappbar: offen ist der Überblick und die Gruppe der aktuellen Seite, ein Klick auf den Gruppentitel öffnet bzw.
+  Auf grossen Bildschirmen als Seitenleiste, auf dem Handy hinter dem Knopf «Menü» – dort sind die Gruppen durch
+  Linien getrennt, die Seiten eingerückt und die Gruppen aufklappbar: offen ist der Überblick und die Gruppe der aktuellen Seite, ein Klick auf den Gruppentitel öffnet bzw.
   schliesst sie. Auf Tablets eine wischbare Leiste mit allen Seiten. Ein farbiger Punkt markiert Seiten (und
   zugeklappte Gruppen) mit gelber oder roter Ampel; bei Einstellungen bzw. dem Reiter Protokoll steht die Zahl der
   Warnungen von heute. Adressen und Lesezeichen bleiben gleich.

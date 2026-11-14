@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.43.1 – 2026-11-14
+
+- Menü (Seitenleiste und Handy): Gruppen durch Linien getrennt, Gruppentitel kräftiger, Seiten eingerückt mit einer
+  Führungslinie (bei der aktuellen Seite farbig) – Gruppe und Seite sind klar zu unterscheiden; «Steuern» steht als
+  eigener Eintrag zwischen zwei Linien
+
 ## 0.43.0 – 2026-11-14
 
 - **Menü neu gruppiert:** Überblick, Geld (Budget, Vermögen, Sparen & Anlegen), Steuern, Zukunft (Vorsorge,
