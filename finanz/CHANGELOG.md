@@ -1,5 +1,19 @@
 # Änderungen
 
+## 0.44.0 – 2026-11-14
+
+- **Usability-Score unter Vorschläge:** Die App zeigt alle Seiten mit den eigenen Daten an und prüft sie einmal am
+  Tag (oder auf Knopfdruck) – lange Seiten, Tabellen, die auf dem Handy seitlich scrollen oder sehr lang werden,
+  grosse Formulare, Felder ohne Beschriftung, viele Kennzahlen, Diagramme ohne Beschreibung, überlange Wörter,
+  Ladezeit und den Farbkontrast in Hell und Dunkel. Score gesamt und pro Seite mit Vergleich zur Vorversion; die
+  Punkte erscheinen als Vorschläge (Bereich «Usability») und im Text zum Weitergeben
+- **Behoben:** Im dunklen Modus war Text auf Knöpfen kaum lesbar (z. B. der aktive Filter «Alle» unter Dokumente);
+  die Filterknöpfe unter Dokumente erbten seit 0.43.0 das Aussehen der Reiter
+- Tabellen auf dem Handy: lange Werte (z. B. Dateinamen) brechen um statt abgeschnitten zu werden
+- Formulare ab 8 Feldern blenden bei Änderungen unten «Ungespeicherte Änderungen – Speichern» ein und fragen beim
+  Verlassen nach
+- Diagramme und Eingabefelder der Krankenkasse haben eine Beschreibung für Screenreader
+
 ## 0.43.2 – 2026-11-14
 
 - **Einstellungen:** «Speichern» in jedem Bereich (Haushalt, jede Person, Steuern, Wohnen, KI, Erinnerungen,

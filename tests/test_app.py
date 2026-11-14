@@ -341,3 +341,10 @@ def test_einstellungen_speichern_pro_bereich(server, daten):
     assert html.index('id="einstellungen-form"') > html.rfind("einstellungen/namen_trennen") if "namen_trennen" in html else True
     code, ziel = _post(f"{server}/einstellungen", {"bereich": "wohnen", "wohnen.kaufpreis": "777000"})
     assert code == 303 and ziel.endswith("#b-wohnen") and konfig.laden()["wohnen"]["kaufpreis"] == 777000
+
+
+def test_usability_unter_vorschlaegen(server, daten):
+    html = urllib.request.urlopen(f"{server}/vorschlaege").read().decode()
+    assert "Usability-Score" in html and 'action="vorschlaege/usability"' in html
+    code, ziel = _post(f"{server}/vorschlaege/usability", {})
+    assert code == 303 and ziel.endswith("#usability")

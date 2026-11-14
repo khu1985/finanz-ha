@@ -260,6 +260,15 @@ def _3a_abgleichen(k: dict, db) -> None:
         konfig.speichern(k)
 
 
+def _usability(k: dict, db) -> None:
+    """Einmal am Tag alle Seiten auf Usability prüfen (Ergebnis unter Vorschläge)."""
+    import meta
+    import usability as us
+    from datetime import date
+    if us.faellig(db, meta.version(), date.today().isoformat()):
+        us.sichern(db, us.pruefen(k, db))
+
+
 def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
     def schleife():
         time.sleep(10)
@@ -274,6 +283,7 @@ def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
                     with le.Stoppuhr("hintergrund", "Sensoren schreiben"):
                         schreiben(k, db)
                     le.sichern(db)
+                    _usability(k, db)
             except Exception as e:  # noqa: BLE001
                 LOG.warning("Sensoren: %s", e)
             _ausloeser.wait(intervall)

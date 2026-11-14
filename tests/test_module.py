@@ -2057,3 +2057,37 @@ def test_sparplan_ohne_sparpotenzial_und_reserve_luecke(k):
     p = sp.rechnen(k, db, date(2026, 11, 13))
     assert p.schritte[0].status == sp.OFFEN and p.schritte[0].einmalig == 40_000
     assert any("Kein Sparpotenzial" in h for h in p.hinweise) and not any("reicht" in h for h in p.hinweise)
+
+
+# ---------------------------------------------------------------- Usability
+
+def test_usability_html_pruefung():
+    import usability as us
+    breit = "<table><thead><tr>" + "<th>x</th>" * 7 + "</tr></thead><tbody><tr>" + "<td>1</td>" * 7 + "</tr></tbody></table>"
+    karten = '<section class="karte"></section>' * 11
+    formular = "<form>" + '<input name="a">' * 31 + "<button>OK</button></form>"
+    html = (breit + karten + formular + '<div class="kpi"></div>' * 8 + '<svg viewBox="0 0 1 1"></svg>'
+            + "<p>" + "x" * 50 + "</p>")
+    titel = {p.titel for p in us.pruefen_html(html)}
+    assert {"Tabelle scrollt auf dem Handy seitlich", "Seite sehr lang", "Sehr grosses Formular",
+            "Eingabefelder ohne Beschriftung", "Viele Kennzahlen auf einmal", "Diagramme ohne Beschreibung",
+            "Sehr lange Wörter laufen auf dem Handy über"} <= titel
+    gut = ('<table class="responsiv"><thead><tr><th>a</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>'
+           '<form><label>Name<input name="n"></label><button>OK</button></form>')
+    assert us.pruefen_html(gut) == []
+
+
+def test_usability_kontrast_und_alle_seiten(k):
+    import seiten
+    import usability as us
+    assert round(us.kontrast("#ffffff", "#000000")) == 21
+    assert us.darstellung(seiten.CSS) == []                      # alle Farbpaare in Hell und Dunkel ≥ 4.5:1
+    schlecht = ":root{--text:#777777;--karte:#888888}html[data-theme=dark]{--akzent:#4fb3d4}"
+    assert us.darstellung(schlecht)
+    db = vm.verbinden(":memory:")
+    e = us.pruefen(k, db, "9.9.9")
+    assert e.seiten and 0 <= e.score <= 100 and all(s.score > 0 for s in e.seiten)
+    assert not any(p.titel == "Seite lässt sich nicht anzeigen" for s in e.seiten for p in s.probleme)
+    us.sichern(db, e)
+    assert us.letztes(db)[0].score == e.score and us.bericht_text(db)[0].startswith("Usability-Score")
+    assert not us.faellig(db, "9.9.9", e.zeit[:10]) and us.faellig(db, "9.9.10", e.zeit[:10])

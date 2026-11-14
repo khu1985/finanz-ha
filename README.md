@@ -144,6 +144,7 @@ flowchart TB
 | `finanz/app/verfuegungen.py` | Entwürfe für Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug |
 | `finanz/app/zwischenspeicher.py` | Ergebnisse teurer Berechnungen wiederverwenden, bis sich Daten oder Konfiguration ändern |
 | `finanz/app/leistung.py` | Leistung messen: Ladezeiten, Rechenzeiten, Hintergrundaufgaben, System und Datenmengen |
+| `finanz/app/usability.py` | Usability-Prüfung aller Seiten: Score pro Seite, Kontrast in Hell und Dunkel, Vorschläge |
 | `finanz/app/vorschlaege.py` | Verbesserungsvorschläge aus den eigenen Daten, anonymisiert zum Weitergeben; Textauszüge, Verlauf und «erledigt» |
 | `finanz/app/pruefung.py` | Plausibilität der Einstellungen (Ampel pro Feld) |
 | `finanz/app/sichtung.py` | Gespeicherte Dokumente nach Updates neu sichten |

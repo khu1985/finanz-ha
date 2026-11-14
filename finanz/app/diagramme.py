@@ -60,7 +60,7 @@ def linie(serien: dict[str, list[tuple]], titel: str = "") -> str:
     def py(y):
         return O + by - (y - lo) / (hi - lo) * by
 
-    teile = [f'<svg viewBox="0 0 {B} {H}" role="img" aria-label="{escape(titel)}">']
+    teile = [f'<svg viewBox="0 0 {B} {H}" role="img" aria-label="{escape(titel or "Verlauf: " + ", ".join(serien))}">']
     for t in ticks:
         teile.append(f'<line class="gitter" x1="{L}" x2="{B - R}" y1="{py(t):.1f}" y2="{py(t):.1f}"/>'
                      f'<text class="achse" x="{L - 6}" y="{py(t) + 4:.1f}" text-anchor="end">{chf_kurz(t)}</text>')
@@ -102,7 +102,7 @@ def saeulen(kategorien: list[str], serien: dict[str, list[float]], linie_bei: fl
     def py(y):
         return O + by - y / hi * by
 
-    teile = [f'<svg viewBox="0 0 {B} {H}" role="img">']
+    teile = [f'<svg viewBox="0 0 {B} {H}" role="img" aria-label="{escape("Säulen: " + ", ".join(serien))}">']
     for t in ticks:
         teile.append(f'<line class="gitter" x1="{L}" x2="{B - R}" y1="{py(t):.1f}" y2="{py(t):.1f}"/>'
                      f'<text class="achse" x="{L - 6}" y="{py(t) + 4:.1f}" text-anchor="end">{chf_kurz(t)}</text>')

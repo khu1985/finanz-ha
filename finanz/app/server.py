@@ -196,8 +196,11 @@ class Handler(BaseHTTPRequestHandler):
                     auszuege = vs.textauszuege(k, v) if q.get("auszuege") == ["1"] else None
                     weg = [e[0] for e in vs.erledigt(v, meta.version())]
                     import leistung as le
+                    import usability as us
                     lz = le.bericht_text(v, konfig.datenordner())
-                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege, weg, lz)
+                    uz = us.bericht_text(v)
+                text = vs.bericht(liste, meta.version(), str(k["haushalt"].get("kanton") or "").upper(), auszuege, weg, lz,
+                                  uz)
                 return self.senden(200, text.encode("utf-8"), "text/markdown; charset=utf-8",
                                    {"Content-Disposition": 'attachment; filename="finanz-vorschlaege.md"'})
             if pfad == "protokoll.log":
@@ -545,6 +548,12 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Nichts ausgewählt.")
                 n = vw.loeschen(v, konfig.datenordner(), auswahl)
             return f"{n} Eintrag/Einträge gelöscht.", ziel
+        if pfad == "vorschlaege/usability":
+            import usability as us
+            with db() as v:
+                e = us.pruefen(konfig.laden(), v)
+                us.sichern(v, e)
+            return f"Usability geprüft: Score {e.score}/100.", "vorschlaege#usability"
         if pfad == "vorschlaege":
             import vorschlaege as vs
             aktion = form.get("aktion") or ""

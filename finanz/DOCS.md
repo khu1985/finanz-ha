@@ -109,7 +109,7 @@ personen:
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
-| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
+| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; Usability-Score pro Seite; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
 | Änderungen | Changelog der installierten Version |
 
@@ -951,6 +951,26 @@ Weitergeben.
 Kontonummern, Dateinamen, E-Mail, Telefon, IBAN, AHV-Nummer, Datumsangaben und Beträge (‹…›, ‹Datum›, ‹Betrag›).
 Anbieter und Versicherer (z. B. «Mobiliar») und der Kanton bleiben stehen, weil die Erkennung je Anbieter und
 Kanton angepasst wird.
+
+**Usability:** Einmal am Tag (und auf Knopfdruck «Jetzt prüfen») zeigt die App alle Seiten mit deinen Daten an und
+prüft sie automatisch. Pro Seite 100 Punkte minus Abzüge:
+
+| Prüfung | Abzug |
+|---|---|
+| Seite sehr lang (mehr als 8 Karten) bzw. sehr viel Text | 2 pro Karte (höchstens 12) bzw. 4–8 |
+| Tabelle mit mehr als 5 Spalten ohne Kartenansicht (scrollt auf dem Handy seitlich) | 6 |
+| Sehr lange Kartenliste auf dem Handy (mehr als 240 Zellen) bzw. Tabelle mit mehr als 40 Zeilen | 6 bzw. 4 |
+| Sehr grosses Formular (30 Felder und mehr mit einem Knopf) | 4 |
+| Eingabefelder ohne Beschriftung | 2 pro Feld (höchstens 10) |
+| Mehr als 6 Kennzahlen, Diagramme ohne Beschreibung, Wörter über 40 Zeichen | 4 bzw. 2 pro Fall |
+| Ladezeit über 1 / 2 / 5 Sekunden (auch aus den Leistungsmessungen) | 5 / 10 / 20 |
+| Seite lässt sich nicht anzeigen | 40 |
+
+Der Gesamtscore ist das Mittel aller Seiten minus Abzüge für die **Darstellung**: Kontrast der Farben (Text, grauer
+Text, Links, Ampelfarben, Text auf Knöpfen) in Hell und Dunkel nach WCAG, mindestens 4.5:1. Die gefundenen Punkte
+stehen in der Liste (Bereich «Usability») und mit dem Score pro Seite im Text zum Weitergeben – sie enthalten nur
+Seitennamen und Mengen. Formulare ab 8 Feldern blenden bei Änderungen unten eine Leiste «Ungespeicherte Änderungen –
+Speichern» ein.
 
 **Weitergeben** geschieht nie automatisch: Den Text unten kannst du prüfen, kopieren, als `.md` herunterladen oder
 mit «Als GitHub-Issue öffnen» auf GitHub vorbefüllt öffnen (abgeschickt wird erst mit «Submit»; Issues sind

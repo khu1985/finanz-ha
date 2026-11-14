@@ -46,7 +46,7 @@ REITER = [
 def reiter(pfad: str, warnungen: int = 0) -> str:
     for gruppe in REITER:
         if any(pfad == p for p, _ in gruppe):
-            return '<div class="reiter" role="navigation" aria-label="Reiter">' + "".join(
+            return '<div class="reiterleiste" role="navigation" aria-label="Reiter">' + "".join(
                 f'<a href="{p}" class="{"aktiv" if p == pfad else ""}"{" aria-current=\"page\"" if p == pfad else ""}>'
                 f'{escape(t)}' + (f'<span class="zahl" title="Warnungen heute">{warnungen}</span>'
                                   if p == "protokoll" and warnungen else "") + "</a>" for p, t in gruppe) + "</div>"
@@ -81,10 +81,10 @@ nav button.gl::after{content:"▾";margin-left:auto;font-size:12px;transition:tr
 nav .grp.zu button.gl::after{transform:rotate(-90deg)}
 nav .grp:not(.zu) button.gl .ampel{display:none}
 nav button.gl .ampel{width:8px;height:8px;box-shadow:none}
-.reiter{display:flex;gap:4px;border-bottom:1px solid var(--linie);margin:-4px 0 16px;overflow-x:auto}
-.reiter a{padding:8px 14px;color:var(--leise);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;
+.reiterleiste{display:flex;gap:4px;border-bottom:1px solid var(--linie);margin:-4px 0 16px;overflow-x:auto}
+.reiterleiste a{padding:8px 14px;color:var(--leise);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;
 white-space:nowrap;margin-bottom:-1px}
-.reiter a.aktiv{color:var(--text);border-bottom-color:var(--akzent)}
+.reiterleiste a.aktiv{color:var(--text);border-bottom-color:var(--akzent)}
 .speicherleiste{position:sticky;bottom:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;
 margin:12px 0;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--karte);
 border:1px solid var(--akzent);border-radius:12px;box-shadow:0 -4px 16px rgba(0,0,0,.15);font-weight:600}
@@ -93,7 +93,7 @@ border:1px solid var(--akzent);border-radius:12px;box-shadow:0 -4px 16px rgba(0,
 .meldung.schwebend{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:20;
 max-width:min(560px,calc(100vw - 32px));box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .4s}
 .meldung.weg{opacity:0;pointer-events:none}
-.reiter .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.reiterleiste .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 nav .zahl{margin-left:6px;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 @media (min-width:1200px){
  .app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
@@ -203,6 +203,7 @@ table.matrix td,table.matrix th{white-space:nowrap}
 button,.knopf{font:inherit;background:var(--akzent);color:#fff;border:0;border-radius:8px;padding:8px 16px;
 cursor:pointer;text-decoration:none;display:inline-block}
 .knopf.zweit,button.zweit{background:transparent;color:var(--akzent);border:1px solid var(--akzent)}
+html[data-theme=dark] button:not(.zweit):not(.gl),html[data-theme=dark] .knopf:not(.zweit){color:#0d1b22}
 button.klein{padding:2px 10px;font-size:13px}
 .zeile{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px}
 .meldung{padding:10px 14px;border-radius:8px;margin-bottom:16px;background:var(--karte);border-left:4px solid var(--akzent)}
@@ -220,7 +221,8 @@ input[type=checkbox]{width:22px!important;height:22px;flex:0 0 auto}
 .zeile>*{flex:1 1 auto}
 table.responsiv thead{display:none}table.responsiv tr{display:block;border-bottom:1px solid var(--linie);padding:6px 0}
 table.responsiv td{display:flex;justify-content:space-between;gap:12px;border:0;padding:2px 2px;text-align:right}
-table.responsiv td::before{content:attr(data-label);color:var(--leise);font-size:12px;text-align:left}
+table.responsiv td::before{content:attr(data-label);color:var(--leise);font-size:12px;text-align:left;flex:0 0 auto;max-width:40%}
+table.responsiv td{overflow-wrap:anywhere}table.responsiv td>*{min-width:0}
 table.responsiv td:first-child{font-weight:600;text-align:left}table.responsiv td:first-child::before{content:none}
 table.responsiv td:empty{display:none}
 table.log thead{display:none}table.log tr{display:block;padding:6px 0;border-bottom:1px solid var(--linie)}
@@ -388,6 +390,15 @@ setzen(h.getAttribute('data-wahl')||'auto')})();
 (function(){var a=document.querySelector('nav a.aktiv');if(a&&innerWidth<1200&&innerWidth>=760)a.scrollIntoView({block:'nearest',inline:'center'})})();
 document.querySelectorAll('nav button.gl').forEach(function(b){b.addEventListener('click',function(){
 var g=b.parentNode;var zu=g.classList.toggle('zu');b.setAttribute('aria-expanded',zu?'false':'true')})});
+document.querySelectorAll('main form[method=post]').forEach(function(f){
+if(f.id==='einstellungen-form')return;
+var n=f.querySelectorAll('input:not([type=hidden]):not([type=file]):not([type=checkbox]),select,textarea').length;if(n<8)return;
+var k=f.querySelector('button:not([name=aktion]):not(.loeschen)'),l=document.createElement('div');
+l.className='speicherleiste';l.hidden=true;l.innerHTML='<span>Ungespeicherte Änderungen</span><button></button>';
+l.querySelector('button').textContent=k?k.textContent:'Speichern';f.appendChild(l);
+var g=false;function an(){if(!g){g=true;l.hidden=false}}
+f.addEventListener('input',an);f.addEventListener('change',an);f.addEventListener('submit',function(){g=false});
+addEventListener('beforeunload',function(e){if(g){e.preventDefault();e.returnValue=''}})});
 (function(){var m=document.querySelector('main .meldung');if(m&&location.hash){m.classList.add('schwebend');
 setTimeout(function(){m.classList.add('weg')},4000)}})();"""
 
@@ -1254,7 +1265,7 @@ addEventListener('beforeunload',function(e){if(geaendert){e.preventDefault();e.r
                 + leiste + "</form>" + skript)
     text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
     experte = f"""<details><summary>Alles als YAML bearbeiten (Kinder, PK-Einkäufe, Kennzahlen, Personen hinzufügen/entfernen)</summary>
-<form method="post" action="einstellungen/yaml"><textarea name="yaml" spellcheck="false">{text}</textarea>
+<form method="post" action="einstellungen/yaml"><textarea name="yaml" spellcheck="false" aria-label="Konfiguration als YAML">{text}</textarea>
 <div class="zeile"><button>YAML speichern</button></div></form></details>"""
     datei = """<form method="post" action="einstellungen/import" enctype="multipart/form-data">
 <div class="zeile"><a class="knopf zweit" href="export">finanz.yaml herunterladen</a>
@@ -2338,10 +2349,13 @@ def krankenkasse_karte(k: dict, db) -> str:
               f'<option value="nein"{"" if p.unfall else " selected"}>nein</option>')
         zeilen.append([
             f'<input type="hidden" name="name_{i}" value="{escape(p.name)}"><b>{escape(p.name)}</b>' + (" (Kind)" if p.kind else ""),
-            f'<input name="praemie_{i}" value="{p.praemie_monat:g}" inputmode="decimal" style="min-width:90px">',
-            f'<select name="franchise_{i}">{fr}</select>',
-            f'<input name="kosten_{i}" value="{p.kosten_jahr:g}" inputmode="decimal" style="min-width:90px">',
-            f'<select name="modell_{i}">{mo}</select>', f'<select name="unfall_{i}">{un}</select>'])
+            f'<input name="praemie_{i}" value="{p.praemie_monat:g}" inputmode="decimal" style="min-width:90px" '
+            f'aria-label="Prämie pro Monat {escape(p.name)}">',
+            f'<select name="franchise_{i}" aria-label="Franchise {escape(p.name)}">{fr}</select>',
+            f'<input name="kosten_{i}" value="{p.kosten_jahr:g}" inputmode="decimal" style="min-width:90px" '
+            f'aria-label="Gesundheitskosten pro Jahr {escape(p.name)}">',
+            f'<select name="modell_{i}" aria-label="Modell {escape(p.name)}">{mo}</select>',
+            f'<select name="unfall_{i}" aria-label="Unfall {escape(p.name)}">{un}</select>'])
     policen = [p for p in personen if p.versicherer or p.zusatz_monat]
     policen_html = ""
     if policen:
@@ -3454,7 +3468,7 @@ def notfall(k: dict, db) -> str:
     form = nur_druck + (f'<form method="post" action="notfall" class="nicht-drucken"><input type="hidden" name="anzahl" value="{len(kontakte)}">'
             + karte("Wichtige Kontakte", "".join(k_zeilen))
             + karte("Wo liegt was?", f'<div class="felder">{ablage}</div>')
-            + karte("Weitere Hinweise", f'<textarea name="notizen" rows="4" placeholder="z. B. Wünsche zur Bestattung, '
+            + karte("Weitere Hinweise", f'<textarea name="notizen" rows="4" aria-label="Weitere Hinweise" placeholder="z. B. Wünsche zur Bestattung, '
                     f'Haustiere, laufende Zahlungen">{escape(cfg["notizen"])}</textarea>')
             + '<div class="zeile"><button>Notfallordner speichern</button>'
               '<button class="zweit" name="erledigt" value="1">Speichern und in der Nachlass-Checkliste abhaken</button></div></form>')
@@ -3757,8 +3771,11 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
     mit_auszug = (q or {}).get("auszuege") == ["1"]
     auszuege = vs.textauszuege(k, db) if mit_auszug else None
     import leistung as le
+    import usability as us
+    if us.letztes(db)[0] is None:                       # erstes Mal: gleich prüfen (sonst im Hintergrund, täglich)
+        us.sichern(db, us.pruefen(k, db))
     text = vs.bericht(sichtbar, meta.version(), kanton, auszuege, [e[0] for e in vs.erledigt(db, meta.version())],
-                      le.bericht_text(db, konfig.datenordner()))
+                      le.bericht_text(db, konfig.datenordner()), us.bericht_text(db))
     link = vs.issue_link(meta.repository(), text, meta.version())
     schalter = ('<form method="get" action="vorschlaege" class="nicht-drucken"><label class="wahl">'
                 f'<input type="checkbox" name="auszuege" value="1" onchange="this.form.submit()"'
@@ -3800,7 +3817,43 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
                          'abgehakt. Bei Dokumenten erkennt sie das, sobald die Version deine Korrekturen selbst trifft; '
                          'deine Werte bleiben dabei unverändert.</p></details>')
     return (kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_erledigt
-            + leistung_karte(db) + teil_weg)
+            + usability_karte(db) + leistung_karte(db) + teil_weg)
+
+
+def usability_karte(db) -> str:
+    """Usability-Score gesamt und pro Seite mit den gefundenen Problemen."""
+    import usability as us
+    e, vorher = us.letztes(db)
+    if not e:
+        return ""
+    farbe = am.GRUEN if e.score >= 90 else am.GELB if e.score >= 75 else am.ROT
+    diff = f" ({'+' if e.score >= vorher.score else ''}{e.score - vorher.score} seit {vorher.version})" if vorher else ""
+    kpis = '<div class="kpis">' + "".join([
+        kpi(f"{e.score}/100", "Usability-Score" + diff, "", farbe),
+        kpi(str(sum(1 for s in e.seiten if s.score < 100)), "Seiten mit Verbesserungspotenzial"),
+        kpi(str(sum(len(s.probleme) for s in e.seiten) + len(e.darstellung)), "gefundene Punkte"),
+    ]) + "</div>"
+    zeilen = []
+    for s in (x for x in e.seiten if x.score < 100):
+        st_ = am.GRUEN if s.score >= 90 else am.GELB if s.score >= 75 else am.ROT
+        probleme = "<br>".join(f"{escape(p.titel)} <span class=\"leise\">– {escape(p.detail)}</span>" for p in s.probleme)
+        zeilen.append([f'{licht(st_)} <a href="{s.pfad or "./"}">{escape(s.titel)}</a>', str(s.score),
+                       f"<div>{probleme or '<span class=\"gut\">keine Auffälligkeiten</span>'}</div>"])
+    gut = [s.titel for s in e.seiten if s.score >= 100]
+    tab = (tabelle(["Seite", "Score", "Gefunden"], zeilen, zahlen_ab=1, responsiv=True) if zeilen else "") + (
+        f'<p class="leise">Ohne Auffälligkeiten: {escape(", ".join(gut))}.</p>' if gut else "")
+    dar = ""
+    if e.darstellung:
+        dar = "<h3>Darstellung (alle Seiten)</h3>" + hinweisliste([f"{p.titel} – {p.detail}" for p in e.darstellung])
+    erkl = ('<p class="leise">Die App zeigt alle Seiten mit deinen Daten an und prüft sie automatisch: lange Seiten, '
+            'Tabellen, die auf dem Handy seitlich scrollen oder sehr lang werden, Formulare, Felder ohne Beschriftung, '
+            'viele Kennzahlen, Diagramme ohne Beschreibung, überlange Wörter, Ladezeit und den Farbkontrast in Hell und '
+            f'Dunkel. Pro Seite 100 Punkte minus Abzüge. Geprüft {escape(e.zeit.replace("T", " "))} (Version '
+            f'{escape(e.version)}); läuft einmal am Tag im Hintergrund. Die Punkte stehen auch oben in der Liste '
+            '(Bereich «Usability») und im Text zum Weitergeben.</p>')
+    knopf = ('<form method="post" action="vorschlaege/usability" class="zeile nicht-drucken">'
+             '<button class="zweit">Jetzt prüfen</button></form>')
+    return f'<div id="usability">{karte("Usability", kpis + tab + dar + erkl + knopf)}</div>'
 
 
 def leistung_karte(db) -> str:

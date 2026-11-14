@@ -395,7 +395,7 @@ def tabellen(db) -> None:
 
 
 # Bereiche, deren Vorschläge dauerhaft aus den Daten folgen (Protokollmeldungen beginnen mit jeder Version neu)
-VERLAUF_BEREICHE = ("Dokumente erkennen", "Kantonale Werte", "Einstellungen", "Leistung")
+VERLAUF_BEREICHE = ("Dokumente erkennen", "Kantonale Werte", "Einstellungen", "Leistung", "Usability")
 
 
 def _verlauf_tabelle(db) -> None:
@@ -523,8 +523,14 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
             _zaehlen(erg, ("Leistung", titel, detail), gewicht)
     except Exception:  # noqa: BLE001
         LOG.exception("Vorschläge: Leistung nicht ausgewertet")
+    try:
+        import usability as us
+        for titel, detail, gewicht in us.vorschlaege(db):
+            _zaehlen(erg, ("Usability", titel, detail), gewicht)
+    except Exception:  # noqa: BLE001
+        LOG.exception("Vorschläge: Usability nicht ausgewertet")
     private = _private_texte(k, db)
-    liste = [Vorschlag(bereich, titel, detail, anzahl, gewicht) if bereich == "Leistung"      # nur Zeiten und Mengen
+    liste = [Vorschlag(bereich, titel, detail, anzahl, gewicht) if bereich in ("Leistung", "Usability")  # nur Seiten, Mengen
              else Vorschlag(bereich, anonymisieren(titel, private), anonymisieren(detail, private), anzahl, gewicht)
              for (bereich, titel, detail), (anzahl, gewicht) in erg.items()]
     try:
@@ -537,7 +543,7 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
         t = anonymisieren(i["text"].strip(), private)
         eigene[t] = eigene.get(t, 0) + 1
     liste += [Vorschlag("Eigene Ideen", t, "", n, MITTEL) for t, n in eigene.items()]
-    reihenfolge = ["Dokumente erkennen", "Fehler und Warnungen", "Leistung", "Kantonale Werte", "Einstellungen",
+    reihenfolge = ["Dokumente erkennen", "Fehler und Warnungen", "Usability", "Leistung", "Kantonale Werte", "Einstellungen",
                    "Eigene Ideen"]
     liste.sort(key=lambda v: (-v.gewicht, reihenfolge.index(v.bereich) if v.bereich in reihenfolge else 9, -v.anzahl,
                               v.titel))
@@ -637,7 +643,7 @@ def textauszuege(k: dict, db) -> list[tuple[str, list[str]]]:
 
 def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "",
             auszuege: list[tuple[str, list[str]]] | None = None, erledigt_: list[Vorschlag] | None = None,
-            leistung: list[str] | None = None) -> str:
+            leistung: list[str] | None = None, usability: list[str] | None = None) -> str:
     """Markdown-Text zum Weitergeben (nur die übergebenen, bereits anonymisierten Vorschläge und Auszüge)."""
     kopf = [f"Vorschläge aus der Finanzplanung {version}" + (f" · Kanton {kanton}" if kanton else ""),
             "", "_Automatisch abgeleitet und anonymisiert (keine Namen, Beträge, Daten oder Dateinamen)._", ""]
@@ -649,6 +655,8 @@ def bericht(vorschlaege: list[Vorschlag], version: str, kanton: str = "",
             d = f" – {v.detail}" if v.detail else ""
             teile.append(f"- [{PRIO_TEXT[v.gewicht]}] {v.titel}{n}{d}")
         teile.append("")
+    if usability:
+        teile += ["### Usability (Score pro Seite)", "", "```", *usability, "```", ""]
     if leistung:
         teile += ["### Leistung (Messwerte dieser Version)", "", "```", *leistung, "```", ""]
     if erledigt_:
