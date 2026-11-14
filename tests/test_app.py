@@ -365,3 +365,11 @@ def test_sparkonto_limite_speichern(server, daten):
     assert code == 303 and x["bezug_limit"] == 25000 and x["kuendigung_monate"] == 3
     assert "Bezug 25&#x27;000 pro Jahr" in urllib.request.urlopen(f"{server}/vermoegen").read().decode() or \
         "Bezug 25'000 pro Jahr" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+
+
+def test_filter_bei_tabellen(server, daten):
+    for name in ("Konto A", "Konto B"):
+        _post(f"{server}/vermoegen/saldo", {"konto": name, "art": "bank", "person": "", "datum": "2026-10-31",
+                                            "betrag": "1000", "waehrung": "CHF"})
+    html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    assert 'data-filter="1"' in html and "table[data-filter]" in html

@@ -89,6 +89,15 @@ white-space:nowrap;margin-bottom:-1px}
 margin:12px 0;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--karte);
 border:1px solid var(--akzent);border-radius:12px;box-shadow:0 -4px 16px rgba(0,0,0,.15);font-weight:600}
 .speicherleiste[hidden]{display:none}
+.filterleiste{margin:0 0 10px;border:1px solid var(--linie);border-radius:10px;padding:6px 12px;background:var(--bg)}
+.filterleiste.an{border-color:var(--akzent)}.filterleiste>summary{cursor:pointer;font-weight:600;color:var(--text);padding:4px 0}
+.filterleiste .felder{margin-top:8px}.filterleiste .zeile{margin-top:6px}
+.filterleiste details.mehrfach{border:1px solid var(--linie);border-radius:8px;background:var(--karte);padding:6px 10px;margin-top:4px}
+.filterleiste details.mehrfach summary{cursor:pointer;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filterleiste .wahlfeld{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--leise)}
+.filterleiste details.mehrfach label{display:flex!important;flex-direction:row!important;align-items:center;justify-content:flex-start;
+gap:8px;font-weight:400;padding:4px 0;color:var(--text);text-align:left}
+.filterleiste details.mehrfach input{width:auto!important;min-height:0;margin:0;flex:0 0 auto}
 [id^="b-"]{scroll-margin-top:80px}
 .meldung.schwebend{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:20;
 max-width:min(560px,calc(100vw - 32px));box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .4s}
@@ -402,6 +411,59 @@ addEventListener('beforeunload',function(e){if(g){e.preventDefault();e.returnVal
 (function(){var m=document.querySelector('main .meldung');if(m&&location.hash){m.classList.add('schwebend');
 setTimeout(function(){m.classList.add('weg')},4000)}})();"""
 
+# Filterleiste für Tabellen mit data-filter: pro Spalte Textsuche oder (bei 2–12 verschiedenen kurzen Werten)
+# Mehrfachauswahl; Zustand pro Seite in sessionStorage
+FILTER_JS = r"""(function(){
+function txt(td){return (td?td.textContent:'').replace(/\s+/g,' ').trim()}
+document.querySelectorAll('table[data-filter]').forEach(function(tab,ti){
+ var kopf=[].slice.call(tab.querySelectorAll('thead th')).map(function(th){return th.textContent.trim()});
+ var zeilen=[].slice.call(tab.tBodies[0].rows);if(zeilen.length<2)return;
+ var schl='filter:'+location.pathname+':'+ti,zustand={};try{zustand=JSON.parse(sessionStorage.getItem(schl)||'{}')}catch(e){}
+ var leiste=document.createElement('details');leiste.className='filterleiste';
+ var sum=document.createElement('summary');leiste.appendChild(sum);
+ var feld=document.createElement('div');feld.className='felder';leiste.appendChild(feld);
+ var spalten=[];
+ kopf.forEach(function(name,i){
+  if(!name)return;
+  var werte={};zeilen.forEach(function(z){var t=txt(z.cells[i]);if(t)werte[t]=1});
+  var liste=Object.keys(werte).sort(function(a,b){return a.localeCompare(b,'de')});
+  if(!liste.length)return;
+  var mehr=liste.length>=2&&liste.length<=12&&(liste.length<=3||liste.length<=zeilen.length*0.7)
+   &&liste.every(function(w){return w.length<=40});
+  var lab=document.createElement(mehr?'div':'label');if(mehr)lab.className='wahlfeld';
+  if(mehr){
+   var d=document.createElement('details');d.className='mehrfach';var s=document.createElement('summary');d.appendChild(s);
+   var gew=zustand[i]||[];
+   liste.forEach(function(w){var l=document.createElement('label');var c=document.createElement('input');c.type='checkbox';
+    c.value=w;c.checked=gew.indexOf(w)>=0;c.addEventListener('change',anwenden);l.appendChild(c);l.appendChild(document.createTextNode(' '+w));d.appendChild(l)});
+   var t=document.createElement('span');t.textContent=name;lab.appendChild(t);lab.appendChild(d);
+   spalten.push({i:i,name:name,art:'wahl',el:d,sum:s});
+  }else{
+   var e=document.createElement('input');e.type='search';e.placeholder='enthält …';e.value=zustand[i]||'';
+   e.setAttribute('aria-label','Filter '+name);e.addEventListener('input',anwenden);
+   lab.appendChild(document.createTextNode(name));lab.appendChild(e);spalten.push({i:i,name:name,art:'text',el:e});
+  }
+  feld.appendChild(lab);
+ });
+ var unten=document.createElement('div');unten.className='zeile';var reset=document.createElement('button');reset.type='button';
+ reset.className='zweit klein';reset.textContent='Filter zurücksetzen';unten.appendChild(reset);leiste.appendChild(unten);
+ reset.addEventListener('click',function(){spalten.forEach(function(sp){if(sp.art==='text')sp.el.value='';
+  else sp.el.querySelectorAll('input').forEach(function(c){c.checked=false})});anwenden()});
+ tab.parentNode.parentNode.insertBefore(leiste,tab.parentNode);
+ function anwenden(){
+  var neu={},aktiv=0;
+  spalten.forEach(function(sp){if(sp.art==='text'){var v=sp.el.value.trim();if(v){neu[sp.i]=v;aktiv++}}
+   else{var g=[].slice.call(sp.el.querySelectorAll('input:checked')).map(function(c){return c.value});
+    sp.sum.textContent=g.length?g.join(', '):'alle';if(g.length){neu[sp.i]=g;aktiv++}}});
+  var n=0;zeilen.forEach(function(z){var ok=spalten.every(function(sp){var f=neu[sp.i];if(!f)return true;var t=txt(z.cells[sp.i]);
+   return sp.art==='text'?t.toLowerCase().indexOf(f.toLowerCase())>=0:f.indexOf(t)>=0});z.style.display=ok?'':'none';if(ok)n++});
+  sum.textContent='Filter'+(aktiv?' ('+aktiv+' aktiv)':'')+' · '+n+' von '+zeilen.length;
+  leiste.classList.toggle('an',aktiv>0);
+  try{sessionStorage.setItem(schl,JSON.stringify(neu))}catch(e){}
+ }
+ anwenden();if(Object.keys(zustand).length)leiste.open=true;
+});})();"""
+
 MENU_KNOPF = ("<button id=\"menu\" type=\"button\" aria-expanded=\"false\" aria-controls=\"nav\" "
               "onclick=\"var s=document.getElementById('side');var o=s.classList.toggle('offen');"
               "this.setAttribute('aria-expanded',o);this.textContent=o?'Schliessen':'Menü'\">Menü</button>")
@@ -466,7 +528,7 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
 <footer>Finanzplanung v{escape(v)} · <a href="aenderungen">Änderungen</a> · <a href="protokoll">Protokoll</a>
 <br>Keine Anlage-, Steuer- oder Rechtsberatung.</footer></div></div>
 <div id="status" aria-live="polite"><div class="status-box"><div class="spinner"></div><p id="status-text">Bitte warten …</p></div></div>
-<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script><script>{THEMA_JS}</script></body></html>"""
+<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script><script>{THEMA_JS}</script><script>{FILTER_JS}</script></body></html>"""
 
 
 def licht(status: str, titel: str = "") -> str:
@@ -485,8 +547,9 @@ def karte(titel: str, inhalt: str) -> str:
 
 
 def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1, karten: bool = False,
-            responsiv: bool | None = None) -> str:
-    """Tabelle; ab fünf Spalten auf dem Handy als Karten (Beschriftung je Zelle)."""
+            responsiv: bool | None = None, filter: bool = False) -> str:
+    """Tabelle; ab fünf Spalten auf dem Handy als Karten (Beschriftung je Zelle). `filter`: Filterleiste darüber
+    (pro Spalte Textsuche bzw. Mehrfachauswahl bei wenigen verschiedenen Werten; nur im Browser)."""
     th = "".join(f'<th class="{"z" if i >= zahlen_ab else ""}">{escape(h)}</th>' for i, h in enumerate(kopf))
     tr = []
     for z in zeilen:
@@ -498,7 +561,8 @@ def tabelle(kopf: list[str], zeilen: list[list], zahlen_ab: int = 1, karten: boo
     if responsiv is None:
         responsiv = len(kopf) > 4 or lang or karten
     klasse = ' class="responsiv"' if responsiv else ' class="matrix"' if responsiv is False and len(kopf) > 4 else ""
-    return f'<div class="tab"><table{klasse}><thead><tr>{th}</tr></thead><tbody>{"".join(tr)}</tbody></table></div>'
+    daten = ' data-filter="1"' if filter and len(zeilen) > 1 else ""
+    return f'<div class="tab"><table{klasse}{daten}><thead><tr>{th}</tr></thead><tbody>{"".join(tr)}</tbody></table></div>'
 
 
 def hinweisliste(punkte: list[str]) -> str:
@@ -914,7 +978,7 @@ def vermoegen(k: dict, db) -> str:
     zeilen = [zeile(x) for x in offen]
     zeilen.append(["", "<b>Total</b>", "", "", "", f"<b>{chf(nv['total'])}</b>", ""])
     kopf = ["", "Konto", "Art", "Person", "Stand (Saldi)", "Saldo CHF", ""]
-    liste = konten_form(tabelle(kopf, zeilen, zahlen_ab=5)
+    liste = konten_form(tabelle(kopf, zeilen, zahlen_ab=5, filter=True)
                         + (f'<details><summary>Aufgelöste Konten ({len(zu)})</summary>'
                            + tabelle(kopf, [zeile(x) for x in zu], zahlen_ab=5) + "</details>" if zu else ""))
     liste += ('<p class="leise">Konto anklicken, um Name, Art, Person, Währung und Notiz zu ändern, einzelne Saldi zu '
@@ -1356,7 +1420,7 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
         ])
     zeilen.append(["", "<b>Total</b>", "", "", "", f"<b>{chf(pr['total'])}</b>", "", ""])
     liste = loesch_form(tabelle(["", "Versicherer", "Sparte", "Person", "Kündigen bis", "Prämie/Jahr", "Text · Original", ""],
-                                zeilen, zahlen_ab=5), "versicherungen", "v",
+                                zeilen, zahlen_ab=5, filter=True), "versicherungen", "v",
                         "Alle Verträge löschen? Verträge und Dateien werden endgültig entfernt.")
     liste += sichtung_knopf("versicherungen")
     ohne_text = [v for v in vertraege if v["datei"] and text_status(v["text"])[0] == am.ROT]
@@ -1506,7 +1570,8 @@ def vorsorge_dokumente_karte(k: dict, db) -> str:
                escape(d["person"] or "–"), escape(d["stichtag"] or "–"), str(len(d["werte"])),
                licht(am.GRUEN, "übernommen") if d["uebernommen"] else licht(am.GELB, "noch nicht übernommen"),
                loesch_knopf(f"d:{d['id']}", f"{d['dateiname']} löschen?")] for d in doks]
-    liste = (loesch_form(tabelle(["", "Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen", ""], zeilen, zahlen_ab=5),
+    liste = (loesch_form(tabelle(["", "Dokument", "Art", "Person", "Stichtag", "Werte", "übernommen", ""], zeilen,
+                                 zahlen_ab=5, filter=True),
                          "vorsorge", "d", "Alle Vorsorgedokumente löschen? Dokumente und Dateien werden endgültig entfernt.")
              + sichtung_knopf("vorsorge")) if doks else ""
     form = """<form method="post" action="vorsorge/hochladen" enctype="multipart/form-data">
@@ -2519,7 +2584,7 @@ def finanzplan(k: dict, db) -> str:
                chf(z.kapital) if z.kapital else "", chf(z.vermoegen)] for z in p.jahre]
     tab = ("<details><summary>Jahr für Jahr</summary>"
            + tabelle(["Jahr", "Alter", "Phase", "Lohn bzw. Renten", "Sparen / Entnahme", "Kapital PK/3a", "Vermögen Ende Jahr"],
-                     zeilen, zahlen_ab=3, responsiv=True) + "</details>")
+                     zeilen, zahlen_ab=3, responsiv=True, filter=True) + "</details>")
     annahmen = (f'<p class="leise">Heutige Franken. Reale Rendite {p.rendite_real:g} % pro Jahr (Risikoprofil unter '
                 f'Vermögen → Anlage-Check, minus Teuerung), Schwankung {p.sigma:g} %; {fp.PFADE} simulierte Verläufe. '
                 'Bis zur Pensionierung wächst das freie Vermögen mit dem Sparpotenzial; PK und 3a kommen bei der '
@@ -2672,7 +2737,7 @@ def wertschriften_karte(k: dict, db) -> str:
                        "" if p.rendite is None else f"{p.rendite:+.1f} %", ter])
     tab = ('<form method="post" action="vermoegen/wertschriften/ter">'
            + tabelle(["Titel", "Klasse", "Region", "Währung", "Menge", "Wert", "Anteil", "Rendite", "TER %"], zeilen,
-                     zahlen_ab=4, responsiv=True)
+                     zahlen_ab=4, responsiv=True, filter=True)
            + '<div class="zeile nicht-drucken"><button class="zweit">Kosten (TER) speichern</button></div></form>')
     h = ws.hinweise(u)
     return '<div id="wertschriften"></div>' + karte("Wertschriften", kpis + aufteilung + (hinweisliste(h) if h else "") + tab
@@ -3715,7 +3780,7 @@ def dokumente(k: dict, db, q: dict | None = None) -> str:
     if not zeilen:
         return kpis + reiter + karte("Dokumente", '<p class="leer">Keine Einträge.</p>')
     bereich_name = vw.BEREICHE.get(filt, "")
-    tab = tabelle(["", "Dokument", "Art", "Person", "Datum", "Datei", ""], zeilen, zahlen_ab=9)
+    tab = tabelle(["", "Dokument", "Art", "Person", "Datum", "Datei", ""], zeilen, zahlen_ab=9, filter=True)
     extra = ""
     if dup:
         extra = ('<button class="zweit klein" name="aktion" value="duplikate" onclick="return confirm('

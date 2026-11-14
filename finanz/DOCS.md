@@ -74,6 +74,10 @@ personen:
   schliesst sie. Auf Tablets eine wischbare Leiste mit allen Seiten. Ein farbiger Punkt markiert Seiten (und
   zugeklappte Gruppen) mit gelber oder roter Ampel; bei Einstellungen bzw. dem Reiter Protokoll steht die Zahl der
   Warnungen von heute. Adressen und Lesezeichen bleiben gleich.
+- **Filter** über längeren Tabellen (Konten, Dokumente, Versicherungen, Vorsorgedokumente, Wertschriften, Finanzplan
+  Jahr für Jahr): «Filter» aufklappen; pro Spalte Textsuche («enthält …») oder – bei wenigen verschiedenen Werten wie
+  Art, Person, Sparte, Phase – Mehrfachauswahl. Die Zeile zeigt, wie viele Einträge passen; der Filter bleibt beim
+  Neuladen der Seite erhalten, «Filter zurücksetzen» löscht ihn.
 - **Version** neben «Finanzen» öffnet die Änderungen.
 - **Darstellung:** Der Knopf daneben wechselt zwischen Auto (wie das Gerät), Hell und Dunkel; die Wahl bleibt im
   Browser gespeichert.

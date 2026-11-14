@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.45.0 – 2026-11-14
+
+- **Filter über Tabellen:** Konten, Dokumente, Versicherungen, Vorsorgedokumente, Wertschriften und Finanzplan (Jahr
+  für Jahr) haben eine aufklappbare Filterleiste – pro Spalte Textsuche oder Mehrfachauswahl (bei wenigen
+  verschiedenen Werten wie Art, Person, Sparte, Phase), mit Anzahl passender Einträge und «Filter zurücksetzen»; der
+  Filter bleibt beim Neuladen erhalten
+
 ## 0.44.2 – 2026-11-14
 
 - **Sparkonten mit Bezugslimite:** pro Bankkonto Bezug ohne Kündigung (pro Jahr oder Monat), Kündigungsfrist und
