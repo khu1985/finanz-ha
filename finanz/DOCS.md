@@ -65,7 +65,7 @@ personen:
   | Geld | Budget, Vermögen, Sparen & Anlegen |
   | Steuern | Steuern mit den Reitern «Planung und Dokumente» und «Steuererklärung» |
   | Zukunft | Vorsorge, Finanzplan, Szenarien, Lebensereignisse |
-  | Familie & Wohnen | Kinder, Wohnen, Versicherungen |
+  | Familie & Wohnen | Kinder, Wohnen, Fahrzeuge, Versicherungen |
   | Absicherung | Nachlass, Verfügungen, Notfallordner |
   | App | Dokumente, Einstellungen (mit den Reitern Daten & Import, Protokoll und Änderungen), Vorschläge |
 
@@ -102,6 +102,7 @@ personen:
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
+| Fahrzeuge | Wert (als Konto unter Vermögen), Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, MFK und Leasingende als Erinnerung |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
 | Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
 | Finanzplan | Lebensziele, Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
@@ -226,6 +227,21 @@ Aktienquote nach Risikoprofil (tief 25 %, mittel 50 %, hoch 75 %; Renditeannahme
 Konten, in Aktien und Krypto (Richtwert höchstens 5 %), der mögliche Mehrertrag pro Jahr und bis zur Pensionierung,
 Hinweise zu Klumpenrisiko (Arbeitgeberaktien) und Hypothekarzins. Risikoprofil und Zinsen auf der Karte einstellbar
 (`anlage`). Keine Produktempfehlungen.
+
+## Fahrzeuge
+
+Seite **Fahrzeuge** (unter Familie & Wohnen): pro Auto Name, Antrieb, Halter/in, erste Inverkehrsetzung, Kaufdatum
+und -preis, Kilometer pro Jahr, Verbrauch, Gesamtgewicht, Parkplatz, Versicherung, Finanzierung (gekauft oder Leasing
+mit Rate und Ende) und Ersatz (Jahr, Preis). Gespeichert unter `fahrzeuge[]`.
+
+| Was | Wie gerechnet |
+|---|---|
+| Verkehrswert | eigener Wert (z. B. Eurotax) mit Datum, sonst Schätzung: −25 % im ersten Jahr, dann −15 % pro Jahr; Leasingfahrzeuge 0 |
+| Vermögen | gekaufte Fahrzeuge als Konto der Art «Fahrzeug», Wert monatlich nachgeführt – zählt zum Nettovermögen und zur Steuererklärung (Motorfahrzeuge sind steuerbar, Hausrat nicht), nicht zum freien Vermögen |
+| Kosten pro Jahr | Wertverlust bzw. Leasingrate, Versicherung (eigene Angabe, sonst Motorfahrzeug-Policen), Verkehrssteuer (BL CHF 0.289846 pro kg Gesamtgewicht, sonst Schätzung 500 oder eigene Angabe), Vignette 40, Parkplatz, Energie (Benzin 1.71/l, Diesel 1.80/l, Strom 0.28/kWh), Unterhalt und Reifen (7 Rp./km, elektrisch 5 Rp./km, Schätzung) |
+| Vergleich | TCS-Musterauto 2026: Kaufpreis 45'000, 74 Rappen pro km (Fixkosten 6'977, variable Kosten 4'135 pro Jahr bei 15'000 km); dazu «Mobilität» aus dem Budget |
+| Ersatz | Jahr (Standard: Leasingende bzw. 12 Jahre nach der ersten Inverkehrsetzung) und Preis abzüglich Restwert – als Lebensziel im Finanzplan und unter Sparen & Anlegen (abschaltbar) |
+| Erinnerungen | MFK (nach 5, dann 3, danach alle 2 Jahre) 90 Tage vorher, Leasingende 6 Monate vorher, Vignette im Dezember |
 
 ## Sparen und Anlegen
 

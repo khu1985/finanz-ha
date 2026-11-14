@@ -42,6 +42,7 @@ SEITEN = {
     "finanzplan": ("Finanzplan", seiten.finanzplan),
     "sparplan": ("Sparen & Anlegen", seiten.sparplan),
     "lebensereignisse": ("Lebensereignisse", seiten.lebensereignisse),
+    "fahrzeuge": ("Fahrzeuge", seiten.fahrzeuge),
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuern", seiten.steuererklaerung),
     "notfall": ("Notfallordner", seiten.notfall),
@@ -231,8 +232,10 @@ class Handler(BaseHTTPRequestHandler):
             k = konfig.laden()
             with db() as verbindung:
                 import dreia
+                import fahrzeuge
                 if dreia.abgleichen(k, verbindung):          # 3a-Konten unter Vermögen → Einstellungen
                     konfig.speichern(k)
+                fahrzeuge.abgleichen(k, verbindung)          # Fahrzeugwert als Konto (steuerbares Vermögen)
                 inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
             meldung = unquote(q.get("m", [""])[0])
             html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
@@ -752,6 +755,43 @@ class Handler(BaseHTTPRequestHandler):
             return self._berater(pfad, form)
         if pfad.startswith("steuern"):
             return self._steuern(pfad, form)
+        if pfad == "fahrzeuge/speichern":
+            import fahrzeuge as fz
+            k = konfig.laden()
+            liste = list(k.get("fahrzeuge") or [])
+            neu = {}
+            for feld, _, typ in seiten.FAHRZEUG_FELDER:
+                t = str(form.get(feld) or "").strip()
+                if not t:
+                    continue
+                neu[feld] = vm.zahl(t) if typ == "zahl" else t[:80]
+            if not neu.get("name"):
+                raise ValueError("Name des Fahrzeugs angeben.")
+            if neu.get("antrieb") not in fz.ANTRIEBE:
+                neu["antrieb"] = "benzin"
+            neu["ersatz_planen"] = bool(form.get("ersatz_planen"))
+            i = int(form.get("i")) if str(form.get("i") or "").isdigit() else None
+            if i is not None and i < len(liste):
+                liste[i] = neu
+            else:
+                liste.append(neu)
+            k["fahrzeuge"] = liste
+            konfig.speichern(k)
+            return f"Fahrzeug «{neu['name']}» gespeichert.", "fahrzeuge"
+        if pfad == "fahrzeuge/loeschen":
+            k = konfig.laden()
+            liste = list(k.get("fahrzeuge") or [])
+            i = int(form.get("i") or -1)
+            if 0 <= i < len(liste):
+                weg = liste.pop(i)
+                k["fahrzeuge"] = liste
+                konfig.speichern(k)
+                with db() as v:                                # Wertkonto bleibt, wird als aufgelöst markiert
+                    x = next((x for x in vm.konten(v) if x["name"] == f"Fahrzeug {weg.get('name')}"), None)
+                    if x:
+                        v.execute("UPDATE konten SET aufgeloest = ? WHERE id = ?", (datetime.now().date().isoformat(), x["id"]))
+                        v.commit()
+            return "Fahrzeug entfernt.", "fahrzeuge"
         if pfad == "finanzplan/ziel":
             k = konfig.laden()
             name = str(form.get("name") or "").strip()[:60]

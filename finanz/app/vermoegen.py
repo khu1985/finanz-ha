@@ -9,8 +9,8 @@ from pathlib import Path
 
 ARTEN = {
     "bank": "Bankkonto", "depot": "Wertschriften", "krypto": "Krypto", "saeule3a": "Säule 3a",
-    "vorsorge": "Vorsorge 3b (Police)", "immobilie": "Immobilie", "hypothek": "Hypothek", "kredit": "Kredit",
-    "sonstiges": "Sonstiges",
+    "vorsorge": "Vorsorge 3b (Police)", "immobilie": "Immobilie", "fahrzeug": "Fahrzeug", "hypothek": "Hypothek",
+    "kredit": "Kredit", "sonstiges": "Sonstiges",
 }
 SCHULDEN = {"hypothek", "kredit"}
 # Gebundenes Vorsorgevermögen: zählt zum Nettovermögen, ist aber nicht jederzeit verfügbar (3a bis frühestens 5 Jahre
@@ -19,7 +19,7 @@ GEBUNDEN = {"saeule3a", "vorsorge"}
 # Nicht im freien Vermögen der Pensionsplanung: Immobilie/Hypothek und die Säule 3a – sie kommt über ihr eigenes
 # Modell (Einstellungen → 3a, aus den 3a-Konten nachgeführt) bei der Pensionierung dazu. 3b-Policen laufen
 # typischerweise bis zur Pensionierung und zählen dort mit.
-NICHT_FREI = {"immobilie", "hypothek", "saeule3a"}
+NICHT_FREI = {"immobilie", "hypothek", "saeule3a", "fahrzeug"}
 DREI_A_ANBIETER = ("viac", "frankly", "finpension", "selma 3a", "descartes", "inyova 3a", "yuh 3a")
 
 

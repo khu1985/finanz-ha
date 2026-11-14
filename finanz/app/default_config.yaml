@@ -214,6 +214,7 @@ sensoren:
   praefix: finanz
 
 ziele: []                          # Lebensziele: - {name: Weltreise, betrag: 30000, jahr: 2029, art: wunsch}
+fahrzeuge: []                      # - {name: VW Golf, antrieb: benzin, erstzulassung: 2021-03, kaufpreis: 38000, km_jahr: 12000}
 
 wertschriften:
   ter: {}                          # laufende Fondskosten in % pro ISIN, z. B. {IE00B3RBWM25: 0.22}

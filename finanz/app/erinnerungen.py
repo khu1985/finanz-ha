@@ -153,6 +153,8 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     erg.extend(ki.erinnerungen(k, heute))
     import kinderphasen as kp
     erg.extend(kp.erinnerungen(k, heute))
+    import fahrzeuge as fz
+    erg.extend(fz.erinnerungen(k, heute))
     import immobilie as im
     erg.extend(im.erinnerungen(k, heute))
 

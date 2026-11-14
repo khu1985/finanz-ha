@@ -255,9 +255,11 @@ def nebenaufgaben(k: dict, db) -> None:
 
 def _3a_abgleichen(k: dict, db) -> None:
     import dreia
+    import fahrzeuge
     import konfig
     if dreia.abgleichen(k, db):
         konfig.speichern(k)
+    fahrzeuge.abgleichen(k, db)
 
 
 def _usability(k: dict, db) -> None:

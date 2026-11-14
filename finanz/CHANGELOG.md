@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.46.0 – 2026-11-14
+
+- **Fahrzeuge** (neue Seite unter Familie & Wohnen): pro Auto Wert, Kosten pro Jahr und pro Kilometer (Wertverlust bzw.
+  Leasingrate, Versicherung, Verkehrssteuer – in BL nach Gewicht –, Vignette, Parkplatz, Energie, Unterhalt) mit
+  Vergleich zum TCS-Musterauto und zur Kategorie Mobilität im Budget
+  - Gekaufte Autos erscheinen unter Vermögen als Konto der Art «Fahrzeug» (steuerbares Vermögen, nicht frei verfügbar)
+  - Ersatz als Lebensziel im Finanzplan und unter Sparen & Anlegen; Leasing unter «Teure Schulden» erwähnt
+  - Erinnerungen: MFK, Leasingende, Vignette
+
 ## 0.45.1 – 2026-11-14
 
 - **Einstellungen kürzer:** Sensoren, Import-Ordner, Dokumente neu sichten, YAML und Sichern sind auf dem neuen

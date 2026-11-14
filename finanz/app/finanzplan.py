@@ -186,6 +186,11 @@ def ziele_liste(k: dict, jetzt: int) -> list[dict]:
         if betrag > 0 and jahr >= jetzt:
             erg.append({"name": str(z.get("name") or "Ziel"), "betrag": betrag, "jahr": jahr,
                         "art": "muss" if str(z.get("art")) == "muss" else "wunsch"})
+    try:
+        import fahrzeuge as fz
+        erg += fz.ziele(k, jetzt)                    # Ersatz der Fahrzeuge
+    except Exception:  # noqa: BLE001
+        pass
     return sorted(erg, key=lambda z: z["jahr"])
 
 

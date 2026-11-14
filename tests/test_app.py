@@ -373,3 +373,16 @@ def test_filter_bei_tabellen(server, daten):
                                             "betrag": "1000", "waehrung": "CHF"})
     html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
     assert 'data-filter="1"' in html and "table[data-filter]" in html
+
+
+def test_fahrzeuge_seite(server, daten):
+    assert "Fahrzeug erfassen" in urllib.request.urlopen(f"{server}/fahrzeuge").read().decode()
+    code, _ = _post(f"{server}/fahrzeuge/speichern", {"name": "Muster Kombi", "antrieb": "diesel", "erstzulassung": "2022-05",
+                                                      "kaufpreis": "35'000", "km_jahr": "10000", "ersatz_planen": "1"})
+    f = konfig.laden()["fahrzeuge"][0]
+    assert code == 303 and f["kaufpreis"] == 35000 and f["antrieb"] == "diesel" and f["ersatz_planen"] is True
+    html = urllib.request.urlopen(f"{server}/fahrzeuge").read().decode()
+    assert "Muster Kombi" in html and "Rappen pro km" in html
+    assert "Fahrzeug Muster Kombi" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    _post(f"{server}/fahrzeuge/loeschen", {"i": "0"})
+    assert konfig.laden()["fahrzeuge"] == []

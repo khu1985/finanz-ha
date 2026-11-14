@@ -118,13 +118,22 @@ def rechnen(k: dict, db, heute: date | None = None) -> Plan:
     konten = [x for x in vm.konten(db) if not x.get("aufgeloest")]
     schuld = sum(abs(x["wert"]) for x in konten if x["art"] == "kredit")
     hypo = sum(abs(x["wert"]) for x in konten if x["art"] == "hypothek")
+    try:
+        import fahrzeuge as fzg
+        leasing = [a for a in fzg.alle(k, db, heute) if a.leasing]
+    except Exception:  # noqa: BLE001
+        leasing = []
     j2 = sofort(schuld)
     b = (schuld - j2) / 12
     schritte.append(Schritt(2, "Teure Schulden tilgen", ENTFAELLT if schuld <= 0 else OFFEN,
                             ("Keine Konsumkredite oder Leasing erfasst (Konten der Art «Kredit»)."
                              + (f" Die Hypothek (CHF {_chf(hypo)}) zählt nicht als teure Schuld: Der Zins ist tief und "
                                 "steuerlich abziehbar. Die Amortisation steht unter Schritt 4, ob tilgen oder anlegen "
-                                "unter Wohnen bzw. Szenarien → Hypothekar-Strategie." if hypo else ""))
+                                "unter Wohnen bzw. Szenarien → Hypothekar-Strategie." if hypo else "")
+                             + "".join(f" Leasing {a.name}: CHF {_chf(a.kosten.get('Leasingrate', 0) / 12)} pro Monat"
+                                       + (f" bis {a.leasing_ende:%m.%Y}" if a.leasing_ende else "")
+                                       + " – nicht vorzeitig auflösen (teuer), das nächste Auto aus Erspartem zahlen."
+                                       for a in leasing))
                             if schuld <= 0 else
                             f"Kredite CHF {_chf(schuld)} – Zinsen von 5–10 % schlägt keine Anlage; zuerst tilgen"
                             + (" (aus dem Konto möglich)." if j2 >= schuld else "."),

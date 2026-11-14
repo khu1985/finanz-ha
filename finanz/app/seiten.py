@@ -29,7 +29,8 @@ NAVIGATION = [
     ("Steuern", [("steuern", "Steuern")]),
     ("Zukunft", [("vorsorge", "Vorsorge"), ("finanzplan", "Finanzplan"), ("szenarien", "Szenarien"),
                  ("lebensereignisse", "Lebensereignisse")]),
-    ("Familie & Wohnen", [("kinder", "Kinder"), ("wohnen", "Wohnen"), ("versicherungen", "Versicherungen")]),
+    ("Familie & Wohnen", [("kinder", "Kinder"), ("wohnen", "Wohnen"), ("fahrzeuge", "Fahrzeuge"),
+                          ("versicherungen", "Versicherungen")]),
     ("Absicherung", [("nachlass", "Nachlass"), ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
     ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
 ]
@@ -2625,6 +2626,7 @@ def ziele_karte(k: dict, p) -> str:
         zeilen.append([escape(z["name"]) + (' <small class="leise">(muss)</small>' if z["art"] == "muss" else ""),
                        str(z["jahr"]), chf(z["betrag"]), chf(z["sparrate"]),
                        licht(am.GRUEN) + " aus dem Vermögen gedeckt" if z["gedeckt"] else licht(am.GELB) + " dafür sparen",
+                       '<a href="fahrzeuge">unter Fahrzeuge</a>' if z.get("fahrzeug") else
                        f'<form method="post" action="finanzplan/ziel_loeschen"><input type="hidden" name="i" value="{i}">'
                        '<button class="zweit klein loeschen">Entfernen</button></form>'])
     tab = (tabelle(["Ziel", "Jahr", "Betrag", "Sparrate/Monat", "Deckung", ""], zeilen, zahlen_ab=1, responsiv=True) if zeilen
@@ -2855,6 +2857,107 @@ def sparplan(k: dict, db) -> str:
     teile.append(karte("Produktarten", pa))
     if p.hinweise:
         teile.append(karte("Hinweise", hinweisliste(p.hinweise)))
+    return "".join(teile)
+
+
+FAHRZEUG_FELDER = [
+    ("name", "Name (z. B. VW Golf)", "text"), ("antrieb", "Antrieb", "antrieb"), ("person", "Halter/in", "person"),
+    ("erstzulassung", "Erste Inverkehrsetzung", "month"), ("kaufdatum", "Gekauft am", "date"),
+    ("kaufpreis", "Kaufpreis", "zahl"), ("wert", "Eigener Verkehrswert (leer = Schätzung)", "zahl"),
+    ("wert_datum", "Wert per", "date"), ("km_jahr", "Kilometer pro Jahr", "zahl"),
+    ("verbrauch", "Verbrauch pro 100 km (l bzw. kWh; leer = typisch)", "zahl"),
+    ("gewicht_kg", "Gesamtgewicht kg (Verkehrssteuer BL)", "zahl"), ("verkehrssteuer_jahr", "Verkehrssteuer pro Jahr (leer = Schätzung)", "zahl"),
+    ("versicherung_jahr", "Versicherung pro Jahr (leer = Policen)", "zahl"), ("parkplatz_monat", "Parkplatz/Garage pro Monat", "zahl"),
+    ("finanzierung", "Finanzierung", "finanzierung"), ("leasing_rate", "Leasingrate pro Monat", "zahl"),
+    ("leasing_ende", "Leasing bis", "date"), ("ersatz_jahr", "Ersetzen im Jahr (leer = nach 12 Jahren)", "zahl"),
+    ("ersatz_preis", "Preis des nächsten Autos (leer = Kaufpreis)", "zahl"),
+]
+
+
+def _fahrzeug_form(k: dict, f: dict, i: int | None) -> str:
+    import fahrzeuge as fz
+    personen = [p["name"] for p in k["personen"]]
+    teile = []
+    for feld, text, typ in FAHRZEUG_FELDER:
+        wert = f.get(feld)
+        w = "" if wert in (None, "") else str(wert)
+        if typ == "antrieb":
+            ein = '<select name="antrieb">' + "".join(
+                f'<option value="{a}"{" selected" if w == a else ""}>{t}</option>' for a, t in fz.ANTRIEBE.items()) + "</select>"
+        elif typ == "person":
+            ein = '<select name="person"><option value="">gemeinsam</option>' + "".join(
+                f'<option{" selected" if w == p else ""}>{escape(p)}</option>' for p in personen) + "</select>"
+        elif typ == "finanzierung":
+            ein = '<select name="finanzierung">' + "".join(
+                f'<option value="{a}"{" selected" if (w or "kauf") == a else ""}>{t}</option>'
+                for a, t in (("kauf", "gekauft"), ("leasing", "Leasing"))) + "</select>"
+        else:
+            art = {"month": ' type="month"', "date": ' type="date"', "zahl": ' inputmode="decimal"'}.get(typ, "")
+            ein = f'<input name="{feld}"{art} value="{escape(w)}"{" required" if feld == "name" else ""}>'
+        teile.append(f"<label>{escape(text)}{ein}</label>")
+    plan = f.get("ersatz_planen") is not False
+    teile.append(f'<label class="entfernen"><input type="checkbox" name="ersatz_planen" value="1"{" checked" if plan else ""}>'
+                 'Ersatz im Finanzplan und unter Sparen einplanen</label>')
+    versteckt = f'<input type="hidden" name="i" value="{i}">' if i is not None else ""
+    return (f'<form method="post" action="fahrzeuge/speichern">{versteckt}<div class="felder">{"".join(teile)}</div>'
+            f'<div class="zeile"><button>{"Speichern" if i is not None else "Fahrzeug hinzufügen"}</button></div></form>')
+
+
+def fahrzeuge(k: dict, db) -> str:
+    """Fahrzeuge: Wert, Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz, MFK."""
+    import fahrzeuge as fz
+    liste_ = fz.liste(k)
+    autos = fz.alle(k, db)
+    teile = []
+    if autos:
+        total = sum(a.total for a in autos)
+        budget_mob = None
+        try:
+            import budget as bu
+            a_ = bu.auswerten(k, db)
+            if a_:
+                budget_mob = next((j for n, j, _ in a_.kategorien if n == "Mobilität"), None)
+        except Exception:  # noqa: BLE001
+            pass
+        teile.append('<div class="kpis">' + "".join([
+            kpi(chf(sum(a.wert for a in autos)), "Wert (steuerbares Vermögen)"),
+            kpi(chf(total), "Kosten pro Jahr (gerechnet)"),
+            kpi(chf(total / 12), "pro Monat"),
+            *([kpi(chf(budget_mob), "Mobilität laut Budget (inkl. ÖV)")] if budget_mob else []),
+        ]) + "</div>")
+    for a, f in zip(autos, liste_):
+        zeilen = [[escape(n), chf(v)] for n, v in a.kosten.items()]
+        zeilen.append(["<b>Total pro Jahr</b>", f"<b>{chf(a.total)}</b>"])
+        zeilen.append([f"TCS-Musterauto bei {chf(a.km_jahr)} km (Kaufpreis {chf(fz.TCS['kaufpreis'])})",
+                       f'<span class="leise">{chf(a.tcs_jahr)}</span>'])
+        info = [f"{fz.ANTRIEBE[a.antrieb]}" + (" · Leasing" if a.leasing else ""),
+                f"Wert CHF {chf(a.wert)} ({escape(a.wert_quelle)})" if not a.leasing else escape(a.wert_quelle)]
+        if a.rp_km:
+            info.append(f"{a.rp_km} Rappen pro km (TCS-Musterauto {fz.TCS['rp_km']})")
+        if a.mfk:
+            info.append(f"nächste MFK {a.mfk:%m.%Y}")
+        if a.leasing_ende:
+            info.append(f"Leasing bis {a.leasing_ende:%m.%Y}")
+        if a.ersatz_jahr:
+            info.append(f"Ersatz {a.ersatz_jahr}: rund CHF {chf(a.ersatz_betrag)} nach Abzug des Restwerts"
+                        + ("" if f.get("ersatz_planen") is not False else " (nicht eingeplant)"))
+        loeschen = (f'<form method="post" action="fahrzeuge/loeschen" class="zeile"><input type="hidden" name="i" value="{a.i}">'
+                    '<button class="zweit klein loeschen" onclick="return confirm(\'Fahrzeug entfernen?\')">Entfernen'
+                    '</button></form>')
+        teile.append(karte(a.name, '<p class="leise">' + " · ".join(info) + "</p>"
+                           + tabelle(["Kosten", "CHF/Jahr"], zeilen) + hinweisliste(a.hinweise)
+                           + f"<details><summary>Angaben bearbeiten</summary>{_fahrzeug_form(k, f, a.i)}{loeschen}</details>"))
+    teile.append(karte("Fahrzeug erfassen", (f"<details{'' if autos else ' open'}><summary>Neues Fahrzeug</summary>"
+                                              + _fahrzeug_form(k, {}, None) + "</details>")))
+    links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in fz.QUELLEN)
+    teile.append(karte("Annahmen und Quellen", (
+        '<p class="leise">Verkehrswert ohne eigene Angabe: −25 % im ersten Jahr, dann −15 % pro Jahr. Gekaufte Fahrzeuge '
+        'erscheinen unter Vermögen als Konto der Art «Fahrzeug» (Motorfahrzeuge gehören zum steuerbaren Vermögen, Hausrat '
+        'nicht); Leasingfahrzeuge nicht. Energie: Benzin CHF 1.71/l, Strom 28 Rp./kWh (TCS 2026); Unterhalt und Reifen '
+        '7 Rp./km, elektrisch 5 Rp./km (Schätzung); Verkehrssteuer BL CHF 0.29 pro kg Gesamtgewicht, sonst Schätzung 500; '
+        'Vignette 40. Versicherung aus den Motorfahrzeug-Policen unter Versicherungen, sonst eigene Angabe. Der Ersatz '
+        'erscheint als Lebensziel im Finanzplan und unter Sparen &amp; Anlegen. MFK: nach 5, dann 3, danach alle 2 Jahre.'
+        f'</p><ul>{links}</ul>')))
     return "".join(teile)
 
 

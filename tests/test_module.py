@@ -2137,3 +2137,33 @@ def test_sparkonto_bezugslimite(k):
     p = sp.rechnen(k, db, date(2026, 11, 13))
     assert p.ueberschuss == 110_000 - reserve and p.gesperrt == p.ueberschuss - min(p.ueberschuss, 35_000)
     assert any("erst nach Kündigung (3 Monate)" in h for h in p.hinweise)
+
+
+# ---------------------------------------------------------------- Fahrzeuge
+
+def test_fahrzeuge_wert_kosten_ersatz(k):
+    import fahrzeuge as fz
+    import finanzplan as fp
+    db = vm.verbinden(":memory:")
+    k["haushalt"]["kanton"] = "BL"
+    k["fahrzeuge"] = [
+        {"name": "Muster Kombi", "antrieb": "benzin", "erstzulassung": "2021-03", "kaufdatum": "2021-03-15",
+         "kaufpreis": 38000, "km_jahr": 12000, "gewicht_kg": 1800, "parkplatz_monat": 100, "versicherung_jahr": 1200},
+        {"name": "Muster E", "antrieb": "elektro", "finanzierung": "leasing", "leasing_rate": 650,
+         "leasing_ende": "2027-04-30", "km_jahr": 15000}]
+    heute = date(2026, 11, 14)
+    a, b = fz.alle(k, db, heute)
+    assert 12000 < a.wert < 15000 and a.kosten["Verkehrssteuer"] == round(1800 * fz.BL_STEUER_KG)
+    assert a.kosten["Energie"] == round(12000 / 100 * 6.5 * 1.71) and a.kosten["Versicherung"] == 1200
+    assert a.mfk == date(2029, 3, 1) and a.ersatz_jahr == 2033 and a.rp_km == round(a.total / 12000 * 100)
+    assert b.wert == 0 and b.kosten["Leasingrate"] == 7800 and b.leasing_ende == date(2027, 4, 30)
+    assert any("keine Versicherung" in h for h in b.hinweise)
+    assert [z["name"] for z in fp.ziele_liste(k, 2026)] == ["Ersatz Muster Kombi"]
+    k["fahrzeuge"][0]["ersatz_planen"] = False
+    assert fp.ziele_liste(k, 2026) == []
+    # Wert als Konto der Art «Fahrzeug»: zählt zum Nettovermögen, nicht zum freien Vermögen
+    assert fz.abgleichen(k, db, heute) and not fz.abgleichen(k, db, heute)
+    nv = vm.nettovermoegen(db)
+    assert nv["total"] == a.wert and nv["frei"] == 0 and nv["verfuegbar"] == 0
+    assert fz.mfk_naechste(date(2015, 6, 1), date(2026, 11, 14)) == date(2027, 6, 1)    # 2020, 2023, 2025, 2027 …
+    assert any(e.titel == "Leasingende Muster E" for e in fz.erinnerungen(k, date(2027, 1, 10)))
