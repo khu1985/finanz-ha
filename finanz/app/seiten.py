@@ -34,12 +34,14 @@ NAVIGATION = [
     ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
 ]
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
-MENU_ALIAS = {"steuererklaerung": "steuern", "protokoll": "einstellungen", "aenderungen": "einstellungen"}
+MENU_ALIAS = {"steuererklaerung": "steuern", "protokoll": "einstellungen", "aenderungen": "einstellungen",
+              "daten": "einstellungen"}
 OFFEN_IMMER = {"Überblick"}
 # Seiten, die als Reiter einer Seite erscheinen
 REITER = [
     [("steuern", "Planung und Dokumente"), ("steuererklaerung", "Steuererklärung")],
-    [("einstellungen", "Einstellungen"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
+    [("einstellungen", "Einstellungen"), ("daten", "Daten & Import"), ("protokoll", "Protokoll"),
+     ("aenderungen", "Änderungen")],
 ]
 
 
@@ -167,7 +169,7 @@ border-radius:12px;padding:10px 12px;text-decoration:none;color:var(--text)}
 .ampel-kachel.rot{border-color:color-mix(in srgb,#d93b30 45%,var(--linie))}
 .ampel-kachel.gelb{border-color:color-mix(in srgb,#e6a817 45%,var(--linie))}
 .ampel-legende{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--leise);margin:-8px 0 14px}
-.inhalt{min-width:0}main{max-width:1100px;margin:0 auto;padding:16px}
+.inhalt{min-width:0}main{max-width:1100px;margin:0 auto;padding:16px;overflow-wrap:break-word}
 h1{font-size:22px;margin:4px 0 16px}h2{font-size:17px;margin:0 0 12px}
 .raster{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
 .karte{background:var(--karte);border:1px solid var(--linie);border-radius:12px;padding:16px;margin-bottom:16px}
@@ -628,7 +630,6 @@ def uebersicht(k: dict, db) -> str:
         kpi(f"{luecke.ersatzquote:.0f} %", "Ersatzquote zum heutigen Lohn", "", am.schwelle(luecke.ersatzquote, 70, 60)),
         kpi(chf(steuer["total_inkl"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %"),
         kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else ""),
-        kpi(chf(vi.praemien(vi.alle(db))["total"]), "Versicherungsprämien (CHF/Jahr)"),
     ])
     verl = vm.verlauf(db)
     return statuszeile(k, db) + ampel_karte(k, db) + erinnerungen_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
@@ -1334,7 +1335,7 @@ def einstellungen(k: dict, db) -> str:
     teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN, "steuern"),
               gruppe("Wohnen", FELDER_WOHNEN, "wohnen"),
               gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI, "ki"),
-              gruppe("Erinnerungen", FELDER_ERINNERUNG, "erinnerungen"), gruppe("Sensoren", FELDER_SENSOREN, "sensoren")]
+              gruppe("Erinnerungen", FELDER_ERINNERUNG, "erinnerungen")]
     # Leiste unten, sobald etwas geändert ist; Warnung beim Verlassen ohne Speichern
     leiste = ('<div class="speicherleiste" id="speicherleiste" hidden><span>Ungespeicherte Änderungen</span>'
               '<button>Speichern</button></div>')
@@ -1347,16 +1348,21 @@ addEventListener('beforeunload',function(e){if(geaendert){e.preventDefault();e.r
     # «Namen aufteilen» hat ein eigenes Formular – darf nicht im grossen Formular stecken
     formular = (kpis + trennen + offen + '<form method="post" action="einstellungen" id="einstellungen-form">' + "".join(teile)
                 + leiste + "</form>" + skript)
-    text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
-    experte = f"""<details><summary>Alles als YAML bearbeiten (Kinder, PK-Einkäufe, Kennzahlen, Personen hinzufügen/entfernen)</summary>
-<form method="post" action="einstellungen/yaml"><textarea name="yaml" spellcheck="false" aria-label="Konfiguration als YAML">{text}</textarea>
-<div class="zeile"><button>YAML speichern</button></div></form></details>"""
-    datei = """<form method="post" action="einstellungen/import" enctype="multipart/form-data">
+    weiter = ('<p class="leise">Sensoren, Import-Ordner, Dokumente neu sichten, YAML und Sicherung: Reiter '
+              '<a href="daten">Daten &amp; Import</a>.</p>')
+    return formular + weiter
+
+
+def _sichern_html() -> str:
+    return """<form method="post" action="einstellungen/import" enctype="multipart/form-data">
 <div class="zeile"><a class="knopf zweit" href="export">finanz.yaml herunterladen</a>
 <input type="file" name="datei" accept=".yaml,.yml" required style="max-width:300px"><button>YAML importieren</button></div>
 <p class="leise">Die vorherige Fassung wird als finanz.yaml.bak gesichert. Alle Daten liegen im
 Konfigurationsordner der App und sind im Home-Assistant-Backup enthalten.</p></form>"""
-    importieren = f"""<form method="post" action="einstellungen/importordner">
+
+
+def _importordner_html() -> str:
+    return f"""<form method="post" action="einstellungen/importordner">
 <p>Persönliche Daten gehören nicht ins GitHub-Repository. Kopiere sie stattdessen (z. B. mit Samba, dem File editor oder
 Studio Code Server) in den Ordner <code>/addon_configs/…_finanz/import/</code> – in der App ist das <code>/config/import/</code>.
 Die App liest den Ordner beim Start und mit diesem Knopf ein und verschiebt erledigte Dateien nach <code>import/erledigt/</code>.</p>
@@ -1366,8 +1372,22 @@ E-Banking (auch camt.053 als <code>bank*.xml</code>, <code>camt*.zip</code>) · 
 <li><code>versicherung*.pdf</code> oder <code>police*.pdf</code> – Verträge · <code>steuer*.pdf</code> oder
 <code>veranlagung*.pdf</code> – Steuerdokumente · <code>steuerauszug*.xml</code> oder <code>.pdf</code> – E-Steuerauszug der Bank · übrige <code>*.pdf</code> – Vorsorgedokumente</li></ul>
 <div class="zeile"><button>Import-Ordner jetzt einlesen</button></div></form>"""
-    return (formular + sensoren_karte(k) + sichtung_karte(db) + karte("Import-Ordner", importieren) + karte("Experte", experte)
-            + karte("Sichern und übertragen", datei))
+
+
+def daten(k: dict, db) -> str:
+    """Reiter «Daten & Import» der Einstellungen: Sensoren, Import-Ordner, Dokumente neu sichten, YAML, Sichern."""
+    import konfig as _k  # noqa: F401
+    text = escape(yaml.safe_dump(k, allow_unicode=True, sort_keys=False))
+    sensoren_felder = ('<form method="post" action="einstellungen" id="b-sensoren">'
+                       + karte("Sensoren in Home Assistant", '<div class="felder">'
+                               + "".join(_feld(k, p, t) for p, t in FELDER_SENSOREN) + "</div>"
+                               '<div class="zeile"><button name="bereich" value="sensoren">Speichern</button></div>')
+                       + "</form>")
+    experte = f"""<details><summary>Alles als YAML bearbeiten (Kinder, PK-Einkäufe, Kennzahlen, Personen hinzufügen/entfernen)</summary>
+<form method="post" action="einstellungen/yaml"><textarea name="yaml" spellcheck="false" aria-label="Konfiguration als YAML">{text}</textarea>
+<div class="zeile"><button>YAML speichern</button></div></form></details>"""
+    return (sensoren_felder + sensoren_karte(k) + sichtung_karte(db) + karte("Import-Ordner", _importordner_html())
+            + karte("Experte", experte) + karte("Sichern und übertragen", _sichern_html()))
 
 
 # ---------------------------------------------------------------- Versicherungen
@@ -3707,7 +3727,7 @@ def sichtung_karte(db) -> str:
     else:
         info = '<p class="leise">Noch nicht gesichtet.</p>'
     form = ('<form method="post" action="dokumente/neu-sichten" data-status="Dokumente werden neu gelesen …">'
-            '<input type="hidden" name="zurueck" value="einstellungen">'
+            '<input type="hidden" name="zurueck" value="daten">'
             '<label class="entfernen"><input type="checkbox" name="alle" value="1">auch von Hand oder per KI bearbeitete '
             'Dokumente (überschreibt deren Korrekturen)</label>'
             '<div class="zeile"><button>Jetzt neu sichten</button></div></form>')
@@ -3932,7 +3952,7 @@ def usability_karte(db) -> str:
         dar = "<h3>Darstellung (alle Seiten)</h3>" + hinweisliste([f"{p.titel} – {p.detail}" for p in e.darstellung])
     erkl = ('<p class="leise">Die App zeigt alle Seiten mit deinen Daten an und prüft sie automatisch: lange Seiten, '
             'Tabellen, die auf dem Handy seitlich scrollen oder sehr lang werden, Formulare, Felder ohne Beschriftung, '
-            'viele Kennzahlen, Diagramme ohne Beschreibung, überlange Wörter, Ladezeit und den Farbkontrast in Hell und '
+            'viele Kennzahlen, Diagramme ohne Beschreibung, Ladezeit und den Farbkontrast in Hell und '
             f'Dunkel. Pro Seite 100 Punkte minus Abzüge. Geprüft {escape(e.zeit.replace("T", " "))} (Version '
             f'{escape(e.version)}); läuft einmal am Tag im Hintergrund. Die Punkte stehen auch oben in der Liste '
             '(Bereich «Usability») und im Text zum Weitergeben.</p>')

@@ -2065,13 +2065,16 @@ def test_usability_html_pruefung():
     import usability as us
     breit = "<table><thead><tr>" + "<th>x</th>" * 7 + "</tr></thead><tbody><tr>" + "<td>1</td>" * 7 + "</tr></tbody></table>"
     karten = '<section class="karte"></section>' * 11
-    formular = "<form>" + '<input name="a">' * 31 + "<button>OK</button></form>"
-    html = (breit + karten + formular + '<div class="kpi"></div>' * 8 + '<svg viewBox="0 0 1 1"></svg>'
-            + "<p>" + "x" * 50 + "</p>")
+    formular = "<form>" + '<input name="a">' * 51 + "<button>OK</button></form>"
+    html = (breit + karten + formular + '<div class="kpis">' + '<div class="kpi"></div>' * 8 + "</div>"
+            + '<svg viewBox="0 0 1 1"></svg>')
     titel = {p.titel for p in us.pruefen_html(html)}
     assert {"Tabelle scrollt auf dem Handy seitlich", "Seite sehr lang", "Sehr grosses Formular",
-            "Eingabefelder ohne Beschriftung", "Viele Kennzahlen auf einmal", "Diagramme ohne Beschreibung",
-            "Sehr lange Wörter laufen auf dem Handy über"} <= titel
+            "Eingabefelder ohne Beschriftung", "Viele Kennzahlen auf einmal", "Diagramme ohne Beschreibung"} <= titel
+    # zugeklappt zählt nicht, Druckseiten dürfen lang sein, Kennzahlen pro Reihe
+    assert us.pruefen_html("<details><summary>x</summary>" + breit + "</details>") == []
+    assert us.pruefen_html(karten, druckseite=True) == []
+    assert us.pruefen_html(('<div class="kpis">' + '<div class="kpi"></div>' * 4 + "</div>") * 3) == []
     gut = ('<table class="responsiv"><thead><tr><th>a</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>'
            '<form><label>Name<input name="n"></label><button>OK</button></form>')
     assert us.pruefen_html(gut) == []

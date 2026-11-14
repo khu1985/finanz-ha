@@ -67,7 +67,7 @@ personen:
   | Zukunft | Vorsorge, Finanzplan, Szenarien, Lebensereignisse |
   | Familie & Wohnen | Kinder, Wohnen, Versicherungen |
   | Absicherung | Nachlass, Verfügungen, Notfallordner |
-  | App | Dokumente, Einstellungen (mit den Reitern Protokoll und Änderungen), Vorschläge |
+  | App | Dokumente, Einstellungen (mit den Reitern Daten & Import, Protokoll und Änderungen), Vorschläge |
 
   Auf grossen Bildschirmen als Seitenleiste, auf dem Handy hinter dem Knopf «Menü» – dort sind die Gruppen durch
   Linien getrennt, die Seiten eingerückt und die Gruppen aufklappbar: offen ist der Überblick und die Gruppe der aktuellen Seite, ein Klick auf den Gruppentitel öffnet bzw.
@@ -111,7 +111,7 @@ personen:
 | Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
 | Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
-| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
+| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen; Reiter «Daten & Import»: Sensoren, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
 | Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; Usability-Score pro Seite; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
@@ -974,11 +974,13 @@ prüft sie automatisch. Pro Seite 100 Punkte minus Abzüge:
 | Seite sehr lang (mehr als 8 Karten) bzw. sehr viel Text | 2 pro Karte (höchstens 12) bzw. 4–8 |
 | Tabelle mit mehr als 5 Spalten ohne Kartenansicht (scrollt auf dem Handy seitlich) | 6 |
 | Sehr lange Kartenliste auf dem Handy (mehr als 240 Zellen) bzw. Tabelle mit mehr als 40 Zeilen | 6 bzw. 4 |
-| Sehr grosses Formular (30 Felder und mehr mit einem Knopf) | 4 |
+| Sehr grosses Formular (50 Felder und mehr mit einem Knopf) | 4 |
 | Eingabefelder ohne Beschriftung | 2 pro Feld (höchstens 10) |
-| Mehr als 6 Kennzahlen, Diagramme ohne Beschreibung, Wörter über 40 Zeichen | 4 bzw. 2 pro Fall |
+| Mehr als 6 Kennzahlen in einer Reihe, Diagramme ohne Beschreibung | 4 bzw. 2 pro Fall |
 | Ladezeit über 1 / 2 / 5 Sekunden (auch aus den Leistungsmessungen) | 5 / 10 / 20 |
 | Seite lässt sich nicht anzeigen | 40 |
+
+Zugeklappte Teile zählen nicht; Notfallordner und Jahresbericht sind zum Drucken gedacht und dürfen lang sein.
 
 Der Gesamtscore ist das Mittel aller Seiten minus Abzüge für die **Darstellung**: Kontrast der Farben (Text, grauer
 Text, Links, Ampelfarben, Text auf Knöpfen) in Hell und Dunkel nach WCAG, mindestens 4.5:1. Die gefundenen Punkte

@@ -4,7 +4,8 @@ Pro Seite startet der Score bei 100 und verliert Punkte für:
 - lange Seiten (viele Karten, sehr viel Text)
 - Tabellen, die auf dem Handy seitlich scrollen (mehr als 5 Spalten ohne Kartenansicht) oder sehr lange Kartenlisten
 - grosse Formulare mit nur einem «Speichern» am Ende, Eingabefelder ohne Beschriftung
-- viele Kennzahlen auf einmal, Diagramme ohne Beschreibung, sehr lange Wörter (laufen auf dem Handy über)
+- mehr als 6 Kennzahlen in einer Reihe, Diagramme ohne Beschreibung
+Zugeklappte Teile (<details>) zählen nicht; Druckseiten (Notfallordner, Jahresbericht) dürfen lang sein.
 - langsame Ladezeit (Messungen unter «Leistung»), Fehler beim Anzeigen
 Dazu kommt die Darstellung für alle Seiten: Kontrast der Farben in Hell und Dunkel nach WCAG (mindestens 4.5:1 für
 Text). Das Ergebnis (Score gesamt und pro Seite, Vorschläge) wird pro Version gespeichert; die Prüfung läuft einmal am
@@ -22,6 +23,7 @@ from html.parser import HTMLParser
 
 LOG = logging.getLogger("finanz")
 UEBERSPRINGEN = {"vorschlaege", "aenderungen"}   # die Seite mit dem Ergebnis; das Changelog ist absichtlich lang
+DRUCKSEITEN = {"notfall", "bericht"}             # zum Ausdrucken gedacht – Länge gewollt
 KONTRAST_MIN = 4.5
 
 
@@ -67,16 +69,29 @@ class _Leser(HTMLParser):
         self._label = 0
         self._ignorieren = 0
         self._zeile = 0
+        self._zu = 0                    # Tiefe in zugeklappten <details> – deren Inhalt sieht man erst auf Wunsch
+        self._details: list[bool] = []
+        self.kpi_gruppen: list[int] = []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         klasse = a.get("class") or ""
+        if tag == "details":
+            zu = "open" not in a
+            self._details.append(zu)
+            self._zu += zu
+        if self._zu:
+            return
         if tag in ("script", "style", "textarea", "code", "pre"):
             self._ignorieren += 1
         if tag == "section" and "karte" in klasse.split():
             self.karten += 1
+        if tag == "div" and "kpis" in klasse.split():
+            self.kpi_gruppen.append(0)
         if tag == "div" and "kpi" in klasse.split():
             self.kpis += 1
+            if self.kpi_gruppen:
+                self.kpi_gruppen[-1] += 1
         if tag == "svg" and not (a.get("aria-label") or a.get("role") == "img" and a.get("aria-label")):
             self.svg_ohne += 1
         if tag == "table":
@@ -106,6 +121,11 @@ class _Leser(HTMLParser):
             self._form["knoepfe"] += 1
 
     def handle_endtag(self, tag):
+        if tag == "details" and self._details:
+            self._zu -= self._details.pop()
+            return
+        if self._zu:
+            return
         if tag in ("script", "style", "textarea", "code", "pre") and self._ignorieren:
             self._ignorieren -= 1
         if tag == "table" and self._tab:
@@ -117,20 +137,21 @@ class _Leser(HTMLParser):
             self._label -= 1
 
     def handle_data(self, data):
-        if not self._ignorieren and data.strip():
+        if not self._ignorieren and not self._zu and data.strip():
             self.text.append(data)
 
 
-def pruefen_html(html: str) -> list[Problem]:
-    """Probleme einer gerenderten Seite (nur der Inhalt, ohne Menü)."""
+def pruefen_html(html: str, druckseite: bool = False) -> list[Problem]:
+    """Probleme einer gerenderten Seite (nur der Inhalt, ohne Menü; zugeklappte Teile zählen nicht).
+    `druckseite`: zum Ausdrucken gedacht (Notfallordner, Jahresbericht) – Länge ist dort gewollt."""
     lz = _Leser()
     lz.feed(html)
     p: list[Problem] = []
-    if lz.karten > 8:
+    if lz.karten > 8 and not druckseite:
         p.append(Problem("Seite sehr lang", f"{lz.karten} Karten – seltenes in Reiter oder aufklappbare Teile verschieben",
                          min(12, 2 * (lz.karten - 8))))
     zeichen = sum(len(t) for t in lz.text)
-    if zeichen > 15000:
+    if zeichen > 15000 and not druckseite:
         p.append(Problem("Sehr viel Text", f"rund {zeichen // 1000}k Zeichen – Erklärungen kürzen oder aufklappbar machen",
                          8 if zeichen > 25000 else 4))
     for t in lz.tabellen:
@@ -145,20 +166,17 @@ def pruefen_html(html: str) -> list[Problem]:
         elif t["zeilen"] > 40:
             p.append(Problem("Lange Tabelle", f"{t['zeilen']} Zeilen – Filter oder «mehr anzeigen»", 4))
     for f in lz.formulare:      # ab 8 Feldern blendet die Seite bei Änderungen eine Speicher-Leiste ein
-        if f["felder"] >= 30 and f["knoepfe"] <= 1:
+        if f["felder"] >= 50 and f["knoepfe"] <= 1:
             p.append(Problem("Sehr grosses Formular", f"{f['felder']} Felder mit einem Knopf – in Abschnitte teilen", 4))
     if lz.ohne_label:
         p.append(Problem("Eingabefelder ohne Beschriftung", f"{lz.ohne_label} Feld(er) ohne Label",
                          min(10, 2 * lz.ohne_label)))
-    if lz.kpis > 6:
-        p.append(Problem("Viele Kennzahlen auf einmal", f"{lz.kpis} Kennzahlen – die wichtigsten 4 zeigen", 4))
+    gross = max(lz.kpi_gruppen, default=0)
+    if gross > 6:
+        p.append(Problem("Viele Kennzahlen auf einmal", f"{gross} Kennzahlen in einer Reihe – die wichtigsten 4–6 zeigen", 4))
     if lz.svg_ohne:
         p.append(Problem("Diagramme ohne Beschreibung", f"{lz.svg_ohne} Diagramm(e) ohne aria-label",
                          min(6, 2 * lz.svg_ohne)))
-    lang = {w for t in lz.text for w in t.split() if len(w) > 40 and not w.startswith(("http", "/"))}
-    if lang:
-        p.append(Problem("Sehr lange Wörter laufen auf dem Handy über",
-                         f"{len(lang)} Wort/Wörter über 40 Zeichen (z. B. Dateinamen)", min(6, 2 * len(lang))))
     return p
 
 
@@ -234,7 +252,7 @@ def pruefen(k: dict, db, version: str = "") -> Ergebnis:
         t0 = time.perf_counter()
         try:
             html = funktion(k, db, {}) if pfad in server.MIT_ABFRAGE else funktion(k, db)
-            probleme = pruefen_html(html)
+            probleme = pruefen_html(html, pfad in DRUCKSEITEN)
         except Exception as e:  # noqa: BLE001
             LOG.warning("Usability: Seite %s nicht anzeigbar: %s", pfad or "übersicht", e)
             probleme = [Problem("Seite lässt sich nicht anzeigen", type(e).__name__, 40)]

@@ -51,6 +51,7 @@ SEITEN = {
     "nachlass/fragebogen": ("Fragebögen zum Nachlass", seiten.nachlass_fragebogen),
     "verfuegungen": ("Verfügungen", seiten.verfuegungen),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
+    "daten": ("Daten & Import", seiten.daten),
     "aenderungen": ("Änderungen", seiten.aenderungen),
 }
 VORLAGE_CSV = "Datum;Konto;Saldo;Art;Person\n31.12.2025;Sparkonto;25000.00;bank;\n31.12.2025;Depot;80000;depot;Person 1\n"
@@ -332,7 +333,8 @@ class Handler(BaseHTTPRequestHandler):
             LOG.info("Einstellungen gespeichert")
             bereich = form.get("bereich") or ""
             bereich = bereich.decode() if isinstance(bereich, bytes) else str(bereich)
-            return meldung, ("einstellungen#b-" + bereich if bereich.isalnum() else "einstellungen")
+            seite_ = "daten" if bereich == "sensoren" else "einstellungen"
+            return meldung, (f"{seite_}#b-" + bereich if bereich.isalnum() else "einstellungen")
         if pfad == "einstellungen/namen_trennen":
             k = konfig.laden()
             teile_ = []
@@ -351,7 +353,7 @@ class Handler(BaseHTTPRequestHandler):
             konfig.speichern(k)
             konfig.laden()  # prüft, ob sich alles mischen lässt
             LOG.info("Konfiguration als YAML gespeichert")
-            return "Konfiguration gespeichert (vorherige Fassung als finanz.yaml.bak)."
+            return "Konfiguration gespeichert (vorherige Fassung als finanz.yaml.bak).", "daten"
         if pfad == "vermoegen/3a_anlegen":
             import dreia
             with db() as v:
@@ -493,7 +495,7 @@ class Handler(BaseHTTPRequestHandler):
             st_ = sensoren.status()
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
-            return f"{len(werte)} Sensoren geschrieben.", "einstellungen"
+            return f"{len(werte)} Sensoren geschrieben.", "daten"
         if pfad == "wohnen/liegenschaft":
             k = konfig.laden()
             c = k["wohnen"].setdefault("liegenschaft", {})
@@ -582,7 +584,7 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "dokumente/neu-sichten":
             import sichtung
             ziel = form.get("zurueck") if form.get("zurueck") in ("versicherungen", "vorsorge", "steuern", "einstellungen",
-                                                               "dokumente") \
+                                                               "dokumente", "daten") \
                 else "einstellungen"
             if not sichtung.im_hintergrund(konfig.laden, db, konfig.datenordner(), "Knopf", alle=bool(form.get("alle"))):
                 s = sichtung.STAND
@@ -741,7 +743,7 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "einstellungen/importordner":
             with db() as v:
                 meldungen = importordner.einlesen(konfig.datenordner(), v)
-            return " · ".join(meldungen) if meldungen else "Der Import-Ordner ist leer."
+            return (" · ".join(meldungen) if meldungen else "Der Import-Ordner ist leer."), "daten"
         if pfad.startswith("versicherungen"):
             return self._versicherungen(pfad, form)
         if pfad.startswith("vorsorge"):

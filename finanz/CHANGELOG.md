@@ -1,5 +1,15 @@
 # Änderungen
 
+## 0.45.1 – 2026-11-14
+
+- **Einstellungen kürzer:** Sensoren, Import-Ordner, Dokumente neu sichten, YAML und Sichern sind auf dem neuen
+  Reiter «Daten & Import»
+- Lange Wörter (z. B. Dateinamen) brechen überall um statt über den Rand zu laufen
+- Übersicht: sechs statt sieben Kennzahlen (die Versicherungsprämien stehen unter Versicherungen)
+- **Usability-Prüfung genauer:** zugeklappte Teile zählen nicht (z. B. die Franchise-Tabellen der Krankenkasse und die
+  Jahrestabelle im Finanzplan); Notfallordner und Jahresbericht dürfen als Druckseiten lang sein; Kennzahlen werden pro
+  Reihe gezählt; «sehr grosses Formular» erst ab 50 Feldern (grössere Formulare haben die Speicher-Leiste)
+
 ## 0.45.0 – 2026-11-14
 
 - **Filter über Tabellen:** Konten, Dokumente, Versicherungen, Vorsorgedokumente, Wertschriften und Finanzplan (Jahr
