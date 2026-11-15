@@ -36,6 +36,8 @@ personen:
       beitragsjahre_bisher: 18   # laut individuellem Konto (IK-Auszug)
       fehlende_jahre: 0
       einkommen_durchschnitt: 0  # 0 = aus Lohn schätzen
+      rente_monat_ausweis: 0     # Altersrente/Monat laut Rentenvorausberechnung (mit 65, ohne 13.); 0 = schätzen
+      iv_rente_monat: 0          # Invalidenrente/Monat laut Vorausberechnung; 0 = schätzen
     pk:
       altersguthaben: 180000
       stand: "2026-01-01"

@@ -90,6 +90,7 @@ class AhvErgebnis:
     rente_monat_plafoniert: float = 0.0
     rente_jahr: float = 0.0
     alter: int = 65
+    quelle: str = "geschätzt"    # geschätzt | Vorausberechnung
 
 
 def ahv(k: dict, jetzt: int | None = None) -> list[AhvErgebnis]:
@@ -112,13 +113,19 @@ def ahv(k: dict, jetzt: int | None = None) -> list[AhvErgebnis]:
         e_mit = e + (ej * gutschrift / jahre if jahre else 0)
         voll = ahv_vollrente_monat(e_mit, kz)
         rente = voll * jahre / kz["ahv_vollbeitragsjahre"]
+        quelle = "geschätzt"
+        ausweis = float(p["ahv"].get("rente_monat_ausweis") or 0)
+        if ausweis:                          # Rentenvorausberechnung der Ausgleichskasse (mit 65, ohne 13. Rente)
+            rente, quelle = ausweis, "Vorausberechnung"
+            voll = ausweis * kz["ahv_vollbeitragsjahre"] / jahre if jahre else ausweis
         alter = int(p.get("pensionierung_alter", 65))
         if alter < 65:
             rente *= max(0.0, 1 - kz["ahv_vorbezug_kuerzung"] / 100 * (65 - alter))
         elif alter > 65:
             zuschlag = {1: 5.2, 2: 10.8, 3: 17.1, 4: 24.0, 5: 31.5}[min(alter - 65, 5)]
             rente *= 1 + zuschlag / 100
-        erg.append(AhvErgebnis(p["name"], jahre, round(e_mit), round(ej, 1), voll, round(rente, 2), alter=alter))
+        erg.append(AhvErgebnis(p["name"], jahre, round(e_mit), round(ej, 1), voll, round(rente, 2), alter=alter,
+                               quelle=quelle))
     # Plafonierung Ehepaar: Summe höchstens 150 % der Maximalrente
     plafond = kz["ahv_max"] * kz["ahv_plafond_ehepaar"] / 100
     summe = sum(r.rente_monat for r in erg[:2])

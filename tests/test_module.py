@@ -2401,3 +2401,21 @@ def test_pk_einkauf_varianten(k):
     assert eins.iv_praemie > 0 and eins.total == eins.netto + eins.iv_praemie
     assert any("Arbeitgeber" in h for h in v.hinweise)
     assert pe.plan_von(k, db, p["name"], "gleich3") == {2026: 33300, 2027: 33300, 2028: 33400}
+
+
+def test_ahv_rente_laut_vorausberechnung(k):
+    import versicherungen as vi
+    import vorsorge as vs
+    p = k["personen"][0]
+    p["pensionierung_alter"] = 65
+    geschaetzt = vs.ahv(k)[0]
+    assert geschaetzt.quelle == "geschätzt"
+    p["ahv"]["rente_monat_ausweis"] = 2100
+    a = vs.ahv(k)[0]
+    assert a.quelle == "Vorausberechnung" and a.rente_monat == 2100
+    iv = vi.risiko(k, vs.ahv(k))[0].iv_ahv
+    assert iv == round(2100 * 12)
+    p["ahv"]["iv_rente_monat"] = 2000
+    assert vi.risiko(k, vs.ahv(k))[0].iv_ahv == 24000
+    p["pensionierung_alter"] = 64                        # Vorbezug kürzt auch den Wert laut Vorausberechnung
+    assert vs.ahv(k)[0].rente_monat == round(2100 * (1 - k["kennzahlen"]["ahv_vorbezug_kuerzung"] / 100), 2)

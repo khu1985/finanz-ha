@@ -1329,7 +1329,10 @@ Beitragsjahre ÷ 44. Beitragsjahre = bisherige + künftige bis 65 (bei Frühpens
 bezahlt). Verheiratete: Einkommen beider gemittelt (Splitting), Erziehungsgutschriften (3 × jährliche Minimalrente
 pro Jahr mit Kind unter 16) hälftig; Summe höchstens 150 % der Maximalrente. Vorbezug −6,8 % pro Jahr, Aufschub
 nach Tabelle. 13 Monatsrenten pro Jahr. IV-Rente ≈ Altersrente ohne 13. Rente, Kinderrenten 40 %, Witwen-/Witwerrente
-80 %.
+80 %. Mit einer Rentenvorausberechnung der Ausgleichskasse pro Person unter Einstellungen `ahv.rente_monat_ausweis`
+(Altersrente pro Monat mit 65, ohne 13. Rente) bzw. `ahv.iv_rente_monat` (Invalidenrente pro Monat) eintragen – oder
+das PDF hochladen, die App übernimmt die Altersrente. Dann rechnet die App damit statt mit der Schätzung (Vorbezug,
+Aufschub und Plafond Ehepaar gelten weiter); auf der Seite Vorsorge steht «laut Vorausberechnung».
 
 **Pensionskasse.** Jährlich: Guthaben × (1 + Zins) + Sparbeitrag + Einkauf. Sparbeitrag laut Ausweis, sonst
 BVG-Minimum (koordinierter Lohn × Altersgutschrift 7/10/15/18 %). Mit Ausweis-Prognose: Alterskapital und

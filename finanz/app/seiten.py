@@ -694,13 +694,17 @@ def vorsorge(k: dict, db) -> str:
     luecke = vs.pensionsluecke(k, vm.nettovermoegen(db)["frei"], jetzt)
 
     zeilen_ahv = [[escape(r.name), r.alter, r.beitragsjahre, r.erziehungsjahre, chf(r.einkommen),
-                   chf(r.rente_monat), chf(r.rente_monat_plafoniert), chf(r.rente_jahr)] for r in ahv]
+                   chf(r.rente_monat) + ('<br><small class="leise">laut Vorausberechnung</small>'
+                                         if r.quelle == "Vorausberechnung" else ""),
+                   chf(r.rente_monat_plafoniert), chf(r.rente_jahr)] for r in ahv]
     monate = 13 if kz.get("ahv_13_rente") else 12
     ahv_html = tabelle(["Person", "Alter", "Beitragsjahre", "Erz.-Jahre", "Ø Einkommen", "Rente/Mt.",
                         "plafoniert", f"pro Jahr (×{monate})"], zeilen_ahv) + (
         f'<p class="leise">Rentenskala 44, Einkommenssplitting und Erziehungsgutschriften vereinfacht. '
         f'Plafond Ehepaar: CHF {chf(kz["ahv_max"] * kz["ahv_plafond_ehepaar"] / 100)}/Monat. '
-        f'Den genauen Wert liefert der IK-Auszug bzw. die Rentenvorausberechnung der Ausgleichskasse.</p>')
+        f'Den genauen Wert liefert die Rentenvorausberechnung der Ausgleichskasse (kostenlos) – unter '
+        f'<a href="einstellungen">Einstellungen</a> als «AHV-Altersrente/Monat laut Vorausberechnung» eintragen '
+        f'oder das PDF unter Dokumente hochladen; dann rechnet die App damit statt mit der Schätzung.</p>')
 
     zeilen_pk = []
     for p, e in zip(k["personen"], pks):
@@ -1250,6 +1254,8 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "sparen_monat", "Sparpotenzial/Monat"), (p + "eigengut", "Eigengut (vor der Ehe, Erbschaften)"),
         (p + "ahv.beitragsjahre_bisher", "AHV-Beitragsjahre bisher"), (p + "ahv.fehlende_jahre", "AHV fehlende Jahre"),
         (p + "ahv.einkommen_durchschnitt", "Ø AHV-Einkommen (0 = Lohn)"),
+        (p + "ahv.rente_monat_ausweis", "AHV-Altersrente/Monat laut Vorausberechnung (0 = schätzen)"),
+        (p + "ahv.iv_rente_monat", "AHV-Invalidenrente/Monat laut Vorausberechnung (0 = schätzen)"),
         (p + "pk.altersguthaben", "PK-Altersguthaben"), (p + "pk.stand", "Stand Ausweis (JJJJ-MM-TT)"),
         (p + "pk.guthaben_heirat", "PK-Guthaben bei Heirat"),
         (p + "pk.sparbeitrag_jahr", "PK-Sparbeitrag/Jahr (0 = BVG-Minimum)"), (p + "pk.zins", "PK-Zins %"),
@@ -1791,7 +1797,8 @@ def risiko_karte(k: dict, vertraege: list[dict] | None = None) -> str:
     tod = tabelle(["Tod von …", "Renten Hinterbliebene/Jahr", "Todesfallkapital", "Richtwert Kapital"], zeilen)
     hinweise = [x for r in rs for x in r.hinweise]
     return karte("Risiko Invalidität und Tod", iv + tod + hinweisliste(sorted(set(hinweise), key=hinweise.index))
-                 + '<p class="leise">IV-Rente ≈ Altersrente der AHV ohne 13. Rente, Kinderrenten 40 %. PK-Leistungen aus den '
+                 + '<p class="leise">IV-Rente ≈ Altersrente der AHV ohne 13. Rente (bzw. «AHV-Invalidenrente/Monat laut '
+                   'Vorausberechnung» aus den Einstellungen), Kinderrenten 40 %. PK-Leistungen aus den '
                    'Einstellungen bzw. dem Vorsorgeausweis; «Extern» aus den Einstellungen oder – wenn dort 0 – aus den '
                    'Invaliditätsrenten der hochgeladenen Policen (laufend, der Person zugeordnet).</p>')
 

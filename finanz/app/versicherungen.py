@@ -949,6 +949,9 @@ def risiko(k: dict, ahv_ergebnisse, vertraege: list[dict] | None = None) -> list
         kinder = ki.anzahl(k, person=p["name"])    # eigene und gemeinsame Kinder bis 18 bzw. in Ausbildung
         # IV-Rente ≈ Altersrente ohne Vorbezug/Plafond, ohne 13. Rente (12 Monate); Kinderrente 40 %
         iv = a.vollrente * a.beitragsjahre / k["kennzahlen"]["ahv_vollbeitragsjahre"] * 12
+        iv_ausweis = float((p.get("ahv") or {}).get("iv_rente_monat") or 0)
+        if iv_ausweis:                               # Invalidenrente laut Vorausberechnung der Ausgleichskasse
+            iv = iv_ausweis * 12
         iv_kind = iv * 0.4 * kinder
         iv_pk = float(r.get("iv_rente_pk", 0))
         iv_kind_pk = float(r.get("iv_kinderrente_pk", 0)) * kinder

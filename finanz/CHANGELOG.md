@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.53.0 – 2026-11-15
+
+- **AHV-Rente laut Rentenvorausberechnung:** neue Felder pro Person (Einstellungen) für die Altersrente und die
+  Invalidenrente pro Monat. Ausgefüllt rechnet die App damit statt mit der Schätzung – für Altersrente,
+  Pensionslücke, Finanzplan und Risiko Invalidität und Tod. Die Altersrente aus einem hochgeladenen IK-Auszug bzw.
+  einer Rentenvorausberechnung wird übernommen statt nur angezeigt.
+
 ## 0.52.0 – 2026-11-15
 
 - **PK-Einkauf: Varianten im Vergleich** (Szenarien): pro Person kein Einkauf, geplant, alles dieses Jahr,

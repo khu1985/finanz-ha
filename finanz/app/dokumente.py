@@ -252,7 +252,7 @@ ZIELE = {
     "todesfall_3b": ("Todesfallleistung → Todesfallkapital Policen (ersetzt)", "risiko.todesfallkapital_extern"),
     "beitragsjahre": ("AHV-Beitragsjahre bisher", "ahv.beitragsjahre_bisher"),
     "einkommen_durchschnitt": ("Ø AHV-Einkommen", "ahv.einkommen_durchschnitt"),
-    "ahv_rente_monat": ("AHV-Rente pro Monat (nur Info)", ""),
+    "ahv_rente_monat": ("AHV-Altersrente pro Monat laut Vorausberechnung", "ahv.rente_monat_ausweis"),
 }
 
 
