@@ -1,6 +1,6 @@
 """Versicherungen, Vorsorgedokumente, Risiko, Konkubinat, Berater und Import-Ordner (erfundene Daten)."""
 import copy
-from datetime import date
+from datetime import date, timedelta
 import re
 
 import pytest
@@ -2419,3 +2419,41 @@ def test_ahv_rente_laut_vorausberechnung(k):
     assert vi.risiko(k, vs.ahv(k))[0].iv_ahv == 24000
     p["pensionierung_alter"] = 64                        # Vorbezug kürzt auch den Wert laut Vorausberechnung
     assert vs.ahv(k)[0].rente_monat == round(2100 * (1 - k["kennzahlen"]["ahv_vorbezug_kuerzung"] / 100), 2)
+
+
+def test_ux_score(k):
+    import ux
+    db = vm.verbinden(":memory:")
+    heute = date.today()
+    ux.tabellen(db)
+    # Verhalten: Aufrufe über 5 Wochen, zwei Seiten, ein Formular mit Fehler
+    for w in range(5):
+        tag = (heute - timedelta(days=7 * w)).isoformat()
+        db.execute("INSERT INTO ux_ereignisse VALUES (?, 'aufruf', 'vermoegen')", (tag + "T10:00:00",))
+        db.execute("INSERT INTO ux_ereignisse VALUES (?, 'aufruf', 'liquiditaet')", (tag + "T10:01:00",))
+    for a in ("ok", "ok", "fehler", "fehler"):
+        db.execute("INSERT INTO ux_ereignisse VALUES (?, ?, 'steuerzahlung')", (heute.isoformat() + "T11:00:00", a))
+    v = ux.verhalten(k, db, heute)
+    assert v.wochen_aktiv == 5 and v.formulare == 4 and v.eingabefehler == 2
+    assert "Vermögen" not in v.ungenutzt and "Budget" not in v.ungenutzt        # Reiter zählt für die Hauptseite
+    assert v.teile["Formulare ohne Fehler"] == 0.5 and v.score is not None
+    e = ux.berechnen(k, db, heute)
+    assert e.teile["befragung"] is None and e.umfrage_faellig and e.score == v.score   # ohne Befragung und Usability
+    assert any("Eingabefehler" in t for t, _, _ in e.hinweise)
+    # Befragung
+    with pytest.raises(ValueError):
+        ux.umfrage_speichern(db, {"u0": 1})
+    antworten = {f"u{i}": 2 for i in range(8)} | {"vertrauen": 4, "nutzen": 5}
+    antworten["u3"] = -1
+    ux.umfrage_speichern(db, antworten, heute)
+    b = ux.befragung(db, heute)
+    assert b.pragmatisch == 1.25 and b.hedonisch == 2 and b.tiefste == "verwirrend – übersichtlich"
+    assert b.score == round(((1.25 + 3) / 6 + 5 / 6 + 3 / 4 + 1) / 4 * 100)
+    e = ux.berechnen(k, db, heute)
+    assert not e.umfrage_faellig and e.score == round((b.score * 0.4 + v.score * 0.4) / 0.8)
+    ux.verlauf_sichern(k, db, heute)
+    assert ux.verlauf(db)[0][1] == e.score
+    # Aufzeichnen und Sichern
+    ux.erfassen("aufruf", "kinder/sparen")
+    ux.sichern(db)
+    assert db.execute("SELECT COUNT(*) FROM ux_ereignisse WHERE seite = 'kinder'").fetchone()[0] == 1

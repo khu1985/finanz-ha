@@ -293,6 +293,10 @@ def hintergrund(laden, verbinden, intervall: int = 900) -> threading.Thread:
                         schreiben(k, db)
                     le.sichern(db)
                     _usability(k, db)
+                    import ux
+                    ux.einstellen(k)
+                    ux.sichern(db)
+                    ux.verlauf_sichern(k, db)
             except Exception as e:  # noqa: BLE001
                 LOG.warning("Sensoren: %s", e)
             _ausloeser.wait(intervall)

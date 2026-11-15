@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.54.0 – 2026-11-15
+
+- **UX-Score** unter Vorschläge: Kurzbefragung alle 90 Tage (UEQ-S mit 8 Gegensatzpaaren für Bedienung und Erleben,
+  dazu Vertrauen in die Zahlen und Nutzen für Entscheide), Verhalten der letzten 90 Tage (Wochen mit Nutzung,
+  geöffnete Seiten, Formulare ohne Eingabefehler, Aktualität von Saldi, PK-Ausweis und Erinnerungen) und der
+  automatische Usability-Score – gewichtet 40/40/20, mit Verlauf, Hinweisen (Bereich «UX») und Erinnerung zur
+  Befragung. Aufgezeichnet werden nur Seitennamen und Eingabefehler, lokal; abschaltbar mit `ux.aufzeichnen: false`.
+
 ## 0.53.0 – 2026-11-15
 
 - **AHV-Rente laut Rentenvorausberechnung:** neue Felder pro Person (Einstellungen) für die Altersrente und die

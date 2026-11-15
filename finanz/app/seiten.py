@@ -189,6 +189,12 @@ td.z,th.z{text-align:right}th{color:var(--leise);font-weight:600;font-size:13px}
 .ziel{stroke:var(--schlecht);stroke-dasharray:5 4;stroke-width:1.5}.ziel-text{fill:var(--schlecht)}
 fieldset.kind{border:1px solid var(--linie);border-radius:10px;padding:10px 14px 12px;margin:0 0 14px}
 fieldset.kind legend{font-weight:600;padding:0 6px}
+.ueq{border-bottom:1px solid var(--linie);padding:8px 0;display:grid;grid-template-columns:1fr repeat(7,auto) 1fr;align-items:center;gap:4px}
+.ueq.ueq5{grid-template-columns:1fr repeat(5,auto) 1fr}.ueq-frage{margin:12px 0 0;font-weight:600}
+.ueq>span{font-size:14px}.ueq>span:first-child{text-align:right}
+.ueq label{display:flex;flex-direction:column;align-items:center;margin:0;min-width:32px;cursor:pointer}.ueq label i{font-style:normal;font-size:11px;color:var(--leise)}
+.ueq input{width:20px;height:20px;margin:0}
+@media(max-width:600px){.ueq{grid-template-columns:repeat(7,1fr)}.ueq.ueq5{grid-template-columns:repeat(5,1fr)}.ueq>span{grid-column:1/-1;text-align:left!important}.ueq>span:last-child{text-align:right!important}}
 label.entfernen{display:inline-flex;flex-direction:row;align-items:center;gap:8px;margin-top:8px;font-size:14px;color:var(--leise)}
 label.entfernen input{width:auto;margin:0}
 .legende{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--leise);margin-top:6px}
@@ -4286,7 +4292,7 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
                          'abgehakt. Bei Dokumenten erkennt sie das, sobald die Version deine Korrekturen selbst trifft; '
                          'deine Werte bleiben dabei unverändert.</p></details>')
     return (kpis + karte("Woher die Vorschläge kommen", intro) + teil_liste + teil_text + teil_idee + teil_erledigt
-            + usability_karte(db) + leistung_karte(db) + teil_weg)
+            + ux_karte(k, db) + usability_karte(db) + leistung_karte(db) + teil_weg)
 
 
 def usability_karte(db) -> str:
@@ -4806,3 +4812,66 @@ Kasse die Rente aus dem projizierten Altersguthaben (wie das BVG-Minimum), steig
         'externen IV-Versicherung, die wegen der höheren PK-Rente gekürzt werden könnten (nur der Teil, den der Einkauf '
         'zusätzlich möglich macht). Total = Netto + IV-Prämie. Nicht eingerechnet: höhere Rendite, die das Geld in Aktien '
         'brächte, und dass es bis zur Pensionierung gebunden ist (Vorbezug Wohneigentum 3 Jahre gesperrt).</p>')) + "</div>"
+
+
+def ux_karte(k: dict, db) -> str:
+    """UX-Score: Befragung (UEQ-S), Verhalten und technische Usability, mit Verlauf, Hinweisen und Kurzbefragung."""
+    import ux
+    ux.sichern(db)
+    e = ux.berechnen(k, db)
+    v = e.verhalten
+
+    def farbe(x):
+        return am.GRAU if x is None else am.GRUEN if x >= 80 else am.GELB if x >= 60 else am.ROT
+
+    def wert(x):
+        return "–" if x is None else f"{x}/100"
+    kpis = '<div class="kpis">' + "".join([
+        kpi(wert(e.score), "UX-Score", "", farbe(e.score)),
+        kpi(wert(e.teile["befragung"]), "Befragung (40 %)" + (" – fällig" if e.umfrage_faellig else ""), "",
+            farbe(e.teile["befragung"])),
+        kpi(wert(e.teile["verhalten"]), "Verhalten (40 %)", "", farbe(e.teile["verhalten"])),
+        kpi(wert(e.usability), "Usability (20 %)", "", farbe(e.usability)),
+    ]) + "</div>"
+    zeilen = []
+    for n, x in v.teile.items():
+        zeilen.append([escape(n), f"{round(x * 100)}"])
+    if e.befragung:
+        b = e.befragung
+        zeilen += [["Bedienung (UEQ pragmatisch, −3 bis +3)", f"{b.pragmatisch:+.1f} {ux.bewertung_ueq(b.pragmatisch)}"],
+                   ["Erleben (UEQ hedonisch, −3 bis +3)", f"{b.hedonisch:+.1f} {ux.bewertung_ueq(b.hedonisch)}"],
+                   ["Vertrauen in die Zahlen (1–5)", str(b.vertrauen)], ["Hilft bei Entscheiden (1–5)", str(b.nutzen)]]
+    details = tabelle(["Teil", "Wert"], zeilen, zahlen_ab=1) if zeilen else ""
+    fakten = (f'<p class="leise">Aufgezeichnet seit {v.tage} Tag(en) (Fenster {ux.FENSTER} Tage): Nutzung in '
+              f'{v.wochen_aktiv} von {v.wochen} Wochen, {v.seiten_genutzt} von {v.seiten_total} Seiten geöffnet, '
+              f'{v.formulare} Formulare ({v.eingabefehler} mit Eingabefehler)'
+              + (f", Saldi {v.saldi_tage} Tage alt" if v.saldi_tage is not None else "")
+              + (f", {v.erinnerungen_ueberfaellig} Erinnerungen über 30 Tage offen" if v.erinnerungen_ueberfaellig else "")
+              + ".</p>")
+    hinw = hinweisliste([f"{t} – {d}" for t, d, _ in e.hinweise]) if e.hinweise else ""
+    verlauf = ux.verlauf(db)
+    diagramm = dg.linie({"UX-Score": [(d[2:], s) for d, s, _ in verlauf]}, "UX-Score") if len(verlauf) >= 2 else ""
+    paare = "".join(
+        f'<div class="ueq" role="radiogroup" aria-label="{escape(neg)} oder {escape(pos)}"><span>{escape(neg)}</span>'
+        + "".join(f'<label title="{w:+d}"><input type="radio" name="u{i}" value="{w}" required><i>{w:+d}</i></label>'
+                  for w in range(-3, 4)) + f"<span>{escape(pos)}</span></div>"
+        for i, (neg, pos, _) in enumerate(ux.UEQ_S))
+    eigene = "".join(
+        f'<p class="ueq-frage">{escape(text)}</p><div class="ueq ueq5" role="radiogroup" aria-label="{escape(text)}">'
+        '<span>trifft nicht zu</span>'
+        + "".join(f'<label><input type="radio" name="{s}" value="{w}" required><i>{w}</i></label>' for w in range(1, 6))
+        + "<span>trifft zu</span></div>" for s, text in ux.EIGENE)
+    form = (f'<details{" open" if e.umfrage_faellig else ""}><summary>Kurzbefragung'
+            + (" – jetzt fällig" if e.umfrage_faellig else f" – zuletzt {e.befragung.datum}" if e.befragung else "")
+            + '</summary><form method="post" action="vorschlaege/ux_umfrage"><p class="leise">Wie erlebst du die App? '
+              'Spontan pro Zeile ankreuzen – es gibt kein richtig oder falsch.</p>' + paare + eigene
+            + '<label class="breit">Was fehlt oder stört? (freiwillig)<input name="notiz"></label>'
+              '<div class="zeile"><button>Absenden</button></div></form></details>')
+    links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in ux.QUELLEN)
+    erkl = ('<details><summary>UX und Usability – der Unterschied</summary><p>Usability: Kann man die App gut '
+            'bedienen? Der Usability-Score prüft das automatisch an jeder Seite. UX: Wie wird die App als Ganzes erlebt '
+            '– bringt sie etwas, vertraut man ihr, bleiben die Daten gepflegt? Dafür zählen die Kurzbefragung (UEQ-S) '
+            'und das Verhalten der letzten 90 Tage. Aufgezeichnet werden nur Seitennamen und ob ein Formular einen '
+            'Eingabefehler hatte, nur in der eigenen Datenbank; ausschalten mit <code>ux.aufzeichnen: false</code>.</p>'
+            f'<ul class="hinweise">{links}</ul></details>')
+    return f'<div id="ux">{karte("UX", kpis + hinw + details + fakten + diagramm + form + erkl)}</div>'

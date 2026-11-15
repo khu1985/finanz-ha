@@ -488,3 +488,15 @@ def test_pk_varianten_seite(server, daten):
                                                             "iv_praemie_extern": "1200"})
     p = konfig.laden()["personen"][0]
     assert code == 303 and p["pk"]["iv_basis"] == "guthaben" and p["risiko"]["iv_praemie_extern"] == 1200
+
+
+def test_ux_seite(server, daten):
+    urllib.request.urlopen(f"{server}/vermoegen").read()
+    html = urllib.request.urlopen(f"{server}/vorschlaege").read().decode()
+    assert 'id="ux"' in html and "UX-Score" in html and 'name="u7"' in html
+    form = {f"u{i}": "1" for i in range(8)} | {"vertrauen": "4", "nutzen": "4"}
+    code, ziel = _post(f"{server}/vorschlaege/ux_umfrage", form)
+    assert code == 303 and "#ux" in ziel
+    code, _ = _post(f"{server}/vorschlaege/ux_umfrage", {"u0": "1"})          # unvollständig
+    html = urllib.request.urlopen(f"{server}/vorschlaege").read().decode()
+    assert "Bedienung (UEQ pragmatisch" in html

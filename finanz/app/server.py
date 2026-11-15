@@ -181,6 +181,9 @@ class Handler(BaseHTTPRequestHandler):
             pfad = self._pfad()[0]
             if pfad not in ("status", "gesundheit") and "." not in pfad.rsplit("/", 1)[-1]:
                 le.erfassen("seite", le.seitenname(pfad), (time.perf_counter() - t) * 1000)
+                if pfad.split("/")[0] in SEITEN or pfad == "":
+                    import ux
+                    ux.erfassen("aufruf", pfad)
 
     def _get(self):
         pfad, q = self._pfad()
@@ -307,6 +310,8 @@ class Handler(BaseHTTPRequestHandler):
             if isinstance(meldung, tuple):
                 meldung, ziel = meldung
             LOG.info("%s: %s", pfad, meldung)
+            import ux
+            ux.erfassen("ok", pfad)
             import sensoren
             sensoren.aktualisieren()
             if self.headers.get("X-Einzeln"):
@@ -315,6 +320,8 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001
             # ValueError = Eingabe fehlt oder ist ungültig (Meldung an die Person) – kein Fehler der App
             (LOG.info if isinstance(e, ValueError) else LOG.warning)("Aktion %s fehlgeschlagen: %s", pfad, e)
+            import ux
+            ux.erfassen("fehler", pfad)
             if self.headers.get("X-Einzeln"):
                 return self._json({"meldung": str(e), "fehler": True, "ziel": ziel})
             self.weiter(ziel, str(e), fehler=True)
@@ -562,6 +569,23 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Nichts ausgewählt.")
                 n = vw.loeschen(v, konfig.datenordner(), auswahl)
             return f"{n} Eintrag/Einträge gelöscht.", ziel
+        if pfad == "vorschlaege/ux_umfrage":
+            import ux
+            antworten = {}
+            for i in range(len(ux.UEQ_S)):
+                t = str(form.get(f"u{i}") or "").strip()
+                if t:
+                    antworten[f"u{i}"] = int(t)
+            for s_, _ in ux.EIGENE:
+                t = str(form.get(s_) or "").strip()
+                if t:
+                    antworten[s_] = int(t)
+            antworten["notiz"] = str(form.get("notiz") or "").strip()
+            with db() as v:
+                ux.umfrage_speichern(v, antworten)
+                ux.sichern(v)
+                e = ux.berechnen(konfig.laden(), v)
+            return f"Danke! UX-Score jetzt {e.score}/100.", "vorschlaege#ux"
         if pfad == "vorschlaege/usability":
             import usability as us
             with db() as v:

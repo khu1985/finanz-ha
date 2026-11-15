@@ -118,7 +118,7 @@ personen:
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen; Reiter «Daten & Import»: Sensoren, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
-| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; Usability-Score pro Seite; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
+| Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; UX-Score (Kurzbefragung, Verhalten, Usability); Usability-Score pro Seite; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
 | Änderungen | Changelog der installierten Version |
 
@@ -1149,6 +1149,21 @@ stehen in der Liste (Bereich «Usability») und mit dem Score pro Seite im Text 
 Seitennamen und Mengen. Formulare ab 8 Feldern blenden bei Änderungen unten eine Leiste «Ungespeicherte Änderungen –
 Speichern» ein.
 
+**UX:** Usability fragt, ob man die App gut bedienen kann (automatisch geprüft). UX fragt, wie die App als Ganzes
+erlebt wird – Nutzen, Vertrauen, ob die Daten gepflegt bleiben. Der UX-Score (0–100) setzt sich zusammen aus:
+
+| Teil | Gewicht | Grundlage |
+|---|---|---|
+| Befragung | 40 % | Kurzbefragung alle 90 Tage: UEQ-S (8 Gegensatzpaare von −3 bis +3: Bedienung = pragmatische, Erleben = hedonische Qualität; über +0,8 positiv, unter −0,8 negativ) plus «Ich vertraue den Zahlen» und «Die App hilft bei Entscheiden» (1–5) |
+| Verhalten | 40 % | letzte 90 Tage, angelehnt an das HEART-Modell: Wochen mit Nutzung, Anteil geöffneter Seiten, Formulare ohne Eingabefehler, Aktualität der Daten (Saldi der Bankkonten bis 35 Tage, PK-Ausweis bis 15 Monate, Erinnerungen nicht länger als 30 Tage offen) |
+| Usability | 20 % | automatischer Score der aktuellen Version |
+
+Fehlt ein Teil, zählen die übrigen im gleichen Verhältnis. Die Karte zeigt die Teilwerte, den Verlauf und Hinweise
+(z. B. Seiten, die nie geöffnet werden, Formulare mit vielen Eingabefehlern, veraltete Saldi, tiefes Vertrauen); sie
+stehen auch in der Liste (Bereich «UX»). Aufgezeichnet werden nur Seitenname, Zeit und ob ein Formular einen
+Eingabefehler hatte – in der eigenen Datenbank, Einträge älter als 400 Tage werden gelöscht. Ausschalten mit
+`ux.aufzeichnen: false`. Wenn die Befragung fällig ist, kommt eine Erinnerung.
+
 **Weitergeben** geschieht nie automatisch: Den Text unten kannst du prüfen, kopieren, als `.md` herunterladen oder
 mit «Als GitHub-Issue öffnen» auf GitHub vorbefüllt öffnen (abgeschickt wird erst mit «Submit»; Issues sind
 öffentlich). Was du nicht weitergeben willst, blendest du aus; Weitergegebenes markierst du als gemeldet – beides
@@ -1305,6 +1320,7 @@ oder **Einstellungen → Experte**.
 | `ziele` | Lebensziele: `name`, `betrag`, `jahr`, `art` (muss/wunsch); der Ersatz von Fahrzeugen kommt automatisch dazu |
 | `finanzplan` | `bis_alter` (Standard 95), `kinderkosten` (`false` = Kinderkosten nicht einrechnen) |
 | `fahrzeuge` | pro Auto Name, Antrieb, Halter/in, Erstzulassung, Kauf, Wert, Kilometer, Verbrauch, Gewicht, Kosten, Leasing, Ersatz (siehe [Fahrzeuge](#fahrzeuge)) |
+| `ux` | `aufzeichnen` (Standard `true`): Seitenaufrufe und Formulare für den UX-Score lokal aufzeichnen (siehe [Vorschläge](#vorschläge-für-die-weiterentwicklung)) |
 | `steuerzahlung` | Bezug der Steuern: `faellig_kanton`, `faellig_gemeinde` (MM-TT), `verguetungszins`, `verzugszins`, `raten` (einmal/monatlich), `gemeinde_separat`, `gemeinde_anteil` (siehe [Steuern bezahlen](#steuern-bezahlen)) |
 | `solar` | Solaranlage und vZEV: Investition, Förderung, Komponenten, Stromkosten, Präfix der vZEV-Sensoren, Jahreswerte von Hand; `werte_vzev` füllt die App (siehe [Solar und vZEV](#solaranlage-und-vzev)) |
 | `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |

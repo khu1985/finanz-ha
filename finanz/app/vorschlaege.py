@@ -395,7 +395,7 @@ def tabellen(db) -> None:
 
 
 # Bereiche, deren Vorschläge dauerhaft aus den Daten folgen (Protokollmeldungen beginnen mit jeder Version neu)
-VERLAUF_BEREICHE = ("Dokumente erkennen", "Kantonale Werte", "Einstellungen", "Leistung", "Usability")
+VERLAUF_BEREICHE = ("Dokumente erkennen", "Kantonale Werte", "Einstellungen", "Leistung", "Usability", "UX")
 
 
 def _verlauf_tabelle(db) -> None:
@@ -529,8 +529,14 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
             _zaehlen(erg, ("Usability", titel, detail), gewicht)
     except Exception:  # noqa: BLE001
         LOG.exception("Vorschläge: Usability nicht ausgewertet")
+    try:
+        import ux
+        for titel, detail, gewicht in ux.vorschlaege(k, db):
+            _zaehlen(erg, ("UX", titel, detail), gewicht)
+    except Exception:  # noqa: BLE001
+        LOG.exception("Vorschläge: UX nicht ausgewertet")
     private = _private_texte(k, db)
-    liste = [Vorschlag(bereich, titel, detail, anzahl, gewicht) if bereich in ("Leistung", "Usability")  # nur Seiten, Mengen
+    liste = [Vorschlag(bereich, titel, detail, anzahl, gewicht) if bereich in ("Leistung", "Usability", "UX")  # nur Seiten, Mengen
              else Vorschlag(bereich, anonymisieren(titel, private), anonymisieren(detail, private), anzahl, gewicht)
              for (bereich, titel, detail), (anzahl, gewicht) in erg.items()]
     try:
@@ -543,7 +549,7 @@ def sammeln(k: dict, db, daten: Path) -> list[Vorschlag]:
         t = anonymisieren(i["text"].strip(), private)
         eigene[t] = eigene.get(t, 0) + 1
     liste += [Vorschlag("Eigene Ideen", t, "", n, MITTEL) for t, n in eigene.items()]
-    reihenfolge = ["Dokumente erkennen", "Fehler und Warnungen", "Usability", "Leistung", "Kantonale Werte", "Einstellungen",
+    reihenfolge = ["Dokumente erkennen", "Fehler und Warnungen", "UX", "Usability", "Leistung", "Kantonale Werte", "Einstellungen",
                    "Eigene Ideen"]
     liste.sort(key=lambda v: (-v.gewicht, reihenfolge.index(v.bereich) if v.bereich in reihenfolge else 9, -v.anzahl,
                               v.titel))
