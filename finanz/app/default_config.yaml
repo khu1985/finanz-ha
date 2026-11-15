@@ -175,6 +175,9 @@ wohnen:
   nicht_antasten: [krypto, immobilie, hypothek, kredit, vorsorge]   # Vermögensarten, die nicht in die Amortisation fliessen
   verpfaendet: []                  # indirekte Amortisation, z. B. [{name: 3a Mobiliar P1, guthaben: 40000, beitrag_monat: 625, rendite: 1.0}]
   steuer_bezug_verpfaendet: 0      # geschätzte Steuer beim Bezug der verpfändeten Vorsorge
+  verpfaendet_aufloesen: faelligkeit   # faelligkeit = bei Fälligkeit der Hypothek amortisieren, pension = erst im Alter
+  vergleich_zins: 0                # Amortisationsvergleich: Hypothekarzins % (0 = hypothek_zins)
+  vergleich_ertrag: 0              # Amortisationsvergleich: Anlageertrag % (0 = konservative Rendite)
   liegenschaft:                    # Wert und Erneuerung (Seite Wohnen)
     art: haus                      # haus | wohnung (Stockwerkeigentum)
     baujahr: 0

@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.59.0 – 2026-11-15
+
+- **Amortisation bei Fälligkeit: Höhe im Vergleich** (Seite Wohnen): Tabelle mit direkter Amortisation in Schritten,
+  total mit der verpfändeten 3a/3b, Resthypothek, Zinsen, Steuerersparnis Zinsabzug, Netto-Zinskosten,
+  Restliquidität, Ertrag vor und nach Steuern, Vorteil gegenüber «keine direkte Amortisation» und Belehnung.
+  Hypothekarzins und Anlageertrag frei wählbar mit «Aktualisieren». Konkubinat: Liquidität und Vorsorge pro Person,
+  Hinweis auf die höchste gleich hohe Amortisation beider Personen.
+- **Verpfändete 3a/3b werden bei der Fälligkeit der Hypothek aufgelöst** (neu `wohnen.verpfaendet_aufloesen`,
+  Standard «faelligkeit»; «pension» wie bisher): Die Amortisationsstrategie rechnet sie in allen Varianten bei der
+  Fälligkeit ein (nach der Steuer beim Bezug, nicht aus der Liquidität).
+
 ## 0.58.1 – 2026-11-15
 
 - **Amortisationsstrategie mit Erklärungen («i»):** an den Kennzahlen (wie gerechnet, aus welchen Einstellungen mit

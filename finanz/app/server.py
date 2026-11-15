@@ -515,6 +515,16 @@ class Handler(BaseHTTPRequestHandler):
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
             return f"{len(werte)} Sensoren geschrieben.", "daten"
+        if pfad == "wohnen/amortisationsvergleich":
+            k = konfig.laden()
+            for feld, schl in (("zins", "vergleich_zins"), ("ertrag", "vergleich_ertrag")):
+                roh = str(form.get(feld) or "").strip().replace(",", ".").rstrip("%").strip()
+                wert = float(roh) if roh else 0.0
+                if not 0 <= wert <= 20:
+                    raise ValueError("Zins bzw. Ertrag zwischen 0 und 20 % angeben.")
+                k["wohnen"][schl] = wert
+            konfig.speichern(k)
+            return "Tabelle aktualisiert.", "wohnen#amortisationstabelle"
         if pfad == "wohnen/liegenschaft":
             k = konfig.laden()
             c = k["wohnen"].setdefault("liegenschaft", {})

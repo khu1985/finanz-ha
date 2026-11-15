@@ -172,6 +172,8 @@ details.woher>div p{margin:0 0 6px}details.woher ul.hinweise{margin:0 0 6px;padd
 .kpi details.woher b,.kpi details.woher strong{display:inline;font-size:inherit;font-weight:600;margin:0}
 .kpi details.woher span,.kpi details.woher small{display:inline;font-size:12px;margin:0}
 .kpis .kpi:has(details.woher[open]){grid-column:1/-1}
+.vergleich-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}.vergleich-form .felder{display:flex;gap:12px;margin:0}
+.vergleich-form .felder label{width:150px}.vergleich-form .zeile{margin:0}
 .erklaer-zeile{margin:10px 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .erklaer-zeile>details.woher{margin:0}.erklaer-zeile>details.woher[open]{flex-basis:100%}td details.woher{margin-top:4px}
 .ampeln{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin-bottom:16px}
@@ -991,7 +993,8 @@ def wohnen(k: dict, db) -> str:
     a = br.amortisation(k, db)
     amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a)) if a else ""
     return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
-        "Liegenschaft in der Steuererklärung", emw) + "</div>" + je_person + amort + amortisation_strategie_karte(k, db) \
+        "Liegenschaft in der Steuererklärung", emw) + "</div>" + je_person + amort + amortisation_vergleich_karte(k, db) \
+        + amortisation_strategie_karte(k, db) \
         + liegenschaft_karten(k, db)
 
 
@@ -1018,6 +1021,71 @@ AMORTISATION_VARIANTEN = {
               "Amortisation verwendet. Direkt amortisiert wird nur, was nötig ist, damit die Hypothek im Alter "
               "tragbar bleibt."),
 }
+
+
+def amortisation_vergleich_karte(k: dict, db) -> str:
+    """Direkte Amortisation bei Fälligkeit in Schritten, mit wählbarem Hypothekarzins und Anlageertrag."""
+    import amortisation as ams
+    try:
+        v = ams.vergleich(k, db)
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("finanz").warning("Amortisationsvergleich: %s", e)
+        return ""
+    if not v:
+        return ""
+    jahr = v.faellig.year
+    beste = max((z for z in v.zeilen if not z.ueber_person), key=lambda z: z.vorteil, default=None)
+    zeilen = []
+    for z in v.zeilen:
+        marke = ""
+        if beste is not None and z is beste and z.vorteil > 0:
+            marke = ' <span class="chip gut">vorne</span>'
+        if z.ueber_person:
+            marke += f' <span class="chip">über Liquidität {escape(z.ueber_person)}</span>'
+        vorteil = "–" if z is v.zeilen[0] else (f'<span class="{"gut" if z.vorteil >= 0 else "schlecht"}">'
+                                                f'{"+" if z.vorteil >= 0 else "−"}{chf(abs(z.vorteil))}</span>')
+        zeilen.append([f"<span>{chf(z.direkt)}{marke}</span>", chf(z.total), chf(z.rest), chf(z.zinsen),
+                       chf(z.steuerersparnis), chf(z.netto_zinsen),
+                       f'<span class="{"schlecht" if z.liquiditaet < v.reserve else ""}">{chf(z.liquiditaet)}</span>',
+                       chf(z.ertrag), chf(z.ertrag_netto), vorteil, f"{z.belehnung:.0f} %"])
+    form = (f'<form method="post" action="wohnen/amortisationsvergleich" class="vergleich-form"><div class="felder">'
+            f'<label>Hypothekarzins %<input name="zins" inputmode="decimal" value="{v.zins:g}"></label>'
+            f'<label>Anlageertrag %<input name="ertrag" inputmode="decimal" value="{v.ertrag:g}"></label></div>'
+            '<div class="zeile"><button>Aktualisieren</button></div></form>')
+    spalten = erklaerung(
+        '<ul class="hinweise">'
+        f"<li><b>direkt amortisiert:</b> aus der Liquidität bei der Fälligkeit {v.faellig:%d.%m.%Y}"
+        + (" – im Konkubinat je Person die Hälfte." if v.personen else ".") + "</li>"
+        f"<li><b>total mit 3a/3b:</b> plus die verpfändete Vorsorge, die bei der Fälligkeit aufgelöst wird (CHF "
+        f"{chf(v.indirekt)} nach der Steuer beim Bezug).</li>"
+        f"<li><b>Zinsen pro Jahr:</b> Resthypothek × {v.zins:g} % im ersten vollen Jahr danach ({jahr + 1}).</li>"
+        f"<li><b>Steuerersparnis Zinsabzug:</b> Zinsen × Grenzsteuersatz {v.grenz:.0f} % × abziehbarer Anteil "
+        f"{v.abzug * 100:.0f} %" + (" (nach dem Wegfall des Eigenmietwerts nur der vermietete Teil)." if v.abzug < 1 else ".")
+        + "</li>"
+        f"<li><b>Restliquidität:</b> freie Konten heute plus Sparen bis zur Fälligkeit, minus geplante PK-Einkäufe, minus "
+        f"direkte Amortisation; rot unter der Notreserve (CHF {chf(v.reserve)}).</li>"
+        f"<li><b>Ertrag {v.ertrag:g} %:</b> wenn die Restliquidität angelegt wird; <b>nach Steuern</b> mit ⅓ des Ertrags "
+        "als steuerbarer Zins bzw. Dividende (Kursgewinne steuerfrei).</li>"
+        "<li><b>gegenüber 0 direkt:</b> Netto-Zinskosten minus Ertrag nach Steuern, verglichen mit «keine direkte "
+        "Amortisation» – positiv heisst: diese Höhe lässt euch pro Jahr mehr.</li>"
+        "<li><b>Belehnung:</b> Resthypothek in % des Werts; über 66.7 % verlangt die Bank eine Amortisation.</li></ul>",
+        "Was bedeuten die Spalten?")
+    personen = ""
+    if v.personen:
+        personen = '<p class="leise">Liquidität bei Fälligkeit pro Person: ' + ", ".join(
+            f"{escape(n)} CHF {chf(l)}" + (f" (+ 3a/3b CHF {chf(i)})" if i else "") for n, l, i in v.personen) + ".</p>"
+    tab = tabelle(["direkt amortisiert", "total mit 3a/3b", "Resthypothek", "Zinsen pro Jahr", "Steuerersparnis Zinsabzug",
+                   "Netto-Zinskosten", "Restliquidität", f"Ertrag {v.ertrag:g} %", "nach Steuern", "gegenüber 0 direkt",
+                   "Belehnung"], zeilen, zahlen_ab=1, karten=True)
+    return '<div id="amortisationstabelle">' + karte(
+        f"Amortisation bei Fälligkeit {jahr}: Höhe im Vergleich",
+        form + f'<div class="erklaer-zeile"><span class="leise">Was bedeuten die Spalten?</span> {spalten}</div>'
+        + tab + personen + hinweisliste(v.hinweise)
+        + f'<p class="leise">Hypothek heute CHF {chf(v.hypothek)}, Wert CHF {chf(v.wert)}, Liquidität bei Fälligkeit '
+          f'CHF {chf(v.liquiditaet)}. Die Werte gelten für das erste volle Jahr nach der Fälligkeit; Zins und Ertrag '
+          f'werden gespeichert (0 = Zins unter Wohnen bzw. konservative Rendite). Die verpfändete 3a/3b wird laut '
+          f'<a href="einstellungen#b-wohnen">Einstellungen → Wohnen</a> bei der Fälligkeit aufgelöst.</p>') + "</div>"
 
 
 def amortisation_strategie_karte(k: dict, db) -> str:
@@ -1532,6 +1600,8 @@ FELDER_WOHNEN = [
     ("wohnen.unterhalt_pauschal", "Unterhalt+Nebenkosten % vom Preis"), ("wohnen.hypothek_faellig", "Hypothek fällig (JJJJ-MM-TT)"),
     ("wohnen.amortisation_ziel", "Ziel-Amortisation bei Fälligkeit"), ("wohnen.amortisation_max", "Maximale Amortisation"),
     ("wohnen.reserve", "Notreserve"),
+    ("wohnen.verpfaendet_aufloesen", "Verpfändete 3a/3b auflösen: faelligkeit (bei Fälligkeit) oder pension"),
+    ("wohnen.steuer_bezug_verpfaendet", "Steuer beim Bezug der verpfändeten 3a/3b"),
 ]
 
 

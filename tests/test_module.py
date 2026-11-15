@@ -2627,7 +2627,8 @@ def test_amortisationsstrategie(k):
     k["wohnen"].update({"aktiv": True, "kaufpreis": 1500000, "eigenmittel": 500000, "hypothek_zins": 1.5,
                         "hypothek_faellig": "2030-07-01", "amortisation_ziel": 200000, "reserve": 50000,
                         "vermietet_anteil": 0, "verpfaendet": [{"name": "Muster 3a", "guthaben": 30000,
-                                                                 "beitrag_monat": 600, "rendite": 1.0}]})
+                                                                 "beitrag_monat": 600, "rendite": 1.0}],
+                        "verpfaendet_aufloesen": "pension"})
     kid = vm.konto_anlegen(db, "Muster Privat")
     vm.saldo_setzen(db, kid, "2026-10-31", 400000)
     s = ams.rechnen(k, db, heute)
@@ -2699,3 +2700,40 @@ def test_pk_pensionierten_kinderrente(k):
     assert r(hh)[1] > 0 and r(hh + 20) == (0, 0)
     l = vs.pensionsluecke(k, 0, 2026)
     assert l.pk_kinderrenten > 0 and l.kinderrenten > l.pk_kinderrenten          # AHV- und PK-Kinderrenten
+
+
+def test_amortisation_verpfaendet_bei_faelligkeit_und_vergleich(k):
+    import amortisation as ams
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 15)
+    a, b = k["personen"][0]["name"], k["personen"][1]["name"]
+    k["haushalt"]["zivilstand"] = "ledig"
+    k["wohnen"].update({"aktiv": True, "kaufpreis": 2000000, "eigenmittel": 600000, "hypothek_zins": 1.5,
+                        "hypothek_faellig": "2030-07-01", "reserve": 50000, "vermietet_anteil": 0,
+                        "steuer_bezug_verpfaendet": 4000, "verpfaendet_aufloesen": "faelligkeit",
+                        "verpfaendet": [{"name": f"3a Muster {a}", "guthaben": 40000, "beitrag_monat": 600, "rendite": 0},
+                                        {"name": f"3a Muster {b}", "guthaben": 40000, "beitrag_monat": 600, "rendite": 0}]})
+    for p in k["personen"]:
+        p["sparen_monat"] = 1000
+        kid = vm.konto_anlegen(db, f"Konto {p['name']}", person=p["name"])
+        vm.saldo_setzen(db, kid, "2026-10-31", 300000 if p["name"] == a else 150000)
+    monate = 44                                              # 11.2026 → 07.2030
+    erwartet = 2 * (40000 + 600 * monate) - 4000
+    assert ams.verpfaendet_wert(k, heute, date(2030, 7, 1)) == pytest.approx(erwartet)
+    assert ams.verpfaendet_wert(k, heute, date(2030, 7, 1), a) == pytest.approx(erwartet / 2)
+    s = ams.rechnen(k, db, heute)
+    keine = s.varianten[0]
+    assert keine.hypothek[2030] == round(1400000 - erwartet)       # indirekt in allen Varianten, nicht aus der Liquidität
+    assert keine.liquiditaet[2030] > keine.liquiditaet[2029]
+    v = ams.vergleich(k, db, 2.0, 1.5, heute)
+    assert v.indirekt == round(erwartet) and v.zins == 2.0 and v.ertrag == 1.5 and v.abzug == 0
+    z0, z1 = v.zeilen[0], v.zeilen[1]
+    assert z0.direkt == 0 and z1.direkt == 100000 and z0.rest == pytest.approx(1400000 - erwartet)
+    assert z1.zinsen == pytest.approx(z1.rest * 0.02) and z1.steuerersparnis == 0
+    assert z1.vorteil > 0                                          # 2 % Zins ohne Abzug schlägt 1.5 % Ertrag
+    # Konkubinat: gleich viel pro Person – begrenzt durch die Person mit weniger Liquidität
+    l_b = next(l for n, l, _ in v.personen if n == b)
+    assert v.max_gleich == pytest.approx((l_b - 25000) * 2)
+    assert any(z.ueber_person == b for z in v.zeilen)
+    k["wohnen"]["verpfaendet_aufloesen"] = "pension"
+    assert ams.vergleich(k, db, 2.0, 1.5, heute).indirekt == 0

@@ -215,7 +215,11 @@ Varianten von heute bis zur ersten Pensionierung, Jahr für Jahr gleich gerechne
 | Ziel bei Fälligkeit | `wohnen.amortisation_ziel` bei der nächsten Fälligkeit |
 | Maximum bei Fälligkeit | so viel wie möglich (höchstens `amortisation_max`), Notreserve bleibt |
 | Fälligkeit + jährlich | Ziel bei Fälligkeit, danach jedes Jahr die Hälfte des Sparens (braucht eine flexible Tranche) |
-| Indirekt, tragbar im Alter | direkt nur, was für die Tragbarkeit nach der Pensionierung nötig ist; die verpfändete 3a/3b amortisiert bei der Pensionierung |
+| Nur was im Alter nötig ist | direkt nur, was für die Tragbarkeit nach der Pensionierung nötig ist (mit `verpfaendet_aufloesen: pension` als «Indirekt, tragbar im Alter»: die verpfändete 3a/3b amortisiert erst bei der Pensionierung) |
+
+Verpfändete 3a/3b (`wohnen.verpfaendet`): Mit `wohnen.verpfaendet_aufloesen: faelligkeit` (Standard) werden sie bei der
+Fälligkeit der Hypothek aufgelöst und amortisieren in allen Varianten gleich – Guthaben mit Rendite plus Beiträge bis
+zur Fälligkeit, minus `steuer_bezug_verpfaendet`; das Geld kommt nicht aus der Liquidität. `pension`: erst im Alter.
 
 Pro Variante: amortisierter Betrag, Hypothek bei der Pensionierung, Zinsen nach Steuern, Vorteil gegenüber «nicht
 amortisieren» – einmal mit sicher angelegtem Geld (`anlage.zins_sicher`, versteuert), einmal mit Wertschriften
@@ -225,6 +229,18 @@ Diagramm der Hypothek über die Zeit. Schuldzinsen sind bis zum Wegfall des Eige
 danach nur noch für den vermieteten Teil. Festhypotheken werden nur bei Fälligkeit (danach alle 5 Jahre angenommen)
 amortisiert. Markiert sind die Variante, die bei sicherer Anlage vorne liegt, und die mit Wertschriften – jeweils
 unter denen, die die Notreserve halten und im Alter tragbar sind.
+
+### Amortisation bei Fälligkeit: Höhe im Vergleich
+
+Tabelle auf der Seite Wohnen: direkte Amortisation bei der Fälligkeit in Schritten von CHF 100'000, jeweils mit der
+verpfändeten 3a/3b, Resthypothek, Zinsen pro Jahr, Steuerersparnis durch den Zinsabzug (nach dem Wegfall des
+Eigenmietwerts nur der vermietete Teil), Netto-Zinskosten, Restliquidität (freie Konten plus Sparen bis zur
+Fälligkeit, minus geplante PK-Einkäufe), Ertrag und Ertrag nach Steuern (⅓ steuerbar), Vorteil gegenüber «keine
+direkte Amortisation» und Belehnung – für das erste volle Jahr nach der Fälligkeit. Hypothekarzins und Anlageertrag
+sind frei wählbar («Aktualisieren», gespeichert als `wohnen.vergleich_zins` und `vergleich_ertrag`; 0 = Zins unter
+Wohnen bzw. konservative Rendite). Im Konkubinat amortisiert jede Person gleich viel aus eigenem Geld: Die Tabelle
+zeigt die Liquidität und die verpfändete Vorsorge pro Person (Zuordnung über den Namen des Vertrags) und markiert
+Beträge, deren Hälfte die Liquidität einer Person (abzüglich ihres Anteils an der Notreserve) übersteigt.
 
 ### Teilweise vermietet und Miteigentum
 

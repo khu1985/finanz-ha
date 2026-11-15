@@ -553,3 +553,13 @@ def test_steuerkonto_positionen_bearbeiten(server, daten):
     assert p.bezahlt == 16000 + 12 + 500 and p.offen == 19000 - 16512
     code, _ = _post(f"{server}/steuerzahlung/position_loeschen", {"b": f"z{zahlung['id']}"})
     assert code == 303 and sz.einer(v, zahlung["id"]) is None
+
+
+def test_amortisationsvergleich_aktualisieren(server, daten):
+    code, _ = _post(f"{server}/wohnen/amortisationsvergleich", {"zins": "2,25", "ertrag": "1.5"})
+    assert code == 303
+    k = konfig.laden()
+    assert k["wohnen"]["vergleich_zins"] == 2.25 and k["wohnen"]["vergleich_ertrag"] == 1.5
+    code, _ = _post(f"{server}/wohnen/amortisationsvergleich", {"zins": "50", "ertrag": "1"})
+    assert konfig.laden()["wohnen"]["vergleich_zins"] == 2.25        # ungültig → nicht gespeichert
+    assert urllib.request.urlopen(f"{server}/wohnen").status == 200
