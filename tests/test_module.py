@@ -2347,3 +2347,57 @@ def test_simulation_pensum(k):
     k3 = si.anwenden(k, [{"person": p["name"], "schluessel": "pensum", "wert": 80},
                          {"person": p["name"], "schluessel": "sparen_monat", "wert": 1000}])
     assert k3["personen"][0]["sparen_monat"] == 1000 and k3["personen"][0]["lohn_brutto"] == 80000
+
+
+def test_vorsorgeausweis_risiko_reglementarisch():
+    import dokumente as dk
+    text = ("Musterkasse Pensionskasse\nPersönlicher Vorsorgeausweis per 01.01.2026\nVersicherte Person: Muster Ben\n"
+            "Altersguthaben CHF 250'000.00\n"
+            "Leistungen bei Invalidität            BVG        Reglementarisch\n"
+            "Invalidenrente pro Jahr          23'681.00          96'416.00\n"
+            "Invaliden-Kinderrente pro Jahr    4'736.00          12'855.00\n"
+            "Ehegattenrente pro Jahr          14'209.00          57'849.00\n")
+    e = dk.erkennen(text)
+    assert e["typ"] == "pk_ausweis"
+    w = e["werte"]
+    assert w["iv_rente_pk"] == 96416 and w["iv_kinderrente_pk"] == 12855 and w["partnerrente_pk"] == 57849
+
+
+def test_risiko_warnt_bei_bvg_minimum(k):
+    import versicherungen as vi
+    import vorsorge as vs
+    p = k["personen"][0]
+    p["lohn_brutto"] = 184000
+    p["risiko"]["iv_rente_pk"] = 23681
+    r = vi.risiko(k, vs.ahv(k))[0]
+    assert any("BVG-Minimum" in h for h in r.hinweise)
+
+
+def test_pk_einkauf_varianten(k):
+    import pk_einkauf as pe
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 15)
+    p = k["personen"][0]
+    p["lohn_brutto"] = 150000
+    p["pk"].update({"einkauf_potenzial": 100000, "einkauf_geplant": [{"jahr": 2027, "betrag": 30000}],
+                    "kapitalbezug_anteil": 0, "umwandlungssatz": 6.0})
+    p["risiko"].update({"iv_rente_pk": 60000, "iv_rente_extern": 30000})
+    v = pe.vergleich(k, db, p["name"], heute=heute)
+    namen = [x.schluessel for x in v.varianten]
+    assert namen[:3] == ["keiner", "geplant", "eins"] and "gleich5" in namen
+    eins = next(x for x in v.varianten if x.schluessel == "eins")
+    fuenf = next(x for x in v.varianten if x.schluessel == "gleich5")
+    assert eins.einkauf == fuenf.einkauf == 100000 and fuenf.steuern > eins.steuern     # Progression: verteilen spart
+    assert v.beste_steuern != "eins" and eins.iv_mehr == 0 and eins.iv_praemie == 0     # Rente in % des Lohnes
+    assert any("versicherten Lohnes" in h for h in v.hinweise)
+    # Reglement mit Rente aus dem Altersguthaben: höhere PK-Rente, Prämie der externen Police sinkt
+    p["pk"]["iv_basis"] = "guthaben"
+    p["risiko"].update({"iv_praemie_extern": 1500, "iv_ziel_prozent": 90})
+    p["risiko"]["iv_rente_pk"] = 0.9 * 150000 - (pe._iv_lage(k, db, p, heute).heute - 60000) - 2000
+    v = pe.vergleich(k, db, p["name"], heute=heute)
+    eins = next(x for x in v.varianten if x.schluessel == "eins")
+    kinder = __import__("kinder").anzahl(k, person=p["name"])
+    assert eins.iv_mehr == round(100000 * 0.06 * (1 + 0.2 * kinder))
+    assert eins.iv_praemie > 0 and eins.total == eins.netto + eins.iv_praemie
+    assert any("Arbeitgeber" in h for h in v.hinweise)
+    assert pe.plan_von(k, db, p["name"], "gleich3") == {2026: 33300, 2027: 33300, 2028: 33400}

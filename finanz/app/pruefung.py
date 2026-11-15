@@ -255,6 +255,9 @@ def _person(k, p, feld, wert, z, leer, kz, heute):
         return GELB, "fehlt – aus dem Vorsorgeausweis"
     if feld == "risiko.iv_rente_pk" and not z and lohn >= bvg:
         return GELB, "fehlt – aus dem Vorsorgeausweis"
+    if feld == "risiko.iv_rente_pk" and z and lohn > 1.5 * (_zahl(kz.get("bvg_max_lohn")) or 90720) and z < 0.2 * lohn:
+        return GELB, (f"nur {z / lohn * 100:.0f} % des Lohns – wirkt wie das BVG-Minimum; die reglementarische "
+                      "Leistung (total) laut Ausweis eintragen")
     if feld == "saeule3a.beitrag_jahr":
         maxi = _zahl(kz.get("saeule3a_max")) or 7258
         if z and z > maxi + 0.5 and lohn >= bvg:

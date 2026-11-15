@@ -110,7 +110,7 @@ personen:
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
 | Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
 | Finanzplan | Lebensziele, Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
-| Szenarien | Reiter «Simulationen»: Varianten verwalten und vergleichen; PK-Einkauf optimieren (geplante Einkäufe entfernen), Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
+| Szenarien | PK-Einkauf: Varianten im Vergleich (Steuern, Kapitalbezug, Zins, IV-Deckung); Reiter «Simulationen»: Varianten verwalten und vergleichen; PK-Einkauf optimieren (geplante Einkäufe entfernen), Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
 | Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
@@ -530,6 +530,27 @@ Hälfte, im Verhältnis zum Einkommen, gleich viel frei für beide. Dazu die vor
 ein Hinweis, wenn die Person mit weniger Einkommen im Alter deutlich weniger hat – besonders im Konkubinat.
 
 ## Szenarien
+
+**PK-Einkauf: Varianten im Vergleich.** Pro Person mit Einkaufspotenzial stehen nebeneinander: kein Einkauf, die
+geplanten Einkäufe, alles dieses Jahr, gleichmässig auf 3, 5 und 10 Jahre und bis zum letzten möglichen Jahr (bei
+Kapitalbezug 3 Jahre vorher). Pro Variante: Steuerersparnis (mit dem heutigen Einkommen pro Jahr – wegen der
+Progression spart Verteilen mehr), Mehrsteuer beim Kapitalbezug, Zinsvorteil der PK gegenüber einer sicheren Anlage
+(`anlage.zins_sicher`) bis zur Pensionierung, Netto, zusätzliche IV-Rente und gesparte Prämien der externen
+IV-Versicherung, Total. Markiert: «steuerlich optimal» (höchste Steuerersparnis) und «bestes Total». Jede Variante
+lässt sich als Simulation speichern oder übernehmen (ersetzt die geplanten Einkäufe der Person).
+
+Invalidität pro Person (Karte «Invalidität: Reglement und Police»):
+
+| Einstellung | Bedeutung |
+|---|---|
+| `pk.iv_basis` | `lohn` (Standard): Invalidenrente in % des versicherten Lohnes – ein Einkauf ändert sie nicht. `guthaben`: Rente aus dem projizierten Altersguthaben wie im BVG-Minimum – sie steigt um rund Einkauf × Umwandlungssatz (Kinderrenten 20 % davon) |
+| `risiko.iv_ziel_prozent` | Ziel der IV-Deckung in % des Lohns (Standard 80) |
+| `risiko.iv_praemie_extern` | Prämie der externen IV-Versicherung pro Jahr; leer = aus den Policen (Sparte Erwerbsunfähigkeit bzw. mit IV-Rente) |
+
+Liegt die Deckung nach dem Einkauf über dem Ziel, kann die externe Rente um den Überschuss sinken; die Prämie sinkt
+im Verhältnis, gezählt bis zum Ablauf der Police bzw. zur Pensionierung – nur der Teil, den der Einkauf zusätzlich
+möglich macht. Vorbehalt: Die PK-Deckung gilt nur beim heutigen Arbeitgeber, eine private Police ist davon
+unabhängig; eine spätere Erhöhung braucht meist eine neue Gesundheitsprüfung.
 
 **PK-Einkauf optimieren.** Person, Budget (0 = ganzes Potenzial), Zeitraum, Mindest-Ersparnis pro Franken und
 Schrittweite wählen. Die App legt Schritt für Schritt dort ein, wo der nächste Franken am meisten Steuern spart

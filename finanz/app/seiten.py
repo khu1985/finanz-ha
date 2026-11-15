@@ -2092,7 +2092,7 @@ def ampel_karte(k: dict, db) -> str:
 
 def szenarien(k: dict, db, q: dict | None = None) -> str:
     q = q or {}
-    return (einkauf_karte(k, db, q) + teilzeit_karte(k, q) + fruehpension_karte(k, db) + hypothek_karte(k, db, q)
+    return (pk_varianten_karte(k, db) + einkauf_karte(k, db, q) + teilzeit_karte(k, q) + fruehpension_karte(k, db) + hypothek_karte(k, db, q)
             + heirat_karte(k, db))
 
 
@@ -4730,3 +4730,72 @@ placeholder="z. B. Pension mit 62"></label><label class="breit">Notiz<input name
                                               'Rechner unter <a href="szenarien">Szenarien</a> (PK-Einkauf) können ihr '
                                               'Ergebnis direkt als Simulation speichern.</p>'))
     return "".join(teile)
+
+
+# ---------------------------------------------------------------- PK-Einkauf: Varianten
+
+def pk_varianten_karte(k: dict, db) -> str:
+    """PK-Einkauf: Varianten pro Person nebeneinander – Steuern, Kapitalbezug, Zins und Invaliditätsdeckung."""
+    import pk_einkauf as pe
+    try:
+        vergleiche = pe.alle(k, db)
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("finanz").warning("PK-Varianten: %s", e)
+        return ""
+    if not vergleiche:
+        return ""
+    teile = []
+    for v in vergleiche:
+        zeilen = []
+        for x in v.varianten:
+            marken = []
+            if x.schluessel == v.beste_steuern and x.einkauf:
+                marken.append('<span class="chip gut">steuerlich optimal</span>')
+            if x.schluessel == v.beste_total:
+                marken.append('<span class="chip">bestes Total</span>')
+            aktionen = ""
+            if x.einkauf and x.schluessel != "geplant":
+                aktionen = '<span class="aktionen">' + "".join(
+                    f'<form method="post" action="szenarien/einkauf_variante" class="inline"{z}><input type="hidden" '
+                    f'name="person" value="{escape(v.person)}"><input type="hidden" name="variante" value="{x.schluessel}">'
+                    f'<input type="hidden" name="aktion" value="{a}"><button class="zweit klein">{t}</button></form>'
+                    for a, t, z in (("simulation", "Als Simulation", ""),
+                                    ("uebernehmen", "Übernehmen",
+                                     ' onsubmit="return confirm(\'Geplante Einkäufe durch diese Variante ersetzen?\')"'))) + "</span>"
+            zeilen.append([f"<b>{escape(x.name)}</b> " + " ".join(marken), x.jahre, chf(x.einkauf),
+                           f"<span>{chf(x.steuern)}" + (f' <small class="leise">{x.satz:.0f} %</small>' if x.einkauf else "")
+                           + "</span>",
+                           chf(-x.kapitalsteuer) if x.kapitalsteuer else "–", chf(x.zins), f"<b>{chf(x.netto)}</b>",
+                           chf(x.iv_mehr) if x.iv_mehr else "–", chf(x.iv_praemie) if x.iv_praemie else "–",
+                           f"<b>{chf(x.total)}</b>", aktionen])
+        iv = v.iv
+        basis_opts = "".join(f'<option value="{s}"{" selected" if iv.basis == s else ""}>{escape(t)}</option>'
+                             for s, t in pe.IV_BASIS.items())
+        p = next(x for x in k["personen"] if x["name"] == v.person)
+        r = p.get("risiko") or {}
+        lage = (f'<p>Invalidität heute: CHF {chf(iv.heute)} pro Jahr (AHV, PK, extern) – Ziel {chf(iv.ziel)} '
+                f'({float(r.get("iv_ziel_prozent") or pe.IV_ZIEL):g} % des Lohns). Externe IV-Rente CHF {chf(iv.extern)}'
+                + (f', Prämie CHF {chf(iv.praemie)} pro Jahr ({escape(iv.praemie_quelle)}) bis {iv.bis}' if iv.praemie else "")
+                + ".</p>")
+        einst = f"""<details><summary>Invalidität: Reglement und Police von {escape(v.person)}</summary>
+<form method="post" action="szenarien/iv_einstellungen"><input type="hidden" name="person" value="{escape(v.person)}">
+<div class="felder"><label class="breit">Invalidenrente der PK wird gerechnet<select name="iv_basis">{basis_opts}</select></label>
+<label>Ziel IV-Deckung % des Lohns<input name="iv_ziel_prozent" inputmode="decimal" value="{escape(str(r.get("iv_ziel_prozent") or ""))}" placeholder="{pe.IV_ZIEL:g}"></label>
+<label>Prämie externe IV-Versicherung/Jahr (leer = aus Policen)<input name="iv_praemie_extern" inputmode="decimal" value="{escape(str(r.get("iv_praemie_extern") or ""))}"></label>
+</div><div class="zeile"><button>Speichern</button></div></form>
+<p class="leise">Steht im Reglement «Invalidenrente in % des versicherten Lohnes», ändert ein Einkauf nichts. Rechnet die
+Kasse die Rente aus dem projizierten Altersguthaben (wie das BVG-Minimum), steigt sie um rund Einkauf × Umwandlungssatz.</p></details>"""
+        balken = dg.balken_liste([(x.name, max(0, x.total)) for x in v.varianten if x.einkauf])
+        teile.append(f"<h3>{escape(v.person)} – Potenzial CHF {chf(v.potenzial)}, Pensionierung {v.pension}</h3>"
+                     + tabelle(["Variante", "Jahre", "Einkauf", "Steuern gespart", "Steuer beim Bezug", "Zins PK vs. sicher",
+                                "Netto", "IV-Rente +", "IV-Prämie gespart", "Total", ""], zeilen, zahlen_ab=2, karten=True)
+                     + balken + lage + hinweisliste(v.hinweise) + einst)
+    return '<div id="varianten">' + karte("PK-Einkauf: Varianten im Vergleich", "".join(teile) + (
+        '<p class="leise">Steuern gespart: Einkommenssteuer mit dem heutigen Einkommen pro Jahr (Progression – verteilt '
+        'spart mehr). Steuer beim Bezug: zusätzliche Kapitalbezugssteuer auf dem eingekauften Betrag samt Zins. Zins PK vs. sicher: '
+        'was die PK-Verzinsung bis zur Pensionierung mehr (oder weniger) bringt als eine sichere Anlage zum Zins aus dem '
+        'Anlage-Check. Netto = Steuern + Zins − Steuer beim Bezug. IV-Prämie gespart: Prämien der '
+        'externen IV-Versicherung, die wegen der höheren PK-Rente gekürzt werden könnten (nur der Teil, den der Einkauf '
+        'zusätzlich möglich macht). Total = Netto + IV-Prämie. Nicht eingerechnet: höhere Rendite, die das Geld in Aktien '
+        'brächte, und dass es bis zur Pensionierung gebunden ist (Vorbezug Wohneigentum 3 Jahre gesperrt).</p>')) + "</div>"

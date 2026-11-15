@@ -470,3 +470,21 @@ def test_simulationen_seite(server, daten):
     assert "id=2" in ziel
     _post(f"{server}/simulationen/loeschen", {"id": "2"})
     assert "(Kopie)" not in urllib.request.urlopen(f"{server}/simulationen").read().decode()
+
+
+def test_pk_varianten_seite(server, daten):
+    k = konfig.laden()
+    p0 = k["personen"][0]["name"]
+    k["personen"][0]["pk"]["einkauf_potenzial"] = 60000
+    konfig.speichern(k)
+    html = urllib.request.urlopen(f"{server}/szenarien").read().decode()
+    assert "PK-Einkauf: Varianten im Vergleich" in html and "steuerlich optimal" in html
+    code, _ = _post(f"{server}/szenarien/einkauf_variante", {"person": p0, "variante": "gleich3", "aktion": "uebernehmen"})
+    geplant = konfig.laden()["personen"][0]["pk"]["einkauf_geplant"]
+    assert code == 303 and len(geplant) == 3 and sum(e["betrag"] for e in geplant) == 60000
+    code, ziel = _post(f"{server}/szenarien/einkauf_variante", {"person": p0, "variante": "eins", "aktion": "simulation"})
+    assert code == 303 and "simulationen?id=" in ziel
+    code, _ = _post(f"{server}/szenarien/iv_einstellungen", {"person": p0, "iv_basis": "guthaben", "iv_ziel_prozent": "75",
+                                                            "iv_praemie_extern": "1200"})
+    p = konfig.laden()["personen"][0]
+    assert code == 303 and p["pk"]["iv_basis"] == "guthaben" and p["risiko"]["iv_praemie_extern"] == 1200

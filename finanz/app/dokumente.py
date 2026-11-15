@@ -113,7 +113,14 @@ def _betraege(zeile: str) -> list[float]:
     return werte
 
 
-def _wert_nach(text: str, muster: str, prozent: bool = False, alter65: bool = False) -> float | None:
+RISIKO = ("iv_rente_pk", "iv_kinderrente_pk", "partnerrente_pk", "waisenrente_pk", "todesfallkapital_pk")
+
+
+def _wert_nach(text: str, muster: str, prozent: bool = False, alter65: bool = False,
+               hoechster: bool = False) -> float | None:
+    """Erster Betrag nach der Beschriftung. `hoechster`: der höchste Betrag aller passenden Zeilen – für
+    Risikoleistungen, wo Ausweise oft BVG-Minimum und reglementarische Leistung nebeneinander zeigen
+    (reglementarisch ≥ BVG)."""
     kandidaten = []
     zeilen = text.splitlines()
     for i, zeile in enumerate(zeilen):
@@ -127,9 +134,11 @@ def _wert_nach(text: str, muster: str, prozent: bool = False, alter65: bool = Fa
         if not werte:
             continue
         bonus = 1 if alter65 and re.search(r"\b65\b", zeile) else 0
-        kandidaten.append((bonus, werte[-1] if alter65 else werte[0]))
+        kandidaten.append((bonus, max(werte) if hoechster else werte[-1] if alter65 else werte[0]))
     if not kandidaten:
         return None
+    if hoechster:
+        return max(w for _, w in kandidaten)
     if alter65:
         beste = max(b for b, _ in kandidaten)
         return max(w for b, w in kandidaten if b == beste)
@@ -190,7 +199,7 @@ def erkennen(text: str) -> dict:
         erg["person"] = m.group(2).strip()
     if erg["typ"] == "pk_ausweis":
         for schluessel, (_, _, muster) in WERTE_PK.items():
-            w = _wert_nach(text, muster, prozent=schluessel in ("umwandlungssatz", "zins"),
+            w = _wert_nach(text, muster, prozent=schluessel in ("umwandlungssatz", "zins"), hoechster=schluessel in RISIKO,
                            alter65=schluessel in ("ausweis_alterskapital", "ausweis_altersrente"))
             if w is not None:
                 erg["werte"][schluessel] = w

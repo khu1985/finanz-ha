@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.52.0 – 2026-11-15
+
+- **PK-Einkauf: Varianten im Vergleich** (Szenarien): pro Person kein Einkauf, geplant, alles dieses Jahr,
+  gleichmässig auf 3/5/10 Jahre und bis zum letzten möglichen Jahr – mit Steuerersparnis, Mehrsteuer beim
+  Kapitalbezug, Zinsvorteil gegenüber einer sicheren Anlage, Netto und Total; «steuerlich optimal» und «bestes Total»
+  markiert; jede Variante als Simulation speichern oder übernehmen.
+- **Invalidität und PK-Einkauf:** je nach Reglement (Rente in % des Lohnes oder aus dem Altersguthaben) erhöht ein
+  Einkauf die IV-Rente der PK; über dem Ziel (Standard 80 % des Lohns) rechnet die App die mögliche Kürzung der
+  externen IV-Versicherung und die gesparten Prämien – mit Hinweis auf Stellenwechsel und Gesundheitsprüfung.
+- **Vorsorgeausweis:** Bei Risikoleistungen (Invaliden-, Kinder-, Partner-, Waisenrente, Todesfallkapital) übernimmt
+  die App den höheren Betrag, wenn BVG-Minimum und reglementarische Leistung nebeneinander stehen. Warnung, wenn die
+  IV-Rente PK nach BVG-Minimum aussieht.
+
 ## 0.51.0 – 2026-11-15
 
 - **Simulationen** (neuer Reiter unter Szenarien): benannte Varianten speichern, die nur einzelne Annahmen ändern –

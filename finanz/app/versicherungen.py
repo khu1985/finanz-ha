@@ -965,6 +965,10 @@ def risiko(k: dict, ahv_ergebnisse, vertraege: list[dict] | None = None) -> list
                      "(einmalig)." >> TS)
         total = iv + iv_kind + iv_pk + iv_kind_pk + iv_ext
         quote = total / lohn * 100 if lohn else 0
+        if iv_pk and lohn > 1.5 * float(k["kennzahlen"].get("bvg_max_lohn") or 90720) and iv_pk < 0.2 * lohn:
+            h.append(f"Invalidität {p['name']}: IV-Rente PK von CHF {iv_pk:,.0f} ist nur {iv_pk / lohn * 100:.0f} % des "
+                     "Lohns – das sieht nach dem BVG-Minimum aus. Auf dem Vorsorgeausweis die reglementarische Leistung "
+                     "(total) suchen und unter Einstellungen eintragen." >> TS)
         if lohn and quote < 70:
             h.append(f"Invalidität: {quote:.0f} % des Lohns gedeckt – Richtwert 70–80 %.")
         if iv_ext and iv_pk and quote > 100:

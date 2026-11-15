@@ -907,6 +907,47 @@ class Handler(BaseHTTPRequestHandler):
                     and str(o.get("datum")) == str(weg.get("datum")) and float(o.get("zins") or 0) == weg["zins"])]
                 konfig.speichern(k)
             return "Offerte entfernt.", "szenarien#hypothek"
+        if pfad == "szenarien/iv_einstellungen":
+            import pk_einkauf as pe
+            k = konfig.laden()
+            p = next((x for x in k["personen"] if x["name"] == form.get("person")), None)
+            if not p:
+                raise ValueError("Person nicht gefunden.")
+            basis = str(form.get("iv_basis") or "lohn")
+            p["pk"]["iv_basis"] = basis if basis in pe.IV_BASIS else "lohn"
+            r = p.setdefault("risiko", {})
+            for feld, lo, hi in (("iv_ziel_prozent", 30, 100), ("iv_praemie_extern", 0, 100000)):
+                t = str(form.get(feld) or "").strip()
+                if t:
+                    r[feld] = max(lo, min(hi, vm.zahl(t)))
+                else:
+                    r.pop(feld, None)
+            konfig.speichern(k)
+            return f"Invalidität von {p['name']} gespeichert.", "szenarien#varianten"
+        if pfad == "szenarien/einkauf_variante":
+            import pk_einkauf as pe
+            k = konfig.laden()
+            person, schl = str(form.get("person") or ""), str(form.get("variante") or "")
+            with db() as v:
+                plan = pe.plan_von(k, v, person, schl)
+                if not plan:
+                    raise ValueError("Variante nicht gefunden.")
+                liste = [{"jahr": int(j), "betrag": int(round(b))} for j, b in sorted(plan.items())]
+                if form.get("aktion") == "simulation":
+                    import simulation as si
+                    name = f"PK-Einkauf {person}: {min(plan)}–{max(plan)}" if len(plan) > 1 else f"PK-Einkauf {person}: {min(plan)}"
+                    namen = {s["name"] for s in si.alle(v)}
+                    n, i = name, 2
+                    while n in namen:
+                        n, i = f"{name} ({i})", i + 1
+                    neu = si.speichern(v, n, [{"person": person, "schluessel": "pk.einkauf_geplant", "wert": liste}],
+                                       "Aus dem Variantenvergleich PK-Einkauf.")
+                    return f"Simulation «{n}» gespeichert.", f"simulationen?id={neu}#bearbeiten"
+            p = next(x for x in k["personen"] if x["name"] == person)
+            p["pk"]["einkauf_geplant"] = liste
+            konfig.speichern(k)
+            return (f"Geplante Einkäufe von {person} ersetzt: {len(liste)} Einkäufe, total CHF "
+                    f"{sum(e['betrag'] for e in liste):,.0f}." >> TS, "szenarien#varianten")
         if pfad == "szenarien/einkauf_loeschen":
             k = konfig.laden()
             p = next((x for x in k["personen"] if x["name"] == form.get("person")), None)
