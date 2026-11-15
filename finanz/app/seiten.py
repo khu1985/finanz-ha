@@ -4596,7 +4596,8 @@ def steuerzahlung(k: dict, db) -> str:
         kpi(f"{naechste.faellig:%d.%m.%Y}" if naechste else "–",
             f"nächste Fälligkeit ({naechste.name} {naechste.jahr})" if naechste else "nächste Fälligkeit"),
         kpi(chf(sum(p.monatlich for p in offen)), "pro Monat zurücklegen bis zur Fälligkeit"),
-    ]) + "</div>"]
+    ] + ([kpi(chf(sz.guthaben(posten)), "Guthaben auf dem Steuerkonto (verrechnet)", "gut", am.GRUEN)]
+         if sz.guthaben(posten) else [])) + "</div>"]
     zeilen = []
     for p in posten:
         if p.offen > 0 and p.faellig < heute:
@@ -4605,8 +4606,13 @@ def steuerzahlung(k: dict, db) -> str:
             st_ = licht(am.GELB if (p.faellig - heute).days <= 45 else am.GRAU, "offen")
         else:
             st_ = licht(am.GRUEN, "bezahlt")
+        bez_ = chf(p.bezahlt) + (f' <small class="leise">inkl. Guthaben {chf(p.guthaben_ein)}</small>'
+                                 if p.guthaben_ein else "")
+        if p.guthaben_aus:
+            st_ = licht(am.GRUEN, "Guthaben")
         zeilen.append([str(p.jahr), escape(p.name), f"{chf(p.soll)} <small class=\"leise\">{escape(p.quelle)}</small>",
-                       chf(p.bezahlt), f"{st_} {chf(p.offen)}",
+                       f"<span>{bez_}</span>", f"{st_} {chf(p.offen)}" + (f' <small class="gut">+{chf(p.guthaben_aus)} '
+                                                                    'Guthaben</small>' if p.guthaben_aus else ""),
                        f"{p.faellig:%d.%m.%Y}" + (' <small class="leise">angenommen</small>' if p.faellig_angenommen else ""),
                        "<br>".join(escape(h) for h in p.hinweise)])
     fae_j, _ = sz.faellig(k, "kanton", heute.year)
@@ -4640,23 +4646,33 @@ def steuerzahlung(k: dict, db) -> str:
 <p class="leise">Hochgeladene provisorische Rechnungen und Veranlagungsverfügungen unter <a href="steuern">Steuern</a>
 werden automatisch berücksichtigt; eine eigene Angabe hat Vorrang.</p>"""))
     neu = sz.aus_buchungen(k, db)
+    def _buchungsart(z):
+        q_ = z.get("quelle") or ""
+        return ("Guthaben" if q_ == "guthaben" else "Rückerstattung" if q_ == "rueckerstattung" or z["betrag"] < 0
+                else "Zahlung")
     zz = [[f"{date.fromisoformat(z['datum']):%d.%m.%Y}", str(z["jahr"]), escape(sz.bezeichnung(k, z["art"])),
-           chf(z["betrag"]), escape(z["notiz"]),
+           escape(_buchungsart(z)), chf(z["betrag"]), escape(z["notiz"]),
            f'<form method="post" action="steuerzahlung/zahlung_loeschen" class="inline"><input type="hidden" name="id" '
            f'value="{z["id"]}"><button class="zweit klein">Löschen</button></form>'] for z in sz.zahlungen(db)]
     uebernehmen = (f'<form method="post" action="steuerzahlung/uebernehmen" class="zeile"><button class="zweit">'
                    f'{len(neu)} Steuerzahlung{"" if len(neu) == 1 else "en"} aus den Buchungen übernehmen</button></form>'
-                   '<p class="leise">Steuerjahr und Steuer werden aus dem Buchungstext geraten (Bundessteuer im ersten '
+                   '<p class="leise">Gutschriften der Steuerverwaltung kommen als Rückerstattung dazu. '
+                   'Steuerjahr und Steuer werden aus dem Buchungstext geraten (Bundessteuer im ersten '
                    'Halbjahr fürs Vorjahr) – danach in der Liste prüfen.</p>' if neu else "")
-    teile.append(karte("Zahlungen", uebernehmen + (tabelle(["Datum", "Jahr", "Steuer", "Betrag", "Notiz", ""], zz,
-                                                           zahlen_ab=3, filter=len(zz) > 8) if zz else "") + f"""
+    teile.append(karte("Zahlungen", uebernehmen + (tabelle(["Datum", "Jahr", "Steuer", "Buchung", "Betrag", "Notiz", ""], zz,
+                                                           zahlen_ab=4, filter=len(zz) > 8) if zz else "") + f"""
 <form method="post" action="steuerzahlung/zahlung"><div class="felder">
 <label>Steuerjahr<input name="jahr" inputmode="numeric" value="{heute.year}"></label>
 <label>Steuer<select name="art">{arten}</select></label>
+<label>Buchung<select name="buchungsart">{"".join(f'<option value="{b_}">{escape(t_)}</option>' for b_, t_ in sz.BUCHUNGSARTEN.items())}</select></label>
 <label>Datum<input name="datum" type="date" value="{heute.isoformat()}" required></label>
 <label>Betrag (CHF)<input name="betrag" inputmode="decimal" required></label>
 <label>Notiz<input name="notiz"></label></div>
-<div class="zeile"><button>Zahlung speichern</button></div></form>"""))
+<div class="zeile"><button>Zahlung speichern</button></div>
+<p class="leise"><b>Guthaben:</b> Zeigt der Kontoauszug des Steuerkontos einen «Saldo zu Ihren Gunsten», diesen unter dem
+Steuerjahr erfassen, mit dem er verrechnet wird (meist die nächste Rechnung). Sind die Vorjahre mit definitiver
+Rechnung und Zahlungen erfasst, rechnet die App ein Guthaben selbst ins Folgejahr – dann nicht zusätzlich eintragen.
+<b>Rückerstattung erhalten:</b> unter dem Steuerjahr, für das zu viel bezahlt wurde.</p></form>"""))
     c = sz.cfg(k)
     vg, vz = sz.zinsen(k, "kanton")
     fae, angenommen = sz.faellig(k, "kanton", heute.year)

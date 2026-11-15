@@ -162,6 +162,10 @@ def rechnung_loeschen(db, jahr: int, art: str, typ: str) -> None:
     db.execute("DELETE FROM steuer_rechnungen WHERE jahr = ? AND art = ? AND typ = ?", (jahr, art, typ))
 
 
+BUCHUNGSARTEN = {"zahlung": "Zahlung", "guthaben": "Guthaben laut Steuerkonto (Saldo zu Ihren Gunsten)",
+                 "rueckerstattung": "Rückerstattung erhalten"}
+
+
 def zahlung_speichern(db, jahr: int, art: str, datum: str, betrag: float, notiz: str = "", quelle: str = "") -> int:
     tabellen(db)
     if art not in ARTEN:
@@ -236,21 +240,26 @@ def _jahr_raten(art: str, text: str, tag: date) -> int:
 
 
 def aus_buchungen(k: dict, db) -> list[dict]:
-    """Belastungen der Kategorie «Steuern» aus den Buchungen, die noch nicht als Zahlung übernommen sind."""
+    """Buchungen der Kategorie «Steuern», die noch nicht übernommen sind: Belastungen als Zahlung, Gutschriften als
+    Rückerstattung (negativ, fürs Vorjahr, ausser der Text nennt ein Jahr)."""
     import budget as bu
     tabellen(db)
     schon = {r[0] for r in db.execute("SELECT quelle FROM steuer_zahlungen WHERE quelle != ''")}
     erg = []
     for b in bu.alle(db):
-        if b.get("kategorie") != "Steuern" or b["betrag"] >= 0:
+        if b.get("kategorie") != "Steuern" or not b["betrag"]:
             continue
         q = f"buchung:{b['id']}"
         if q in schon:
             continue
         text = b.get("text") or ""
         art = _art_raten(k, text)
-        erg.append({"quelle": q, "datum": b["datum"], "betrag": -b["betrag"], "text": text, "art": art,
-                    "jahr": _jahr_raten(art, text, date.fromisoformat(b["datum"]))})
+        tag = date.fromisoformat(b["datum"])
+        jahr = _jahr_raten(art, text, tag)
+        if b["betrag"] > 0 and not re.search(r"\b20[2-4]\d\b", text):
+            jahr = tag.year - 1 if art != "bund" else tag.year - 2 if tag.month <= 6 else tag.year - 1
+        erg.append({"quelle": q, "datum": b["datum"], "betrag": -b["betrag"], "text": text, "art": art, "jahr": jahr,
+                    "rueckerstattung": b["betrag"] > 0})
     return erg
 
 
@@ -280,6 +289,8 @@ class Posten:
     monatlich: float            # bis zur Fälligkeit pro Monat zurücklegen
     differenz: float | None     # definitiv minus provisorisch (positiv = Nachzahlung)
     hinweise: list[str] = field(default_factory=list)
+    guthaben_ein: float = 0.0   # Guthaben aus einem Vorjahr, hier angerechnet (in `bezahlt` enthalten)
+    guthaben_aus: float = 0.0   # zu viel bezahlt laut definitiver Rechnung → aufs nächste Jahr
 
     @property
     def offen(self) -> float:
@@ -315,7 +326,10 @@ def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
     except Exception:  # noqa: BLE001
         zins_konto = 0.0
     erg = []
-    for jahr in range(heute.year - 2, heute.year + 2):
+    uebertrag = {a: 0.0 for a in ARTEN}          # Saldo zu Ihren Gunsten, der ins nächste Jahr geht
+    letzter: dict[str, Posten] = {}
+    erstes = min([heute.year - 2] + [j for j, _ in bez] + [j for j, _, _ in re_])
+    for jahr in range(max(erstes, heute.year - 6), heute.year + 2):
         for art in arten(k):
             fae, angenommen = faellig(k, art, jahr)
             daten = any(key[0] == jahr and key[1] == art for key in re_) or (jahr, art) in bez
@@ -335,13 +349,25 @@ def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
                     except ValueError:
                         pass
                     break
-            bezahlt = round(bez.get((jahr, art), 0.0))
+            ein = round(uebertrag[art])
+            bezahlt = round(bez.get((jahr, art), 0.0)) + ein
             vg, vz = zinsen(k, art)
             offen = soll - bezahlt
             p = Posten(jahr, art, bezeichnung(k, art), round(soll), quelle, bezahlt, fae, angenommen, vg, vz, 0.0, 0.0,
-                       0.0, round(defi["betrag"] - prov["betrag"]) if defi and prov else None)
-            if not daten and soll <= 0:
+                       0.0, round(defi["betrag"] - prov["betrag"]) if defi and prov else None, guthaben_ein=ein)
+            if not daten and soll <= 0 and not ein:
                 continue
+            uebertrag[art] = 0.0
+            if ein:
+                p.hinweise.append(f"Guthaben CHF {_chf(ein)} aus dem Vorjahr (Saldo zu Ihren Gunsten) angerechnet.")
+            if offen < -0.5 and quelle == "definitiv":
+                # Schlussabrechnung: zu viel Bezahltes bleibt als Guthaben auf dem Steuerkonto und wird verrechnet
+                p.guthaben_aus = round(-offen)
+                p.bezahlt = round(soll)
+                uebertrag[art] = -offen
+                offen = 0.0
+                p.hinweise.append(f"CHF {_chf(p.guthaben_aus)} zu viel bezahlt – als Guthaben aufs nächste Steuerjahr "
+                                  "angerechnet (wurde es ausbezahlt: unten als «Rückerstattung erhalten» erfassen).")
             if offen > 0.5:
                 if heute > fae and quelle != "definitiv":
                     p.verzug_bisher = round(offen * vz / 100 * (heute - fae).days / 365)
@@ -370,7 +396,17 @@ def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
             if angenommen and fae >= heute:
                 p.hinweise.append("Fälligkeit angenommen – Datum auf der Rechnung prüfen und unten eintragen.")
             erg.append(p)
+            letzter[art] = p
+    for art, rest in uebertrag.items():                 # Guthaben ohne Folgejahr in der Liste
+        if rest > 0.5 and art in letzter:
+            letzter[art].hinweise.append(f"Guthaben CHF {_chf(rest)} wird mit der nächsten Rechnung verrechnet.")
     return erg
+
+
+def guthaben(posten: list[Posten]) -> float:
+    """Guthaben, das in offenen Jahren angerechnet ist bzw. noch verrechnet wird."""
+    return round(sum(p.guthaben_ein for p in posten if p.offen > -0.5 and p.quelle != "definitiv")
+                 + sum(p.guthaben_aus for p in posten if not any(q.jahr > p.jahr and q.art == p.art for q in posten)))
 
 
 def offen_total(posten: list[Posten]) -> float:

@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.55.2 – 2026-11-15
+
+- **Steuern bezahlen: Guthaben** – zu viel Bezahltes laut definitiver Rechnung bleibt als «Saldo zu Ihren Gunsten»
+  und wird mit dem nächsten Steuerjahr verrechnet (offener Betrag und Liquiditätsplan sinken entsprechend);
+  Kennzahl «Guthaben auf dem Steuerkonto». Beim Erfassen wählbar: Zahlung, Guthaben laut Steuerkonto oder
+  Rückerstattung erhalten. Gutschriften der Steuerverwaltung in den Buchungen kommen als Rückerstattung dazu.
+
 ## 0.55.1 – 2026-11-15
 
 - **Staats- und Gemeindesteuer getrennt:** In den Einstellungen stehen Staatssteuer, Gemeindesteuer und der

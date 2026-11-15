@@ -2566,3 +2566,34 @@ def test_konkubinat_steuern_pro_person(k):
     assert pruefung.pruefen(k, "steuern.personen.1.steuerbar_kanton")[0] == "rot"
     assert he.alle(db, k)["steuern.steuerbar_kanton"].status == "standard"      # Haushaltswert nicht verwendet
     assert seiten._gruppe_name(k, "steuern.personen.0.staatssteuer") == "Steuern: "
+
+
+def test_steuerguthaben_wird_verrechnet(k):
+    import steuerzahlung as sz
+    import budget as bu
+    db = vm.verbinden(":memory:")
+    k["haushalt"]["kanton"] = "BL"
+    heute = date(2026, 11, 15)
+    # 2025: provisorisch 20'000 bezahlt, definitiv nur 18'000 → 2'000 Guthaben für 2026
+    sz.rechnung_speichern(db, 2025, "kanton", "provisorisch", 20000)
+    sz.rechnung_speichern(db, 2025, "kanton", "definitiv", 18000)
+    sz.zahlung_speichern(db, 2025, "kanton", "2025-09-20", 20000)
+    sz.rechnung_speichern(db, 2026, "kanton", "provisorisch", 21000)
+    sz.zahlung_speichern(db, 2026, "kanton", "2026-09-20", 15000)
+    p = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}
+    assert p[(2025, "kanton")].offen == 0 and p[(2025, "kanton")].guthaben_aus == 2000
+    assert p[(2026, "kanton")].guthaben_ein == 2000 and p[(2026, "kanton")].offen == 21000 - 15000 - 2000
+    assert sz.guthaben(list(p.values())) == 2000
+    # ausbezahlt statt verrechnet: Rückerstattung im Jahr 2025 → kein Guthaben mehr
+    sz.zahlung_speichern(db, 2025, "kanton", "2026-04-02", -2000, "Rückerstattung", "rueckerstattung")
+    p = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}
+    assert p[(2025, "kanton")].guthaben_aus == 0 and p[(2026, "kanton")].guthaben_ein == 0
+    # Guthaben laut Kontoauszug direkt beim Steuerjahr
+    sz.zahlung_speichern(db, 2027, "kanton", "2026-11-01", 1500, "Saldo zu Ihren Gunsten", "guthaben")
+    p = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}
+    assert p[(2027, "kanton")].bezahlt == 1500
+    # Gutschrift in den Buchungen → Rückerstattung fürs Vorjahr
+    bu.speichern(db, "Privatkonto", [("2026-05-10", 800.0, "Steuerverwaltung BL Gutschrift")], k)
+    db.execute("UPDATE buchungen SET kategorie = 'Steuern'")
+    neu = [b for b in sz.aus_buchungen(k, db) if b["betrag"] < 0]
+    assert neu and neu[0]["jahr"] == 2025 and neu[0]["rueckerstattung"]

@@ -178,6 +178,10 @@ Reiter unter Steuern: was pro Steuerjahr noch offen ist und bis wann.
   hochgeladenen Steuerdokumenten (provisorische Rechnung, Veranlagungsverfügung).
 - **Bezahlt:** Zahlungen von Hand oder aus den Buchungen der Kategorie «Steuern» übernommen (Steuer und Jahr aus dem
   Text geraten, Bundessteuer im ersten Halbjahr fürs Vorjahr).
+- **Guthaben (Saldo zu Ihren Gunsten):** Zeigt die definitive Rechnung, dass zu viel bezahlt wurde, rechnet die App
+  das Guthaben ins nächste Steuerjahr derselben Steuer (wie die Steuerverwaltung es verrechnet) – ausser eine
+  «Rückerstattung erhalten» ist erfasst. Ein Guthaben laut Kontoauszug des Steuerkontos lässt sich direkt beim
+  Steuerjahr erfassen, mit dem es verrechnet wird. Gutschriften in den Buchungen werden als Rückerstattung übernommen.
 - **Ergebnis:** offen, Fälligkeit, aufgelaufener Verzugszins, Vergütungszins beim Bezahlen heute (verglichen mit dem
   Zins des Sparkontos aus dem Anlage-Check), Betrag pro Monat bis zur Fälligkeit, Nachzahlung bzw. Rückerstattung.
 - **Einstellungen** (`steuerzahlung`): Fälligkeit der Staatssteuer, eigene Zinssätze, Raten im Liquiditätsplan,

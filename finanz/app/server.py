@@ -1291,9 +1291,13 @@ class Handler(BaseHTTPRequestHandler):
                 sz.rechnung_loeschen(v, jahr(), str(form.get("art")), str(form.get("typ")))
                 return "Rechnung gelöscht.", "steuerzahlung"
             if aktion == "zahlung":
+                bart = str(form.get("buchungsart") or "zahlung")
+                betrag = abs(vm.zahl(str(form.get("betrag") or "")))
                 sz.zahlung_speichern(v, jahr(), str(form.get("art")), str(form.get("datum") or ""),
-                                     vm.zahl(str(form.get("betrag") or "")), str(form.get("notiz") or ""))
-                return "Zahlung gespeichert.", "steuerzahlung"
+                                     -betrag if bart == "rueckerstattung" else betrag, str(form.get("notiz") or ""),
+                                     bart if bart in ("guthaben", "rueckerstattung") else "")
+                return {"guthaben": "Guthaben gespeichert – wird an dieses Steuerjahr angerechnet.",
+                        "rueckerstattung": "Rückerstattung gespeichert."}.get(bart, "Zahlung gespeichert."), "steuerzahlung"
             if aktion == "zahlung_loeschen":
                 sz.zahlung_loeschen(v, int(form.get("id") or 0))
                 return "Zahlung gelöscht.", "steuerzahlung"
