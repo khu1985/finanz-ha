@@ -157,7 +157,7 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     erg.extend(fz.erinnerungen(k, heute))
     import solar
     erg.extend(solar.erinnerungen(k, db, heute))
-    for modul in ("steuerzahlung", "liquiplan"):
+    for modul in ("steuerzahlung", "liquiplan", "kindersparen"):
         try:
             erg.extend(__import__(modul).erinnerungen(k, db, heute))
         except Exception as e_:  # noqa: BLE001

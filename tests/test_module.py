@@ -2269,3 +2269,34 @@ def test_liquiditaetsplan(k):
     p = lp.rechnen(k, db, date(2026, 11, 15))
     raten = [x for m in p.monate for x in m.posten if x.name.startswith("Staats") and "Rate" in x.name]
     assert len(raten) == 11 and round(sum(-x.betrag for x in raten)) == 24000
+
+
+def test_kindersparen(k):
+    import kindersparen as ksp
+    import sparplan as sp
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 15)
+    k["haushalt"]["kinder"] = [{"name": "Anna", "geburtsdatum": "2018-05-01", "weg": "gymnasium", "danach": "studium"},
+                               {"name": "Ben", "geburtsdatum": "2024-02-10"}]
+    a, b = ksp.plaene(k, db, heute)
+    assert a.ziel_datum == date(2036, 5, 1) and a.monate == 114 and a.anlage == "konto"
+    assert b.anlage == "fonds" and b.monate >= 120
+    assert any("Studium" in t for t, _ in a.ausbildung) and a.ziel == a.ziel_vorschlag > ksp.START_BETRAG
+    assert "Noch kein Sparplan" in a.hinweise[0]
+    # Konto der Art «Kindersparen» zählt als Bestand, nicht zur Notreserve
+    kid = vm.konto_anlegen(db, "Muster Jugendkonto", "kindersparen", "Anna")
+    vm.saldo_setzen(db, kid, "2026-10-31", 6000)
+    assert vm.liquiditaet(db)["total"] == 0 and vm.nettovermoegen(db)["frei"] == 0
+    k["haushalt"]["kinder"][0].update({"sparen_monat": 100, "sparen_ziel": 20000})
+    a = ksp.plaene(k, db, heute)[0]
+    assert a.bestand == 6000 and a.ziel == 20000 and a.ziel_eigen
+    assert a.wert == round(ksp.wert_am_ziel(6000, 100, 114, a.rendite)) and a.luecke == 20000 - a.wert
+    assert abs(ksp.wert_am_ziel(6000, a.noetig_monat, 114, a.rendite) - 20000) < 60
+    assert ksp.noetig(30000, 20000, 10, 1) == 0 and ksp.wert_am_ziel(0, 100, 12, 0) == 1200
+    # Sparplan: als zweckgebunden
+    plan = sp.rechnen(k, db, heute)
+    s4 = next(s for s in plan.schritte if s.nr == 4)
+    assert "Kindersparen Anna" in s4.text
+    # Erinnerung zum 18. Geburtstag
+    k["haushalt"]["kinder"][0]["sparen_alter"] = 18
+    assert any("wird 18" in e.titel for e in ksp.erinnerungen(k, db, date(2036, 4, 1)))

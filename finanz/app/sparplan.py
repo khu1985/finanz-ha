@@ -200,6 +200,19 @@ def rechnen(k: dict, db, heute: date | None = None) -> Plan:
             zweck_teile.append(f"{z.get('name') or 'Ziel'} {z['jahr']}: CHF {_chf(float(z['betrag']))}"
                                + (" (vom Konto zurückgelegt)" if x >= float(z["betrag"]) else
                                   f", CHF {_chf((float(z['betrag']) - x) / monate)} pro Monat"))
+    try:
+        import kindersparen as ksp
+        for kp_ in ksp.plaene(k, db, heute):
+            if kp_.monat:
+                bedarf4 += kp_.monat
+                zweck_luecke += kp_.luecke
+                zweck_teile.append(f"Kindersparen {kp_.name}: CHF {_chf(kp_.monat)} pro Monat bis {kp_.ziel_datum:%m.%Y}"
+                                   + (f" (für das Ziel nötig: CHF {_chf(kp_.noetig_monat)})" if kp_.luecke else ""))
+            elif kp_.noetig_monat:
+                zweck_teile.append(f"Kindersparen {kp_.name}: noch kein Sparplan (Vorschlag CHF {_chf(kp_.noetig_monat)} "
+                                   "pro Monat, unter Kinder)")
+    except Exception:  # noqa: BLE001 – Kinder sind optional
+        pass
     schritte.append(Schritt(4, "Zweckgebunden sparen", ENTFAELLT if not zweck_teile else
                             (ERLEDIGT if not bedarf4 else OFFEN),
                             "; ".join(zweck_teile) + ". Kurzer Horizont – sicher anlegen, auf das Datum terminiert."

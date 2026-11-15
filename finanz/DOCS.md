@@ -101,7 +101,7 @@ personen:
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr, Fälligkeit, Vergütungs- und Verzugszins, Rechnungen und Zahlungen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
-| Kinder | Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
+| Kinder | Sparen für die Kinder (Bestand, Sparplan, Ziel, Wert am Ziel), Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Vermögen pro Person (Diagramm), Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Reiter «Liquidität 12 Monate»: Kontostand Monat für Monat mit Steuern und grossen Rechnungen, Tiefpunkt, Notreserve; Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
@@ -220,7 +220,8 @@ Steuerdokument rechnet die App den deklarierten Eigenmietwert und Mietertrag auf
 
 ## Vermögen
 
-Konten mit Art (Bank, Wertschriften, Krypto, Säule 3a, Vorsorge 3b, Immobilie, Hypothek, Kredit, Sonstiges) und Person.
+Konten mit Art (Bank, Wertschriften, Krypto, Säule 3a, Vorsorge 3b, Immobilie, Fahrzeug, Hypothek, Kredit,
+Kindersparen, Sonstiges) und Person – auch ein Kind (siehe [Sparen für die Kinder](#sparen-für-die-kinder)).
 
 | Kennzahl | Was zählt |
 |---|---|
@@ -795,6 +796,7 @@ Auf der Seite **Kinder** (bzw. `haushalt.kinder[]`) pro Kind erfassen:
 | `ausbildung_bis` | unterhaltsberechtigt bis zu diesem Alter (18, in Ausbildung höchstens 25) |
 | `betreuung_jahr`, `betreuung_bis` | ältere Form: Kita, Tagesstruktur o. Ä. pro Jahr und bis zu welchem Alter – der Lebenslauf übernimmt die Beträge in die Phasen bis zu diesem Alter und ersetzt sie beim Speichern |
 | `zulage_monat` | Kinder- bzw. Ausbildungszulage; 0 = Mindestansatz 215 bzw. 268 |
+| `sparen_monat`, `sparen_ziel`, `sparen_alter`, `sparen_anlage`, `sparen_rendite` | Sparen für das Kind: Betrag pro Monat, Ziel (leer = Vorschlag), Zielalter (18), `konto` oder `fonds` (leer = nach Horizont), Rendite in % (leer = Standard) |
 
 Wirkung:
 
@@ -811,7 +813,27 @@ Wirkung:
 - **Nachlass:** Pflichtteil nur für Nachkommen der verstorbenen Person.
 - **Krankenkasse:** Kinder erscheinen automatisch; Kinderfranchisen bis 18, ab 19 Erwachsenenfranchisen.
 - **Erinnerungen:** Ausbildungszulage mit 16, Ausbildungsbestätigung mit 18, Krankenkasse mit 19, Ende von
-  Kinderabzug und Zulagen; Phasenwechsel (siehe Lebenslauf).
+  Kinderabzug und Zulagen; Phasenwechsel (siehe Lebenslauf); Kindersparen mit 18 übergeben, 5 Jahre vor dem Ziel
+  den Fonds umschichten.
+
+### Sparen für die Kinder
+
+Karte auf der Seite Kinder, pro Kind:
+
+- **Bestand:** Konten der Art «Kindersparen» mit dem Kind als Person (unter Vermögen; in der Personenauswahl mit
+  «(Kind)»). Sie zählen zum Nettovermögen und erscheinen unter «Vermögen pro Person» beim Kind, aber nicht in der
+  Notreserve, im Liquiditätsplan oder im freien Vermögen der Eltern.
+- **Ziel:** eigener Betrag oder Vorschlag aus dem Lebenslauf: Schulgeld, Material und Studiengebühren ab der
+  Sekundarstufe II, bei auswärts Studieren die Mehrkosten fürs Wohnen, plus CHF 5'000 Start (Führerausweis,
+  Mietkaution).
+- **Rechnung:** Wert am Zielalter mit monatlichem Zinseszins (Konto: Kontozins, mindestens 0,5 %; Fonds: mittlere
+  Rendite aus dem Anlage-Check), Lücke, nötiger Betrag pro Monat und Anteil an der Kinderzulage. Ab 10 Jahren
+  Horizont schlägt die App einen Fonds-Sparplan vor, unter 5 Jahren das Konto.
+- **Wirkung:** Unter Sparen & Anlegen zählt der Sparplan zum Schritt «zweckgebunden», ohne Buchungen im
+  Liquiditätsplan als Abfluss; Ampel «Kinder» gelb, wenn ein Ziel nicht erreicht wird.
+- **Recht und Steuern:** Konto auf den Namen des Kindes gehört dem Kind (Eltern verwalten bis 18, Vermögen selbst
+  nur mit Bewilligung der Kindesschutzbehörde verwenden, ZGB Art. 318–320); auf den Namen der Eltern bleibt es
+  Elternvermögen. Vermögen und Erträge minderjähriger Kinder versteuern die Eltern (DBG Art. 9 Abs. 2).
 
 ### Lebenslauf der Kinder
 

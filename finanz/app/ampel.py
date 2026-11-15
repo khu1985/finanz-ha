@@ -274,8 +274,11 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
         if laeufe:
             hinw = [h for lauf in laeufe for h in lauf.hinweise]
             ausb = [h for h in hinw if "Ausbildungsende" in h]
-            erg.append(Ampel("Kinder", GELB if ausb else GRUEN,
+            import kindersparen as ksp
+            luecke = [p for p in ksp.plaene(k, db, heute) if (p.monat or p.bestand) and p.luecke]
+            erg.append(Ampel("Kinder", GELB if ausb or luecke else GRUEN,
                              "Ausbildungsende im Lebenslauf und unter Kinder abgleichen" if ausb else
+                             f"Kindersparen: Ziel von {', '.join(p.name for p in luecke)} nicht erreicht" if luecke else
                              f"{len(laeufe)} Kind(er) im Lebenslauf erfasst", "kinder"))
     except Exception as e:  # noqa: BLE001
         LOG.debug("Ampel Kinder: %s", e)

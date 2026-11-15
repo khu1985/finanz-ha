@@ -998,7 +998,9 @@ def vermoegen(k: dict, db) -> str:
     heute = date.today().isoformat()
     konto_opts = "".join(f'<option value="{escape(x["name"])}">' for x in ks)
     arten = "".join(f'<option value="{a}">{n}</option>' for a, n in vm.ARTEN.items())
-    pers = '<option value="">gemeinsam</option>' + "".join(f'<option>{escape(p)}</option>' for p in personen)
+    import kinder as ki
+    pers = '<option value="">gemeinsam</option>' + "".join(f'<option>{escape(p)}</option>' for p in personen) + "".join(
+        f'<option value="{escape(c["name"])}">{escape(c["name"])} (Kind)</option>' for c in ki.liste(k) if c.get("name"))
     erfassen = f"""<form method="post" action="vermoegen/saldo"><div class="felder">
 <label>Konto<input name="konto" list="konten" required placeholder="z. B. Sparkonto ZKB"></label>
 <datalist id="konten">{konto_opts}</datalist>
@@ -1037,10 +1039,12 @@ angeben.</p>
 PERSONEN_TEILE = [("konten", "Konten", "var(--c1)", 1), ("wertschriften", "Wertschriften, Krypto", "var(--c2)", 1),
                   ("saeule3a", "Säule 3a", "var(--c3)", 1), ("vorsorge", "Vorsorge 3b", "var(--c3)", 0.6),
                   ("immobilie", "Immobilie", "var(--c4)", 1), ("fahrzeug", "Fahrzeug", "var(--c5)", 1),
+                  ("kindersparen", "Kindersparen", "var(--c2)", 0.6),
                   ("sonstiges", "Sonstiges", "var(--leise)", 0.6), ("pk", "Pensionskasse (nicht im Nettovermögen)",
                                                                     "var(--c3)", 0.3)]
 _TEIL_VON_ART = {"bank": "konten", "depot": "wertschriften", "krypto": "wertschriften", "saeule3a": "saeule3a",
-                 "vorsorge": "vorsorge", "immobilie": "immobilie", "fahrzeug": "fahrzeug", "sonstiges": "sonstiges"}
+                 "vorsorge": "vorsorge", "immobilie": "immobilie", "fahrzeug": "fahrzeug", "kindersparen": "kindersparen",
+                 "sonstiges": "sonstiges"}
 
 
 def personen_karte(k: dict, db, ks: list | None = None) -> str:
@@ -1048,11 +1052,14 @@ def personen_karte(k: dict, db, ks: list | None = None) -> str:
     from versicherungen import gleiche_person
     ks = [x for x in (ks if ks is not None else vm.konten(db)) if not x.get("aufgeloest")]
     namen = [p["name"] for p in k["personen"]]
-    gruppen: dict[str, dict[str, float]] = {n: {} for n in namen}
+    import kinder as ki
+    kinder_ = [c["name"] for c in ki.liste(k) if c.get("name")]
+    gruppen: dict[str, dict[str, float]] = {n: {} for n in namen + [c for c in kinder_ if c not in namen]}
     gruppen["gemeinsam"] = {}
     schulden = {n: 0.0 for n in list(gruppen)}
     for x in ks:
-        wem = next((n for n in namen if x.get("person") and gleiche_person(n, x["person"])), "gemeinsam")
+        wem = next((n for n in gruppen if n != "gemeinsam" and x.get("person") and gleiche_person(n, x["person"])),
+                   "gemeinsam")
         if x["art"] in vm.SCHULDEN:
             schulden[wem] += -x["wert"]
             continue
@@ -1155,7 +1162,8 @@ def konto(k: dict, db, kid: int) -> str:
         kpi(str(x["buchungen"]), "Buchungen (Budget)"),
         kpi(f"aufgelöst {x['aufgeloest']}" if x["aufgeloest"] else "offen", "Status"),
     ]) + "</div>"
-    personen = [p["name"] for p in k["personen"]]
+    import kinder as ki
+    personen = [p["name"] for p in k["personen"]] + [c["name"] for c in ki.liste(k) if c.get("name")]
     arten = "".join(f'<option value="{s}"{" selected" if s == x["art"] else ""}>{n}</option>' for s, n in vm.ARTEN.items())
     pers = (f'<option value=""{"" if x["person"] else " selected"}>gemeinsam</option>'
             + "".join(f'<option{" selected" if p == x["person"] else ""}>{escape(p)}</option>' for p in personen))
@@ -3531,9 +3539,70 @@ def kinder(k: dict, db) -> str:
     hinw = u.hinweise + [h for lauf in laeufe for h in lauf.hinweise]
     return (kpis + _lebenslauf_uebersicht(k, laeufe) + "".join(_lebenslauf_kind(i, c, lauf) for i, (c, lauf) in enumerate(
                 (c, kp.von(c, len(liste_))) for c in liste_) if lauf)
+            + kindersparen_karte(k, db)
             + karte("Hinweise", hinweisliste(hinw) + link)
             + karte("Zulagen und Steuern bis zur Selbständigkeit", zeit) + karte("Kinder erfassen", form)
             + _lebenslauf_quellen())
+
+
+def kindersparen_karte(k: dict, db) -> str:
+    """Sparen für die Kinder: Bestand, Sparplan, Wert am Ziel, Lücke, Einstellungen pro Kind."""
+    import kinder as ki
+    import kindersparen as ks
+    plaene = ks.plaene(k, db)
+    if not plaene:
+        return ""
+    namen = [c["name"] for c in ki.liste(k)]
+    zeilen, formulare = [], []
+    for p in plaene:
+        st_ = licht(am.GRUEN if not p.luecke and (p.monat or p.bestand) else am.GELB if p.monat or p.bestand else am.GRAU)
+        zeilen.append([f"<b>{escape(p.name)}</b><br><small class=\"leise\">{p.alter} Jahre · {escape(ks.ANLAGEN[p.anlage])} "
+                       f"{p.rendite:g} %</small>", chf(p.bestand), chf(p.monat),
+                       f"{chf(p.ziel)}<br><small class=\"leise\">mit {p.ziel_alter} ({p.ziel_datum:%m.%Y})"
+                       + ("" if p.ziel_eigen else ", Vorschlag") + "</small>",
+                       chf(p.wert), f"{st_} {chf(p.luecke)}", chf(p.noetig_monat)])
+        i = namen.index(p.name) if p.name in namen else 0
+        c = ki.liste(k)[i]
+        anlage = str(c.get("sparen_anlage") or "")
+        opts = "".join(f'<option value="{a}"{" selected" if anlage == a else ""}>{escape(t)}</option>'
+                       for a, t in [("", "automatisch (nach Horizont)")] + list(ks.ANLAGEN.items()))
+
+        def w(f):
+            v = c.get(f)
+            return "" if v in (None, "") else escape(str(v))
+        teile = "".join(f"<li>{escape(t)}: CHF {chf(b)}</li>" for t, b in p.ausbildung)
+        formulare.append(f"""<details><summary>{escape(p.name)}: Sparplan und Ziel</summary>
+<form method="post" action="kinder/sparen"><input type="hidden" name="i" value="{i}"><div class="felder">
+<label>Sparen pro Monat (CHF)<input name="sparen_monat" inputmode="decimal" value="{w("sparen_monat")}"></label>
+<label>Ziel (CHF, leer = Vorschlag {chf(p.ziel_vorschlag)})<input name="sparen_ziel" inputmode="decimal" value="{w("sparen_ziel")}"></label>
+<label>bis Alter<input name="sparen_alter" inputmode="numeric" value="{w("sparen_alter")}" placeholder="18"></label>
+<label>Anlage<select name="sparen_anlage">{opts}</select></label>
+<label>Rendite % pro Jahr (leer = Standard)<input name="sparen_rendite" inputmode="decimal" value="{w("sparen_rendite")}"></label>
+</div><div class="zeile"><button>Speichern</button></div></form>
+<p class="leise">Vorschlag fürs Ziel:</p><ul class="hinweise">{teile}</ul></details>""")
+    hinw = [f"{p.name}: {h}" for p in plaene for h in p.hinweise]
+    zulage = sum(p.zulage for p in plaene)
+    kopf = '<div class="kpis">' + "".join([
+        kpi(chf(sum(p.bestand for p in plaene)), "auf Kindersparkonten"),
+        kpi(chf(ks.monat_total(plaene)), "gespart pro Monat"),
+        kpi(chf(zulage), "Kinder- und Ausbildungszulagen pro Monat"),
+        kpi(chf(sum(p.luecke for p in plaene)), "fehlen am Ziel", "warn" if any(p.luecke for p in plaene) else ""),
+    ]) + "</div>"
+    links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in ks.QUELLEN)
+    return '<div id="sparen">' + karte("Sparen für die Kinder", kopf + tabelle(
+        ["Kind", "heute", "pro Monat", "Ziel", "Wert am Ziel", "fehlt", "nötig pro Monat"], zeilen, zahlen_ab=1,
+        karten=True) + hinweisliste(hinw) + "".join(formulare) + (
+        '<p class="leise">Bestand: Konten der Art «Kindersparen» mit dem Kind als Person unter <a href="vermoegen">Vermögen'
+        '</a> – sie zählen zum Nettovermögen, aber nicht zur Notreserve. Unter <a href="sparplan">Sparen &amp; Anlegen</a> '
+        'erscheint der Sparplan als zweckgebunden.</p>'
+        '<details><summary>Konto auf das Kind oder auf die Eltern?</summary><ul class="hinweise">'
+        '<li>Auf den Namen des Kindes: Das Geld gehört dem Kind. Die Eltern verwalten es bis 18; Erträge dürfen für '
+        'Unterhalt und Ausbildung verwendet werden, das Vermögen selbst nur mit Bewilligung der Kindesschutzbehörde. '
+        'Ab 18 entscheidet das Kind.</li><li>Auf den Namen der Eltern (mit Vermerk): bleibt Elternvermögen – flexibel, '
+        'fällt aber in Güterrecht und Nachlass.</li><li>Steuern: Vermögen und Erträge minderjähriger Kinder versteuern '
+        'die Eltern mit (ausser Lehrlingslohn bzw. Erwerbseinkommen).</li><li>Fonds-Sparplan ab rund 10 Jahren '
+        'Horizont, 3–5 Jahre vor dem Bedarf schrittweise aufs Konto.</li></ul>'
+        f'<ul class="hinweise">{links}</ul></details>')) + "</div>"
 
 
 _PHASE_FARBE = {"kleinkind": (1, 0.5), "kita": (1, 1), "kindergarten": (2, 0.6), "primar": (2, 1), "sek1": (3, 1),

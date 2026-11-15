@@ -628,6 +628,29 @@ class Handler(BaseHTTPRequestHandler):
                 cl["notfallordner"] = {p["name"]: True for p in k["personen"]}
             konfig.speichern(k)
             return "Notfallordner gespeichert." + (" In der Nachlass-Checkliste abgehakt." if form.get("erledigt") else ""), "notfall"
+        if pfad == "kinder/sparen":
+            import kindersparen as ksp
+            k = konfig.laden()
+            kinder = k["haushalt"].get("kinder") or []
+            try:
+                c = kinder[int(form.get("i", -1))]
+            except (ValueError, IndexError):
+                return "Kind nicht gefunden.", "kinder"
+            for f, lo, hi in (("sparen_monat", 0, 10000), ("sparen_ziel", 0, 1e7), ("sparen_alter", 1, 30),
+                              ("sparen_rendite", -5, 15)):
+                t = str(form.get(f, "")).strip()
+                if t:
+                    x = max(lo, min(hi, vm.zahl(t)))
+                    c[f] = int(x) if f == "sparen_alter" or x == int(x) else x
+                else:
+                    c.pop(f, None)
+            a = str(form.get("sparen_anlage") or "")
+            if a in ksp.ANLAGEN:
+                c["sparen_anlage"] = a
+            else:
+                c.pop("sparen_anlage", None)
+            konfig.speichern(k)
+            return f"Sparplan für {c.get('name') or 'Kind'} gespeichert.", "kinder#sparen"
         if pfad == "kinder/lebenslauf":
             import kinderphasen as kp
             k = konfig.laden()

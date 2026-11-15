@@ -244,6 +244,11 @@ def rechnen(k: dict, db, heute: date | None = None, monate: int = 12) -> Plan:
         # Sparpotenzial gilt nach allen Ausgaben: die einzeln geplanten kommen im Durchschnitt wieder dazu
         einzeln = -sum(p.betrag for p in posten if p.rubrik not in ("Vorsorge", "Ziele"))
         einnahmen_mittel, laufend, sparen, pro_monat = spar + einzeln / 12, 0.0, 0.0, {}
+        try:                                  # Kindersparen: Dauerauftrag aufs Konto der Kinder
+            import kindersparen as ksp
+            sparen = -ksp.monat_total(ksp.plaene(k, db, heute))
+        except Exception:  # noqa: BLE001
+            pass
         if not any("Sparpotenzial" in h for h in hinweise):
             hinweise.append("Noch keine Buchungen: Überschuss pro Monat aus dem Sparpotenzial der Einstellungen. Mit "
                             "importierten Kontoauszügen (unter «Budget») wird der Plan genauer.")

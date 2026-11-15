@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.50.0 – 2026-11-15
+
+- **Sparen für die Kinder** (Seite Kinder): pro Kind Bestand, Sparplan, Ziel (eigenes oder Vorschlag aus dem
+  Lebenslauf: Ausbildung ab Sekundarstufe II, auswärts wohnen, Start), Wert am Zielalter, Lücke, nötiger Betrag pro
+  Monat und Anteil an der Kinderzulage; Konto oder Fonds-Sparplan nach Horizont; Hinweise zu Eigentum (Konto auf
+  Kind oder Eltern) und Steuern.
+- Neue Kontoart **Kindersparen**; Konten lassen sich einem Kind zuordnen. Sie zählen zum Nettovermögen und
+  erscheinen unter «Vermögen pro Person» beim Kind, aber nicht in Notreserve, Liquiditätsplan oder freiem Vermögen.
+- Sparplan der Kinder unter Sparen & Anlegen als «zweckgebunden», im Liquiditätsplan ohne Buchungen als Abfluss;
+  Ampel «Kinder» bei verfehltem Ziel; Erinnerungen zum 18. Geburtstag und 5 Jahre vor dem Ziel (Fonds umschichten).
+
 ## 0.49.0 – 2026-11-15
 
 - **Liquidität 12 Monate** (neuer Reiter unter Budget): Kontostand der Bankkonten Monat für Monat mit Steuern,

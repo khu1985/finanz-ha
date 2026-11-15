@@ -429,3 +429,17 @@ def test_steuern_bezahlen_und_liquiditaet(server, daten):
     assert f"31.10.{j}" in html and "10’000" in html.replace("'", "’")
     html = urllib.request.urlopen(f"{server}/liquiditaet").read().decode()
     assert "Kontostand in den nächsten 12 Monaten" in html and "Monat für Monat" in html and "(Rate)" in html
+
+
+def test_kindersparen_seite(server, daten):
+    k = konfig.laden()
+    k["haushalt"]["kinder"] = [{"name": "Anna", "geburtsdatum": f"{date.today().year - 5}-05-01"}]
+    konfig.speichern(k)
+    html = urllib.request.urlopen(f"{server}/kinder").read().decode()
+    assert "Sparen für die Kinder" in html and 'action="kinder/sparen"' in html
+    code, ziel = _post(f"{server}/kinder/sparen", {"i": "0", "sparen_monat": "150", "sparen_anlage": "fonds"})
+    assert code == 303 and "#sparen" in ziel
+    c = konfig.laden()["haushalt"]["kinder"][0]
+    assert c["sparen_monat"] == 150 and c["sparen_anlage"] == "fonds" and "sparen_ziel" not in c
+    html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    assert "Anna (Kind)" in html and "Kindersparen" in html
