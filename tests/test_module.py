@@ -2617,7 +2617,7 @@ def test_steuerkonto_umbuchung_und_zinsen(k):
     assert p[(2025, "kanton")].offen == 0 and p[(2025, "kanton")].guthaben_aus == 0   # ausdrücklich umgebucht
     assert p[(2026, "kanton")].bezahlt == 2030 + 10 - 25 and p[(2026, "kanton")].offen == 21000 - 2015
     konto = sz.buchungen_konto(db)
-    assert konto[(2025, "kanton")] == 20000 + 30 - 2030 and konto[(2026, "kanton")] == 2030 + 10 - 25
+    assert konto[(2025, "kanton", "")] == 20000 + 30 - 2030 and konto[(2026, "kanton", "")] == 2030 + 10 - 25
 
 
 def test_amortisationsstrategie(k):
@@ -2643,3 +2643,36 @@ def test_amortisationsstrategie(k):
     assert all(v.tragbarkeit_alter > 0 for v in s.varianten)
     k["wohnen"]["aktiv"] = False
     assert ams.rechnen(k, db, heute) is None
+
+
+def test_steuerkonto_pro_person_im_konkubinat(k, tmp_path):
+    import sqlite3
+    import steuerzahlung as sz
+    k["haushalt"]["zivilstand"] = "ledig"
+    k["haushalt"]["kanton"] = "BL"
+    a, b = k["personen"][0]["name"], k["personen"][1]["name"]
+    assert sz.personen(k) == [a, b]
+    heute = date(2026, 11, 15)
+    # alte Datenbank (vor 0.57.1): Rechnung ohne Person wird übernommen und der ersten Person zugeordnet
+    pfad = tmp_path / "alt.sqlite"
+    alt = sqlite3.connect(pfad)
+    alt.executescript("CREATE TABLE steuer_rechnungen (jahr INTEGER NOT NULL, art TEXT NOT NULL, typ TEXT NOT NULL, "
+                      "betrag REAL NOT NULL, faellig TEXT NOT NULL DEFAULT '', PRIMARY KEY (jahr, art, typ));"
+                      "INSERT INTO steuer_rechnungen VALUES (2026, 'kanton', 'provisorisch', 9000, '');")
+    alt.commit()
+    alt.close()
+    db = vm.verbinden(str(pfad))
+    sz.tabellen(db)
+    assert (2026, "kanton", "provisorisch", a) in sz.rechnungen(k, db)
+    sz.rechnung_speichern(db, 2026, "kanton", "provisorisch", 7000, person=b)
+    sz.zahlung_speichern(db, 2026, "kanton", "2026-05-01", 9000, person=a)
+    sz.zahlung_speichern(db, 2026, "kanton", "2026-05-01", 3000, person=b)
+    p = {(x.person, x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}
+    assert p[(a, 2026, "kanton")].offen == 0
+    assert p[(b, 2026, "kanton")].soll == 7000 and p[(b, 2026, "kanton")].offen == 4000
+    # Schätzung pro Person: Bundessteuer 2026 je Person aus «Steuern heute»
+    assert (a, 2026, "bund") in p and (b, 2026, "bund") in p
+    er = sz.erinnerungen(k, db, heute)
+    assert len({e.schluessel for e in er}) == len(er)
+    k["haushalt"]["zivilstand"] = "verheiratet"
+    assert sz.personen(k) == [""]

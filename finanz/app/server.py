@@ -1282,20 +1282,21 @@ class Handler(BaseHTTPRequestHandler):
             k["steuerzahlung"] = {x: y for x, y in c.items() if y not in (None, "")}
             konfig.speichern(k)
             return "Einstellungen zum Steuerbezug gespeichert.", "steuerzahlung"
+        person = sz.person_von(k, str(form.get("person") or "")) if sz.personen(k) != [""] else ""
         with db() as v:
             if aktion == "rechnung":
                 sz.rechnung_speichern(v, jahr(), str(form.get("art")), str(form.get("typ")),
-                                      vm.zahl(str(form.get("betrag") or "")), str(form.get("faellig") or ""))
+                                      vm.zahl(str(form.get("betrag") or "")), str(form.get("faellig") or ""), person)
                 return "Rechnung gespeichert.", "steuerzahlung"
             if aktion == "rechnung_loeschen":
-                sz.rechnung_loeschen(v, jahr(), str(form.get("art")), str(form.get("typ")))
+                sz.rechnung_loeschen(v, jahr(), str(form.get("art")), str(form.get("typ")), person)
                 return "Rechnung gelöscht.", "steuerzahlung"
             if aktion == "zahlung":
                 bart = str(form.get("buchungsart") or "zahlung")
                 betrag = abs(vm.zahl(str(form.get("betrag") or "")))
                 sz.zahlung_speichern(v, jahr(), str(form.get("art")), str(form.get("datum") or ""),
                                      -betrag if bart == "rueckerstattung" else betrag, str(form.get("notiz") or ""),
-                                     bart if bart in ("guthaben", "rueckerstattung") else "")
+                                     bart if bart in ("guthaben", "rueckerstattung") else "", person=person)
                 return {"guthaben": "Guthaben gespeichert – wird an dieses Steuerjahr angerechnet.",
                         "rueckerstattung": "Rückerstattung gespeichert."}.get(bart, "Zahlung gespeichert."), "steuerzahlung"
             if aktion == "zahlung_loeschen":
@@ -1305,10 +1306,11 @@ class Handler(BaseHTTPRequestHandler):
                 alt = str(form.get("b") or "")
                 if aktion == "position_loeschen" or alt:      # beim Bearbeiten: alte Rechnung (Schlüssel) entfernen
                     if alt.startswith("r"):
-                        j_, a_, t_ = alt[1:].split("-", 2)
+                        j_, a_, t_, *p_ = alt[1:].split("-", 3)
+                        p_ = p_[0] if p_ else ""
                         if aktion == "position_loeschen" or str(form.get("position")) not in sz.TYPEN \
-                                or (int(j_), a_, t_) != (jahr(), str(form.get("art")), str(form.get("position"))):
-                            sz.rechnung_loeschen(v, int(j_), a_, t_)
+                                or (int(j_), a_, t_, p_) != (jahr(), str(form.get("art")), str(form.get("position")), person):
+                            sz.rechnung_loeschen(v, int(j_), a_, t_, p_)
                     elif alt.startswith("z") and aktion == "position_loeschen":
                         sz.zahlung_loeschen(v, int(alt[1:]))
                     if aktion == "position_loeschen":
@@ -1321,12 +1323,13 @@ class Handler(BaseHTTPRequestHandler):
                 if pos in sz.TYPEN:
                     if alt.startswith("z"):
                         sz.zahlung_loeschen(v, int(alt[1:]))
-                    sz.rechnung_speichern(v, jahr(), str(form.get("art")), pos, betrag, datum)
+                    sz.rechnung_speichern(v, jahr(), str(form.get("art")), pos, betrag, datum, person)
                 else:
                     gj = str(form.get("gegenjahr") or "").strip()
                     zid = int(alt[1:]) if alt.startswith("z") else None
                     sz.zahlung_speichern(v, jahr(), str(form.get("art")), datum or datetime.now().date().isoformat(), betrag,
-                                         str(form.get("notiz") or ""), "", pos, int(gj) if gj.isdigit() else None, zid)
+                                         str(form.get("notiz") or ""), "", pos, int(gj) if gj.isdigit() else None, zid,
+                                         person)
                 return (("Änderung gespeichert: " if alt else "Gespeichert: ") + sz.POSITIONEN[pos] + "."), "steuerzahlung"
             if aktion == "uebernehmen":
                 n = sz.buchungen_uebernehmen(k, v)

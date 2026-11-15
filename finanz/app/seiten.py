@@ -4650,12 +4650,14 @@ def steuerzahlung(k: dict, db, q: dict | None = None) -> str:
         kpi(chf(sz.offen_total(posten)), "offen insgesamt", "warn" if ueber else "",
             am.ROT if any(p.quelle != "definitiv" for p in ueber) else (am.GELB if offen else am.GRUEN)),
         kpi(f"{naechste.faellig:%d.%m.%Y}" if naechste else "–",
-            f"nächste Fälligkeit ({naechste.name} {naechste.jahr})" if naechste else "nächste Fälligkeit"),
+            f"nächste Fälligkeit ({naechste.name} {naechste.jahr}{' ' + naechste.person if naechste.person else ''})"
+            if naechste else "nächste Fälligkeit"),
         kpi(chf(sum(p.monatlich for p in offen)), "pro Monat zurücklegen bis zur Fälligkeit"),
     ] + ([kpi(chf(sz.guthaben(posten)), "Guthaben auf dem Steuerkonto (verrechnet)", "gut", am.GRUEN)]
          if sz.guthaben(posten) else [])) + "</div>"]
     zeilen = []
-    for p in posten:
+    reihe = {pe: i for i, pe in enumerate(sz.personen(k))}
+    for p in sorted(posten, key=lambda p: (p.faellig, p.art, reihe.get(p.person, 0))):
         if p.offen > 0 and p.faellig < heute:
             st_ = licht(am.ROT if p.quelle != "definitiv" else am.GELB, "überfällig")
         elif p.offen > 0:
@@ -4666,13 +4668,16 @@ def steuerzahlung(k: dict, db, q: dict | None = None) -> str:
                                  if p.guthaben_ein else "")
         if p.guthaben_aus:
             st_ = licht(am.GRUEN, "Guthaben")
-        zeilen.append([str(p.jahr), escape(p.name), f"{chf(p.soll)} <small class=\"leise\">{escape(p.quelle)}</small>",
+        zeilen.append([str(p.jahr), escape(p.name) + (f'<br><small class="leise">{escape(p.person)}</small>' if p.person
+                                                      else ""),
+                       f"{chf(p.soll)} <small class=\"leise\">{escape(p.quelle)}</small>",
                        f"<span>{bez_}</span>", f"{st_} {chf(p.offen)}" + (f' <small class="gut">+{chf(p.guthaben_aus)} '
                                                                     'Guthaben</small>' if p.guthaben_aus else ""),
                        f"{p.faellig:%d.%m.%Y}" + (' <small class="leise">angenommen</small>' if p.faellig_angenommen else ""),
                        "<br>".join(escape(h) for h in p.hinweise)])
     fae_j, _ = sz.faellig(k, "kanton", heute.year)
-    if fae_j < heute and not any(p.jahr == heute.year and p.art == "kanton" for p in posten):
+    if fae_j < heute and any(not any(p.jahr == heute.year and p.art == "kanton" and p.person == pe for p in posten)
+                             for pe in sz.personen(k)):
         zeilen.append(["", "", "", "", "", "", f'<span class="leise">Für {heute.year} sind noch keine Rechnung und keine '
                        f'Zahlung der Staatssteuer erfasst (fällig war sie am {fae_j:%d.%m.%Y}) – unten eintragen bzw. aus '
                        'den Buchungen übernehmen, dann rechnet die App Nachzahlung oder Rückerstattung.</span>'])
@@ -5159,22 +5164,30 @@ def _steuerkonto(k: dict, db, sz, posten: list, heute: date, bearbeiten: str) ->
     """Steuerkonto pro Steuerjahr und Steuer wie im Kontoauszug, darunter Erfassen bzw. Bearbeiten einer Position."""
     re_ = sz.rechnungen(k, db)
     buchungen = sz.zahlungen(db)
-    konten: dict[tuple[int, str], list] = {}
-    for (j, a, t), r in re_.items():
-        konten.setdefault((j, a), []).append(("r", f"r{j}-{a}-{t}", r.get("faellig") or "", t, -float(r["betrag"]), r))
+    pers_liste = sz.personen(k)
+    mehrere = pers_liste != [""]
+    konten: dict[tuple[str, int, str], list] = {}
+    for (j, a, t, pe), r in re_.items():
+        roh_p = r.get("roh", pe)
+        konten.setdefault((pe, j, a), []).append(("r", f"r{j}-{a}-{t}" + (f"-{roh_p}" if roh_p else ""),
+                                                  r.get("faellig") or "", t, -float(r["betrag"]), r))
     for z in buchungen:
         typ = z.get("typ") or "zahlung"
         b = abs(float(z["betrag"]))
-        konten.setdefault((z["jahr"], z["art"]), []).append(("z", f"z{z['id']}", z["datum"], typ,
-                                                               sz.WIRKUNG.get(typ, 1) * b, z))
+        pe = sz.person_von(k, z.get("person"))
+        konten.setdefault((pe, z["jahr"], z["art"]), []).append(("z", f"z{z['id']}", z["datum"], typ,
+                                                                 sz.WIRKUNG.get(typ, 1) * b, z))
         if typ == "umbuchung" and z.get("gegenjahr"):
-            konten.setdefault((int(z["gegenjahr"]), z["art"]), []).append(("z", f"z{z['id']}", z["datum"], "umbuchung_aus",
-                                                                           b, z))
-    offen_jahre = {(p.jahr, p.art) for p in posten if p.offen > 0.5}
+            konten.setdefault((pe, int(z["gegenjahr"]), z["art"]), []).append(("z", f"z{z['id']}", z["datum"],
+                                                                               "umbuchung_aus", b, z))
+    offen_jahre = {(p.person, p.jahr, p.art) for p in posten if p.offen > 0.5}
     bloecke = []
-    for (j, a) in sorted(konten, reverse=True):
+    reihe = {p: i for i, p in enumerate(pers_liste)}
+    for (pe, j, a) in sorted(konten, key=lambda x: (reihe.get(x[0], 99), -x[1], x[2])):
+        if mehrere and (not bloecke or bloecke[-1][0] != pe):
+            bloecke.append((pe, f'<h3 class="person-titel">{escape(pe)}</h3>'))
         # Rechnungen zuerst (Belastung des Steuerjahres), danach die Buchungen nach Valuta
-        eintraege = sorted(konten[(j, a)], key=lambda e: (e[0] != "r", e[3] == "definitiv", e[2] or f"{j}-01-01"))
+        eintraege = sorted(konten[(pe, j, a)], key=lambda e: (e[0] != "r", e[3] == "definitiv", e[2] or f"{j}-01-01"))
         defi = any(e[3] == "definitiv" for e in eintraege)
         saldo, zeilen = 0.0, []
         for quelle, schl, datum, typ, wirkung, roh in eintraege:
@@ -5203,24 +5216,27 @@ def _steuerkonto(k: dict, db, sz, posten: list, heute: date, bearbeiten: str) ->
                                                     " <small>offen</small>" if saldo < -0.5 else "") + "</span>", aktion])
         titel = f"{j} · {escape(sz.bezeichnung(k, a))}: " + (f"offen CHF {chf(-saldo)}" if saldo < -0.5 else
                                                            f"Guthaben CHF {chf(saldo)}" if saldo > 0.5 else "ausgeglichen")
-        auf = " open" if (j, a) in offen_jahre or j >= heute.year else ""
-        bloecke.append(f'<details{auf}><summary>{titel}</summary>'
-                       + tabelle(["Datum", "Position", "Betrag", "Saldo", ""], zeilen, zahlen_ab=2, karten=True)
-                       + "</details>")
+        auf = " open" if (pe, j, a) in offen_jahre or j >= heute.year else ""
+        bloecke.append((pe, f'<details{auf}><summary>{titel}</summary>'
+                        + tabelle(["Datum", "Position", "Betrag", "Saldo", ""], zeilen, zahlen_ab=2, karten=True)
+                        + "</details>"))
+    bloecke = [b_ for _, b_ in bloecke]
     # Formular: neu oder bearbeiten
     vor: dict = {}
     if bearbeiten.startswith("z") and bearbeiten[1:].isdigit():
         z = sz.einer(db, int(bearbeiten[1:]))
         if z:
             vor = {"jahr": z["jahr"], "art": z["art"], "position": z.get("typ") or "zahlung", "betrag": abs(z["betrag"]),
-                   "datum": z["datum"], "gegenjahr": z.get("gegenjahr") or "", "notiz": z.get("notiz") or ""}
+                   "datum": z["datum"], "gegenjahr": z.get("gegenjahr") or "", "notiz": z.get("notiz") or "",
+                   "person": sz.person_von(k, z.get("person"))}
     elif bearbeiten.startswith("r"):
         try:
-            j_, a_, t_ = bearbeiten[1:].split("-", 2)
-            r = re_.get((int(j_), a_, t_))
+            j_, a_, t_, *p_ = bearbeiten[1:].split("-", 3)
+            pe_ = sz.person_von(k, p_[0] if p_ else "")
+            r = re_.get((int(j_), a_, t_, pe_))
             if r:
                 vor = {"jahr": int(j_), "art": a_, "position": t_, "betrag": r["betrag"], "datum": r.get("faellig") or "",
-                       "gegenjahr": "", "notiz": ""}
+                       "gegenjahr": "", "notiz": "", "person": pe_}
         except ValueError:
             pass
     jahr_std = heute.year if heute.month >= 2 else heute.year - 1
@@ -5232,8 +5248,11 @@ def _steuerkonto(k: dict, db, sz, posten: list, heute: date, bearbeiten: str) ->
     def w(x, std=""):
         v = vor.get(x, std)
         return escape(f"{v:g}" if isinstance(v, float) else str(v))
+    person_feld = ("<label>Person (eigenes Steuerkonto)<select name=\"person\">" + "".join(
+        f'<option{" selected" if vor.get("person") == pe else ""}>{escape(pe)}</option>' for pe in pers_liste)
+        + "</select></label>") if mehrere else ""
     form = f"""<form method="post" action="steuerzahlung/position">{f'<input type="hidden" name="b" value="{escape(bearbeiten)}">' if vor else ""}
-<div class="felder">
+<div class="felder">{person_feld}
 <label>Steuerjahr<input name="jahr" inputmode="numeric" value="{w("jahr", jahr_std)}" required></label>
 <label>Steuer<select name="art">{arten}</select></label>
 <label>Position<select name="position">{positionen}</select></label>
@@ -5248,7 +5267,7 @@ Konto (die definitive ersetzt die provisorische), <b>Zahlung</b>, <b>Vergütungs
 schreiben gut, <b>Verzugszins</b> belastet. <b>Umbuchung auf Jahr</b> bzw. <b>aus Jahr</b> verschiebt ein Guthaben
 zwischen zwei Steuerjahren – einmal erfassen genügt, sie erscheint in beiden Jahren. <b>Rückerstattung erhalten</b>:
 Auszahlung eines Guthabens. Ohne Umbuchung rechnet die App ein Guthaben nach der definitiven Rechnung selbst ins
-Folgejahr.</p></form>"""
+Folgejahr.{" Im Konkubinat hat jede Person ihr eigenes Steuerkonto mit eigenen Rechnungen." if mehrere else ""}</p></form>"""
     neu = sz.aus_buchungen(k, db)
     uebernehmen = (f'<form method="post" action="steuerzahlung/uebernehmen" class="zeile"><button class="zweit">'
                    f'{len(neu)} Buchung{"" if len(neu) == 1 else "en"} der Kategorie «Steuern» übernehmen</button></form>'

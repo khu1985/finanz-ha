@@ -548,7 +548,7 @@ def test_steuerkonto_positionen_bearbeiten(server, daten):
                                                         "position": "definitiv", "betrag": "19000", "datum": ""})
     k = konfig.laden()
     r = sz.rechnungen(k, v)
-    assert (j, "kanton", "definitiv") in r and (j, "kanton", "provisorisch") not in r
+    assert (j, "kanton", "definitiv", "") in r and (j, "kanton", "provisorisch", "") not in r
     p = {(x.jahr, x.art): x for x in sz.auswerten(k, v)}[(j, "kanton")]
     assert p.bezahlt == 16000 + 12 + 500 and p.offen == 19000 - 16512
     code, _ = _post(f"{server}/steuerzahlung/position_loeschen", {"b": f"z{zahlung['id']}"})

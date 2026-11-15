@@ -134,7 +134,7 @@ def rechnen(k: dict, db, heute: date | None = None, monate: int = 12) -> Plan:
         fae = max(p.faellig, heute)
         if fae > bis:
             continue
-        name = f"{p.name} {p.jahr}" + (" (geschätzt)" if p.quelle == "geschätzt" else "")
+        name = f"{p.name} {p.jahr}" + (f" {p.person}" if p.person else "") + (" (geschätzt)" if p.quelle == "geschätzt" else "")
         if raten and p.faellig > heute:
             n = sz._monate_bis(heute, p.faellig)
             for i in range(n):

@@ -183,6 +183,10 @@ Reiter unter Steuern: was pro Steuerjahr noch offen ist und bis wann.
   Vergütungszins, Rückerstattungszins, Verzugszins, Umbuchung auf bzw. aus Jahr (einmal erfasst, wirkt in beiden
   Jahren), Rückerstattung erhalten, Guthaben laut Steuerkonto. Jede Position lässt sich bearbeiten (auch die Art,
   z. B. provisorisch → definitiv) und löschen; Werte aus hochgeladenen Dokumenten sind als «aus Dokument» markiert.
+- **Konkubinat:** jede Person hat ihr eigenes Steuerkonto – Rechnungen, Zahlungen, Guthaben und Schätzung
+  (aus «Steuern heute» der Person) getrennt; im Formular die Person wählen. Steuerdokumente gehen an die Person des
+  Dokuments, Buchungen an die Person des Kontos (bzw. den Namen im Buchungstext). Ältere Einträge ohne Person
+  gehören zur ersten Person und lassen sich beim Bearbeiten umteilen.
 - **Guthaben (Saldo zu Ihren Gunsten):** Zeigt die definitive Rechnung, dass zu viel bezahlt wurde, rechnet die App
   das Guthaben ins nächste Steuerjahr derselben Steuer (wie die Steuerverwaltung es verrechnet) – ausser eine
   «Rückerstattung erhalten» ist erfasst. Ein Guthaben laut Kontoauszug des Steuerkontos lässt sich direkt beim

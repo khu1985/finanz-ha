@@ -74,6 +74,34 @@ def tabellen(db) -> None:
         db.execute("UPDATE steuer_zahlungen SET typ = 'guthaben' WHERE quelle = 'guthaben'")
         db.execute("UPDATE steuer_zahlungen SET typ = 'rueckerstattung', betrag = ABS(betrag) "
                    "WHERE quelle = 'rueckerstattung' OR betrag < 0")
+    if "person" not in spalten:                    # ab 0.57.1: Steuerkonto pro Person (Konkubinat)
+        db.execute("ALTER TABLE steuer_zahlungen ADD COLUMN person TEXT NOT NULL DEFAULT ''")
+    if "person" not in {r[1] for r in db.execute("PRAGMA table_info(steuer_rechnungen)")}:
+        db.executescript("""
+            CREATE TABLE steuer_rechnungen_neu (jahr INTEGER NOT NULL, art TEXT NOT NULL, typ TEXT NOT NULL,
+                betrag REAL NOT NULL, faellig TEXT NOT NULL DEFAULT '', person TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (jahr, art, typ, person));
+            INSERT INTO steuer_rechnungen_neu (jahr, art, typ, betrag, faellig) SELECT jahr, art, typ, betrag, faellig
+                FROM steuer_rechnungen;
+            DROP TABLE steuer_rechnungen;
+            ALTER TABLE steuer_rechnungen_neu RENAME TO steuer_rechnungen;
+        """)
+
+
+def personen(k: dict) -> list[str]:
+    """Steuerkonten: im Konkubinat eines pro Person (eigene Rechnungen), sonst eines für den Haushalt («»)."""
+    if k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and len(k.get("personen") or []) > 1:
+        return [str(p["name"]) for p in k["personen"]]
+    return [""]
+
+
+def person_von(k: dict, name: str | None) -> str:
+    """Name (auch Vor- und Nachname) → Steuerkonto der Person; im Haushalt immer «»."""
+    liste = personen(k)
+    if liste == [""] or not name:
+        return "" if liste == [""] else liste[0]
+    from versicherungen import gleiche_person
+    return next((p for p in liste if gleiche_person(p, name)), liste[0])
 
 
 # ---------------------------------------------------------------- Einstellungen
@@ -155,18 +183,20 @@ def zinsen(k: dict, art: str) -> tuple[float, float]:
 
 # ---------------------------------------------------------------- Rechnungen und Zahlungen
 
-def rechnung_speichern(db, jahr: int, art: str, typ: str, betrag: float, faellig_: str = "") -> None:
+def rechnung_speichern(db, jahr: int, art: str, typ: str, betrag: float, faellig_: str = "", person: str = "") -> None:
     tabellen(db)
     if art not in ARTEN or typ not in TYPEN:
         raise ValueError("Steuer bzw. Art der Rechnung unbekannt.")
     if not 2000 <= jahr <= 2100 or betrag < 0:
         raise ValueError("Steuerjahr bzw. Betrag prüfen.")
-    db.execute("INSERT OR REPLACE INTO steuer_rechnungen VALUES (?, ?, ?, ?, ?)", (jahr, art, typ, betrag, faellig_ or ""))
+    db.execute("INSERT OR REPLACE INTO steuer_rechnungen (jahr, art, typ, betrag, faellig, person) VALUES (?, ?, ?, ?, ?, ?)",
+               (jahr, art, typ, betrag, faellig_ or "", person or ""))
 
 
-def rechnung_loeschen(db, jahr: int, art: str, typ: str) -> None:
+def rechnung_loeschen(db, jahr: int, art: str, typ: str, person: str = "") -> None:
     tabellen(db)
-    db.execute("DELETE FROM steuer_rechnungen WHERE jahr = ? AND art = ? AND typ = ?", (jahr, art, typ))
+    db.execute("DELETE FROM steuer_rechnungen WHERE jahr = ? AND art = ? AND typ = ? AND person = ?",
+               (jahr, art, typ, person or ""))
 
 
 # Positionen auf dem Steuerkonto (wie im Kontoauszug der Steuerverwaltung). Wirkung auf das Konto des Steuerjahres:
@@ -187,7 +217,8 @@ POSITIONEN = {"provisorisch": "Steuern provisorisch", "definitiv": "Steuern defi
 
 
 def zahlung_speichern(db, jahr: int, art: str, datum: str, betrag: float, notiz: str = "", quelle: str = "",
-                      typ: str = "zahlung", gegenjahr: int | None = None, zid: int | None = None) -> int:
+                      typ: str = "zahlung", gegenjahr: int | None = None, zid: int | None = None,
+                      person: str = "") -> int:
     """Position speichern (neu oder `zid` ändern). «Umbuchung aus Jahr X» wird als Umbuchung von X auf `jahr`
     gespeichert – so steht sie einmal und wirkt auf beide Jahre."""
     tabellen(db)
@@ -210,31 +241,33 @@ def zahlung_speichern(db, jahr: int, art: str, datum: str, betrag: float, notiz:
         if typ == "umbuchung_aus":
             jahr, gegenjahr, typ = int(gegenjahr), jahr, "umbuchung"
         doppelt = db.execute("SELECT id FROM steuer_zahlungen WHERE typ = 'umbuchung' AND jahr = ? AND gegenjahr = ? AND "
-                             "art = ? AND ABS(betrag - ?) < 0.5 AND id != ?",
-                             (jahr, gegenjahr, art, abs(betrag), zid or -1)).fetchone()
+                             "art = ? AND person = ? AND ABS(betrag - ?) < 0.5 AND id != ?",
+                             (jahr, gegenjahr, art, person or "", abs(betrag), zid or -1)).fetchone()
         if doppelt:
             raise ValueError(f"Diese Umbuchung von {jahr} auf {gegenjahr} ist schon erfasst – sie gilt für beide Jahre.")
     else:
         gegenjahr = None
-    werte = (jahr, art, datum, abs(betrag), (notiz or "").strip()[:120], quelle, typ, gegenjahr)
+    werte = (jahr, art, datum, abs(betrag), (notiz or "").strip()[:120], quelle, typ, gegenjahr, person or "")
     if zid:
         db.execute("UPDATE steuer_zahlungen SET jahr = ?, art = ?, datum = ?, betrag = ?, notiz = ?, quelle = ?, typ = ?, "
-                   "gegenjahr = ? WHERE id = ?", (*werte, zid))
+                   "gegenjahr = ?, person = ? WHERE id = ?", (*werte, zid))
         return zid
-    cur = db.execute("INSERT INTO steuer_zahlungen (jahr, art, datum, betrag, notiz, quelle, typ, gegenjahr) "
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", werte)
+    cur = db.execute("INSERT INTO steuer_zahlungen (jahr, art, datum, betrag, notiz, quelle, typ, gegenjahr, person) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", werte)
     return cur.lastrowid
 
 
-def buchungen_konto(db) -> dict[tuple[int, str], float]:
-    """Gutschriften minus Belastungen pro (Steuerjahr, Steuer), Umbuchungen auf beiden Seiten."""
-    erg: dict[tuple[int, str], float] = {}
+def buchungen_konto(db, k: dict | None = None) -> dict[tuple[int, str, str], float]:
+    """Gutschriften minus Belastungen pro (Steuerjahr, Steuer, Person), Umbuchungen auf beiden Seiten."""
+    erg: dict[tuple[int, str, str], float] = {}
     for z in zahlungen(db):
         b = abs(float(z["betrag"]))
         typ = z.get("typ") or "zahlung"
-        erg[(z["jahr"], z["art"])] = erg.get((z["jahr"], z["art"]), 0.0) + WIRKUNG.get(typ, 1) * b
+        p = person_von(k, z.get("person")) if k else (z.get("person") or "")
+        schl = (z["jahr"], z["art"], p)
+        erg[schl] = erg.get(schl, 0.0) + WIRKUNG.get(typ, 1) * b
         if typ == "umbuchung" and z.get("gegenjahr"):
-            g = (int(z["gegenjahr"]), z["art"])
+            g = (int(z["gegenjahr"]), z["art"], p)
             erg[g] = erg.get(g, 0.0) + b
     return erg
 
@@ -255,8 +288,8 @@ def zahlungen(db) -> list[dict]:
     return [dict(r) for r in db.execute("SELECT * FROM steuer_zahlungen ORDER BY datum DESC, id DESC")]
 
 
-def rechnungen(k: dict, db) -> dict[tuple[int, str, str], dict]:
-    """Rechnungen je (Jahr, Steuer, Typ): von Hand erfasste vor solchen aus hochgeladenen Steuerdokumenten."""
+def rechnungen(k: dict, db) -> dict[tuple[int, str, str, str], dict]:
+    """Rechnungen je (Jahr, Steuer, Typ, Person): von Hand erfasste vor solchen aus hochgeladenen Steuerdokumenten."""
     tabellen(db)
     erg: dict[tuple[int, str, str], dict] = {}
     try:
@@ -276,15 +309,18 @@ def rechnungen(k: dict, db) -> dict[tuple[int, str, str], dict]:
                 else:
                     staat, gem = kanton * (1 - anteil), kanton * anteil
                 teile = [("kanton", staat), ("gemeinde", gem), teile[1]]
+            pers = person_von(k, d.get("person"))
             for art, betrag in teile:
                 if betrag > 0:
-                    alt = erg.get((d["jahr"], art, typ))
-                    erg[(d["jahr"], art, typ)] = {"betrag": betrag + (alt["betrag"] if alt and d["person"] != alt.get(
-                        "person") else 0), "faellig": "", "quelle": "Dokument", "person": d.get("person")}
+                    schl = (d["jahr"], art, typ, pers)
+                    alt = erg.get(schl)
+                    erg[schl] = {"betrag": betrag + (alt["betrag"] if alt and d["person"] != alt.get("person") else 0),
+                                 "faellig": "", "quelle": "Dokument", "person": d.get("person"), "dok": d["id"]}
     except Exception:  # noqa: BLE001 – Dokumente sind optional
         pass
     for r in db.execute("SELECT * FROM steuer_rechnungen"):
-        erg[(r["jahr"], r["art"], r["typ"])] = {"betrag": r["betrag"], "faellig": r["faellig"], "quelle": "eigene Angabe"}
+        erg[(r["jahr"], r["art"], r["typ"], person_von(k, r["person"]))] = {"betrag": r["betrag"], "faellig": r["faellig"],
+                                                                           "quelle": "eigene Angabe", "roh": r["person"]}
     return erg
 
 
@@ -326,14 +362,34 @@ def aus_buchungen(k: dict, db) -> list[dict]:
         if b["betrag"] > 0 and not re.search(r"\b20[2-4]\d\b", text):
             jahr = tag.year - 1 if art != "bund" else tag.year - 2 if tag.month <= 6 else tag.year - 1
         erg.append({"quelle": q, "datum": b["datum"], "betrag": -b["betrag"], "text": text, "art": art, "jahr": jahr,
-                    "rueckerstattung": b["betrag"] > 0})
+                    "rueckerstattung": b["betrag"] > 0, "person": _person_raten(k, db, b, text)})
     return erg
+
+
+def _person_raten(k: dict, db, b: dict, text: str) -> str:
+    """Konkubinat: Person des Kontos (unter Vermögen) bzw. Name im Buchungstext; sonst die erste Person."""
+    liste = personen(k)
+    if liste == [""]:
+        return ""
+    from versicherungen import gleiche_person
+    for p in liste:
+        if re.search(rf"\b{re.escape(p)}\b", text, re.I):
+            return p
+    try:
+        import vermoegen as vm
+        konto = next((x for x in vm.konten(db) if x["name"] == b.get("konto")), None)
+        if konto and konto.get("person"):
+            return next((p for p in liste if gleiche_person(p, konto["person"])), liste[0])
+    except Exception:  # noqa: BLE001
+        pass
+    return liste[0]
 
 
 def buchungen_uebernehmen(k: dict, db) -> int:
     neu = aus_buchungen(k, db)
     for b in neu:
-        zahlung_speichern(db, b["jahr"], b["art"], b["datum"], b["betrag"], b["text"][:120], b["quelle"])
+        zahlung_speichern(db, b["jahr"], b["art"], b["datum"], b["betrag"], b["text"][:120], b["quelle"],
+                          person=b.get("person", ""))
     return len(neu)
 
 
@@ -358,15 +414,19 @@ class Posten:
     hinweise: list[str] = field(default_factory=list)
     guthaben_ein: float = 0.0   # Guthaben aus einem Vorjahr, hier angerechnet (in `bezahlt` enthalten)
     guthaben_aus: float = 0.0   # zu viel bezahlt laut definitiver Rechnung → aufs nächste Jahr
+    person: str = ""            # Steuerkonto der Person (Konkubinat); «» = Haushalt
 
     @property
     def offen(self) -> float:
         return round(self.soll - self.bezahlt)
 
 
-def _schaetzung(k: dict) -> dict[str, float]:
+def _schaetzung(k: dict, person: str = "") -> dict[str, float]:
     import steuern as st
     s = st.steuern_heute(k)
+    if person:
+        from versicherungen import gleiche_person
+        s = next((t for t in s["einheiten"] if gleiche_person(str(t["name"]), person)), s)
     kanton = float(s["kanton"]) + float(s["vermoegen"])
     erg = {"kanton": kanton, "bund": float(s["bund"])}
     if gemeinde_separat(k):
@@ -382,14 +442,23 @@ def _monate_bis(heute: date, ziel: date) -> int:
 def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
     """Offene und kürzlich fällige Steuern: Vorjahr (wenn erfasst), laufendes und nächstes Steuerjahr."""
     heute = heute or date.today()
-    re_ = rechnungen(k, db)
-    bez = buchungen_konto(db)
-    schaetzung = _schaetzung(k)
+    re_alle = rechnungen(k, db)
+    bez_alle = buchungen_konto(db, k)
     try:
         import anlage as an
         zins_konto = float(an.konfiguration(k).get("zins_konto") or 0)
     except Exception:  # noqa: BLE001
         zins_konto = 0.0
+    erg = []
+    for person in personen(k):
+        re_ = {(j, a, t): v for (j, a, t, p), v in re_alle.items() if p == person}
+        bez = {(j, a): v for (j, a, p), v in bez_alle.items() if p == person}
+        erg += _auswerten_konto(k, heute, person, re_, bez, _schaetzung(k, person), zins_konto)
+    return erg
+
+
+def _auswerten_konto(k: dict, heute: date, person: str, re_: dict, bez: dict, schaetzung: dict,
+                     zins_konto: float) -> list[Posten]:
     erg = []
     uebertrag = {a: 0.0 for a in ARTEN}          # Saldo zu Ihren Gunsten, der ins nächste Jahr geht
     letzter: dict[str, Posten] = {}
@@ -419,7 +488,8 @@ def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
             vg, vz = zinsen(k, art)
             offen = soll - bezahlt
             p = Posten(jahr, art, bezeichnung(k, art), round(soll), quelle, bezahlt, fae, angenommen, vg, vz, 0.0, 0.0,
-                       0.0, round(defi["betrag"] - prov["betrag"]) if defi and prov else None, guthaben_ein=ein)
+                       0.0, round(defi["betrag"] - prov["betrag"]) if defi and prov else None, guthaben_ein=ein,
+                       person=person)
             if not daten and soll <= 0 and not ein:
                 continue
             uebertrag[art] = 0.0
@@ -471,7 +541,8 @@ def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
 def guthaben(posten: list[Posten]) -> float:
     """Guthaben, das in offenen Jahren angerechnet ist bzw. noch verrechnet wird."""
     return round(sum(p.guthaben_ein for p in posten if p.offen > -0.5 and p.quelle != "definitiv")
-                 + sum(p.guthaben_aus for p in posten if not any(q.jahr > p.jahr and q.art == p.art for q in posten)))
+                 + sum(p.guthaben_aus for p in posten if not any(q.jahr > p.jahr and q.art == p.art and q.person == p.person
+                                                         for q in posten)))
 
 
 def offen_total(posten: list[Posten]) -> float:
@@ -492,6 +563,7 @@ def erinnerungen(k: dict, db, heute: date) -> list:
         tage = (p.faellig - heute).days
         if -60 <= tage <= 45:
             text = (f"Offen CHF {_chf(p.offen)} ({p.quelle})." + (" " + p.hinweise[0] if p.hinweise else ""))
-            erg.append(er.Erinnerung(f"steuer-zahlen-{p.art}-{p.jahr}", f"{p.name} {p.jahr} bezahlen", p.faellig, text,
-                                     "steuerzahlung"))
+            schl = f"steuer-zahlen-{p.art}-{p.jahr}" + (f"-{p.person}" if p.person else "")
+            erg.append(er.Erinnerung(schl, f"{p.name} {p.jahr}{' ' + p.person if p.person else ''} bezahlen",
+                                     p.faellig, text, "steuerzahlung"))
     return erg

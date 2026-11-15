@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.57.1 – 2026-11-15
+
+- **Steuern bezahlen pro Person:** Im Konkubinat führt die App pro Person ein eigenes Steuerkonto – Rechnungen,
+  Zahlungen, Zinsen, Umbuchungen und Guthaben werden je Person erfasst und ausgewertet; die Schätzung ohne Rechnung
+  kommt aus «Steuern heute» der Person. Offene Steuern, Erinnerungen und Liquiditätsplan nennen die Person.
+  Bestehende Einträge ohne Person gehören zur ersten Person (beim Bearbeiten umteilen).
+
 ## 0.57.0 – 2026-11-15
 
 - **Amortisationsstrategie** (Seite Wohnen): Varianten bis zur Pensionierung – nicht amortisieren, Ziel bzw.
