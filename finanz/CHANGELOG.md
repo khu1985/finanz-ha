@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.54.1 – 2026-11-15
+
+- **Schneller:** Ampeln und Erinnerungen rechnen beim Finanzplan nur noch die Erfolgsquote (der tragbare Bedarf wird
+  erst gesucht, wenn er gebraucht wird), der PK-Einkaufs-Optimierer rechnet jede Steuerersparnis nur einmal –
+  Ampeln etwa halb so lang, Erinnerungen etwa ein Drittel.
+- **Kündigungsfrist** aus Policen auch bei «Frist von einem Monat … gekündigt», «Frist von 3 Mt.» und «zwei Monaten
+  vor Ablauf» erkannt.
+
 ## 0.54.0 – 2026-11-15
 
 - **UX-Score** unter Vorschläge: Kurzbefragung alle 90 Tage (UEQ-S mit 8 Gegensatzpaaren für Bedienung und Erleben,

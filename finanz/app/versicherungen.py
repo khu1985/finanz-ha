@@ -107,7 +107,7 @@ VERSICHERER = [
     "Lalux", "Youplus", "Liechtenstein Life", "Fisch Asset", "Europäische Reiseversicherung", "Epona",
 ]
 
-ZAHLWORTE = {"einen": 1, "ein": 1, "eins": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6, "zwölf": 12}
+ZAHLWORTE = {"einem": 1, "einen": 1, "ein": 1, "eins": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6, "zwölf": 12}
 
 MONATE = {"januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4, "mai": 5, "juni": 6, "juli": 7,
           "august": 8, "september": 9, "oktober": 10, "november": 11, "dezember": 12}
@@ -554,8 +554,11 @@ def _allgemein(text: str) -> dict:
     if not erg["ablauf"]:
         erg["ablauf"] = _erstes_datum(text, r"ende der (?:leistungspflicht|prämienzahlung|versicherung)\w*(?:\s+spätestens)?")
     zahl_ = r"(\d{1,2}|" + "|".join(ZAHLWORTE) + r")"
-    m = re.search(r"kündigungsfrist\D{0,20}" + zahl_ + r"\s*monat", text, re.I) or \
-        re.search(zahl_ + r"\s*monate?\D{0,40}(?:vor|kündig)", text, re.I)
+    monat_ = r"\s*(?:monat|mt\b|mte\b|mon\.)"
+    m = re.search(r"kündigungsfrist\D{0,20}" + zahl_ + monat_, text, re.I) or \
+        re.search(r"kündig\w*[^.]{0,80}?frist\s+von\s+" + zahl_ + monat_, text, re.I) or \
+        re.search(r"frist\s+von\s+" + zahl_ + monat_ + r"[^.]{0,60}kündig", text, re.I) or \
+        re.search(zahl_ + r"\s*monate?n?\D{0,40}(?:vor|kündig)", text, re.I)
     if m:
         w = m.group(1).lower()
         erg["kuendigungsfrist_monate"] = int(w) if w.isdigit() else ZAHLWORTE[w]

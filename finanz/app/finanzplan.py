@@ -117,7 +117,9 @@ def _pfade(n: int, anzahl: int, mu: float, sigma: float, seed: int = 42) -> list
 
 
 def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation: bool = True,
-            pfade: int = PFADE) -> Plan:
+            pfade: int = PFADE, bedarf_sicher: bool = True) -> Plan:
+    """`bedarf_sicher=False` lässt die Suche nach dem tragbaren Bedarf weg (rund ⅔ der Rechenzeit) – für Prüfungen,
+    die nur die Erfolgsquote brauchen."""
     jetzt = jetzt or date.today().year
     l0, pension, ende, end_alter, renten, lohn, sparen, alter, start = _grundlagen(k, vermoegen_frei, jetzt)
     bedarf = float(k["haushalt"].get("bedarf_ruhestand") or 0)
@@ -171,7 +173,8 @@ def rechnen(k: dict, vermoegen_frei: float, jetzt: int | None = None, simulation
         jahre_pleite = sorted(next((j for j, v in zip(jahre, vl) if v < 0), ende + 1) for vl in schlecht)
         median = jahre_pleite[len(jahre_pleite) // 2]
         plan.pleite_median = median if median <= ende else None
-        plan.bedarf_sicher = _bedarf_sicher(start, jahre, pension, kapital, sparen, rl, sims[:200], bedarf, alle)
+        if bedarf_sicher:
+            plan.bedarf_sicher = _bedarf_sicher(start, jahre, pension, kapital, sparen, rl, sims[:200], bedarf, alle)
     for z in zl:
         i = jahre.index(z["jahr"]) if z["jahr"] in jahre else None
         vorher = (det[i - 1] if i else start) if i is not None else None

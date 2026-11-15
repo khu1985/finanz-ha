@@ -63,13 +63,20 @@ def einkauf_optimieren(k: dict, person_name: str, budget: float, von: int, bis: 
                         f"{max(g for g in grenzen.values() if g is not None):,.0f} Einkauf pro Jahr (BVV 2 Art. 60b)." >> TS)
     if not jahre:
         hinweise.append("Kein Jahr verfügbar – Zeitraum prüfen (Einkäufe in den 3 Jahren vor einem Kapitalbezug sind gesperrt).")
+    memo: dict[float, float] = {}
+
+    def _e(x: float) -> float:          # gleiches Einkommen jedes Jahr: hängt nur vom Betrag ab
+        x = round(x, 2)
+        if x not in memo:
+            memo[x] = _ersparnis(k, person_name, x)
+        return memo[x]
     while rest > 1 and jahre:
         betrag = min(schritt, rest)
         bestes, bester_satz = None, -1.0
         for j in jahre:
             if grenzen[j] is not None and plan[j] + betrag > grenzen[j] + 0.5:
                 continue
-            satz = (_ersparnis(k, person_name, plan[j] + betrag) - _ersparnis(k, person_name, plan[j])) / betrag * 100
+            satz = (_e(plan[j] + betrag) - _e(plan[j])) / betrag * 100
             if satz > bester_satz + 1e-9:
                 bestes, bester_satz = j, satz
         if bestes is None:

@@ -105,7 +105,7 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
     if float(k["haushalt"].get("bedarf_ruhestand") or 0):
         try:
             import finanzplan as fp
-            p = fp.rechnen(k, nv["frei"], heute.year, pfade=300)
+            p = fp.rechnen(k, nv["frei"], heute.year, pfade=300, bedarf_sicher=False)
             erg.append(Ampel("Finanzplan", GRUEN if p.erfolg >= 90 else GELB if p.erfolg >= 70 else ROT,
                              f"reicht in {p.erfolg:.0f} % der Verläufe bis {p.end_alter}", "finanzplan"))
         except Exception as e:  # noqa: BLE001

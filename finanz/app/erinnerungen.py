@@ -262,9 +262,11 @@ def _neuere(k: dict, db, heute: date) -> list[Erinnerung]:
         import vermoegen as vm
         if not float(k["haushalt"].get("bedarf_ruhestand") or 0):
             return []
-        p = fp.rechnen(k, vm.nettovermoegen(db)["frei"], j, pfade=300)
+        frei = vm.nettovermoegen(db)["frei"]
+        p = fp.rechnen(k, frei, j, pfade=300, bedarf_sicher=False)
         if p.erfolg >= 70:
             return []
+        p = fp.rechnen(k, frei, j, pfade=300)
         return [Erinnerung(f"finanzplan-{j}", "Finanzplan ist knapp", date(j, 12, 31),
                            f"Nur in {p.erfolg:.0f} % der simulierten Verläufe reicht das Geld bis {p.end_alter}"
                            + (f"; mit 90 % Sicherheit tragbar wären rund CHF {_chf(p.bedarf_sicher)} pro Jahr"

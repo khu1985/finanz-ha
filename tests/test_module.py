@@ -2457,3 +2457,20 @@ def test_ux_score(k):
     ux.erfassen("aufruf", "kinder/sparen")
     ux.sichern(db)
     assert db.execute("SELECT COUNT(*) FROM ux_ereignisse WHERE seite = 'kinder'").fetchone()[0] == 1
+
+
+def test_kuendigungsfrist_formulierungen():
+    import versicherungen as vi
+    faelle = {"Motorfahrzeugversicherung Muster\\nDer Vertrag kann unter Einhaltung einer Frist von einem Monat auf das "
+              "Ende des Versicherungsjahres gekündigt werden.": 1,
+              "Reiseversicherung Muster\\nKündigung: jährlich mit einer Frist von 3 Mt. auf Ablauf": 3,
+              "Hausrat Muster: kann spätestens zwei Monaten vor Ablauf gekündigt werden": 2}
+    for text, monate in faelle.items():
+        assert vi.erkennen(text.replace("\\\\n", "\\n"))["kuendigungsfrist_monate"] == monate, text
+
+
+def test_finanzplan_ohne_bedarf_sicher(k):
+    import finanzplan as fp
+    a = fp.rechnen(k, 100000, 2026, pfade=100)
+    b = fp.rechnen(k, 100000, 2026, pfade=100, bedarf_sicher=False)
+    assert a.erfolg == b.erfolg and not b.bedarf_sicher
