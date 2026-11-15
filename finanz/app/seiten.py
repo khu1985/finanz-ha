@@ -4582,9 +4582,10 @@ def verfuegungen(k: dict, db, q: dict | None = None) -> str:
 
 # ---------------------------------------------------------------- Steuern bezahlen
 
-def steuerzahlung(k: dict, db) -> str:
-    """Steuern bezahlen: offene Beträge je Steuerjahr, Fälligkeit, Zinsen, Rechnungen und Zahlungen."""
+def steuerzahlung(k: dict, db, q: dict | None = None) -> str:
+    """Steuern bezahlen: offene Beträge je Steuerjahr, Steuerkonto mit allen Positionen, Erfassen und Bearbeiten."""
     import steuerzahlung as sz
+    q = q or {}
     heute = date.today()
     posten = sz.auswerten(k, db, heute)
     offen = [p for p in posten if p.offen > 0]
@@ -4623,56 +4624,7 @@ def steuerzahlung(k: dict, db) -> str:
     teile.append(karte("Offene Steuern", tabelle(["Jahr", "Steuer", "Betrag", "bezahlt", "offen", "fällig", "Hinweis"],
                                                  zeilen, zahlen_ab=2, karten=True) if zeilen else
                        '<p class="leer">Noch nichts erfasst – Rechnung oder Zahlung unten eintragen.</p>'))
-    arten = "".join(f'<option value="{a}">{escape(sz.bezeichnung(k, a))}</option>' for a in sz.arten(k))
-    typen = "".join(f'<option value="{t}">{escape(n)}</option>' for t, n in sz.TYPEN.items())
-    jahr_std = heute.year if heute.month >= 2 else heute.year - 1
-    re_ = sz.rechnungen(k, db)
-    rz = []
-    for (j, a, t), r in sorted(re_.items(), reverse=True):
-        knopf = (f'<form method="post" action="steuerzahlung/rechnung_loeschen" class="inline"><input type="hidden" '
-                 f'name="jahr" value="{j}"><input type="hidden" name="art" value="{a}"><input type="hidden" name="typ" '
-                 f'value="{t}"><button class="zweit klein">Löschen</button></form>' if r["quelle"] == "eigene Angabe" else
-                 '<a href="steuern#dokumente">Dokument</a>')
-        rz.append([str(j), escape(sz.bezeichnung(k, a)), escape(sz.TYPEN[t]), chf(r["betrag"]),
-                   escape(r.get("faellig") or ""), knopf])
-    teile.append(karte("Rechnungen", (tabelle(["Jahr", "Steuer", "Art", "Betrag", "fällig", ""], rz, zahlen_ab=3)
-                                       if rz else "") + f"""
-<form method="post" action="steuerzahlung/rechnung"><div class="felder">
-<label>Steuerjahr<input name="jahr" inputmode="numeric" value="{jahr_std}"></label>
-<label>Steuer<select name="art">{arten}</select></label><label>Art<select name="typ">{typen}</select></label>
-<label>Betrag (CHF)<input name="betrag" inputmode="decimal" required></label>
-<label>Fällig am (leer = Standard)<input name="faellig" type="date"></label></div>
-<div class="zeile"><button>Rechnung speichern</button></div></form>
-<p class="leise">Hochgeladene provisorische Rechnungen und Veranlagungsverfügungen unter <a href="steuern">Steuern</a>
-werden automatisch berücksichtigt; eine eigene Angabe hat Vorrang.</p>"""))
-    neu = sz.aus_buchungen(k, db)
-    def _buchungsart(z):
-        q_ = z.get("quelle") or ""
-        return ("Guthaben" if q_ == "guthaben" else "Rückerstattung" if q_ == "rueckerstattung" or z["betrag"] < 0
-                else "Zahlung")
-    zz = [[f"{date.fromisoformat(z['datum']):%d.%m.%Y}", str(z["jahr"]), escape(sz.bezeichnung(k, z["art"])),
-           escape(_buchungsart(z)), chf(z["betrag"]), escape(z["notiz"]),
-           f'<form method="post" action="steuerzahlung/zahlung_loeschen" class="inline"><input type="hidden" name="id" '
-           f'value="{z["id"]}"><button class="zweit klein">Löschen</button></form>'] for z in sz.zahlungen(db)]
-    uebernehmen = (f'<form method="post" action="steuerzahlung/uebernehmen" class="zeile"><button class="zweit">'
-                   f'{len(neu)} Steuerzahlung{"" if len(neu) == 1 else "en"} aus den Buchungen übernehmen</button></form>'
-                   '<p class="leise">Gutschriften der Steuerverwaltung kommen als Rückerstattung dazu. '
-                   'Steuerjahr und Steuer werden aus dem Buchungstext geraten (Bundessteuer im ersten '
-                   'Halbjahr fürs Vorjahr) – danach in der Liste prüfen.</p>' if neu else "")
-    teile.append(karte("Zahlungen", uebernehmen + (tabelle(["Datum", "Jahr", "Steuer", "Buchung", "Betrag", "Notiz", ""], zz,
-                                                           zahlen_ab=4, filter=len(zz) > 8) if zz else "") + f"""
-<form method="post" action="steuerzahlung/zahlung"><div class="felder">
-<label>Steuerjahr<input name="jahr" inputmode="numeric" value="{heute.year}"></label>
-<label>Steuer<select name="art">{arten}</select></label>
-<label>Buchung<select name="buchungsart">{"".join(f'<option value="{b_}">{escape(t_)}</option>' for b_, t_ in sz.BUCHUNGSARTEN.items())}</select></label>
-<label>Datum<input name="datum" type="date" value="{heute.isoformat()}" required></label>
-<label>Betrag (CHF)<input name="betrag" inputmode="decimal" required></label>
-<label>Notiz<input name="notiz"></label></div>
-<div class="zeile"><button>Zahlung speichern</button></div>
-<p class="leise"><b>Guthaben:</b> Zeigt der Kontoauszug des Steuerkontos einen «Saldo zu Ihren Gunsten», diesen unter dem
-Steuerjahr erfassen, mit dem er verrechnet wird (meist die nächste Rechnung). Sind die Vorjahre mit definitiver
-Rechnung und Zahlungen erfasst, rechnet die App ein Guthaben selbst ins Folgejahr – dann nicht zusätzlich eintragen.
-<b>Rückerstattung erhalten:</b> unter dem Steuerjahr, für das zu viel bezahlt wurde.</p></form>"""))
+    teile.append(_steuerkonto(k, db, sz, posten, heute, str((q.get("b") or [""])[0])))
     c = sz.cfg(k)
     vg, vz = sz.zinsen(k, "kanton")
     fae, angenommen = sz.faellig(k, "kanton", heute.year)
@@ -5146,3 +5098,109 @@ wie empfindlich ein Ergebnis darauf reagiert – zum Vergleich ohne Risiko eigne
             + karte(f"Gesetzliche Werte {kz.get('jahr', '')}", tabelle(["Wert", ""], [[escape(a), escape(b)] for a, b in fix],
                                                                       zahlen_ab=1)
                     + '<p class="leise">Stand laut BSV bzw. ESTV; die App führt sie mit jeder Version nach.</p>'))
+
+
+def _steuerkonto(k: dict, db, sz, posten: list, heute: date, bearbeiten: str) -> str:
+    """Steuerkonto pro Steuerjahr und Steuer wie im Kontoauszug, darunter Erfassen bzw. Bearbeiten einer Position."""
+    re_ = sz.rechnungen(k, db)
+    buchungen = sz.zahlungen(db)
+    konten: dict[tuple[int, str], list] = {}
+    for (j, a, t), r in re_.items():
+        konten.setdefault((j, a), []).append(("r", f"r{j}-{a}-{t}", r.get("faellig") or "", t, -float(r["betrag"]), r))
+    for z in buchungen:
+        typ = z.get("typ") or "zahlung"
+        b = abs(float(z["betrag"]))
+        konten.setdefault((z["jahr"], z["art"]), []).append(("z", f"z{z['id']}", z["datum"], typ,
+                                                               sz.WIRKUNG.get(typ, 1) * b, z))
+        if typ == "umbuchung" and z.get("gegenjahr"):
+            konten.setdefault((int(z["gegenjahr"]), z["art"]), []).append(("z", f"z{z['id']}", z["datum"], "umbuchung_aus",
+                                                                           b, z))
+    offen_jahre = {(p.jahr, p.art) for p in posten if p.offen > 0.5}
+    bloecke = []
+    for (j, a) in sorted(konten, reverse=True):
+        # Rechnungen zuerst (Belastung des Steuerjahres), danach die Buchungen nach Valuta
+        eintraege = sorted(konten[(j, a)], key=lambda e: (e[0] != "r", e[3] == "definitiv", e[2] or f"{j}-01-01"))
+        defi = any(e[3] == "definitiv" for e in eintraege)
+        saldo, zeilen = 0.0, []
+        for quelle, schl, datum, typ, wirkung, roh in eintraege:
+            ersetzt = typ == "provisorisch" and defi
+            if not ersetzt:
+                saldo += wirkung
+            text = sz.POSITIONEN.get(typ, typ)
+            if typ == "umbuchung":
+                text += f" {roh.get('gegenjahr')}"
+            elif typ == "umbuchung_aus":
+                text += f" {roh['jahr']}"
+            if quelle == "r" and roh.get("quelle") == "Dokument":
+                aktion = '<a href="steuern#dokumente">aus Dokument</a>'
+            else:
+                loeschen = (f'<form method="post" action="steuerzahlung/position_loeschen" class="inline" onsubmit="return '
+                            f'confirm(\'Position löschen?\')"><input type="hidden" name="b" value="{schl}">'
+                            f'<button class="zweit klein">Löschen</button></form>')
+                aktion = (f'<span class="aktionen"><a class="knopf zweit klein" href="steuerzahlung?b={schl}#erfassen">'
+                          f'Bearbeiten</a>{loeschen}</span>')
+            notiz = escape((roh.get("notiz") or "") if quelle == "z" else "")
+            zeilen.append([f"{date.fromisoformat(datum[:10]):%d.%m.%Y}" if datum else "–",
+                           escape(text) + (' <small class="leise">ersetzt durch definitiv</small>' if ersetzt else "")
+                           + (f'<br><small class="leise">{notiz}</small>' if notiz else ""),
+                           f'<span class="{"gut" if wirkung > 0 else ""}">{"+" if wirkung > 0 else "−"}{chf(abs(wirkung))}</span>',
+                           "<span>" + chf(saldo) + (" <small class=\"gut\">zu deinen Gunsten</small>" if saldo > 0.5 else
+                                                    " <small>offen</small>" if saldo < -0.5 else "") + "</span>", aktion])
+        titel = f"{j} · {escape(sz.bezeichnung(k, a))}: " + (f"offen CHF {chf(-saldo)}" if saldo < -0.5 else
+                                                           f"Guthaben CHF {chf(saldo)}" if saldo > 0.5 else "ausgeglichen")
+        auf = " open" if (j, a) in offen_jahre or j >= heute.year else ""
+        bloecke.append(f'<details{auf}><summary>{titel}</summary>'
+                       + tabelle(["Datum", "Position", "Betrag", "Saldo", ""], zeilen, zahlen_ab=2, karten=True)
+                       + "</details>")
+    # Formular: neu oder bearbeiten
+    vor: dict = {}
+    if bearbeiten.startswith("z") and bearbeiten[1:].isdigit():
+        z = sz.einer(db, int(bearbeiten[1:]))
+        if z:
+            vor = {"jahr": z["jahr"], "art": z["art"], "position": z.get("typ") or "zahlung", "betrag": abs(z["betrag"]),
+                   "datum": z["datum"], "gegenjahr": z.get("gegenjahr") or "", "notiz": z.get("notiz") or ""}
+    elif bearbeiten.startswith("r"):
+        try:
+            j_, a_, t_ = bearbeiten[1:].split("-", 2)
+            r = re_.get((int(j_), a_, t_))
+            if r:
+                vor = {"jahr": int(j_), "art": a_, "position": t_, "betrag": r["betrag"], "datum": r.get("faellig") or "",
+                       "gegenjahr": "", "notiz": ""}
+        except ValueError:
+            pass
+    jahr_std = heute.year if heute.month >= 2 else heute.year - 1
+    arten = "".join(f'<option value="{a}"{" selected" if vor.get("art") == a else ""}>{escape(sz.bezeichnung(k, a))}</option>'
+                    for a in sz.arten(k))
+    positionen = "".join(f'<option value="{p_}"{" selected" if vor.get("position", "zahlung") == p_ else ""}>{escape(t_)}</option>'
+                         for p_, t_ in sz.POSITIONEN.items())
+
+    def w(x, std=""):
+        v = vor.get(x, std)
+        return escape(f"{v:g}" if isinstance(v, float) else str(v))
+    form = f"""<form method="post" action="steuerzahlung/position">{f'<input type="hidden" name="b" value="{escape(bearbeiten)}">' if vor else ""}
+<div class="felder">
+<label>Steuerjahr<input name="jahr" inputmode="numeric" value="{w("jahr", jahr_std)}" required></label>
+<label>Steuer<select name="art">{arten}</select></label>
+<label>Position<select name="position">{positionen}</select></label>
+<label>Betrag (CHF)<input name="betrag" inputmode="decimal" value="{w("betrag")}" required></label>
+<label>Datum (Valuta; bei Rechnungen: fällig am, leer = Standard)<input name="datum" type="date" value="{w("datum", heute.isoformat() if not vor else "")}"></label>
+<label>anderes Steuerjahr (nur Umbuchung)<input name="gegenjahr" inputmode="numeric" value="{w("gegenjahr")}"></label>
+<label class="breit">Notiz<input name="notiz" value="{w("notiz")}"></label></div>
+<div class="zeile"><button>{"Änderung speichern" if vor else "Position speichern"}</button>
+{'<a class="knopf zweit" href="steuerzahlung#erfassen">Abbrechen</a>' if vor else ""}</div>
+<p class="leise">Wie im Kontoauszug der Steuerverwaltung: <b>Steuern provisorisch</b> bzw. <b>definitiv</b> belasten das
+Konto (die definitive ersetzt die provisorische), <b>Zahlung</b>, <b>Vergütungszins</b> und <b>Rückerstattungszins</b>
+schreiben gut, <b>Verzugszins</b> belastet. <b>Umbuchung auf Jahr</b> bzw. <b>aus Jahr</b> verschiebt ein Guthaben
+zwischen zwei Steuerjahren – einmal erfassen genügt, sie erscheint in beiden Jahren. <b>Rückerstattung erhalten</b>:
+Auszahlung eines Guthabens. Ohne Umbuchung rechnet die App ein Guthaben nach der definitiven Rechnung selbst ins
+Folgejahr.</p></form>"""
+    neu = sz.aus_buchungen(k, db)
+    uebernehmen = (f'<form method="post" action="steuerzahlung/uebernehmen" class="zeile"><button class="zweit">'
+                   f'{len(neu)} Buchung{"" if len(neu) == 1 else "en"} der Kategorie «Steuern» übernehmen</button></form>'
+                   '<p class="leise">Belastungen als Zahlung, Gutschriften als Rückerstattung; Steuerjahr und Steuer '
+                   'aus dem Buchungstext geraten – danach im Steuerkonto prüfen.</p>' if neu else "")
+    return (karte("Steuerkonto", uebernehmen + ("".join(bloecke) if bloecke else
+                                                '<p class="leer">Noch keine Positionen – unten erfassen.</p>')
+                  + '<p class="leise">Hochgeladene provisorische Rechnungen und Veranlagungen unter <a href="steuern">Steuern'
+                    '</a> erscheinen automatisch («aus Dokument»); eine eigene Angabe gleicher Art geht vor.</p>')
+            + f'<div id="erfassen">{karte("Position bearbeiten" if vor else "Position erfassen", form)}</div>')

@@ -2597,3 +2597,24 @@ def test_steuerguthaben_wird_verrechnet(k):
     db.execute("UPDATE buchungen SET kategorie = 'Steuern'")
     neu = [b for b in sz.aus_buchungen(k, db) if b["betrag"] < 0]
     assert neu and neu[0]["jahr"] == 2025 and neu[0]["rueckerstattung"]
+
+
+def test_steuerkonto_umbuchung_und_zinsen(k):
+    import steuerzahlung as sz
+    db = vm.verbinden(":memory:")
+    k["haushalt"]["kanton"] = "BL"
+    heute = date(2026, 11, 15)
+    sz.rechnung_speichern(db, 2025, "kanton", "definitiv", 18000)
+    sz.zahlung_speichern(db, 2025, "kanton", "2025-09-01", 20000)
+    sz.zahlung_speichern(db, 2025, "kanton", "2025-12-31", 30, typ="rueckerstattungszins")
+    sz.zahlung_speichern(db, 2025, "kanton", "2026-02-01", 2030, typ="umbuchung", gegenjahr=2026)
+    with pytest.raises(ValueError):            # dieselbe Umbuchung von der anderen Seite erfasst
+        sz.zahlung_speichern(db, 2026, "kanton", "2026-02-01", 2030, typ="umbuchung_aus", gegenjahr=2025)
+    sz.rechnung_speichern(db, 2026, "kanton", "provisorisch", 21000)
+    sz.zahlung_speichern(db, 2026, "kanton", "2026-06-01", 10, typ="verguetungszins")
+    sz.zahlung_speichern(db, 2026, "kanton", "2026-10-15", 25, typ="verzugszins")
+    p = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}
+    assert p[(2025, "kanton")].offen == 0 and p[(2025, "kanton")].guthaben_aus == 0   # ausdrücklich umgebucht
+    assert p[(2026, "kanton")].bezahlt == 2030 + 10 - 25 and p[(2026, "kanton")].offen == 21000 - 2015
+    konto = sz.buchungen_konto(db)
+    assert konto[(2025, "kanton")] == 20000 + 30 - 2030 and konto[(2026, "kanton")] == 2030 + 10 - 25

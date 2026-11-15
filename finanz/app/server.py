@@ -28,7 +28,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"simulationen", "lebensereignisse", "nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
+MIT_ABFRAGE = {"steuerzahlung", "simulationen", "lebensereignisse", "nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -1301,6 +1301,33 @@ class Handler(BaseHTTPRequestHandler):
             if aktion == "zahlung_loeschen":
                 sz.zahlung_loeschen(v, int(form.get("id") or 0))
                 return "Zahlung gelöscht.", "steuerzahlung"
+            if aktion in ("position", "position_loeschen"):
+                alt = str(form.get("b") or "")
+                if aktion == "position_loeschen" or alt:      # beim Bearbeiten: alte Rechnung (Schlüssel) entfernen
+                    if alt.startswith("r"):
+                        j_, a_, t_ = alt[1:].split("-", 2)
+                        if aktion == "position_loeschen" or str(form.get("position")) not in sz.TYPEN \
+                                or (int(j_), a_, t_) != (jahr(), str(form.get("art")), str(form.get("position"))):
+                            sz.rechnung_loeschen(v, int(j_), a_, t_)
+                    elif alt.startswith("z") and aktion == "position_loeschen":
+                        sz.zahlung_loeschen(v, int(alt[1:]))
+                    if aktion == "position_loeschen":
+                        return "Position gelöscht.", "steuerzahlung"
+                pos = str(form.get("position") or "zahlung")
+                if pos not in sz.POSITIONEN:
+                    raise ValueError("Position unbekannt.")
+                betrag = abs(vm.zahl(str(form.get("betrag") or "")))
+                datum = str(form.get("datum") or "")
+                if pos in sz.TYPEN:
+                    if alt.startswith("z"):
+                        sz.zahlung_loeschen(v, int(alt[1:]))
+                    sz.rechnung_speichern(v, jahr(), str(form.get("art")), pos, betrag, datum)
+                else:
+                    gj = str(form.get("gegenjahr") or "").strip()
+                    zid = int(alt[1:]) if alt.startswith("z") else None
+                    sz.zahlung_speichern(v, jahr(), str(form.get("art")), datum or datetime.now().date().isoformat(), betrag,
+                                         str(form.get("notiz") or ""), "", pos, int(gj) if gj.isdigit() else None, zid)
+                return (("Änderung gespeichert: " if alt else "Gespeichert: ") + sz.POSITIONEN[pos] + "."), "steuerzahlung"
             if aktion == "uebernehmen":
                 n = sz.buchungen_uebernehmen(k, v)
                 return f"{n} Steuerzahlung{'' if n == 1 else 'en'} übernommen.", "steuerzahlung"

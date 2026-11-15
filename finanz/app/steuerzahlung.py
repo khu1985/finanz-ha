@@ -67,6 +67,13 @@ def tabellen(db) -> None:
             datum TEXT NOT NULL, betrag REAL NOT NULL, notiz TEXT NOT NULL DEFAULT '', quelle TEXT NOT NULL DEFAULT '');
         """
     )
+    spalten = {r[1] for r in db.execute("PRAGMA table_info(steuer_zahlungen)")}
+    if "typ" not in spalten:                       # ab 0.56: Position und Gegenjahr (Umbuchungen)
+        db.execute("ALTER TABLE steuer_zahlungen ADD COLUMN typ TEXT NOT NULL DEFAULT 'zahlung'")
+        db.execute("ALTER TABLE steuer_zahlungen ADD COLUMN gegenjahr INTEGER")
+        db.execute("UPDATE steuer_zahlungen SET typ = 'guthaben' WHERE quelle = 'guthaben'")
+        db.execute("UPDATE steuer_zahlungen SET typ = 'rueckerstattung', betrag = ABS(betrag) "
+                   "WHERE quelle = 'rueckerstattung' OR betrag < 0")
 
 
 # ---------------------------------------------------------------- Einstellungen
@@ -162,20 +169,80 @@ def rechnung_loeschen(db, jahr: int, art: str, typ: str) -> None:
     db.execute("DELETE FROM steuer_rechnungen WHERE jahr = ? AND art = ? AND typ = ?", (jahr, art, typ))
 
 
-BUCHUNGSARTEN = {"zahlung": "Zahlung", "guthaben": "Guthaben laut Steuerkonto (Saldo zu Ihren Gunsten)",
-                 "rueckerstattung": "Rückerstattung erhalten"}
+# Positionen auf dem Steuerkonto (wie im Kontoauszug der Steuerverwaltung). Wirkung auf das Konto des Steuerjahres:
+# +1 = Gutschrift (verringert, was offen ist), −1 = Belastung. Umbuchungen: aus Jahr `jahr` auf `gegenjahr`.
+BUCHUNGSARTEN = {
+    "zahlung": "Zahlung",
+    "verguetungszins": "Vergütungszins",
+    "rueckerstattungszins": "Rückerstattungszins",
+    "umbuchung": "Umbuchung auf Jahr",
+    "umbuchung_aus": "Umbuchung aus Jahr",
+    "rueckerstattung": "Rückerstattung erhalten",
+    "verzugszins": "Verzugszins",
+    "guthaben": "Guthaben laut Steuerkonto (Saldo zu Ihren Gunsten)",
+}
+WIRKUNG = {"zahlung": 1, "verguetungszins": 1, "rueckerstattungszins": 1, "guthaben": 1, "umbuchung": -1,
+           "rueckerstattung": -1, "verzugszins": -1}
+POSITIONEN = {"provisorisch": "Steuern provisorisch", "definitiv": "Steuern definitiv", **BUCHUNGSARTEN}
 
 
-def zahlung_speichern(db, jahr: int, art: str, datum: str, betrag: float, notiz: str = "", quelle: str = "") -> int:
+def zahlung_speichern(db, jahr: int, art: str, datum: str, betrag: float, notiz: str = "", quelle: str = "",
+                      typ: str = "zahlung", gegenjahr: int | None = None, zid: int | None = None) -> int:
+    """Position speichern (neu oder `zid` ändern). «Umbuchung aus Jahr X» wird als Umbuchung von X auf `jahr`
+    gespeichert – so steht sie einmal und wirkt auf beide Jahre."""
     tabellen(db)
     if art not in ARTEN:
         raise ValueError("Steuer unbekannt.")
+    if typ not in BUCHUNGSARTEN:
+        raise ValueError("Position unbekannt.")
     date.fromisoformat(datum)
     if not betrag:
         raise ValueError("Betrag angeben.")
-    cur = db.execute("INSERT INTO steuer_zahlungen (jahr, art, datum, betrag, notiz, quelle) VALUES (?, ?, ?, ?, ?, ?)",
-                     (jahr, art, datum, betrag, (notiz or "").strip()[:120], quelle))
+    if typ == "rueckerstattung" or quelle == "rueckerstattung":
+        typ, betrag = "rueckerstattung", abs(betrag)
+    elif betrag < 0 and typ == "zahlung":           # alte Aufrufe: negative Zahlung = Rückerstattung
+        typ, betrag = "rueckerstattung", abs(betrag)
+    if quelle == "guthaben":
+        typ = "guthaben"
+    if typ in ("umbuchung", "umbuchung_aus"):
+        if not gegenjahr or gegenjahr == jahr:
+            raise ValueError("Umbuchung: das andere Steuerjahr angeben.")
+        if typ == "umbuchung_aus":
+            jahr, gegenjahr, typ = int(gegenjahr), jahr, "umbuchung"
+        doppelt = db.execute("SELECT id FROM steuer_zahlungen WHERE typ = 'umbuchung' AND jahr = ? AND gegenjahr = ? AND "
+                             "art = ? AND ABS(betrag - ?) < 0.5 AND id != ?",
+                             (jahr, gegenjahr, art, abs(betrag), zid or -1)).fetchone()
+        if doppelt:
+            raise ValueError(f"Diese Umbuchung von {jahr} auf {gegenjahr} ist schon erfasst – sie gilt für beide Jahre.")
+    else:
+        gegenjahr = None
+    werte = (jahr, art, datum, abs(betrag), (notiz or "").strip()[:120], quelle, typ, gegenjahr)
+    if zid:
+        db.execute("UPDATE steuer_zahlungen SET jahr = ?, art = ?, datum = ?, betrag = ?, notiz = ?, quelle = ?, typ = ?, "
+                   "gegenjahr = ? WHERE id = ?", (*werte, zid))
+        return zid
+    cur = db.execute("INSERT INTO steuer_zahlungen (jahr, art, datum, betrag, notiz, quelle, typ, gegenjahr) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", werte)
     return cur.lastrowid
+
+
+def buchungen_konto(db) -> dict[tuple[int, str], float]:
+    """Gutschriften minus Belastungen pro (Steuerjahr, Steuer), Umbuchungen auf beiden Seiten."""
+    erg: dict[tuple[int, str], float] = {}
+    for z in zahlungen(db):
+        b = abs(float(z["betrag"]))
+        typ = z.get("typ") or "zahlung"
+        erg[(z["jahr"], z["art"])] = erg.get((z["jahr"], z["art"]), 0.0) + WIRKUNG.get(typ, 1) * b
+        if typ == "umbuchung" and z.get("gegenjahr"):
+            g = (int(z["gegenjahr"]), z["art"])
+            erg[g] = erg.get(g, 0.0) + b
+    return erg
+
+
+def einer(db, zid: int) -> dict | None:
+    tabellen(db)
+    r = db.execute("SELECT * FROM steuer_zahlungen WHERE id = ?", (zid,)).fetchone()
+    return dict(r) if r else None
 
 
 def zahlung_loeschen(db, zid: int) -> None:
@@ -316,9 +383,7 @@ def auswerten(k: dict, db, heute: date | None = None) -> list[Posten]:
     """Offene und kürzlich fällige Steuern: Vorjahr (wenn erfasst), laufendes und nächstes Steuerjahr."""
     heute = heute or date.today()
     re_ = rechnungen(k, db)
-    bez: dict[tuple[int, str], float] = {}
-    for z in zahlungen(db):
-        bez[(z["jahr"], z["art"])] = bez.get((z["jahr"], z["art"]), 0.0) + float(z["betrag"])
+    bez = buchungen_konto(db)
     schaetzung = _schaetzung(k)
     try:
         import anlage as an

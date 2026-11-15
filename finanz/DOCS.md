@@ -178,6 +178,11 @@ Reiter unter Steuern: was pro Steuerjahr noch offen ist und bis wann.
   hochgeladenen Steuerdokumenten (provisorische Rechnung, Veranlagungsverfügung).
 - **Bezahlt:** Zahlungen von Hand oder aus den Buchungen der Kategorie «Steuern» übernommen (Steuer und Jahr aus dem
   Text geraten, Bundessteuer im ersten Halbjahr fürs Vorjahr).
+- **Steuerkonto:** pro Steuerjahr und Steuer alle Positionen wie im Kontoauszug der Steuerverwaltung, mit
+  laufendem Saldo: Steuern provisorisch und definitiv (die definitive ersetzt die provisorische), Zahlung,
+  Vergütungszins, Rückerstattungszins, Verzugszins, Umbuchung auf bzw. aus Jahr (einmal erfasst, wirkt in beiden
+  Jahren), Rückerstattung erhalten, Guthaben laut Steuerkonto. Jede Position lässt sich bearbeiten (auch die Art,
+  z. B. provisorisch → definitiv) und löschen; Werte aus hochgeladenen Dokumenten sind als «aus Dokument» markiert.
 - **Guthaben (Saldo zu Ihren Gunsten):** Zeigt die definitive Rechnung, dass zu viel bezahlt wurde, rechnet die App
   das Guthaben ins nächste Steuerjahr derselben Steuer (wie die Steuerverwaltung es verrechnet) – ausser eine
   «Rückerstattung erhalten» ist erfasst. Ein Guthaben laut Kontoauszug des Steuerkontos lässt sich direkt beim

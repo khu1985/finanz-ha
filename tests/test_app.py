@@ -415,7 +415,7 @@ def test_vermoegen_pro_person(server, daten):
 def test_steuern_bezahlen_und_liquiditaet(server, daten):
     j = str(date.today().year + 1)
     html = urllib.request.urlopen(f"{server}/steuerzahlung").read().decode()
-    assert "Offene Steuern" in html and "Steuern bezahlen" in html and 'action="steuerzahlung/rechnung"' in html
+    assert "Offene Steuern" in html and "Steuern bezahlen" in html and 'action="steuerzahlung/position"' in html
     code, ziel = _post(f"{server}/steuerzahlung/rechnung", {"jahr": j, "art": "kanton", "typ": "provisorisch",
                                                             "betrag": "12000"})
     assert code == 303 and ziel.startswith("/steuerzahlung")
@@ -519,3 +519,37 @@ def test_datenqualitaet_und_annahmen(server, daten):
     code, _ = _post(f"{server}/annahmen/speichern", {"annahmen.teuerung": "1.5", "anlage.risiko": "hoch"})
     k = konfig.laden()
     assert code == 303 and k["annahmen"]["teuerung"] == 1.5 and k["anlage"]["risiko"] == "hoch"
+
+
+
+def test_steuerkonto_positionen_bearbeiten(server, daten):
+    import steuerzahlung as sz
+    j = date.today().year
+    for pos, betrag, extra in (("provisorisch", "20000", {}), ("zahlung", "15000", {}),
+                               ("verguetungszins", "12", {}), ("umbuchung_aus", "500", {"gegenjahr": str(j - 1)})):
+        code, _ = _post(f"{server}/steuerzahlung/position", {"jahr": str(j), "art": "kanton", "position": pos,
+                                                            "betrag": betrag, "datum": f"{j}-03-01", **extra})
+        assert code == 303
+    html = urllib.request.urlopen(f"{server}/steuerzahlung").read().decode()
+    assert "Steuerkonto" in html and "Umbuchung aus Jahr" in html and "Umbuchung auf Jahr" in html
+    assert "Vergütungszins" in html
+    import sqlite3
+    v = sqlite3.connect(konfig.datenordner() / "finanz.sqlite")
+    v.row_factory = sqlite3.Row
+    zahlung = next(z for z in sz.zahlungen(v) if z["typ"] == "zahlung")
+    # bearbeiten: Betrag ändern
+    html = urllib.request.urlopen(f"{server}/steuerzahlung?b=z{zahlung['id']}").read().decode()
+    assert "Position bearbeiten" in html and 'value="15000"' in html
+    code, _ = _post(f"{server}/steuerzahlung/position", {"b": f"z{zahlung['id']}", "jahr": str(j), "art": "kanton",
+                                                        "position": "zahlung", "betrag": "16000", "datum": f"{j}-03-02"})
+    assert code == 303 and sz.einer(v, zahlung["id"])["betrag"] == 16000
+    # Rechnung von provisorisch auf definitiv ändern
+    code, _ = _post(f"{server}/steuerzahlung/position", {"b": f"r{j}-kanton-provisorisch", "jahr": str(j), "art": "kanton",
+                                                        "position": "definitiv", "betrag": "19000", "datum": ""})
+    k = konfig.laden()
+    r = sz.rechnungen(k, v)
+    assert (j, "kanton", "definitiv") in r and (j, "kanton", "provisorisch") not in r
+    p = {(x.jahr, x.art): x for x in sz.auswerten(k, v)}[(j, "kanton")]
+    assert p.bezahlt == 16000 + 12 + 500 and p.offen == 19000 - 16512
+    code, _ = _post(f"{server}/steuerzahlung/position_loeschen", {"b": f"z{zahlung['id']}"})
+    assert code == 303 and sz.einer(v, zahlung["id"]) is None

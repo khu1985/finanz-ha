@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.56.0 – 2026-11-15
+
+- **Steuerkonto** unter «Steuern bezahlen»: pro Steuerjahr und Steuer alle Positionen wie im Kontoauszug mit
+  laufendem Saldo – Steuern provisorisch, Steuern definitiv, Zahlung, Vergütungszins, Rückerstattungszins,
+  Verzugszins, Umbuchung auf Jahr bzw. aus Jahr (einmal erfasst, wirkt in beiden Jahren; doppelte Erfassung wird
+  erkannt), Rückerstattung erhalten, Guthaben laut Steuerkonto.
+- **Bearbeiten:** Jede Position lässt sich ändern (Jahr, Steuer, Art, Betrag, Datum, Gegenjahr, Notiz) und löschen;
+  ein Formular für alle Positionen statt getrennter Formulare für Rechnungen und Zahlungen.
+
 ## 0.55.2 – 2026-11-15
 
 - **Steuern bezahlen: Guthaben** – zu viel Bezahltes laut definitiver Rechnung bleibt als «Saldo zu Ihren Gunsten»
