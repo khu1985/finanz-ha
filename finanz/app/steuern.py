@@ -56,6 +56,52 @@ def kantonssteuer(einkommen: float, st: dict) -> float:
     return round(ref_s * (einkommen / ref_e) ** exponent, 2)
 
 
+def kanton_gemeinde(e: dict, fuss_std: float = 0.0) -> None:
+    """Staats- und Gemeindesteuer getrennt ↔ Total (`steuer_kanton_gemeinde`) abgleichen, in der Steuereinheit `e`.
+
+    In BL (und vielen Kantonen) ist die Gemeindesteuer ein Zuschlag in % der Staatssteuer (Gemeindesteuerfuss):
+    Total = Staatssteuer × (1 + Steuerfuss). Getrennte Beträge gehen vor; fehlt einer, rechnet die App ihn über den
+    Steuerfuss aus; ist nur das Total bekannt, teilt sie es mit dem Steuerfuss auf.
+    """
+    def z(x):
+        try:
+            return float(x or 0)
+        except (TypeError, ValueError):
+            return 0.0
+    staat, gem = z(e.get("staatssteuer")), z(e.get("gemeindesteuer"))
+    fuss = z(e.get("gemeindesteuerfuss")) or z(fuss_std)
+    if staat and not gem and fuss:
+        gem = round(staat * fuss / 100)
+        e["gemeindesteuer"] = gem
+    elif gem and not staat and fuss:
+        staat = round(gem * 100 / fuss)
+        e["staatssteuer"] = staat
+    if staat or gem:
+        e["steuer_kanton_gemeinde"] = round(staat + gem)
+        if staat and gem and not z(e.get("gemeindesteuerfuss")) and not fuss_std:
+            e["gemeindesteuerfuss"] = round(gem / staat * 100, 1)
+    else:
+        total = z(e.get("steuer_kanton_gemeinde"))
+        if total and fuss:
+            e["staatssteuer"] = round(total / (1 + fuss / 100))
+            e["gemeindesteuer"] = round(total - e["staatssteuer"])
+
+
+def abgleichen(k: dict) -> None:
+    """Alle Steuereinheiten (Haushalt bzw. Personen im Konkubinat)."""
+    st = k.get("steuern") or {}
+    kanton_gemeinde(st)
+    if k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and len(k.get("personen") or []) > 1:
+        liste = st.setdefault("personen", [])
+        vorhanden = {str(e.get("person", "")).lower() for e in liste}
+        for p in k["personen"]:
+            if str(p.get("name", "")).lower() not in vorhanden:
+                liste.append({"person": p.get("name", ""), "steuerbar_bund": 0, "steuerbar_kanton": 0,
+                              "steuer_kanton_gemeinde": 0, "grenzsteuersatz_kanton": st.get("grenzsteuersatz_kanton", 0)})
+    for e in st.get("personen") or []:
+        kanton_gemeinde(e, st.get("gemeindesteuerfuss") or 0)
+
+
 def anzahl_kinder(k: dict, jahr: int | None = None) -> int:
     """Kinder mit Kinderabzug (minderjährig oder in Ausbildung) im Jahr."""
     import kinder as ki

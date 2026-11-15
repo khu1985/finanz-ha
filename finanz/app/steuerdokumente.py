@@ -55,6 +55,8 @@ ZIELE = {
     "steuerbar_kanton": "steuer:steuerbar_kanton",
     "steuerbar_bund": "steuer:steuerbar_bund",
     "steuer_kanton_gemeinde": "steuer:steuer_kanton_gemeinde",
+    "staatssteuer": "steuer:staatssteuer",
+    "gemeindesteuer": "steuer:gemeindesteuer",
     "grenzsteuersatz": "steuer:grenzsteuersatz_kanton",
     "steuerbares_vermoegen": "steuer:steuerbar_vermoegen",
     "vermoegenssteuer": "steuer:vermoegenssteuer",
@@ -360,6 +362,17 @@ def uebernehmen(k: dict, d: dict, person_name: str, schluessel: list[str], grenz
             ziel = ziel.setdefault(t, {})
         ziel[teile[-1]] = round(float(werte[s]), 1) if s == "grenzsteuersatz" else int(round(float(werte[s])))
         erledigt.append(FELDER.get(s, ("Grenzsteuersatz",))[0] if s != "grenzsteuersatz" else "Grenzsteuersatz")
+    # Staats- und Gemeindesteuer: getrennt übernommen → Steuerfuss daraus; nur das Total → alte Einzelbeträge weg
+    getrennt = [s for s in ("staatssteuer", "gemeindesteuer") if s in schluessel and s in werte]
+    if len(getrennt) == 2 and float(werte["staatssteuer"]):
+        einheit["gemeindesteuerfuss"] = round(float(werte["gemeindesteuer"]) / float(werte["staatssteuer"]) * 100, 1)
+    elif getrennt:
+        einheit.pop("gemeindesteuer" if getrennt == ["staatssteuer"] else "staatssteuer", None)
+    elif "steuer_kanton_gemeinde" in schluessel and "steuer_kanton_gemeinde" in werte:
+        einheit.pop("staatssteuer", None)
+        einheit.pop("gemeindesteuer", None)
+    import steuern
+    steuern.kanton_gemeinde(einheit, float(st_cfg.get("gemeindesteuerfuss") or 0) if einheit is not st_cfg else 0.0)
     return erledigt
 
 

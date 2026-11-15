@@ -86,26 +86,41 @@ def dokumente(k: dict, db, infos: dict) -> list[Befund]:
 
 
 def steuern(k: dict, db, infos: dict) -> list[Befund]:
-    if k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet":
-        return []
+    """Pro Steuereinheit (Haushalt bzw. Person im Konkubinat) gegenüber dem neuesten Steuerdokument."""
     import steuerdokumente as sd
-    docs = [d for d in sd.alle(db) if d["typ"] in ("veranlagung", "erklaerung") and d.get("jahr")]
-    if not docs:
+    from versicherungen import gleiche_person
+    alle_docs = [d for d in sd.alle(db) if d["typ"] in ("veranlagung", "erklaerung") and d.get("jahr")]
+    if not alle_docs:
         return []
-    d = max(docs, key=lambda x: (x["jahr"], x["typ"] == "veranlagung", x["hochgeladen"]))
+    st = k.get("steuern") or {}
+    if k["haushalt"].get("zivilstand", "verheiratet") == "verheiratet" or not st.get("personen"):
+        einheiten = [(st, "steuern", "", alle_docs)]
+    else:
+        einheiten = [(e, f"steuern.personen.{j}", str(e.get("person") or ""),
+                      [d for d in alle_docs if d.get("person") and gleiche_person(d["person"], str(e.get("person") or ""))])
+                     for j, e in enumerate(st["personen"])]
     erg = []
-    for s, feld in (("steuerbar_kanton", "steuerbar_kanton"), ("steuerbar_bund", "steuerbar_bund"),
-                    ("steuer_kanton_gemeinde", "steuer_kanton_gemeinde")):
-        w = (d.get("werte") or {}).get(s)
-        if not w:
+    for einheit, praefix, person, docs in einheiten:
+        if not docs:
             continue
-        ist = float(k["steuern"].get(feld) or 0)
-        if _nah(ist, float(w), 0.02) or _hand_danach(infos.get(f"steuern.{feld}"), d.get("uebernommen") or d["hochgeladen"]):
-            continue
-        erg.append(Befund(f"Steuern: {sd.FELDER.get(s, (s,))[0]}", f"Einstellungen: {_chf(ist)}",
-                          f"{'Veranlagung' if d['typ'] == 'veranlagung' else 'Steuererklärung'} {d['jahr']}: {_chf(float(w))}",
-                          "Die Steuern der App rechnen mit den Einstellungen. Den Wert aus dem neuesten Steuerdokument "
-                          "übernehmen oder die Einstellung bestätigen.", f"steuern/dokument/{d['id']}"))
+        d = max(docs, key=lambda x: (x["jahr"], x["typ"] == "veranlagung", x["hochgeladen"]))
+        w_ = d.get("werte") or {}
+        getrennt = bool(w_.get("staatssteuer") and w_.get("gemeindesteuer"))
+        felder = ["steuerbar_kanton", "steuerbar_bund"] + (["staatssteuer", "gemeindesteuer"] if getrennt
+                                                           else ["steuer_kanton_gemeinde"])
+        for s_ in felder:
+            w = w_.get(s_)
+            if not w:
+                continue
+            ist = float(einheit.get(s_) or 0)
+            if _nah(ist, float(w), 0.02) or _hand_danach(infos.get(f"{praefix}.{s_}"), d.get("uebernommen") or d["hochgeladen"]):
+                continue
+            erg.append(Befund(f"Steuern{' ' + person if person else ''}: {sd.FELDER.get(s_, (s_,))[0]}",
+                              f"Einstellungen: {_chf(ist)}",
+                              f"{'Veranlagung' if d['typ'] == 'veranlagung' else 'Steuererklärung'} {d['jahr']}: "
+                              f"{_chf(float(w))}",
+                              "Die Steuern der App rechnen mit den Einstellungen. Den Wert aus dem neuesten Steuerdokument "
+                              "übernehmen oder die Einstellung bestätigen.", f"steuern/dokument/{d['id']}"))
     return erg
 
 
@@ -147,7 +162,11 @@ def lohn(k: dict, db) -> list[Befund]:
 
 def steuerbar(k: dict) -> list[Befund]:
     brutto = sum(float(p.get("lohn_brutto") or 0) for p in k["personen"])
-    s = float(k["steuern"].get("steuerbar_kanton") or 0)
+    st = k.get("steuern") or {}
+    if k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and st.get("personen"):
+        s = sum(float(e.get("steuerbar_kanton") or 0) for e in st["personen"])
+    else:
+        s = float(st.get("steuerbar_kanton") or 0)
     if not brutto or not s or 0.45 <= s / brutto <= 1.1:
         return []
     return [Befund("Steuerbares Einkommen", f"Steuerbar Kanton: {_chf(s)}", f"Bruttolohn total: {_chf(brutto)}",

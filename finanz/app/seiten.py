@@ -702,8 +702,9 @@ def uebersicht(k: dict, db) -> str:
                     f" + PK-Rente CHF {chf(luecke.pk_rente)} + Kapitalverzehr CHF {chf(luecke.kapitalverzehr)} "
                     f"(Kapital nach Steuern über die Entnahmejahre) – in heutigen Franken. Lücke = Bedarf CHF "
                     f"{chf(luecke.bedarf)} − Einkommen. Ersatzquote = Einkommen ÷ heutiger Bruttolohn.", pfade_rente)
-    pfade_steuer = ["steuern.steuerbar_kanton", "steuern.steuerbar_bund", "steuern.steuer_kanton_gemeinde",
-                    "steuern.grenzsteuersatz_kanton", "steuern.steuerbar_vermoegen", "steuern.vermoegenssteuer"]
+    pfade_steuer = [p_ for p_, _ in felder_steuern(k) if p_.rsplit(".", 1)[-1] in (
+        "steuerbar_kanton", "steuerbar_bund", "staatssteuer", "gemeindesteuer", "grenzsteuersatz_kanton",
+        "steuerbar_vermoegen", "vermoegenssteuer")]
     kpis = "".join([
         kpi(chf(nv["total"]), "Nettovermögen (CHF)", woher_=woher(
             k, db, "Summe aller Konten unter Vermögen (Bank, Wertschriften, 3a, 3b, Immobilie, Fahrzeug, Kindersparen) "
@@ -718,7 +719,8 @@ def uebersicht(k: dict, db) -> str:
                    "Einstellungen (Rechnung bzw. Steuererklärung), sonst geschätzt; dazu Vermögenssteuer.", pfade_steuer)),
         kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else "", woher_=woher(
             k, db, "Steuerersparnis, wenn jede erwerbstätige Person das 3a-Maximum einzahlt (Grenzsteuersatz).",
-            [f"personen.{i}.saeule3a.beitrag_jahr" for i in range(len(k["personen"]))] + pfade_steuer[:4])),
+            [f"personen.{i}.saeule3a.beitrag_jahr" for i in range(len(k["personen"]))]
+            + [p_ for p_ in pfade_steuer if not p_.endswith(("vermoegen", "vermoegenssteuer"))])),
     ])
     verl = vm.verlauf(db)
     return statuszeile(k, db) + ampel_karte(k, db) + erinnerungen_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
@@ -1374,7 +1376,9 @@ FELDER_HAUSHALT = [
 ]
 FELDER_STEUERN = [
     ("steuern.steuerbar_bund", "Steuerbares Einkommen Bund"), ("steuern.steuerbar_kanton", "Steuerbares Einkommen Kanton"),
-    ("steuern.steuer_kanton_gemeinde", "Staats- und Gemeindesteuer CHF"),
+    ("steuern.staatssteuer", "Staatssteuer CHF (Veranlagung)"), ("steuern.gemeindesteuer", "Gemeindesteuer CHF (Veranlagung)"),
+    ("steuern.gemeindesteuerfuss", "Gemeindesteuerfuss % der Staatssteuer"),
+    ("steuern.steuer_kanton_gemeinde", "Staats- und Gemeindesteuer total (= Summe, wenn beide erfasst)"),
     ("steuern.grenzsteuersatz_kanton", "Grenzsteuersatz Kanton+Gemeinde %"),
     ("steuern.steuerbar_vermoegen", "Steuerbares Vermögen"), ("steuern.vermoegenssteuer", "Vermögenssteuer CHF (Veranlagung)"),
 ]
@@ -1410,6 +1414,16 @@ def pfad_setzen(k: dict, pfad: str, roh: str) -> None:
         obj = obj[int(teil)] if isinstance(obj, list) else obj.setdefault(teil, {})
     alt = obj.get(teile[-1])
     roh = roh.strip()
+    if alt is None:                              # neues Feld: Zahl, Text oder leer lassen
+        if not roh:
+            obj.pop(teile[-1], None)
+            return
+        try:
+            x = vm.zahl(roh)
+            obj[teile[-1]] = int(x) if x == int(x) and not re.search(r"[.,]\d", roh) else x
+        except ValueError:
+            obj[teile[-1]] = roh
+        return
     if isinstance(alt, bool):
         wert = roh.lower() in ("1", "true", "ja", "on")
     elif isinstance(alt, int):
@@ -1432,12 +1446,36 @@ def _gruppe_name(k: dict, pfad: str) -> str:
     m = re.match(r"personen\.(\d+)\.", pfad)
     if m and int(m.group(1)) < len(k["personen"]):
         return f'{k["personen"][int(m.group(1))].get("name") or "Person"}: '
+    m = re.match(r"steuern\.personen\.(\d+)\.", pfad)
+    if m:
+        liste = (k.get("steuern") or {}).get("personen") or []
+        j = int(m.group(1))
+        return "Steuern: "
     return {"haushalt": "Haushalt: ", "annahmen": "Haushalt: ", "steuern": "Steuern: ", "wohnen": "Wohnen: "}.get(
         pfad.split(".")[0], "")
 
 
+def konkubinat(k: dict) -> bool:
+    return k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and len(k["personen"]) > 1
+
+
+def felder_steuern(k: dict) -> list[tuple]:
+    """Verheiratet: Werte des Haushalts; Konkubinat: pro Person (eigene Steuererklärung)."""
+    if not konkubinat(k):
+        return FELDER_STEUERN
+    pro_person = [p for p, _ in FELDER_STEUERN if p not in ("steuern.steuerbar_vermoegen", "steuern.vermoegenssteuer",
+                                                            "steuern.gemeindesteuerfuss")]
+    felder = [("steuern.gemeindesteuerfuss", "Gemeindesteuerfuss % der Staatssteuer (gleiche Gemeinde)")]
+    for j, e in enumerate((k.get("steuern") or {}).get("personen") or []):
+        n = str(e.get("person") or f"Person {j + 1}")
+        felder += [(f"steuern.personen.{j}.{p.split('.', 1)[1]}", f"{n}: {t}") for p, t in FELDER_STEUERN if p in pro_person]
+        felder += [(f"steuern.personen.{j}.steuerbar_vermoegen", f"{n}: Steuerbares Vermögen"),
+                   (f"steuern.personen.{j}.vermoegenssteuer", f"{n}: Vermögenssteuer CHF (Veranlagung)")]
+    return felder
+
+
 def alle_felder(k: dict) -> list[tuple]:
-    felder = FELDER_HAUSHALT + FELDER_STEUERN + FELDER_WOHNEN + FELDER_KI + FELDER_ERINNERUNG + FELDER_SENSOREN
+    felder = FELDER_HAUSHALT + felder_steuern(k) + FELDER_WOHNEN + FELDER_KI + FELDER_ERINNERUNG + FELDER_SENSOREN
     for i in range(len(k["personen"])):
         felder += _felder_person(i)
     return felder
@@ -1496,7 +1534,8 @@ def einstellungen(k: dict, db) -> str:
     teile = [gruppe("Haushalt", FELDER_HAUSHALT, "haushalt")]
     for i, p in enumerate(k["personen"]):
         teile.append(gruppe(p.get("name") or f"Person {i + 1}", _felder_person(i), f"person{i}"))
-    teile += [gruppe("Steuern (aus der letzten Veranlagung)", FELDER_STEUERN, "steuern"),
+    teile += [gruppe("Steuern (aus der letzten Veranlagung)" + (" – pro Person, Konkubinat" if konkubinat(k) else ""),
+                     felder_steuern(k), "steuern"),
               gruppe("Wohnen", FELDER_WOHNEN, "wohnen"),
               gruppe("KI (optional, z. B. für Dokumente und Berater)", FELDER_KI, "ki"),
               gruppe("Erinnerungen", FELDER_ERINNERUNG, "erinnerungen")]
@@ -4625,6 +4664,9 @@ werden automatisch berücksichtigt; eine eigene Angabe hat Vorrang.</p>"""))
     def wert(x):
         return "" if c.get(x) in (None, "") else escape(str(c.get(x)))
     raten = str(c.get("raten") or "einmal")
+    _fuss = float((k.get("steuern") or {}).get("gemeindesteuerfuss") or 0)
+    fuss_text = (f" (jetzt {_fuss:g} % → Gemeinde {sz.gemeinde_anteil(k) * 100:.0f} % des Totals)" if _fuss
+                 else " (noch nicht erfasst)")
     teile.append(karte("Einstellungen zum Bezug", f"""
 <form method="post" action="steuerzahlung/einstellungen"><div class="felder">
 <label>Fälligkeit Staatssteuer (TT.MM.; jetzt {fae:%d.%m.}{" angenommen" if angenommen else ""})
@@ -4635,7 +4677,7 @@ werden automatisch berücksichtigt; eine eigene Angabe hat Vorrang.</p>"""))
 <option value="monatlich"{" selected" if raten == "monatlich" else ""}>in Monatsraten bis zur Fälligkeit</option></select></label>
 <label class="entfernen"><input type="checkbox" name="gemeinde_separat" value="1"{" checked" if c.get("gemeinde_separat") else ""}>
 Gemeinde stellt eine eigene Rechnung</label>
-<label>Anteil Gemeinde an Staats- und Gemeindesteuer %<input name="gemeinde_anteil" inputmode="decimal" value="{wert("gemeinde_anteil")}"></label>
+<p class="leise breit">Aufteilung über den Gemeindesteuerfuss unter <a href="einstellungen#f-steuern-gemeindesteuerfuss">Einstellungen → Steuern</a>{fuss_text}.</p>
 <label>Fälligkeit Gemeindesteuer (TT.MM.)<input name="faellig_gemeinde" value="{wert("faellig_gemeinde")}"></label>
 </div><div class="zeile"><button>Speichern</button></div></form>"""))
     links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in sz.QUELLEN)

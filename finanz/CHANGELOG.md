@@ -1,5 +1,19 @@
 # Änderungen
 
+## 0.55.1 – 2026-11-15
+
+- **Staats- und Gemeindesteuer getrennt:** In den Einstellungen stehen Staatssteuer, Gemeindesteuer und der
+  Gemeindesteuerfuss (% der Staatssteuer, BL meist 45–70 %); gerechnet wird mit der Summe. Fehlt ein Betrag, ergänzt
+  ihn die App über den Steuerfuss; ist nur das Total bekannt, teilt sie es auf. Aus der Veranlagung lassen sich
+  beide Beträge übernehmen (der Steuerfuss folgt daraus).
+- **Steuern bezahlen:** Die Gemeinde mit eigener Rechnung wird über den Gemeindesteuerfuss abgegrenzt (statt
+  «Anteil Gemeinde %»); bei Rechnungen mit getrennten Beträgen gelten diese.
+- **Widersprüche:** Staats- und Gemeindesteuer werden einzeln mit der neuesten Veranlagung verglichen – im
+  Konkubinat pro Person mit deren Steuerdokument.
+- **Konkubinat:** Die Steuerwerte pro Person stehen jetzt in den Einstellungen (bisher nur über Steuerdokumente
+  oder YAML), der Gemeindesteuerfuss einmal für beide. Die nicht verwendeten Haushaltswerte gelten nicht mehr als
+  «Beispielwerte der Vorlage» (Fehlalarm in 0.55.0).
+
 ## 0.55.0 – 2026-11-15
 
 Schwerpunkt Vertrauen in die Zahlen:

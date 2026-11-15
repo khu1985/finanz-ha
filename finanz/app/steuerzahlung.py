@@ -86,8 +86,21 @@ def _zahl(v, std: float | None = None) -> float | None:
         return std
 
 
+def gemeinde_anteil(k: dict) -> float:
+    """Anteil der Gemeinde an Staats- und Gemeindesteuer (0–1) aus dem Gemeindesteuerfuss (% der Staatssteuer):
+    Fuss ÷ (100 + Fuss); sonst aus den getrennt erfassten Beträgen, zuletzt aus dem alten Feld `gemeinde_anteil`."""
+    st = k.get("steuern") or {}
+    fuss = _zahl(st.get("gemeindesteuerfuss"), 0) or 0
+    if fuss:
+        return fuss / (100 + fuss)
+    staat, gem = _zahl(st.get("staatssteuer"), 0) or 0, _zahl(st.get("gemeindesteuer"), 0) or 0
+    if staat and gem:
+        return gem / (staat + gem)
+    return (_zahl(cfg(k).get("gemeinde_anteil"), 0) or 0) / 100
+
+
 def gemeinde_separat(k: dict) -> bool:
-    return bool(cfg(k).get("gemeinde_separat")) and (_zahl(cfg(k).get("gemeinde_anteil"), 0) or 0) > 0
+    return bool(cfg(k).get("gemeinde_separat")) and gemeinde_anteil(k) > 0
 
 
 def arten(k: dict) -> list[str]:
@@ -183,7 +196,16 @@ def rechnungen(k: dict, db) -> dict[tuple[int, str, str], dict]:
             if not typ or not d.get("jahr"):
                 continue
             kanton = float(w.get("steuer_kanton_gemeinde") or 0) + float(w.get("vermoegenssteuer") or 0)
-            for art, betrag in (("kanton", kanton), ("bund", float(w.get("bundessteuer") or 0))):
+            teile = [("kanton", kanton), ("bund", float(w.get("bundessteuer") or 0))]
+            if gemeinde_separat(k):
+                anteil = gemeinde_anteil(k)
+                verm = float(w.get("vermoegenssteuer") or 0)
+                if w.get("staatssteuer") and w.get("gemeindesteuer"):
+                    staat, gem = float(w["staatssteuer"]) + verm * (1 - anteil), float(w["gemeindesteuer"]) + verm * anteil
+                else:
+                    staat, gem = kanton * (1 - anteil), kanton * anteil
+                teile = [("kanton", staat), ("gemeinde", gem), teile[1]]
+            for art, betrag in teile:
                 if betrag > 0:
                     alt = erg.get((d["jahr"], art, typ))
                     erg[(d["jahr"], art, typ)] = {"betrag": betrag + (alt["betrag"] if alt and d["person"] != alt.get(
@@ -270,7 +292,7 @@ def _schaetzung(k: dict) -> dict[str, float]:
     kanton = float(s["kanton"]) + float(s["vermoegen"])
     erg = {"kanton": kanton, "bund": float(s["bund"])}
     if gemeinde_separat(k):
-        anteil = (_zahl(cfg(k).get("gemeinde_anteil"), 0) or 0) / 100
+        anteil = gemeinde_anteil(k)
         erg["gemeinde"], erg["kanton"] = kanton * anteil, kanton * (1 - anteil)
     return erg
 

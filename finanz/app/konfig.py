@@ -57,6 +57,11 @@ def laden() -> dict:
     if "haushalt" in eigen and "kinder" in eigen["haushalt"]:
         k["haushalt"]["kinder"] = eigen["haushalt"]["kinder"] or []
     waehrung.uebernehmen(k)
+    try:
+        import steuern
+        steuern.abgleichen(k)                # Staats- und Gemeindesteuer ↔ Total
+    except Exception:  # noqa: BLE001
+        pass
     return k
 
 

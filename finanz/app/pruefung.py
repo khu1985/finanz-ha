@@ -84,17 +84,37 @@ def pruefen(k: dict, pfad: str, heute: date | None = None) -> tuple[str, str]:
         return GELB, "reale Lohnentwicklung über 2 % ist optimistisch"
     if pfad == "annahmen.teuerung" and z is not None and not 0 <= z <= 4:
         return GELB, "üblich sind 0,5–2 %"
+    m_st = re.match(r"steuern\.personen\.(\d+)\.(.+)", pfad)
+    if m_st:                                       # Konkubinat: Regeln wie für den Haushalt, mit der Einheit der Person
+        liste = (k.get("steuern") or {}).get("personen") or []
+        j = int(m_st.group(1))
+        if j >= len(liste):
+            return GRAU, ""
+        k2 = {**k, "steuern": {**(k.get("steuern") or {}), **liste[j]},
+              "haushalt": {**k["haushalt"], "zivilstand": "verheiratet"}}
+        return pruefen(k2, "steuern." + m_st.group(2), heute)
     if pfad.startswith("steuern."):
-        if not verheiratet and pfad in ("steuern.steuerbar_bund", "steuern.steuerbar_kanton",
-                                        "steuern.steuer_kanton_gemeinde", "steuern.grenzsteuersatz_kanton") and not z:
+        if not verheiratet and pfad in ("steuern.steuerbar_bund", "steuern.steuerbar_kanton", "steuern.staatssteuer",
+                                        "steuern.gemeindesteuer", "steuern.steuer_kanton_gemeinde",
+                                        "steuern.grenzsteuersatz_kanton") and not z:
             return GRAU, "im Konkubinat pro Person (aus den Steuerdokumenten)"
+        st = k.get("steuern") or {}
+        if pfad in ("steuern.staatssteuer", "steuern.gemeindesteuer") and not z:
+            if _zahl(st.get("steuer_kanton_gemeinde")):
+                return GELB, (f"bisher nur das Total ({_zahl(st['steuer_kanton_gemeinde']):,.0f}) – beide Beträge laut "
+                              "Veranlagung eintragen oder den Gemeindesteuerfuss").replace(",", "’")
+            return ROT, "fehlt – Veranlagung unter «Steuern» hochladen"
+        if pfad == "steuern.gemeindesteuerfuss":
+            if not z:
+                return GELB, "fehlt – steht auf der Veranlagung bzw. der Website der Gemeinde (BL meist 45–70 %)"
+            if not 20 <= z <= 120:
+                return GELB, "ungewöhnlich – in % der Staatssteuer, BL meist 45–70 %"
         if pfad in ("steuern.steuerbar_bund", "steuern.steuerbar_kanton", "steuern.steuer_kanton_gemeinde") and not z:
             return ROT, "fehlt – Veranlagung unter «Steuern» hochladen"
-        st = k.get("steuern") or {}
         if pfad == "steuern.steuerbar_kanton" and z and _zahl(st.get("steuerbar_bund")):
             if abs(z - _zahl(st["steuerbar_bund"])) > 0.5 * _zahl(st["steuerbar_bund"]):
                 return GELB, "weicht stark vom Bund ab – Werte vertauscht?"
-        if pfad == "steuern.steuer_kanton_gemeinde" and z and _zahl(st.get("steuerbar_kanton")):
+        if pfad in ("steuern.steuer_kanton_gemeinde", "steuern.staatssteuer") and z and _zahl(st.get("steuerbar_kanton")):
             if z > 0.3 * _zahl(st["steuerbar_kanton"]):
                 return GELB, "über 30 % des steuerbaren Einkommens – Betrag prüfen"
         if pfad == "steuern.grenzsteuersatz_kanton":

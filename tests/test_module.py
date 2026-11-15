@@ -2515,3 +2515,54 @@ def test_konsistenz_ausweis_und_hypothek(k, tmp_path):
     kid = vm.konto_anlegen(db, "Muster Hypothek", "hypothek")
     vm.saldo_setzen(db, kid, "2026-10-31", 600000)
     assert any(b.thema == "Hypothek" for b in ko.pruefen(k, db))
+
+
+def test_staats_und_gemeindesteuer(k):
+    import steuern as st
+    import steuerzahlung as sz
+    e = {"steuer_kanton_gemeinde": 16000, "gemeindesteuerfuss": 60}
+    st.kanton_gemeinde(e)
+    assert e["staatssteuer"] == 10000 and e["gemeindesteuer"] == 6000
+    e = {"staatssteuer": 20000, "gemeindesteuer": 12000}
+    st.kanton_gemeinde(e)
+    assert e["steuer_kanton_gemeinde"] == 32000 and e["gemeindesteuerfuss"] == 60
+    e = {"staatssteuer": 20000, "gemeindesteuerfuss": 55}
+    st.kanton_gemeinde(e)
+    assert e["gemeindesteuer"] == 11000 and e["steuer_kanton_gemeinde"] == 31000
+    k["steuern"].update({"staatssteuer": 20000, "gemeindesteuer": 12000, "gemeindesteuerfuss": 60})
+    st.abgleichen(k)
+    assert k["steuern"]["steuer_kanton_gemeinde"] == 32000
+    k["steuerzahlung"] = {"gemeinde_separat": True}
+    assert abs(sz.gemeinde_anteil(k) - 0.375) < 1e-9 and sz.arten(k) == ["kanton", "gemeinde", "bund"]
+
+
+def test_steuerdokument_getrennt_uebernehmen(k):
+    import steuerdokumente as sd
+    k["haushalt"]["zivilstand"] = "verheiratet"
+    d = {"werte": {"staatssteuer": 18000, "gemeindesteuer": 10800, "steuer_kanton_gemeinde": 28800}}
+    sd.uebernehmen(k, d, k["personen"][0]["name"], ["staatssteuer", "gemeindesteuer"])
+    assert k["steuern"]["gemeindesteuerfuss"] == 60 and k["steuern"]["steuer_kanton_gemeinde"] == 28800
+    d = {"werte": {"steuer_kanton_gemeinde": 32000}}
+    sd.uebernehmen(k, d, k["personen"][0]["name"], ["steuer_kanton_gemeinde"])
+    assert k["steuern"]["staatssteuer"] == 20000 and k["steuern"]["gemeindesteuer"] == 12000
+
+
+def test_konkubinat_steuern_pro_person(k):
+    import herkunft as he
+    import pruefung
+    import seiten
+    import steuern as st
+    db = vm.verbinden(":memory:")
+    k["haushalt"]["zivilstand"] = "ledig"
+    k["steuern"]["personen"] = [{"person": k["personen"][0]["name"], "steuerbar_kanton": 100000,
+                                 "steuer_kanton_gemeinde": 16000}]
+    k["steuern"]["gemeindesteuerfuss"] = 60
+    st.abgleichen(k)
+    liste = k["steuern"]["personen"]
+    assert len(liste) == len(k["personen"])                       # Einheit für jede Person
+    assert liste[0]["staatssteuer"] == 10000 and liste[0]["gemeindesteuer"] == 6000
+    felder = [p for p, _ in seiten.alle_felder(k)]
+    assert "steuern.personen.0.staatssteuer" in felder and "steuern.steuerbar_kanton" not in felder
+    assert pruefung.pruefen(k, "steuern.personen.1.steuerbar_kanton")[0] == "rot"
+    assert he.alle(db, k)["steuern.steuerbar_kanton"].status == "standard"      # Haushaltswert nicht verwendet
+    assert seiten._gruppe_name(k, "steuern.personen.0.staatssteuer") == "Steuern: "

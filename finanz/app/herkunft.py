@@ -62,7 +62,8 @@ def flach(d, praefix: str = "") -> dict[str, object]:
         for k_, v in d.items():
             erg.update(flach(v, f"{praefix}{k_}."))
     elif isinstance(d, list) and d and all(isinstance(x, dict) for x in d) and praefix.startswith(("personen.",
-                                                                                                    "haushalt.kinder.")):
+                                                                                                    "haushalt.kinder.",
+                                                                                                    "steuern.personen.")):
         for i, x in enumerate(d):
             erg.update(flach(x, f"{praefix}{i}."))
     else:
@@ -155,8 +156,15 @@ def alle(db, k: dict, heute: date | None = None) -> dict[str, Info]:
     tabellen(db)
     zeilen = {r[0]: r for r in db.execute("SELECT pfad, wert, quelle, datum, bestaetigt FROM herkunft")}
     vorlage = _vorlage()
+    konkubinat = k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and bool((k.get("steuern") or {}).get("personen"))
     erg = {}
     for p, w in flach(k).items():
+        if konkubinat and p.startswith("steuern.") and not p.startswith("steuern.personen.") and \
+                p.rsplit(".", 1)[-1] in ("steuerbar_bund", "steuerbar_kanton", "steuer_kanton_gemeinde", "staatssteuer",
+                                         "gemeindesteuer", "grenzsteuersatz_kanton", "steuerbar_vermoegen",
+                                         "vermoegenssteuer"):
+            erg[p] = Info(p, w, "nicht verwendet (Konkubinat: Werte pro Person)", "", "", "standard")
+            continue
         z = zeilen.get(p)
         if z and z[1] == _text(w):
             quelle_, datum, best = z[2], z[3], z[4] or ""

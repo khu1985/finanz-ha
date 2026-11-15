@@ -181,7 +181,7 @@ Reiter unter Steuern: was pro Steuerjahr noch offen ist und bis wann.
 - **Ergebnis:** offen, Fälligkeit, aufgelaufener Verzugszins, Vergütungszins beim Bezahlen heute (verglichen mit dem
   Zins des Sparkontos aus dem Anlage-Check), Betrag pro Monat bis zur Fälligkeit, Nachzahlung bzw. Rückerstattung.
 - **Einstellungen** (`steuerzahlung`): Fälligkeit der Staatssteuer, eigene Zinssätze, Raten im Liquiditätsplan,
-  Gemeinde mit eigener Rechnung (Anteil und Fälligkeit). Für andere Kantone kennt die App den Vergütungszins 2026;
+  Gemeinde mit eigener Rechnung (Fälligkeit; Aufteilung über den Gemeindesteuerfuss). Für andere Kantone kennt die App den Vergütungszins 2026;
   die Fälligkeit (30. September angenommen) steht auf der provisorischen Rechnung.
 
 ## Wohnen
@@ -1338,7 +1338,7 @@ oder **Einstellungen → Experte**.
 |---|---|
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder) und [Lebenslauf](#lebenslauf-der-kinder)), Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | `name` (Vorname, Anzeige in der App), `nachname` (für Verfügungen und Schreiben), Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` (mit 3a-Konten unter Vermögen nachgeführt: `guthaben`, `konten`, `anteile`), `zuzug` |
-| `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
+| `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat): `staatssteuer` und `gemeindesteuer` laut Veranlagung, `gemeindesteuerfuss` (% der Staatssteuer), `steuer_kanton_gemeinde` (Total = Summe; ist nur das Total bekannt, teilt die App es mit dem Steuerfuss auf), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
 | `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil`, `region` (Prämienregion; leer = aus der Police) |
@@ -1358,7 +1358,7 @@ oder **Einstellungen → Experte**.
 | `finanzplan` | `bis_alter` (Standard 95), `kinderkosten` (`false` = Kinderkosten nicht einrechnen) |
 | `fahrzeuge` | pro Auto Name, Antrieb, Halter/in, Erstzulassung, Kauf, Wert, Kilometer, Verbrauch, Gewicht, Kosten, Leasing, Ersatz (siehe [Fahrzeuge](#fahrzeuge)) |
 | `ux` | `aufzeichnen` (Standard `true`): Seitenaufrufe und Formulare für den UX-Score lokal aufzeichnen (siehe [Vorschläge](#vorschläge-für-die-weiterentwicklung)) |
-| `steuerzahlung` | Bezug der Steuern: `faellig_kanton`, `faellig_gemeinde` (MM-TT), `verguetungszins`, `verzugszins`, `raten` (einmal/monatlich), `gemeinde_separat`, `gemeinde_anteil` (siehe [Steuern bezahlen](#steuern-bezahlen)) |
+| `steuerzahlung` | Bezug der Steuern: `faellig_kanton`, `faellig_gemeinde` (MM-TT), `verguetungszins`, `verzugszins`, `raten` (einmal/monatlich), `gemeinde_separat` (Aufteilung über `steuern.gemeindesteuerfuss`; siehe [Steuern bezahlen](#steuern-bezahlen)) |
 | `solar` | Solaranlage und vZEV: Investition, Förderung, Komponenten, Stromkosten, Präfix der vZEV-Sensoren, Jahreswerte von Hand; `werte_vzev` füllt die App (siehe [Solar und vZEV](#solaranlage-und-vzev)) |
 | `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |
