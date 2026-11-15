@@ -2474,3 +2474,44 @@ def test_finanzplan_ohne_bedarf_sicher(k):
     a = fp.rechnen(k, 100000, 2026, pfade=100)
     b = fp.rechnen(k, 100000, 2026, pfade=100, bedarf_sicher=False)
     assert a.erfolg == b.erfolg and not b.bedarf_sicher
+
+
+def test_herkunft_und_bestaetigen(k):
+    import herkunft as he
+    db = vm.verbinden(":memory:")
+    alt = copy.deepcopy(k)
+    k["personen"][0]["lohn_brutto"] = 123456
+    assert he.erfassen(alt, k, db) == 1
+    i = he.alle(db, k)["personen.0.lohn_brutto"]
+    assert i.quelle == he.HAND and i.status == "ok"
+    alt = copy.deepcopy(k)
+    k["personen"][0]["risiko"]["iv_rente_pk"] = 23681
+    with he.quelle("Vorsorgeausweis Musterkasse 2026-01-01"):
+        he.erfassen(alt, k, db)
+    i = he.alle(db, k)["personen.0.risiko.iv_rente_pk"]
+    assert i.status == "pruefen" and "Musterkasse" in i.text
+    he.bestaetigen(db, k, ["personen.0.risiko.iv_rente_pk"])
+    assert he.alle(db, k)["personen.0.risiko.iv_rente_pk"].status == "ok"
+    # Beispielwert der Vorlage
+    import konfig
+    vorlage = konfig.vorlage()
+    k["steuern"]["steuerbar_kanton"] = vorlage["steuern"]["steuerbar_kanton"]
+    assert he.alle(db, k)["steuern.steuerbar_kanton"].status == "beispiel"
+    assert he.alle(db, k)["annahmen.teuerung"].status in ("standard", "unbekannt")
+
+
+def test_konsistenz_ausweis_und_hypothek(k, tmp_path):
+    import dokumente as dk
+    import konsistenz as ko
+    db = vm.verbinden(":memory:")
+    p = k["personen"][0]
+    p["risiko"]["iv_rente_pk"] = 23681
+    did = dk.hochladen(db, tmp_path, "ausweis.txt", b"Musterkasse Vorsorgeausweis")
+    dk.speichern(db, did, "pk_ausweis", p["name"], {"iv_rente_pk": 96416})
+    befunde = ko.pruefen(k, db)
+    assert any("Invalidenrente" in b.thema and "96'416" in b.b for b in befunde)
+    # Hypothek: Wohnen und Konten widersprechen sich
+    k["wohnen"].update({"aktiv": True, "kaufpreis": 1000000, "eigenmittel": 200000})
+    kid = vm.konto_anlegen(db, "Muster Hypothek", "hypothek")
+    vm.saldo_setzen(db, kid, "2026-10-31", 600000)
+    assert any(b.thema == "Hypothek" for b in ko.pruefen(k, db))

@@ -122,6 +122,21 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
     except Exception:  # noqa: BLE001
         pass
 
+    # Datenqualität: Widersprüche, Beispielwerte der Vorlage, unbestätigte Werte aus Dokumenten
+    try:
+        import herkunft
+        import konsistenz
+        infos = herkunft.alle(db, k, heute)
+        beispiel = sum(1 for i in infos.values() if i.status == "beispiel")
+        wider = konsistenz.pruefen(k, db)
+        offen = sum(1 for i in infos.values() if i.status in ("pruefen", "veraltet"))
+        s_ = ROT if wider or beispiel else GELB if offen else GRUEN
+        teile = [t for t in (f"{len(wider)} Widerspruch/Widersprüche" if wider else "",
+                             f"{beispiel} Beispielwert(e)" if beispiel else "", f"{offen} zu prüfen" if offen else "") if t]
+        erg.append(Ampel("Datenqualität", s_, ", ".join(teile) or "alle Werte geprüft", "datenqualitaet"))
+    except Exception as e:  # noqa: BLE001
+        LOG.debug("Datenqualität-Ampel: %s", e)
+
     # Liegenschaft: Erneuerungen und Fonds
     try:
         import immobilie as im

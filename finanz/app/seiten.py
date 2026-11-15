@@ -35,7 +35,7 @@ NAVIGATION = [
     ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
 ]
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
-MENU_ALIAS = {"steuererklaerung": "steuern", "steuerzahlung": "steuern", "liquiditaet": "budget", "simulationen": "szenarien", "protokoll": "einstellungen", "aenderungen": "einstellungen",
+MENU_ALIAS = {"steuererklaerung": "steuern", "steuerzahlung": "steuern", "liquiditaet": "budget", "simulationen": "szenarien", "datenqualitaet": "einstellungen", "annahmen": "einstellungen", "protokoll": "einstellungen", "aenderungen": "einstellungen",
               "daten": "einstellungen"}
 OFFEN_IMMER = {"Überblick"}
 # Seiten, die als Reiter einer Seite erscheinen
@@ -43,8 +43,8 @@ REITER = [
     [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
     [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
     [("szenarien", "Rechner"), ("simulationen", "Simulationen")],
-    [("einstellungen", "Einstellungen"), ("daten", "Daten & Import"), ("protokoll", "Protokoll"),
-     ("aenderungen", "Änderungen")],
+    [("einstellungen", "Einstellungen"), ("datenqualitaet", "Datenqualität"), ("annahmen", "Annahmen"),
+     ("daten", "Daten & Import"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
 ]
 
 
@@ -165,6 +165,13 @@ background:var(--leise);opacity:.45}
 .ampel.rot{background:#d93b30;opacity:1;box-shadow:0 0 0 3px color-mix(in srgb,#d93b30 20%,transparent)}
 nav a .ampel{width:8px;height:8px;margin-right:6px;box-shadow:none}
 .kpi{position:relative}.kpi>.ampel{position:absolute;top:12px;right:10px;margin:0}
+details.woher{margin-top:4px}details.woher>summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--linie);font-size:12px;font-weight:700;color:var(--leise);cursor:pointer}
+details.woher>summary::-webkit-details-marker{display:none}details.woher[open]>summary{background:var(--akzent);color:var(--karte);border-color:var(--akzent)}
+details.woher>div{font-size:13px;line-height:1.45;margin-top:6px;padding:8px 10px;border-left:3px solid var(--akzent);background:var(--bg)}
+details.woher>div p{margin:0 0 6px}details.woher ul.hinweise{margin:0 0 6px;padding-left:0;list-style:none}details.woher li{margin:2px 0}
+.kpi details.woher b,.kpi details.woher strong{display:inline;font-size:inherit;font-weight:600;margin:0}
+.kpi details.woher span,.kpi details.woher small{display:inline;font-size:12px;margin:0}
+.kpis .kpi:has(details.woher[open]){grid-column:1/-1}
 .ampeln{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin-bottom:16px}
 .ampel-kachel{display:flex;gap:10px;align-items:flex-start;background:var(--karte);border:1px solid var(--linie);
 border-radius:12px;padding:10px 12px;text-decoration:none;color:var(--text)}
@@ -551,9 +558,51 @@ def licht(status: str, titel: str = "") -> str:
     return f'<span class="ampel {status}" title="{escape(t)}" role="img" aria-label="Ampel {escape(am.TEXT.get(status, ""))}"></span>'
 
 
-def kpi(wert: str, text: str, klasse: str = "", ampel: str = "") -> str:
+def kpi(wert: str, text: str, klasse: str = "", ampel: str = "", woher_: str = "") -> str:
     punkt = licht(ampel) if ampel else ""
-    return f'<div class="kpi">{punkt}<b class="{klasse}">{wert}</b><span>{escape(text)}</span></div>'
+    return f'<div class="kpi">{punkt}<b class="{klasse}">{wert}</b><span>{escape(text)}</span>{woher_}</div>'
+
+
+HERKUNFT_STATUS = {"ok": ("bestätigt", am.GRUEN), "standard": ("Standardwert", am.GRAU),
+                   "pruefen": ("zu prüfen", am.GELB), "unbekannt": ("Herkunft unbekannt", am.GRAU),
+                   "veraltet": ("veraltet?", am.GELB), "beispiel": ("Beispielwert der Vorlage", am.ROT)}
+
+
+def woher(k: dict, db, rechnung: str, pfade: list[str] | None = None, zusatz: list[str] | None = None) -> str:
+    """Aufklappbares «i» an einer Kennzahl: wie sie gerechnet wird, aus welchen Werten (mit Herkunft und Stand)."""
+    import herkunft
+    try:
+        infos = herkunft.alle(db, k)
+    except Exception:  # noqa: BLE001
+        infos = {}
+    zeilen, schlecht = [], False
+    for p in pfade or []:
+        i = infos.get(p)
+        if i is None:
+            continue
+        name = _gruppe_name(k, p) + _feld_titel(k, p)
+        st_, farbe = HERKUNFT_STATUS.get(i.status, ("", am.GRAU))
+        schlecht |= i.status == "beispiel"
+        wert = i.wert if not isinstance(i.wert, (int, float)) or isinstance(i.wert, bool) else (
+            chf(i.wert) if abs(i.wert) >= 100 else f"{i.wert:g}")
+        detail = i.text if i.text == st_ else f"{i.text} · {st_}"
+        zeilen.append(f'<li>{licht(farbe)}<a href="einstellungen#f-{p.replace(".", "-")}">{escape(name)}</a>: '
+                      f'<strong>{escape(str(wert))}</strong> <small class="leise">{escape(detail)}</small></li>')
+    zeilen += [f"<li>{z}</li>" for z in zusatz or []]
+    warn = ('<p class="schlecht">Mindestens ein Wert ist noch der Beispielwert der Vorlage – diese Zahl stimmt so '
+            'nicht.</p>' if schlecht else "")
+    return (f'<details class="woher"><summary title="Woher kommt die Zahl?" aria-label="Woher kommt die Zahl?">'
+            f'{"!" if schlecht else "i"}</summary><div>{warn}<p>{rechnung}</p>'
+            + (f'<ul class="hinweise">{"".join(zeilen)}</ul>' if zeilen else "")
+            + '<p class="leise"><a href="datenqualitaet">Alle Werte prüfen</a> · <a href="annahmen">Annahmen</a></p>'
+              '</div></details>')
+
+
+def _feld_titel(k: dict, pfad: str) -> str:
+    for p, t in alle_felder(k):
+        if p == pfad:
+            return t
+    return pfad.rsplit(".", 1)[-1]
 
 
 def karte(titel: str, inhalt: str) -> str:
@@ -605,6 +654,15 @@ def uebersicht(k: dict, db) -> str:
                  for p in k["personen"] if float(p.get("lohn_brutto", 0)) > 0) if offen_3a else 0
 
     hinweise = []
+    try:
+        import herkunft
+        beispiel = [p_ for p_, i_ in herkunft.alle(db, k).items() if i_.status == "beispiel"]
+        if beispiel:
+            hinweise.append(f"{len(beispiel)} Wert(e) sind noch Beispielwerte der Vorlage (z. B. "
+                            f"{_gruppe_name(k, beispiel[0])}{_feld_titel(k, beispiel[0])}) – die Zahlen, die sie "
+                            "brauchen, stimmen so nicht. Unter Einstellungen → Datenqualität eintragen.")
+    except Exception:  # noqa: BLE001
+        pass
     for e in pks:
         hinweise += e.warnungen
     for d in drei:
@@ -634,14 +692,33 @@ def uebersicht(k: dict, db) -> str:
     except Exception:  # noqa: BLE001
         pass
 
+    letzter_saldo = db.execute("SELECT MAX(datum) FROM saldi").fetchone()[0]
+    pfade_rente = [f"personen.{i}.{f}" for i in range(len(k["personen"]))
+                   for f in ("geburtsdatum", "pensionierung_alter", "lohn_brutto", "pk.altersguthaben", "pk.sparbeitrag_jahr",
+                             "pk.umwandlungssatz", "pk.kapitalbezug_anteil", "ahv.beitragsjahre_bisher",
+                             "ahv.rente_monat_ausweis", "saeule3a.guthaben")]
+    pfade_rente += ["haushalt.bedarf_ruhestand", "annahmen.teuerung", "haushalt.entnahme_jahre", "haushalt.entnahme_rendite"]
+    w_rente = woher(k, db, f"AHV CHF {chf(luecke.ahv)}"
+                    f" + PK-Rente CHF {chf(luecke.pk_rente)} + Kapitalverzehr CHF {chf(luecke.kapitalverzehr)} "
+                    f"(Kapital nach Steuern über die Entnahmejahre) – in heutigen Franken. Lücke = Bedarf CHF "
+                    f"{chf(luecke.bedarf)} − Einkommen. Ersatzquote = Einkommen ÷ heutiger Bruttolohn.", pfade_rente)
+    pfade_steuer = ["steuern.steuerbar_kanton", "steuern.steuerbar_bund", "steuern.steuer_kanton_gemeinde",
+                    "steuern.grenzsteuersatz_kanton", "steuern.steuerbar_vermoegen", "steuern.vermoegenssteuer"]
     kpis = "".join([
-        kpi(chf(nv["total"]), "Nettovermögen (CHF)"),
-        kpi(chf(luecke.einkommen), f"Einkommen im Ruhestand ab {luecke.jahr} (CHF/Jahr)"),
+        kpi(chf(nv["total"]), "Nettovermögen (CHF)", woher_=woher(
+            k, db, "Summe aller Konten unter Vermögen (Bank, Wertschriften, 3a, 3b, Immobilie, Fahrzeug, Kindersparen) "
+                   "minus Hypothek und Kredite, jeweils mit dem letzten erfassten Saldo"
+                   + (f" (neuester Saldo vom {date.fromisoformat(letzter_saldo[:10]):%d.%m.%Y})." if letzter_saldo else "."))),
+        kpi(chf(luecke.einkommen), f"Einkommen im Ruhestand ab {luecke.jahr} (CHF/Jahr)", woher_=w_rente),
         kpi(chf(-luecke.luecke) if luecke.luecke else "keine", "Pensionslücke (CHF/Jahr)",
-            "schlecht" if luecke.luecke else "gut", am.luecke_status(luecke.luecke, luecke.bedarf)),
+            "schlecht" if luecke.luecke else "gut", am.luecke_status(luecke.luecke, luecke.bedarf), woher_=w_rente),
         kpi(f"{luecke.ersatzquote:.0f} %", "Ersatzquote zum heutigen Lohn", "", am.schwelle(luecke.ersatzquote, 70, 60)),
-        kpi(chf(steuer["total_inkl"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %"),
-        kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else ""),
+        kpi(chf(steuer["total_inkl"]), f"Steuern pro Jahr · Grenzsatz {steuer['grenz_total']:.0f} %", woher_=woher(
+            k, db, "Bundessteuer nach Tarif auf dem steuerbaren Einkommen Bund; Staats- und Gemeindesteuer laut "
+                   "Einstellungen (Rechnung bzw. Steuererklärung), sonst geschätzt; dazu Vermögenssteuer.", pfade_steuer)),
+        kpi(chf(pot_3a), "Mögliche Ersparnis 3a (CHF/Jahr)", "gut" if pot_3a else "", woher_=woher(
+            k, db, "Steuerersparnis, wenn jede erwerbstätige Person das 3a-Maximum einzahlt (Grenzsteuersatz).",
+            [f"personen.{i}.saeule3a.beitrag_jahr" for i in range(len(k["personen"]))] + pfade_steuer[:4])),
     ])
     verl = vm.verlauf(db)
     return statuszeile(k, db) + ampel_karte(k, db) + erinnerungen_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
@@ -4875,3 +4952,139 @@ def ux_karte(k: dict, db) -> str:
             'Eingabefehler hatte, nur in der eigenen Datenbank; ausschalten mit <code>ux.aufzeichnen: false</code>.</p>'
             f'<ul class="hinweise">{links}</ul></details>')
     return f'<div id="ux">{karte("UX", kpis + hinw + details + fakten + diagramm + form + erkl)}</div>'
+
+
+# ---------------------------------------------------------------- Datenqualität und Annahmen
+
+def datenqualitaet(k: dict, db) -> str:
+    """Woher jeder Wert kommt, ob er bestätigt ist, wo er auffällt – und wo sich zwei Stellen widersprechen."""
+    import herkunft
+    import konsistenz as ko
+    import pruefung
+    infos = herkunft.alle(db, k)
+    befunde = ko.pruefen(k, db)
+    felder = alle_felder(k)
+    zeilen, zaehler = [], {s: 0 for s in HERKUNFT_STATUS}
+    reihen = []
+    for pfad, titel in felder:
+        i = infos.get(pfad)
+        if i is None:
+            continue
+        p_st, grund = pruefung.pruefen(k, pfad)
+        zaehler[i.status] = zaehler.get(i.status, 0) + 1
+        rang = {"beispiel": 0, "pruefen": 1, "veraltet": 2, "unbekannt": 3, "standard": 5, "ok": 6}.get(i.status, 4)
+        if p_st in (am.ROT, am.GELB):
+            rang = min(rang, 1 if p_st == am.ROT else 3)
+        reihen.append((rang, pfad, titel, i, p_st, grund))
+    gruppen_: dict[str, list] = {"zuerst": [], "unbekannt": [], "rest": []}
+    for rang, pfad, titel, i, p_st, grund in sorted(reihen, key=lambda x: (x[0], x[1])):
+        st_, farbe = HERKUNFT_STATUS.get(i.status, ("", am.GRAU))
+        wert = i.wert if not isinstance(i.wert, (int, float)) or isinstance(i.wert, bool) else (
+            chf(i.wert) if abs(i.wert) >= 100 else f"{i.wert:g}")
+        haken = ("" if i.status in ("ok", "standard") else
+                 f'<label class="entfernen"><input type="checkbox" name="b:{escape(pfad)}" value="1"> bestätigen</label>')
+        zeile = [f'<a href="einstellungen#f-{pfad.replace(".", "-")}">{escape(_gruppe_name(k, pfad) + titel)}</a>',
+                 escape(str(wert if wert not in (None, "") else "–")), f"{licht(farbe)} {escape(st_)}",
+                 escape(i.text if i.text != st_ else ""),
+                 (licht(p_st) + " " + escape(grund)) if p_st in (am.ROT, am.GELB) else "", haken]
+        if rang <= 3 and i.status != "unbekannt" or p_st in (am.ROT, am.GELB):
+            gruppen_["zuerst"].append(zeile)
+        elif i.status == "unbekannt":
+            gruppen_["unbekannt"].append(zeile)
+        else:
+            gruppen_["rest"].append(zeile)
+    kopf = ["Wert", "aktuell", "Status", "Herkunft", "Prüfung", ""]
+    pruefen_n = zaehler.get("pruefen", 0) + zaehler.get("veraltet", 0) + zaehler.get("unbekannt", 0)
+    kpis = '<div class="kpis">' + "".join([
+        kpi(str(len(befunde)), "Widersprüche", "schlecht" if befunde else "gut", am.ROT if befunde else am.GRUEN),
+        kpi(str(zaehler.get("beispiel", 0)), "Beispielwerte der Vorlage", "schlecht" if zaehler.get("beispiel") else "",
+            am.ROT if zaehler.get("beispiel") else am.GRUEN),
+        kpi(str(pruefen_n), "zu prüfen (Dokument, automatisch, alt, unbekannt)", "", am.GELB if pruefen_n else am.GRUEN),
+        kpi(str(zaehler.get("ok", 0)), "von Hand bzw. bestätigt", "gut", am.GRUEN),
+    ]) + "</div>"
+    teile = [kpis]
+    if befunde:
+        bz = [[escape(b.thema), escape(b.a), escape(b.b), escape(b.erklaerung) + f' <a href="{b.seite}">öffnen</a>']
+              for b in befunde]
+        teile.append(karte("Widersprüche", tabelle(["Was", "Hier", "Dort", "Was tun"], bz, zahlen_ab=9, karten=True)))
+    if zaehler.get("beispiel"):
+        teile.append(karte("Beispielwerte", '<p class="schlecht">Einige Werte stammen noch aus der Vorlage der App und '
+                                            'gehören nicht zu euch. Alle Rechnungen, die sie brauchen, sind deshalb '
+                                            'falsch – zuerst diese Werte eintragen (oben in der Liste, rot).</p>'))
+    zuerst = (tabelle(kopf, gruppen_["zuerst"], zahlen_ab=9, karten=True) if gruppen_["zuerst"]
+              else '<p class="gut">Nichts Auffälliges – alle Beispielwerte ersetzt, alle Dokumentwerte bestätigt.</p>')
+    unbekannt = (f'<details><summary>Herkunft unbekannt: {len(gruppen_["unbekannt"])} Werte aus der Zeit vor der '
+                 'Aufzeichnung</summary>' + tabelle(kopf, gruppen_["unbekannt"], zahlen_ab=9, karten=True, filter=True)
+                 + "</details>" if gruppen_["unbekannt"] else "")
+    rest = (f'<details><summary>Geprüft bzw. Standardwerte: {len(gruppen_["rest"])} Werte</summary>'
+            + tabelle(kopf, gruppen_["rest"], zahlen_ab=9, karten=True, filter=True) + "</details>"
+            if gruppen_["rest"] else "")
+    teile.append(karte("Zuerst prüfen", f"""<form method="post" action="datenqualitaet/bestaetigen">{zuerst}{unbekannt}{rest}
+<div class="zeile"><button>Ausgewählte bestätigen</button>
+<button class="zweit" name="alle" value="1" onclick="return confirm('Alle Werte ohne Auffälligkeit (auch die mit unbekannter Herkunft) als geprüft markieren?')">Alle unauffälligen bestätigen</button></div>
+<p class="leise">Herkunft: «von Hand» = im Formular eingetragen; ein Dokument, ein automatischer Abgleich oder ein Import
+werden mit Namen genannt; «unbekannt» = vor der Aufzeichnung (ab Version 0.55) gesetzt. Bestätigen heisst: «Ich habe den
+Wert geprüft, er stimmt.» Werte, die sich jedes Jahr ändern (Lohn, PK, 3a, Steuern), gelten nach 15 Monaten als
+«veraltet?». Ändern über den Link – die Einstellungen öffnen sich beim Feld.</p></form>"""))
+    return "".join(teile)
+
+
+ANNAHMEN = [
+    # (Pfad, Bezeichnung, Standard, Begründung, wirkt auf)
+    ("annahmen.teuerung", "Teuerung % pro Jahr", 1.0, "Langfristige Erwartung der SNB rund 1 %; rechnet nominale "
+     "Prognosen (PK, 3a) in heutige Franken um", "Pensionslücke, Finanzplan, Kaufkraft der PK-Renten"),
+    ("annahmen.lohnentwicklung", "Reale Lohnentwicklung % pro Jahr", 0.0, "vorsichtig: keine reale Lohnerhöhung",
+     "PK-Guthaben und AHV-Einkommen bis zur Pensionierung"),
+    ("anlage.risiko", "Anlagerisiko (tief, mittel, hoch)", "mittel", "Rendite nominal: tief 2,0 %, mittel 3,5 %, hoch "
+     "5,0 % pro Jahr bei 25/50/75 % Aktien; Schwankung Aktien 16 %, sichere Anlagen 4 % pro Jahr",
+     "Finanzplan (Monte Carlo), Anlage-Check, Kindersparen"),
+    ("anlage.zins_konto", "Zins Sparkonto %", 0.3, "typischer Zins Privat-/Sparkonto 2026", "Liquidität, Steuern bezahlen"),
+    ("anlage.zins_sicher", "Zins sichere Anlage %", 1.0, "Festgeld, Kassenobligation, Geldmarkt",
+     "PK-Einkauf (Zinsvorteil), Anlage-Check"),
+    ("haushalt.bedarf_ruhestand", "Bedarf im Ruhestand pro Jahr", None, "eigene Schätzung (heutige Franken, netto)",
+     "Pensionslücke, Finanzplan, Notreserve"),
+    ("haushalt.entnahme_jahre", "Kapitalverzehr über Jahre", 25, "bis rund 90 bei Pensionierung mit 65",
+     "Pensionslücke (Kapitalverzehr pro Jahr)"),
+    ("haushalt.entnahme_rendite", "Rendite im Ruhestand %", 2.0, "vorsichtig, gemischtes Portfolio",
+     "Pensionslücke (Kapitalverzehr)"),
+    ("finanzplan.bis_alter", "Finanzplan bis Alter", 95, "Lebenserwartung mit Reserve", "Finanzplan (Erfolgsquote)"),
+]
+
+
+def annahmen(k: dict, db) -> str:
+    """Alle Annahmen an einem Ort – mit Standard, Begründung und Wirkung; ändern direkt hier."""
+    import konfig
+    import pruefung
+    vorlage = konfig.vorlage()
+    zeilen = []
+    for pfad, titel, std, grund, wirkung in ANNAHMEN:
+        w = pruefung._lesen(k, pfad)
+        if std is None:
+            std = pruefung._lesen(vorlage, pfad)
+        abw = w not in (None, "") and str(w) != str(std) and std is not None
+        wert = "" if w is None else (f"{w:g}" if isinstance(w, float) else str(w))
+        zeilen.append([escape(titel), f'<input name="{pfad}" value="{escape(wert)}" placeholder="{escape(str(std))}" '
+                                      f'aria-label="{escape(titel)}" '
+                                      f'style="max-width:9em">' + (' <small class="warn">eigener Wert</small>' if abw else ""),
+                       escape(str(std if not isinstance(std, float) else f"{std:g}")), escape(grund), escape(wirkung)])
+    for i, p in enumerate(k["personen"]):
+        for feld, titel, grund in (("pk.zins", "PK-Zins %", "laut Vorsorgeausweis; BVG-Mindestzins 1,25 % (2026)"),
+                                   ("pk.umwandlungssatz", "PK-Umwandlungssatz %", "laut Vorsorgeausweis; BVG 6,8 %")):
+            w = pruefung._lesen(p, feld)
+            zeilen.append([escape(f"{p['name']}: {titel}"),
+                           f'<input name="personen.{i}.{feld}" value="{escape("" if w is None else f"{float(w):g}")}" '
+                           f'aria-label="{escape(titel)}" style="max-width:9em">', "–", escape(grund),
+                           "PK-Prognose, Pensionslücke, PK-Einkauf"])
+    kz = k["kennzahlen"]
+    fix = [("AHV-Maximalrente pro Monat", chf(kz["ahv_max"])), ("AHV-Plafond Ehepaar", f'{kz["ahv_plafond_ehepaar"]} %'),
+           ("BVG-Mindestzins", f'{kz["bvg_mindestzins"]:g} %'), ("BVG-Umwandlungssatz", f'{kz["bvg_umwandlungssatz"]:g} %'),
+           ("3a-Maximum mit PK", chf(kz["saeule3a_max"])), ("Koordinationsabzug BVG", chf(kz["bvg_koordinationsabzug"]))]
+    return (karte("Annahmen", f"""<form method="post" action="annahmen/speichern">
+{tabelle(["Annahme", "Wert", "Standard", "Begründung", "wirkt auf"], zeilen, zahlen_ab=9, karten=True)}
+<div class="zeile"><button>Speichern</button></div></form>
+<p class="leise">Diese Werte stecken in den Prognosen. Sie sind Schätzungen, keine Fakten: Wer sie ändert, sieht sofort,
+wie empfindlich ein Ergebnis darauf reagiert – zum Vergleich ohne Risiko eignen sich die
+<a href="simulationen">Simulationen</a>.</p>""")
+            + karte(f"Gesetzliche Werte {kz.get('jahr', '')}", tabelle(["Wert", ""], [[escape(a), escape(b)] for a, b in fix],
+                                                                      zahlen_ab=1)
+                    + '<p class="leise">Stand laut BSV bzw. ESTV; die App führt sie mit jeder Version nach.</p>'))

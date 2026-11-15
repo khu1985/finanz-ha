@@ -265,7 +265,9 @@ def _3a_abgleichen(k: dict, db) -> None:
     import konfig
     import solar
     if dreia.abgleichen(k, db) | solar.abgleichen(k, db):
-        konfig.speichern(k)
+        import herkunft
+        with herkunft.quelle("automatisch abgeglichen"):
+            konfig.speichern(k)
     fahrzeuge.abgleichen(k, db)
 
 

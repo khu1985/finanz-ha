@@ -1,5 +1,21 @@
 # Änderungen
 
+## 0.55.0 – 2026-11-15
+
+Schwerpunkt Vertrauen in die Zahlen:
+
+- **Woher kommt die Zahl?** Die Kennzahlen der Übersicht haben ein «i» mit Rechenweg und den verwendeten Werten
+  samt Herkunft, Stand und Status; «!», wenn darin noch Beispielwerte der Vorlage stecken.
+- **Herkunft der Werte:** Jede Änderung der Einstellungen wird mit Quelle (von Hand, Dokument, Abgleich, Import,
+  Simulation) und Datum notiert.
+- **Datenqualität** (neuer Reiter unter Einstellungen): Beispielwerte der Vorlage, unbestätigte Werte aus Dokumenten,
+  veraltete und auffällige Werte zuerst; einzeln oder alle unauffälligen bestätigen. Dazu **Widersprüche**:
+  Einstellungen gegenüber dem neuesten Ausweis bzw. Steuerdokument, Hypothek Wohnen gegenüber Konten, Lohn gegenüber
+  Lohneingängen, steuerbares Einkommen gegenüber Lohn, Nettovermögen gegenüber Konten. Neue Ampel «Datenqualität»,
+  Hinweis auf der Übersicht bei Beispielwerten.
+- **Annahmen** (neuer Reiter unter Einstellungen): alle Annahmen an einem Ort mit Standard, Begründung und Wirkung,
+  direkt änderbar; gesetzliche Werte des Jahres. Die unbenutzte Annahme `annahmen.rendite_vermoegen` ist entfernt.
+
 ## 0.54.1 – 2026-11-15
 
 - **Schneller:** Ampeln und Erinnerungen rechnen beim Finanzplan nur noch die Erfolgsquote (der tragbare Bedarf wird

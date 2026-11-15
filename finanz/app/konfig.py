@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -61,6 +62,11 @@ def laden() -> dict:
 
 def speichern(k: dict) -> None:
     pfad = konfig_pfad()
+    try:                                    # Herkunft der geänderten Werte notieren (Seite «Datenqualität»)
+        import herkunft
+        herkunft.erfassen(laden() if pfad.exists() else {}, k)
+    except Exception as e:  # noqa: BLE001 – die Herkunft ist eine Zugabe, Speichern geht vor
+        logging.getLogger("finanz").warning("Herkunft nicht notiert: %s", e)
     if pfad.exists():
         shutil.copy2(pfad, pfad.with_suffix(".yaml.bak"))
     tmp = pfad.with_suffix(".yaml.tmp")

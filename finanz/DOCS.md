@@ -116,7 +116,7 @@ personen:
 | Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
 | Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
 | Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
-| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen; Reiter «Daten & Import»: Sensoren, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
+| Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen; Reiter «Datenqualität» (Herkunft, Bestätigen, Widersprüche), «Annahmen» (alle Annahmen an einem Ort); Reiter «Daten & Import»: Sensoren, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
 | Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; UX-Score (Kurzbefragung, Verhalten, Usability); Usability-Score pro Seite; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
 | Protokoll | Log der App (Aktionen, Warnungen, Fehler), filterbar, rotiert bei 1 MB |
@@ -1081,6 +1081,7 @@ Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 | Nachlass | Checkliste erledigt | Punkte offen | Konkubinat ohne Testament beider Personen |
 | Steuererklärung | alle Punkte bereit | Punkte offen (in den 5 Monaten vor der Frist) | Punkte offen, Frist in 14 Tagen |
 | Einstellungen | alle Werte plausibel | Werte prüfen | wichtige Werte fehlen oder sind unmöglich |
+| Datenqualität | alle Werte geprüft | Werte aus Dokumenten oder Abgleichen unbestätigt bzw. veraltet | Widersprüche oder Beispielwerte der Vorlage |
 | Liegenschaft | Fonds deckt die nächsten Erneuerungen | Fonds deckt die nächsten 2 Jahre nicht oder weniger gespart als empfohlen | überfällige Bauteile ohne genügend Fonds |
 | Erinnerungen | nichts in den nächsten 30 Tagen | etwas innert 30 Tagen | etwas innert 7 Tagen oder überfällig |
 | Daten | Saldi ≤ 45 Tage, keine TODO | bis 120 Tage oder TODO offen | älter |
@@ -1291,6 +1292,42 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 | `steuerauszug*.xml`, `steuerauszug*.pdf` | E-Steuerauszug der Bank (eCH-0196): Saldi per 31.12. ins Vermögen, Totale in die Steuererklärung |
 | `steuer*.pdf`, `veranlagung*.pdf` | Steuerdokument analysieren |
 | übrige `*.pdf` | Vorsorgedokument (Vorsorgeausweis, 3a-, 3b-, IK-Auszug) analysieren |
+
+## Datenqualität und Annahmen
+
+**Woher kommt die Zahl?** Die wichtigsten Kennzahlen (Übersicht: Nettovermögen, Einkommen im Ruhestand,
+Pensionslücke, Steuern, 3a-Ersparnis) haben ein kleines «i»: aufgeklappt steht, wie die Zahl gerechnet wird und aus
+welchen Werten – jeweils mit Herkunft, Stand und Status. Ein «!» statt «i» heisst: mindestens ein Wert ist noch ein
+Beispielwert der Vorlage, die Zahl stimmt so nicht.
+
+**Herkunft:** Jedes Speichern der Einstellungen notiert, welche Werte sich geändert haben und woher sie kommen –
+«von Hand» (Formular, gilt als bestätigt), ein Dokument (z. B. «Vorsorgeausweis Pensionskasse ASGA 2026-01-01»), ein
+automatischer Abgleich, ein Import oder eine übernommene Simulation. Werte aus der Zeit vor der Aufzeichnung (vor
+0.55) haben die Herkunft «unbekannt».
+
+**Seite Datenqualität** (Reiter unter Einstellungen):
+
+| Status | Bedeutung |
+|---|---|
+| Beispielwert der Vorlage | persönlicher Wert (Lohn, PK, Steuern, Liegenschaft …) noch wie in der Vorlage – zuerst ersetzen |
+| zu prüfen | aus einem Dokument, Abgleich oder Import und noch nicht bestätigt |
+| veraltet? | jährlich wechselnder Wert (Lohn, PK, 3a, Steuern), seit 15 Monaten nicht geändert oder bestätigt |
+| Herkunft unbekannt | vor der Aufzeichnung gesetzt |
+| bestätigt / von Hand | geprüft |
+| Standardwert | Annahme der App (z. B. Teuerung), siehe Annahmen |
+
+Oben stehen nur Werte, die Aufmerksamkeit brauchen (inkl. Plausibilitätsprüfung); die übrigen sind aufklappbar.
+Bestätigen einzeln per Häkchen oder «Alle unauffälligen bestätigen».
+
+**Widersprüche:** Die App prüft, wo sie dieselbe Grösse doppelt kennt – Einstellungen gegenüber dem neuesten
+Vorsorgeausweis, 3a-Auszug, IK-Auszug und der neuesten Veranlagung bzw. Steuererklärung (ausser der Wert wurde
+danach von Hand gesetzt oder bestätigt), Hypothek unter Wohnen gegenüber den Hypothek-Konten, Lohn gegenüber den
+Lohneingängen der Buchungen, steuerbares Einkommen gegenüber dem Lohn und das Nettovermögen gegenüber der Summe der
+Konten. Ampel «Datenqualität» rot bei Widersprüchen oder Beispielwerten.
+
+**Seite Annahmen:** Teuerung, Lohnentwicklung, Anlagerisiko (mit den Renditen und Schwankungen dahinter), Zinsen,
+Bedarf, Kapitalverzehr, Endalter des Finanzplans sowie PK-Zins und Umwandlungssatz pro Person – mit Standard,
+Begründung und wo sie wirken, direkt änderbar; darunter die gesetzlichen Werte des Jahres.
 
 ## Konfiguration
 

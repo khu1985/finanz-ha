@@ -49,6 +49,8 @@ SEITEN = {
     "steuerzahlung": ("Steuern", seiten.steuerzahlung),
     "liquiditaet": ("Budget und Cashflow", seiten.liquiditaet),
     "simulationen": ("Szenarien", seiten.simulationen),
+    "datenqualitaet": ("Datenqualität", seiten.datenqualitaet),
+    "annahmen": ("Annahmen", seiten.annahmen),
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
     "dokumente": ("Dokumente", seiten.dokumente),
@@ -242,7 +244,9 @@ class Handler(BaseHTTPRequestHandler):
                 import fahrzeuge
                 import solar
                 if dreia.abgleichen(k, verbindung) | solar.abgleichen(k, verbindung):   # 3a-Konten, vZEV-Werte
-                    konfig.speichern(k)
+                    import herkunft
+                    with herkunft.quelle("automatisch abgeglichen"):
+                        konfig.speichern(k)
                 fahrzeuge.abgleichen(k, verbindung)          # Fahrzeugwert als Konto (steuerbares Vermögen)
                 inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
             meldung = unquote(q.get("m", [""])[0])
@@ -811,6 +815,51 @@ class Handler(BaseHTTPRequestHandler):
             return self._steuerzahlung(pfad, form)
         if pfad.startswith("simulationen/"):
             return self._simulationen(pfad, form)
+        if pfad == "datenqualitaet/bestaetigen":
+            import ampel
+            import herkunft
+            import pruefung
+            k = konfig.laden()
+            if form.get("alle"):
+                infos = None
+                with db() as v:
+                    infos = herkunft.alle(v, k)
+                    pfade = [p_ for p_, t_ in seiten.alle_felder(k) if p_ in infos
+                             and infos[p_].status in ("pruefen", "unbekannt", "veraltet")
+                             and pruefung.pruefen(k, p_)[0] not in (ampel.ROT, ampel.GELB)]
+                    n = herkunft.bestaetigen(v, k, pfade)
+                return f"{n} unauffällige Werte als geprüft markiert. Beispielwerte und Auffälliges bleiben offen.", \
+                    "datenqualitaet"
+            pfade = [x[2:] for x in form if x.startswith("b:") and form[x]]
+            if not pfade:
+                raise ValueError("Nichts ausgewählt – Häkchen bei «bestätigen» setzen.")
+            with db() as v:
+                n = herkunft.bestaetigen(v, k, pfade)
+            return f"{n} Wert(e) bestätigt.", "datenqualitaet"
+        if pfad == "annahmen/speichern":
+            k = konfig.laden()
+            felder = [p_ for p_, *_ in seiten.ANNAHMEN] + [f"personen.{i}.{f}" for i in range(len(k["personen"]))
+                                                           for f in ("pk.zins", "pk.umwandlungssatz")]
+            for p_ in felder:
+                if p_ not in form:
+                    continue
+                roh = str(form.get(p_) or "").strip()
+                teile = p_.split(".")
+                obj = k
+                for t_ in teile[:-1]:
+                    obj = obj[int(t_)] if isinstance(obj, list) else obj.setdefault(t_, {})
+                if not roh:
+                    continue
+                if p_ == "anlage.risiko":
+                    if roh not in ("tief", "mittel", "hoch"):
+                        raise ValueError("Anlagerisiko: tief, mittel oder hoch.")
+                    obj[teile[-1]] = roh
+                else:
+                    x = vm.zahl(roh)
+                    obj[teile[-1]] = int(x) if p_ in ("haushalt.entnahme_jahre", "finanzplan.bis_alter",
+                                                      "haushalt.bedarf_ruhestand") else x
+            konfig.speichern(k)
+            return "Annahmen gespeichert.", "annahmen"
         if pfad == "solar/speichern":
             k = konfig.laden()
             c = dict(k.get("solar") or {})
@@ -969,7 +1018,9 @@ class Handler(BaseHTTPRequestHandler):
                     return f"Simulation «{n}» gespeichert.", f"simulationen?id={neu}#bearbeiten"
             p = next(x for x in k["personen"] if x["name"] == person)
             p["pk"]["einkauf_geplant"] = liste
-            konfig.speichern(k)
+            import herkunft
+            with herkunft.quelle("PK-Einkauf: Variantenvergleich"):
+                konfig.speichern(k)
             return (f"Geplante Einkäufe von {person} ersetzt: {len(liste)} Einkäufe, total CHF "
                     f"{sum(e['betrag'] for e in liste):,.0f}." >> TS, "szenarien#varianten")
         if pfad == "szenarien/einkauf_loeschen":
@@ -1040,7 +1091,9 @@ class Handler(BaseHTTPRequestHandler):
                 k = konfig.laden()
                 kvg = [n for vid in ids if (n := kk.police_uebernehmen(k, vi.einer(v, vid)))]
                 if kvg:
-                    konfig.speichern(k)
+                    import herkunft
+                    with herkunft.quelle("Krankenkassen-Police"):
+                        konfig.speichern(k)
                 zusatz = f" Grundversicherung von {', '.join(kvg)} in den Krankenkassen-Rechner übernommen." if kvg else ""
                 zusatz += (" Übersprungen, weil schon vorhanden: " + "; ".join(doppelt)) if doppelt else ""
                 if len(ids) == 1 and not kvg and not doppelt:
@@ -1145,7 +1198,11 @@ class Handler(BaseHTTPRequestHandler):
                     if "guthaben_3a" in gewaehlt and "guthaben_3a" in dok["werte"] and form.get("konto_3a"):
                         import dreia
                         erledigt.append(dreia.guthaben_uebernehmen(v, dok, form["person"], form.get("konto_3a", "")))
-                    konfig.speichern(k)
+                    import herkunft
+                    with herkunft.quelle(" ".join(x for x in (dk.TYPEN.get(dok["typ"], "Dokument") if hasattr(dk, "TYPEN")
+                                                               else "Dokument", dok.get("anbieter") or "",
+                                                               dok.get("stichtag") or "") if x)):
+                        konfig.speichern(k)
                     v.execute("UPDATE vorsorge_dok SET uebernommen = ? WHERE id = ?",
                               (datetime.now().isoformat(timespec="seconds"), did))
                     v.commit()
@@ -1193,7 +1250,9 @@ class Handler(BaseHTTPRequestHandler):
                 neu = si.kopieren(v, s["id"])
                 return "Kopie erstellt – jetzt anpassen.", f"simulationen?id={neu}#bearbeiten"
             if aktion == "uebernehmen":
-                konfig.speichern(si.uebernehmen(k, s))
+                import herkunft
+                with herkunft.quelle(f"Simulation «{s['name']}»"):
+                    konfig.speichern(si.uebernehmen(k, s))
                 return (f"Simulation «{s['name']}» in die Einstellungen übernommen: "
                         + "; ".join(si.beschreiben(a) for a in s["aenderungen"]) + ".", "simulationen")
         raise ValueError("Unbekannte Aktion.")
@@ -1312,7 +1371,9 @@ class Handler(BaseHTTPRequestHandler):
                     gewaehlt = [s_ for s_ in list(werte) + ["grenzsteuersatz"] if form.get("nimm_" + s_)]
                     grenz = float(form["grenz"]) if form.get("grenz") else None
                     erledigt = sd.uebernehmen(k, sd.einer(v, did), form.get("person", ""), gewaehlt, grenz)
-                    konfig.speichern(k)
+                    import herkunft
+                    with herkunft.quelle(f"Steuerdokument {jahr or ''}".strip()):
+                        konfig.speichern(k)
                     v.execute("UPDATE steuer_dok SET uebernommen = ? WHERE id = ?",
                               (datetime.now().isoformat(timespec="seconds"), did))
                     v.commit()

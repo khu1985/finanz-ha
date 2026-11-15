@@ -298,7 +298,9 @@ def _ausfuehren(k: dict, db, daten: Path, b: Bericht, alle: bool, ausloeser: str
             LOG.warning("Neu sichten (%s): %s", name, e)
             b.fehler.append(f"{name}: {e}")
     if speichern:
-        konfig.speichern(k)
+        import herkunft
+        with herkunft.quelle("Dokumente neu gesichtet"):
+            konfig.speichern(k)
     _tabelle(db)
     db.execute("INSERT INTO sichtung (zeit, version, bericht) VALUES (?, ?, ?)",
                (b.zeit, b.version, json.dumps(asdict(b), ensure_ascii=False)))

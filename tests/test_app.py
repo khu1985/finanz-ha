@@ -500,3 +500,22 @@ def test_ux_seite(server, daten):
     code, _ = _post(f"{server}/vorschlaege/ux_umfrage", {"u0": "1"})          # unvollständig
     html = urllib.request.urlopen(f"{server}/vorschlaege").read().decode()
     assert "Bedienung (UEQ pragmatisch" in html
+
+
+def test_datenqualitaet_und_annahmen(server, daten):
+    k = konfig.laden()
+    k["personen"][0]["lohn_brutto"] = 111111
+    konfig.speichern(k)
+    html = urllib.request.urlopen(f"{server}/datenqualitaet").read().decode()
+    assert "Zuerst prüfen" in html and "Widersprüche" in html and 'action="datenqualitaet/bestaetigen"' in html
+    code, _ = _post(f"{server}/datenqualitaet/bestaetigen", {"b:steuern.steuerbar_kanton": "1"})
+    assert code == 303
+    code, _ = _post(f"{server}/datenqualitaet/bestaetigen", {"alle": "1"})
+    assert code == 303
+    html = urllib.request.urlopen(f"{server}/").read().decode()
+    assert 'class="woher"' in html
+    html = urllib.request.urlopen(f"{server}/annahmen").read().decode()
+    assert 'name="annahmen.teuerung"' in html and "Gesetzliche Werte" in html
+    code, _ = _post(f"{server}/annahmen/speichern", {"annahmen.teuerung": "1.5", "anlage.risiko": "hoch"})
+    k = konfig.laden()
+    assert code == 303 and k["annahmen"]["teuerung"] == 1.5 and k["anlage"]["risiko"] == "hoch"

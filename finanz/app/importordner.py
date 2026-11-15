@@ -43,7 +43,9 @@ def einlesen(daten: Path, db) -> list[str]:
         try:
             inhalt = pfad.read_bytes()
             if name in ("finanz.yaml", "finanz.yml"):
-                konfig.speichern(konfig.aus_text(inhalt.decode("utf-8")))
+                import herkunft
+                with herkunft.quelle(f"Import {pfad.name}"):
+                    konfig.speichern(konfig.aus_text(inhalt.decode("utf-8")))
                 konfig.laden()
                 meldungen.append(f"{pfad.name}: Konfiguration übernommen")
             elif name.endswith(".csv") and name.startswith("vermoegen"):
@@ -79,7 +81,9 @@ def einlesen(daten: Path, db) -> list[str]:
                 import krankenkasse as kk
                 kc = konfig.laden()
                 if kk.police_uebernehmen(kc, vi.einer(db, vid)):
-                    konfig.speichern(kc)
+                    import herkunft
+                    with herkunft.quelle("Krankenkassen-Police"):
+                        konfig.speichern(kc)
                 meldungen.append(f"{pfad.name}: Versicherungsvertrag analysiert")
             elif name.endswith(".pdf") and (name.startswith("steuer") or name.startswith("veranlagung")):
                 sd.hochladen(db, daten, pfad.name, inhalt)
