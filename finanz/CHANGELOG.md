@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.58.1 – 2026-11-15
+
+- **Amortisationsstrategie mit Erklärungen («i»):** an den Kennzahlen (wie gerechnet, aus welchen Einstellungen mit
+  Herkunft), pro Variante (was sie bedeutet, Plan der Amortisationen, Vorteil gegenüber «nicht amortisieren») und
+  für die Spalten der Tabelle.
+
 ## 0.58.0 – 2026-11-15
 
 - **PK-Pensionierten-Kinderrente:** neue Einstellung pro Person (Einstellungen → Vorsorge, «Pensionierten-Kinderrente

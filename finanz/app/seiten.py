@@ -172,6 +172,8 @@ details.woher>div p{margin:0 0 6px}details.woher ul.hinweise{margin:0 0 6px;padd
 .kpi details.woher b,.kpi details.woher strong{display:inline;font-size:inherit;font-weight:600;margin:0}
 .kpi details.woher span,.kpi details.woher small{display:inline;font-size:12px;margin:0}
 .kpis .kpi:has(details.woher[open]){grid-column:1/-1}
+.erklaer-zeile{margin:10px 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.erklaer-zeile>details.woher{margin:0}.erklaer-zeile>details.woher[open]{flex-basis:100%}td details.woher{margin-top:4px}
 .ampeln{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin-bottom:16px}
 .ampel-kachel{display:flex;gap:10px;align-items:flex-start;background:var(--karte);border:1px solid var(--linie);
 border-radius:12px;padding:10px 12px;text-decoration:none;color:var(--text)}
@@ -993,6 +995,31 @@ def wohnen(k: dict, db) -> str:
         + liegenschaft_karten(k, db)
 
 
+def erklaerung(inhalt: str, titel: str = "Erklärung") -> str:
+    """Aufklappbares «i» mit einer Erklärung (ohne Herkunft der Werte)."""
+    return (f'<details class="woher"><summary title="{escape(titel)}" aria-label="{escape(titel)}">i</summary>'
+            f'<div>{inhalt}</div></details>')
+
+
+AMORTISATION_VARIANTEN = {
+    "keine": ("Die Hypothek bleibt bis zur Pensionierung gleich hoch. Das Geld, das sonst in die Amortisation ginge, "
+              "bleibt auf dem Konto bzw. angelegt und bringt Zins. Vergleichsbasis für alle anderen Varianten."),
+    "ziel": ("Bei der nächsten Fälligkeit der Festhypothek wird der Betrag amortisiert, den du unter Einstellungen → "
+             "Wohnen als Ziel gesetzt hast. Danach bleibt die Hypothek gleich."),
+    "max": ("Bei der nächsten Fälligkeit wird so viel amortisiert, wie die Liquidität erlaubt, ohne die Notreserve "
+            "anzutasten (höchstens das Maximum unter Einstellungen → Wohnen). Spart am meisten Zins, bindet aber am "
+            "meisten Geld im Haus."),
+    "laufend": ("Bei der Fälligkeit ein erster Betrag, danach jedes Jahr die Hälfte des Sparens. Das geht nur mit einer "
+                "flexiblen Tranche (SARON bzw. variable Hypothek) – Festhypotheken lassen sich nur bei Fälligkeit "
+                "ohne Vorfälligkeitsentschädigung amortisieren."),
+    "alter": ("Indirekte Amortisation: statt die Hypothek zu senken, wird in die verpfändete Säule 3a/3b einbezahlt; "
+              "die Hypothek bleibt hoch, die Schuldzinsen bleiben (bis zum Wegfall des Eigenmietwerts) voll abziehbar "
+              "und die 3a-Beiträge sparen zusätzlich Steuern. Bei der Pensionierung wird das verpfändete Guthaben zur "
+              "Amortisation verwendet. Direkt amortisiert wird nur, was nötig ist, damit die Hypothek im Alter "
+              "tragbar bleibt."),
+}
+
+
 def amortisation_strategie_karte(k: dict, db) -> str:
     """Amortisationsstrategie: Varianten bis zur Pensionierung im Vergleich."""
     import amortisation as ams
@@ -1018,19 +1045,66 @@ def amortisation_strategie_karte(k: dict, db) -> str:
 
         def diff(x):
             return "–" if v is basis else f'<span class="{"gut" if x >= 0 else "schlecht"}">{"+" if x >= 0 else "−"}{chf(abs(x))}</span>'
-        zeilen.append([f"<b>{escape(v.name)}</b> {' '.join(marken)}<br><small class=\"leise\">{escape(v.beschreibung)}</small>",
+        i_text = (f"<p>{escape(AMORTISATION_VARIANTEN.get(v.schluessel, v.beschreibung))}</p>"
+                  + (f'<p><b>Plan:</b> {", ".join(f"{j}: CHF {chf(b)}" for j, b in sorted(v.amortisation.items()) if b)}'
+                     "</p>" if v.amortisation else "")
+                  + (f'<ul class="hinweise">{"".join(f"<li>{escape(h)}</li>" for h in v.hinweise)}</ul>'
+                     if v.hinweise else ""))
+        zeilen.append([f"<span><b>{escape(v.name)}</b> {' '.join(marken)}<br><small class=\"leise\">{escape(v.beschreibung)}"
+                       f"</small>{erklaerung(i_text, 'Was heisst diese Variante?')}</span>",
                        chf(v.total), chf(v.hypothek.get(s.pension, 0)), chf(v.zinsen_netto),
                        diff(v.netto - basis.netto), diff(v.netto_anlage - basis.netto_anlage), trag, liq])
     jahre = sorted(basis.hypothek)
     diagramm = dg.linie({v.name: [(j, v.hypothek[j]) for j in jahre if j in v.hypothek] for v in s.varianten},
                         "Hypothek bis zur Pensionierung")
+    kalk = float(k["kennzahlen"].get("tragbarkeit_zins") or 5)
     kpis = '<div class="kpis">' + "".join([
-        kpi(chf(s.start_hypothek), f"Hypothek heute ({s.start_hypothek / s.wert * 100:.0f} % des Werts)" if s.wert else "Hypothek heute"),
+        kpi(chf(s.start_hypothek), f"Hypothek heute ({s.start_hypothek / s.wert * 100:.0f} % des Werts)" if s.wert else "Hypothek heute",
+            woher_=woher(k, db, "Summe der Hypothek-Konten unter Vermögen; ohne solche Konten Kaufpreis − Eigenmittel. "
+                                "Der Prozentwert bezieht sich auf den geschätzten Wert der Liegenschaft (sonst Kaufpreis). "
+                                "Über 66.7 % verlangt die Bank eine Amortisation der 2. Hypothek innert 15 Jahren.",
+                         ["wohnen.kaufpreis", "wohnen.eigenmittel", "wohnen.liegenschaft.marktwert"])),
         kpi(chf(s.max_hypothek_alter), f"tragbar nach der Pensionierung {s.pension}",
-            "", am.GRUEN if s.start_hypothek <= s.max_hypothek_alter else am.GELB),
-        kpi(f"{s.zins * (1 - s.grenz / 100 * s.abzug_nachher):.2f} %", f"Hypothekarzins nach Steuern ab {s.abschaffung}"),
-        kpi(f"{s.zins_sicher * (1 - s.grenz / 100):.2f} %", "sichere Anlage nach Steuern"),
+            "", am.GRUEN if s.start_hypothek <= s.max_hypothek_alter else am.GELB,
+            woher_=woher(k, db, f"Höchste Hypothek, die die Bank im Alter noch als tragbar ansieht: kalkulatorischer Zins "
+                                f"{kalk:g} % auf die Hypothek plus 1 % Nebenkosten auf den Wert dürfen höchstens {grenze:g} % "
+                                f"des Einkommens im Alter ausmachen. Einkommen im Alter: Renten (AHV, PK) und Verzehr des "
+                                f"Vermögens laut Pensionsplanung plus 80 % der Mieteinnahmen = CHF {chf(s.einkommen_alter)} "
+                                f"pro Jahr.", ["kennzahlen.tragbarkeit_zins", "kennzahlen.tragbarkeit_max",
+                                               "wohnen.mieteinnahmen_jahr"])),
+        kpi(f"{s.zins * (1 - s.grenz / 100 * s.abzug_nachher):.2f} %", f"Hypothekarzins nach Steuern ab {s.abschaffung}",
+            woher_=woher(k, db, f"Hypothekarzins {s.zins:g} % × (1 − Grenzsteuersatz {s.grenz:.0f} % × abziehbarer Anteil "
+                                f"{s.abzug_nachher * 100:.0f} %). Bis {s.abschaffung - 1} sind die Schuldzinsen voll "
+                                f"abziehbar ({s.zins * (1 - s.grenz / 100):.2f} % nach Steuern); mit dem Wegfall des "
+                                f"Eigenmietwerts ab {s.abschaffung} nur noch der Anteil für den vermieteten Teil. Das ist "
+                                "die sichere «Rendite» jedes amortisierten Frankens.",
+                         ["wohnen.hypothek_zins", "wohnen.vermietet_anteil", "kennzahlen.eigenmietwert_abschaffung"])),
+        kpi(f"{s.zins_sicher * (1 - s.grenz / 100):.2f} %", "sichere Anlage nach Steuern",
+            woher_=woher(k, db, f"Zins für sicher angelegtes Geld (Festgeld, Kassenobligation, Geldmarkt) {s.zins_sicher:g} % "
+                                f"× (1 − Grenzsteuersatz {s.grenz:.0f} %) – Zinsen sind Einkommen und voll steuerbar. Liegt "
+                                "dieser Wert unter dem Hypothekarzins nach Steuern, lohnt Amortisieren gegenüber sicherem "
+                                "Anlegen.", ["anlage.zins_sicher"])),
     ]) + "</div>"
+    spalten = erklaerung(
+        "<ul class=\"hinweise\">"
+        "<li><b>amortisiert:</b> Summe der direkten Amortisationen bis zur Pensionierung.</li>"
+        f"<li><b>Hypothek {s.pension}:</b> Hypothek bei der Pensionierung (bei «indirekt» nach Einsatz der verpfändeten "
+        "3a/3b).</li>"
+        "<li><b>Zinsen nach Steuern:</b> alle Hypothekarzinsen bis zur Pensionierung abzüglich der Steuerersparnis durch "
+        "den Schuldzinsabzug.</li>"
+        "<li><b>Vorteil (sicher angelegt):</b> Liquidität minus Hypothek bei der Pensionierung, verglichen mit «nicht "
+        f"amortisieren»; nicht amortisiertes Geld bringt {s.zins_sicher:g} % (versteuert). Positiv = diese Variante "
+        "lässt dir mehr Nettovermögen.</li>"
+        f"<li><b>Vorteil (Wertschriften):</b> dasselbe, wenn das Geld stattdessen mit {s.rendite_anlage:g} % in "
+        "Wertschriften liegt – erwartete Rendite, schwankt und ist nicht garantiert.</li>"
+        f"<li><b>Tragbarkeit im Alter:</b> Wohnkosten (kalkulatorisch {kalk:g} % Zins + 1 % Nebenkosten) in % des "
+        f"Einkommens im Alter; grün bis {grenze:g} %. Darüber kann die Bank bei der Verlängerung eine Amortisation "
+        "verlangen.</li>"
+        "<li><b>tiefste Liquidität:</b> niedrigster Kontostand bis zur Pensionierung; rot unter der Notreserve "
+        f"(CHF {chf(s.reserve)}).</li>"
+        "<li><b>vorne bei sicherer Anlage / mit Wertschriften:</b> Variante mit dem grössten Vorteil unter denen, die "
+        "Notreserve und Tragbarkeit einhalten.</li></ul>", "Was bedeuten die Spalten?")
+    kpis += f'<div class="erklaer-zeile"><span class="leise">Was bedeuten die Spalten?</span> {spalten}</div>'
     return '<div id="amortisationsstrategie">' + karte("Amortisationsstrategie", kpis + tabelle(
         ["Variante", "amortisiert", f"Hypothek {s.pension}", "Zinsen nach Steuern", "Vorteil (sicher angelegt)",
          "Vorteil (Wertschriften)", "Tragbarkeit im Alter", "tiefste Liquidität"], zeilen, zahlen_ab=1, karten=True)
