@@ -76,12 +76,11 @@ def _grundlagen(k: dict, vermoegen_frei: float, jetzt: int):
     juengste = max(vs.geburtsjahr(p) for p in personen)
     ende = juengste + end_alter
     ahv_real = l0.ahv                                # AHV ohne Kinderrenten (heutige Franken, ab Pension)
-    ahv_person = {r.name: r.rente_jahr * vs.ahv_real_faktor(k, pension - jetzt) for r in vs.ahv(k, jetzt)}
+    kr_rechner = vs.kinderrenten_rechner(k, jetzt)
 
     def renten(j: int) -> float:
         n = j - pension
-        kr = sum(0.4 * ahv_person.get(x["name"], 0) * sum(1 for c in ki.eigene(k, x["name"]) if ki.unterhalt(c, j))
-                 for x in personen if j >= vs.geburtsjahr(x) + 65)
+        kr = sum(kr_rechner(j))
         aus = sum(zz.rente_ausland(x) for x in personen if j >= vs.geburtsjahr(x) + zz.rente_ausland_alter(x))
         return ahv_real + l0.pk_rente / (1 + t / 100) ** max(0, n) + kr + aus
 

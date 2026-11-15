@@ -2676,3 +2676,26 @@ def test_steuerkonto_pro_person_im_konkubinat(k, tmp_path):
     assert len({e.schluessel for e in er}) == len(er)
     k["haushalt"]["zivilstand"] = "verheiratet"
     assert sz.personen(k) == [""]
+
+
+def test_pk_pensionierten_kinderrente(k):
+    import dokumente as dk
+    import vorsorge as vs
+    text = ("Vorsorgeausweis Pensionskasse Asga\nAltersguthaben per 01.01.2026 123'456.00\n"
+            "Altersrente mit 65 27'500.00\nPensionierten-Kinderrente mit 65 5'500.00\n"
+            "Invaliden-Kinderrente 4'000.00\n")
+    w = dk.erkennen(text)["werte"]
+    assert w["ausweis_altersrente"] == 27500 and w["kinderrente_alter"] == 5500 and w["iv_kinderrente_pk"] == 4000
+    assert dk.ZIELE["kinderrente_alter"][1] == "pk.kinderrente_ausweis"
+    p = k["personen"][0]
+    rente = vs.pk(p, k).rente_jahr
+    assert vs.pk_kinderrente(p, k) == (pytest.approx(0.2 * rente), True)      # ohne Ausweis: BVG-Minimum 20 %
+    p["pk"]["kinderrente_ausweis"] = 5500
+    assert vs.pk_kinderrente(p, k) == (5500, False)
+    # Kind noch in Ausbildung bei der Pensionierung → PK-Kinderrente im Ruhestand
+    hh = max(vs.pensionsjahr(x) for x in k["personen"])
+    k["haushalt"]["kinder"] = [{"name": "Kind", "geburtsdatum": f"{hh - 10}-06-01"}]
+    r = vs.kinderrenten_rechner(k, 2026)
+    assert r(hh)[1] > 0 and r(hh + 20) == (0, 0)
+    l = vs.pensionsluecke(k, 0, 2026)
+    assert l.pk_kinderrenten > 0 and l.kinderrenten > l.pk_kinderrenten          # AHV- und PK-Kinderrenten

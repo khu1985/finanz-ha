@@ -732,14 +732,16 @@ def uebersicht(k: dict, db) -> str:
 def _luecke_diagramm(l: vs.Luecke) -> str:
     if l.teuerung and l.verlauf:
         sp = l.verlauf[min(l.spaeter_jahre, len(l.verlauf) - 1)]
-        serien = {"AHV": [0, l.ahv + l.kinderrenten, sp[1]], "Pensionskasse": [0, l.pk_rente, sp[2]],
+        serien = {"AHV": [0, l.ahv + l.kinderrenten - l.pk_kinderrenten, sp[1]],
+                  "Pensionskasse": [0, l.pk_rente + l.pk_kinderrenten, sp[2]],
                   "Kapitalverzehr": [0, l.kapitalverzehr, sp[3]]}
         if any(v[4] for v in l.verlauf):
             serien["Rente Ausland"] = [0, l.ausland, sp[4]]
         serien["Lohn"] = [l.lohn_heute, 0, 0]
         return dg.saeulen(["Heute (Lohn)", f"Ruhestand {l.jahr}", f"nach {l.spaeter_jahre} J. ({sp[0]})"], serien,
                           linie_bei=l.bedarf, linie_text=f"Bedarf {chf(l.bedarf)}")
-    serien = {"AHV": [0, l.ahv + l.kinderrenten], "Pensionskasse": [0, l.pk_rente], "Kapitalverzehr": [0, l.kapitalverzehr]}
+    serien = {"AHV": [0, l.ahv + l.kinderrenten - l.pk_kinderrenten], "Pensionskasse": [0, l.pk_rente + l.pk_kinderrenten],
+              "Kapitalverzehr": [0, l.kapitalverzehr]}
     if l.ausland:
         serien["Rente Ausland"] = [0, l.ausland]
     serien["Lohn"] = [l.lohn_heute, 0]
@@ -812,7 +814,12 @@ def vorsorge(k: dict, db) -> str:
         ["AHV" + (" (plafoniert)" if st.einheiten(k)[0].verheiratet and len(k["personen"]) > 1 else ""), chf(lk.ahv)],
         ["Pensionskassen-Renten", chf(lk.pk_rente)],
         *([["Renten aus dem Ausland", chf(lk.ausland)]] if lk.ausland else []),
-        *([["AHV-Kinderrenten (Kinder bis 18 bzw. in Ausbildung)", chf(lk.kinderrenten)]] if lk.kinderrenten else []),
+        *([["AHV-Kinderrenten (Kinder bis 18 bzw. in Ausbildung)", chf(lk.kinderrenten - lk.pk_kinderrenten)]]
+          if lk.kinderrenten - lk.pk_kinderrenten else []),
+        *([["PK-Pensionierten-Kinderrenten" + ("" if all(float(p["pk"].get("kinderrente_ausweis") or 0) > 0
+                                                         for p in k["personen"]) else
+                                                " (ohne Ausweiswert geschätzt: 20 % der Altersrente)"),
+            chf(lk.pk_kinderrenten)]] if lk.pk_kinderrenten else []),
         [f"Kapitalverzehr ({k['haushalt']['entnahme_jahre']} Jahre, {k['haushalt']['entnahme_rendite']} %"
          + (f", real {float(k['haushalt']['entnahme_rendite']) - lk.teuerung:g} %" if lk.teuerung else "") + ") "
          f"aus CHF {chf(lk.kapital_netto)} netto", chf(lk.kapitalverzehr)],
@@ -1402,6 +1409,7 @@ def _felder_person(i: int) -> list[tuple]:
         (p + "pk.umwandlungssatz", "Umwandlungssatz %"), (p + "pk.einkauf_potenzial", "Einkaufspotenzial"),
         (p + "pk.kapitalbezug_anteil", "Kapitalbezug %"),
         (p + "pk.ausweis_alterskapital", "Alterskapital 65 laut Ausweis"), (p + "pk.ausweis_altersrente", "Altersrente laut Ausweis"),
+        (p + "pk.kinderrente_ausweis", "Pensionierten-Kinderrente PK/Jahr pro Kind (0 = 20 % der Altersrente)"),
         (p + "risiko.iv_rente_pk", "IV-Rente PK/Jahr"), (p + "risiko.iv_kinderrente_pk", "IV-Kinderrente PK/Jahr"),
         (p + "risiko.iv_rente_extern", "IV-Rente extern/Jahr"), (p + "risiko.partnerrente_pk", "Partnerrente PK/Jahr"),
         (p + "risiko.waisenrente_pk", "Waisenrente PK/Jahr"), (p + "risiko.todesfallkapital_pk", "Todesfallkapital PK"),

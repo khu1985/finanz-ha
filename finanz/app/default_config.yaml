@@ -51,6 +51,7 @@ personen:
       kapitalbezug_anteil: 0     # 0–100 % des Altersguthabens als Kapital
       ausweis_alterskapital: 0   # Prognose laut Vorsorgeausweis mit 65 (0 = selbst rechnen)
       ausweis_altersrente: 0     # Altersrente laut Vorsorgeausweis pro Jahr (0 = Umwandlungssatz)
+      kinderrente_ausweis: 0     # Pensionierten-Kinderrente pro Kind und Jahr (0 = 20 % der Altersrente)
     risiko:                      # Leistungen laut Vorsorgeausweis bzw. Policen, CHF pro Jahr
       iv_rente_pk: 0
       iv_kinderrente_pk: 0
@@ -99,6 +100,7 @@ personen:
       kapitalbezug_anteil: 0
       ausweis_alterskapital: 0
       ausweis_altersrente: 0
+      kinderrente_ausweis: 0
     risiko:
       iv_rente_pk: 0
       iv_kinderrente_pk: 0

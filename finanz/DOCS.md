@@ -883,6 +883,9 @@ Wirkung:
 - **AHV:** Erziehungsgutschriften für Jahre mit Kindern unter 16 – verheiratet hälftig, im Konkubinat nach
   `gutschrift`, nur für eigene bzw. gemeinsame Kinder und Jahre in der Schweiz. Kinderrenten zur Altersrente (40 %
   pro Kind) fliessen in die Pensionslücke ein, solange ein Kind unterhaltsberechtigt ist.
+- **PK:** Pensionierten-Kinderrente pro Kind ab der Pensionierung, solange das Kind unterhaltsberechtigt ist
+  (bis 18 bzw. in Ausbildung bis 25): Wert laut Vorsorgeausweis (wird beim Hochladen erkannt) bzw. Einstellung
+  `pk.kinderrente_ausweis`, sonst 20 % der Altersrente (BVG-Minimum). Nominal fix wie die PK-Rente.
 - **Risiko:** IV-Kinderrenten und Waisenrenten pro Person nur für ihre unterhaltsberechtigten Kinder;
   Todesfall-Richtwert 100'000 pro unterhaltsberechtigtes Kind.
 - **Nachlass:** Pflichtteil nur für Nachkommen der verstorbenen Person.

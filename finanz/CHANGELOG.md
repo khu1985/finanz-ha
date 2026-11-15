@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.58.0 – 2026-11-15
+
+- **PK-Pensionierten-Kinderrente:** neue Einstellung pro Person (Einstellungen → Vorsorge, «Pensionierten-Kinderrente
+  PK/Jahr pro Kind»), wird beim Hochladen des Vorsorgeausweises erkannt; ohne Wert 20 % der Altersrente
+  (BVG-Minimum). Fliesst ab der Pensionierung in Pensionslücke, Finanzplan und Diagramm ein, solange ein Kind
+  unterhaltsberechtigt ist; die Pensionslücke zeigt AHV- und PK-Kinderrenten getrennt.
+
 ## 0.57.1 – 2026-11-15
 
 - **Steuern bezahlen pro Person:** Im Konkubinat führt die App pro Person ein eigenes Steuerkonto – Rechnungen,

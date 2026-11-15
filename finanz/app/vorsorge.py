@@ -308,7 +308,51 @@ class Luecke:
     spaeter_jahre: int = 20
     verlauf: list = field(default_factory=list)   # [(Jahr, AHV, PK, Verzehr, Ausland)] in heutigen Franken
     ausland: float = 0.0                   # Altersrenten aus dem Ausland (heutige Franken)
-    kinderrenten: float = 0.0              # AHV-Kinderrenten zur Altersrente (Kinder bis 18 bzw. in Ausbildung)
+    kinderrenten: float = 0.0              # Kinderrenten zur Altersrente, AHV und PK (Kinder bis 18 bzw. in Ausbildung)
+    pk_kinderrenten: float = 0.0           # davon Pensionierten-Kinderrenten der PK
+
+
+PK_KINDERRENTE_STD = 0.2                   # BVG Art. 17: Kinderrente 20 % der Altersrente
+
+
+def pk_kinderrente(person: dict, k: dict, rente_jahr: float | None = None) -> tuple[float, bool]:
+    """Pensionierten-Kinderrente der PK pro Kind und Jahr (nominal): laut Ausweis bzw. Einstellung, sonst 20 % der
+    Altersrente (BVG-Minimum). Zweiter Wert: geschätzt."""
+    w = float((person.get("pk") or {}).get("kinderrente_ausweis") or 0)
+    if w > 0:
+        return w, False
+    if rente_jahr is None:
+        rente_jahr = pk(person, k).rente_jahr
+    return PK_KINDERRENTE_STD * rente_jahr, True
+
+
+def kinderrenten_rechner(k: dict, jetzt: int):
+    """Funktion Jahr → (AHV-Kinderrenten, PK-Kinderrenten) in heutigen Franken. AHV: 40 % der Altersrente pro Kind ab 65
+    (vereinfacht, ohne Plafond); PK: Pensionierten-Kinderrente ab der Pensionierung, nominal fix (verliert Kaufkraft)."""
+    import kinder as ki
+    pension = max(pensionsjahr(p) for p in k["personen"])
+    ahv_person = {r.name: r.rente_jahr * ahv_real_faktor(k, pension - jetzt) for r in ahv(k, jetzt)}
+    t = teuerung(k)
+    pk_person = {}
+    for x in k["personen"]:
+        pj = pensionsjahr(x)
+        betrag, _ = pk_kinderrente(x, k)
+        pk_person[x["name"]] = (pj, betrag * kaufkraft(k, pj - jetzt))
+    kinder_von = {x["name"]: ki.eigene(k, x["name"]) for x in k["personen"]}
+
+    def rechnen(jahr_: int) -> tuple[float, float]:
+        a = p_ = 0.0
+        for x in k["personen"]:
+            n = sum(1 for c in kinder_von[x["name"]] if ki.unterhalt(c, jahr_))
+            if not n:
+                continue
+            if jahr_ >= geburtsjahr(x) + 65:
+                a += 0.4 * ahv_person.get(x["name"], 0) * n
+            pj, real = pk_person[x["name"]]
+            if jahr_ >= pj:
+                p_ += real / (1 + t / 100) ** (jahr_ - pj) * n
+        return a, p_
+    return rechnen
 
 
 def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = None) -> Luecke:
@@ -341,14 +385,12 @@ def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = Non
     def ausland_im(jahr_: int) -> float:
         return sum(zz.rente_ausland(x) for x in k["personen"] if jahr_ >= geburtsjahr(x) + zz.rente_ausland_alter(x))
     aus = ausland_im(jahr)
-    import kinder as ki
-    ahv_person = {r.name: r.rente_jahr * ahv_real_faktor(k, jahr - jetzt) for r in ahv_e}
+    kr_rechner = kinderrenten_rechner(k, jetzt)
 
     def kinderrenten_im(jahr_: int) -> float:
-        """AHV-Kinderrente 40 % der Altersrente pro Kind des pensionierten Elternteils (vereinfacht, ohne Plafond)."""
-        return sum(0.4 * ahv_person.get(x["name"], 0) * sum(1 for c in ki.eigene(k, x["name"]) if ki.unterhalt(c, jahr_))
-                   for x in k["personen"] if jahr_ >= geburtsjahr(x) + 65)
+        return sum(kr_rechner(jahr_))
     kr = kinderrenten_im(jahr)
+    kr_pk = kr_rechner(jahr)[1]
     einkommen = a + p + verzehr + aus + kr
     bedarf = float(hh.get("bedarf_ruhestand", 0))
     lohn = sum(float(x.get("lohn_brutto", 0)) for x in k["personen"])
@@ -356,8 +398,9 @@ def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = Non
     for j in range(max(1, jahre)):
         p_j = p / (1 + t / 100) ** j
         aus_j = ausland_im(jahr + j)
-        kr_j = kinderrenten_im(jahr + j)
-        verlauf.append((jahr + j, round(a + kr_j), round(p_j), round(verzehr), round(aus_j)))
+        kr_a, kr_p = kr_rechner(jahr + j)
+        kr_j = kr_a + kr_p
+        verlauf.append((jahr + j, round(a + kr_a), round(p_j + kr_p), round(verzehr), round(aus_j)))
         luecken.append(max(0.0, bedarf - (a + kr_j + p_j + verzehr + aus_j)))
     spaeter = min(20, max(0, jahre - 1))
     einkommen_sp = (a + p / (1 + t / 100) ** spaeter + verzehr + ausland_im(jahr + spaeter)
@@ -367,4 +410,4 @@ def pensionsluecke(k: dict, vermoegen_frei: float = 0.0, jetzt: int | None = Non
                   round(einkommen / lohn * 100, 1) if lohn else 0.0, round(lohn),
                   t, round(kk, 4), round(p_nom), round(netto_nominal),
                   round(sum(luecken) / len(luecken)) if luecken else 0, round(max(0.0, bedarf - einkommen_sp)),
-                  round(einkommen_sp), spaeter, verlauf, round(aus), round(kr))
+                  round(einkommen_sp), spaeter, verlauf, round(aus), round(kr), round(kr_pk))

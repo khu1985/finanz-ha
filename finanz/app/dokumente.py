@@ -28,11 +28,13 @@ WERTE_PK = {
     "ausweis_alterskapital": ("Alterskapital mit 65 (Prognose)", "pk.ausweis_alterskapital",
                               r"(?:alterskapital|voraussichtliches altersguthaben|altersguthaben (?:im alter|mit|bei) 6[0-9]|projiziertes altersguthaben)"),
     "ausweis_altersrente": ("Altersrente pro Jahr (Prognose)", "pk.ausweis_altersrente",
-                            r"(?:jährliche |voraussichtliche )?altersrente"),
+                            r"(?:jährliche |voraussichtliche )?altersrente(?!.*kinderrente)"),
     "sparbeitrag_jahr": ("Sparbeitrag pro Jahr (AN + AG)", "pk.sparbeitrag_jahr",
                          r"(?:sparbeitrag|altersgutschrift)(?:e)?(?: total| arbeitnehmer und arbeitgeber)?"),
     "umwandlungssatz": ("Umwandlungssatz %", "pk.umwandlungssatz", r"umwandlungssatz"),
     "zins": ("Zins %", "pk.zins", r"(?:projektionszins|verzinsung|zinssatz)"),
+    "kinderrente_alter": ("Pensionierten-Kinderrente pro Jahr", "pk.kinderrente_ausweis",
+                          r"(?:pensionierten|alters|altersrentner)-?\s?kinderrente|kinderrente (?:zur|bei|der) (?:alters|pension)"),
     "iv_rente_pk": ("Invalidenrente pro Jahr", "risiko.iv_rente_pk", r"invalidenrente(?!.*kind)"),
     "iv_kinderrente_pk": ("Invaliden-Kinderrente pro Jahr", "risiko.iv_kinderrente_pk",
                           r"invaliden-?kinderrente|kinderrente bei invalidität"),
@@ -200,7 +202,7 @@ def erkennen(text: str) -> dict:
     if erg["typ"] == "pk_ausweis":
         for schluessel, (_, _, muster) in WERTE_PK.items():
             w = _wert_nach(text, muster, prozent=schluessel in ("umwandlungssatz", "zins"), hoechster=schluessel in RISIKO,
-                           alter65=schluessel in ("ausweis_alterskapital", "ausweis_altersrente"))
+                           alter65=schluessel in ("ausweis_alterskapital", "ausweis_altersrente", "kinderrente_alter"))
             if w is not None:
                 erg["werte"][schluessel] = w
         erg["werte"].update(_pk_tabellen(text))
