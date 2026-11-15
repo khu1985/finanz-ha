@@ -2618,3 +2618,28 @@ def test_steuerkonto_umbuchung_und_zinsen(k):
     assert p[(2026, "kanton")].bezahlt == 2030 + 10 - 25 and p[(2026, "kanton")].offen == 21000 - 2015
     konto = sz.buchungen_konto(db)
     assert konto[(2025, "kanton")] == 20000 + 30 - 2030 and konto[(2026, "kanton")] == 2030 + 10 - 25
+
+
+def test_amortisationsstrategie(k):
+    import amortisation as ams
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 15)
+    k["wohnen"].update({"aktiv": True, "kaufpreis": 1500000, "eigenmittel": 500000, "hypothek_zins": 1.5,
+                        "hypothek_faellig": "2030-07-01", "amortisation_ziel": 200000, "reserve": 50000,
+                        "vermietet_anteil": 0, "verpfaendet": [{"name": "Muster 3a", "guthaben": 30000,
+                                                                 "beitrag_monat": 600, "rendite": 1.0}]})
+    kid = vm.konto_anlegen(db, "Muster Privat")
+    vm.saldo_setzen(db, kid, "2026-10-31", 400000)
+    s = ams.rechnen(k, db, heute)
+    namen = [v.schluessel for v in s.varianten]
+    assert namen[0] == "keine" and "ziel" in namen and "laufend" in namen and "alter" in namen
+    keine = s.varianten[0]
+    ziel = next(v for v in s.varianten if v.schluessel == "ziel")
+    assert ziel.amortisation == {2030: 200000} and ziel.hypothek[2030] == 800000
+    assert ziel.zinsen_netto < keine.zinsen_netto
+    # ohne vermieteten Teil: ab 2029 keine Schuldzinsabzüge → amortisieren schlägt sichere Anlage (1,5 % > 1 % versteuert)
+    assert s.abzug_nachher == 0 and ziel.netto > keine.netto
+    assert ziel.min_liquiditaet >= s.reserve
+    assert all(v.tragbarkeit_alter > 0 for v in s.varianten)
+    k["wohnen"]["aktiv"] = False
+    assert ams.rechnen(k, db, heute) is None

@@ -100,7 +100,7 @@ personen:
 | Übersicht | Ampeln, anstehende Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr, Fälligkeit, Vergütungs- und Verzugszins, Rechnungen und Zahlungen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Amortisationsstrategie (Varianten bis zur Pensionierung), Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Sparen für die Kinder (Bestand, Sparplan, Ziel, Wert am Ziel), Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Vermögen pro Person (Diagramm), Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
@@ -200,6 +200,27 @@ Wirkung des Wegfalls des Eigenmietwerts ab 2029 und – mit Fälligkeit der Hypo
 heute liquide Mittel (ohne die Arten unter `wohnen.nicht_antasten`) + Sparen bis zur Fälligkeit + verpfändete
 3a/3b − Steuer beim Bezug − geplante PK-Einkäufe (nach Steuerersparnis) − Notreserve, verglichen mit Ziel- und
 Maximal-Amortisation.
+
+### Amortisationsstrategie
+
+Varianten von heute bis zur ersten Pensionierung, Jahr für Jahr gleich gerechnet:
+
+| Variante | Vorgehen |
+|---|---|
+| Nicht amortisieren | Hypothek bleibt, Geld bleibt angelegt |
+| Ziel bei Fälligkeit | `wohnen.amortisation_ziel` bei der nächsten Fälligkeit |
+| Maximum bei Fälligkeit | so viel wie möglich (höchstens `amortisation_max`), Notreserve bleibt |
+| Fälligkeit + jährlich | Ziel bei Fälligkeit, danach jedes Jahr die Hälfte des Sparens (braucht eine flexible Tranche) |
+| Indirekt, tragbar im Alter | direkt nur, was für die Tragbarkeit nach der Pensionierung nötig ist; die verpfändete 3a/3b amortisiert bei der Pensionierung |
+
+Pro Variante: amortisierter Betrag, Hypothek bei der Pensionierung, Zinsen nach Steuern, Vorteil gegenüber «nicht
+amortisieren» – einmal mit sicher angelegtem Geld (`anlage.zins_sicher`, versteuert), einmal mit Wertschriften
+(Rendite des Anlagerisikos, ⅓ als steuerbarer Ertrag) –, Tragbarkeit im Alter (kalkulatorischer Zins und 1 %
+Nebenkosten im Verhältnis zu Renten und 80 % der Mieteinnahmen) und tiefste Liquidität gegenüber der Notreserve;
+Diagramm der Hypothek über die Zeit. Schuldzinsen sind bis zum Wegfall des Eigenmietwerts (1.1.2029) voll abziehbar,
+danach nur noch für den vermieteten Teil. Festhypotheken werden nur bei Fälligkeit (danach alle 5 Jahre angenommen)
+amortisiert. Markiert sind die Variante, die bei sicherer Anlage vorne liegt, und die mit Wertschriften – jeweils
+unter denen, die die Notreserve halten und im Alter tragbar sind.
 
 ### Teilweise vermietet und Miteigentum
 

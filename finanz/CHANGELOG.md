@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.57.0 – 2026-11-15
+
+- **Amortisationsstrategie** (Seite Wohnen): Varianten bis zur Pensionierung – nicht amortisieren, Ziel bzw.
+  Maximum bei Fälligkeit, Fälligkeit plus jährlich, indirekt und tragbar im Alter – mit Hypothek bei der
+  Pensionierung, Zinsen nach Steuern, Vorteil bei sicherer Anlage und mit Wertschriften, Tragbarkeit im Alter und
+  tiefster Liquidität; berücksichtigt den Wegfall des Eigenmietwerts ab 2029 (Schuldzinsen nur noch für den
+  vermieteten Teil abziehbar), Fälligkeiten der Festhypothek, verpfändete 3a/3b und das Konkubinat.
+
 ## 0.56.0 – 2026-11-15
 
 - **Steuerkonto** unter «Steuern bezahlen»: pro Steuerjahr und Steuer alle Positionen wie im Kontoauszug mit

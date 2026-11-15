@@ -982,7 +982,62 @@ def wohnen(k: dict, db) -> str:
     a = br.amortisation(k, db)
     amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a)) if a else ""
     return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
-        "Liegenschaft in der Steuererklärung", emw) + "</div>" + je_person + amort + liegenschaft_karten(k, db)
+        "Liegenschaft in der Steuererklärung", emw) + "</div>" + je_person + amort + amortisation_strategie_karte(k, db) \
+        + liegenschaft_karten(k, db)
+
+
+def amortisation_strategie_karte(k: dict, db) -> str:
+    """Amortisationsstrategie: Varianten bis zur Pensionierung im Vergleich."""
+    import amortisation as ams
+    try:
+        s = ams.rechnen(k, db)
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger("finanz").warning("Amortisationsstrategie: %s", e)
+        return ""
+    if not s:
+        return ""
+    basis = s.varianten[0]
+    grenze = float(k["kennzahlen"].get("tragbarkeit_max") or 33.3)
+    zeilen = []
+    for v in s.varianten:
+        marken = []
+        if v.schluessel == s.empfehlung:
+            marken.append('<span class="chip gut">vorne bei sicherer Anlage</span>')
+        if v.schluessel == s.empfehlung_anlage:
+            marken.append('<span class="chip">vorne mit Wertschriften</span>')
+        trag = licht(am.GRUEN if v.tragbarkeit_alter <= grenze else am.ROT) + f" {v.tragbarkeit_alter:.0f} %"
+        liq = (f'<span class="{"schlecht" if v.min_liquiditaet < s.reserve else ""}">{chf(v.min_liquiditaet)}</span>')
+
+        def diff(x):
+            return "–" if v is basis else f'<span class="{"gut" if x >= 0 else "schlecht"}">{"+" if x >= 0 else "−"}{chf(abs(x))}</span>'
+        zeilen.append([f"<b>{escape(v.name)}</b> {' '.join(marken)}<br><small class=\"leise\">{escape(v.beschreibung)}</small>",
+                       chf(v.total), chf(v.hypothek.get(s.pension, 0)), chf(v.zinsen_netto),
+                       diff(v.netto - basis.netto), diff(v.netto_anlage - basis.netto_anlage), trag, liq])
+    jahre = sorted(basis.hypothek)
+    diagramm = dg.linie({v.name: [(j, v.hypothek[j]) for j in jahre if j in v.hypothek] for v in s.varianten},
+                        "Hypothek bis zur Pensionierung")
+    kpis = '<div class="kpis">' + "".join([
+        kpi(chf(s.start_hypothek), f"Hypothek heute ({s.start_hypothek / s.wert * 100:.0f} % des Werts)" if s.wert else "Hypothek heute"),
+        kpi(chf(s.max_hypothek_alter), f"tragbar nach der Pensionierung {s.pension}",
+            "", am.GRUEN if s.start_hypothek <= s.max_hypothek_alter else am.GELB),
+        kpi(f"{s.zins * (1 - s.grenz / 100 * s.abzug_nachher):.2f} %", f"Hypothekarzins nach Steuern ab {s.abschaffung}"),
+        kpi(f"{s.zins_sicher * (1 - s.grenz / 100):.2f} %", "sichere Anlage nach Steuern"),
+    ]) + "</div>"
+    return '<div id="amortisationsstrategie">' + karte("Amortisationsstrategie", kpis + tabelle(
+        ["Variante", "amortisiert", f"Hypothek {s.pension}", "Zinsen nach Steuern", "Vorteil (sicher angelegt)",
+         "Vorteil (Wertschriften)", "Tragbarkeit im Alter", "tiefste Liquidität"], zeilen, zahlen_ab=1, karten=True)
+        + diagramm + hinweisliste(s.hinweise) + (
+        f'<p class="leise">Gerechnet von heute bis {s.pension} mit Zins {s.zins:g} %, Grenzsteuersatz {s.grenz:.0f} %, '
+        f'Sparen CHF {chf(s.sparen_jahr)} pro Jahr, freie Liquidität heute CHF {chf(s.liquid)}, Notreserve CHF '
+        f'{chf(s.reserve)}. Vorteil = Liquidität minus Hypothek bei der Pensionierung gegenüber «nicht amortisieren»: '
+        f'nicht amortisiertes Geld bringt sicher {s.zins_sicher:g} % (versteuert) bzw. in Wertschriften '
+        f'{s.rendite_anlage:g} % – mit Schwankungen und ohne Garantie. Amortisieren ist eine sichere Rendite in Höhe des '
+        f'Hypothekarzinses nach Steuern; das Geld ist danach aber gebunden (eine Aufstockung braucht die Zustimmung der '
+        f'Bank und eine neue Tragbarkeitsprüfung). Tragbarkeit im Alter: {k["kennzahlen"].get("tragbarkeit_zins", 5):g} % '
+        f'kalkulatorischer Zins und 1 % Nebenkosten im Verhältnis zu Renten und 80 % der Mieteinnahmen, höchstens '
+        f'{grenze:g} %. Ziel und Maximum bei Fälligkeit unter <a href="einstellungen#b-wohnen">Einstellungen → Wohnen</a>; '
+        f'Annahmen unter <a href="annahmen">Annahmen</a>.</p>')) + "</div>"
 
 
 def liegenschaft_karten(k: dict, db) -> str:

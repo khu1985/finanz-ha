@@ -76,7 +76,7 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, dreia, waehrung, kinder, kinderphasen,<br/>fahrzeuge, solar, zuzug,<br/>steuerzahlung, liquiplan, kindersparen, simulation, pk_einkauf, ux,<br/>herkunft, konsistenz"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, dreia, waehrung, kinder, kinderphasen,<br/>fahrzeuge, solar, zuzug,<br/>steuerzahlung, liquiplan, kindersparen, simulation, pk_einkauf, ux,<br/>herkunft, konsistenz, amortisation"]
         Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, sparplan, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung, usability"]
@@ -160,6 +160,7 @@ flowchart TB
 | `finanz/app/solar.py` | Solaranlage und vZEV: Sensoren der vZEV-App, Rendite, Steuern, Komponenten, Finanzplan |
 | `finanz/app/fahrzeuge.py` | Fahrzeuge: Wert, Kosten, Leasing, Ersatz, MFK |
 | `finanz/app/steuerzahlung.py` | Steuern bezahlen: Rechnungen, Zahlungen, offene Beträge, Fälligkeit, Zinsen |
+| `finanz/app/amortisation.py` | Amortisationsstrategie: Varianten bis zur Pensionierung im Vergleich |
 | `finanz/app/herkunft.py` | Herkunft der Werte: Quelle, Stand, Bestätigung, Beispielwerte der Vorlage |
 | `finanz/app/konsistenz.py` | Widersprüche zwischen Einstellungen, Dokumenten, Konten und Buchungen |
 | `finanz/app/ux.py` | UX-Score: Kurzbefragung (UEQ-S), Verhalten (Nutzung, Fehler, Datenaktualität) und Usability |
