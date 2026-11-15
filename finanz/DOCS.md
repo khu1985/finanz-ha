@@ -110,7 +110,7 @@ personen:
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
 | Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
 | Finanzplan | Lebensziele, Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
-| Szenarien | PK-Einkauf optimieren, Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
+| Szenarien | Reiter «Simulationen»: Varianten verwalten und vergleichen; PK-Einkauf optimieren (geplante Einkäufe entfernen), Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
 | Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
@@ -539,7 +539,27 @@ vor einem geplanten Kapitalbezug sind gesperrt; Schritte unter der Mindest-Erspa
 Das Ergebnis zeigt Einkauf und Ersparnis pro Jahr, die Ersparnis des letzten Frankens (Ampel: ≥ 30 % grün,
 ≥ 20 % gelb), den Vorteil gegenüber «alles in einem Jahr», den Netto-Vorteil (inkl. Zins bis 65, abzüglich der
 zusätzlichen Kapitalbezugssteuer) und die Kurve der Grenz-Ersparnis. «Plan übernehmen» trägt die Einkäufe unter
-`pk.einkauf_geplant` ein; ein erneuter Lauf rechnet nur noch mit dem verbleibenden Potenzial.
+`pk.einkauf_geplant` ein; ein erneuter Lauf rechnet nur noch mit dem verbleibenden Potenzial. Bereits geplante
+Einkäufe stehen oben in der Karte und lassen sich einzeln oder alle entfernen. «Als Simulation speichern» legt den
+Plan stattdessen als Simulation an, ohne die Einstellungen zu ändern.
+
+### Simulationen
+
+Reiter neben den Rechnern: benannte Varianten des Plans, die nur ausgewählte Annahmen ändern und nebeneinander
+verglichen werden. Gespeichert werden nur die Änderungen – gerechnet wird immer auf den aktuellen Einstellungen.
+
+| Annahme | Wirkung |
+|---|---|
+| Pensionierung mit (Alter), PK als Kapital %, 3a-Einzahlung, Sparen pro Monat, Bruttolohn | wie in den Einstellungen |
+| Pensum % | Lohn und PK-Sparbeitrag im Verhältnis; Sparen pro Monat um das wegfallende Netto nach Steuern (weniger Pensum: mit eingesparter Betreuung wie im Teilzeit-Rechner), ausser Sparen ist selbst gesetzt |
+| PK-Einkäufe | ersetzen die geplanten Einkäufe der Person («2027: 20000, 2028: 15000» oder «keine») |
+| Bedarf im Ruhestand, Anlagerisiko, Teuerung | Haushalt und Annahmen |
+| Zusätzliches Lebensziel | «Name; Jahr; Betrag», eines pro Zeile |
+
+Der Vergleich zeigt pro Variante Pensionierung, Pensionslücke pro Jahr, freies Vermögen bei der Pensionierung
+(mittlerer Verlauf, Unterschied zu heute farbig), Erfolgsquote, bis wann das Geld reicht, PK-Einkäufe und den
+Vermögensverlauf als Diagramm. Simulationen lassen sich bearbeiten, kopieren, löschen und übernehmen – «Übernehmen»
+schreibt die Änderungen in die Einstellungen.
 
 ![Amortisation und Hypothek](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/hypothek.svg)
 

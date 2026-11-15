@@ -35,13 +35,14 @@ NAVIGATION = [
     ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
 ]
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
-MENU_ALIAS = {"steuererklaerung": "steuern", "steuerzahlung": "steuern", "liquiditaet": "budget", "protokoll": "einstellungen", "aenderungen": "einstellungen",
+MENU_ALIAS = {"steuererklaerung": "steuern", "steuerzahlung": "steuern", "liquiditaet": "budget", "simulationen": "szenarien", "protokoll": "einstellungen", "aenderungen": "einstellungen",
               "daten": "einstellungen"}
 OFFEN_IMMER = {"Überblick"}
 # Seiten, die als Reiter einer Seite erscheinen
 REITER = [
     [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
     [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
+    [("szenarien", "Rechner"), ("simulationen", "Simulationen")],
     [("einstellungen", "Einstellungen"), ("daten", "Daten & Import"), ("protokoll", "Protokoll"),
      ("aenderungen", "Änderungen")],
 ]
@@ -219,7 +220,8 @@ button,.knopf{font:inherit;background:var(--akzent);color:#fff;border:0;border-r
 cursor:pointer;text-decoration:none;display:inline-block}
 .knopf.zweit,button.zweit{background:transparent;color:var(--akzent);border:1px solid var(--akzent)}
 html[data-theme=dark] button:not(.zweit):not(.gl),html[data-theme=dark] .knopf:not(.zweit){color:#0d1b22}
-button.klein{padding:2px 10px;font-size:13px}
+button.klein,.knopf.klein{padding:2px 10px;font-size:13px}
+.aktionen{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.aktionen button,.aktionen .knopf{white-space:nowrap}
 .zeile{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px}
 .meldung{padding:10px 14px;border-radius:8px;margin-bottom:16px;background:var(--karte);border-left:4px solid var(--akzent)}
 .meldung.fehler{border-color:var(--schlecht)}
@@ -230,7 +232,7 @@ main{padding:12px}h1{font-size:20px;margin:2px 0 12px}h2{font-size:16px}
 .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
 .kpi{padding:10px 12px}.kpi b{font-size:18px}.kpi span{font-size:12px}
 table{font-size:13px}th,td{padding:6px 4px}th{font-size:12px}
-input,select,textarea{font-size:16px!important}button,.knopf{min-height:44px}button.klein{min-height:32px}
+input,select,textarea{font-size:16px!important}button,.knopf{min-height:44px}button.klein,.knopf.klein{min-height:32px}
 input[type=checkbox]{width:22px!important;height:22px;flex:0 0 auto}
 .diagramm .achse{font-size:19px}.diagramm .x2{display:none}.diagramm .ziel-text{font-size:19px}.diagramm path{stroke-width:3.5}
 .zeile>*{flex:1 1 auto}
@@ -2184,8 +2186,10 @@ def einkauf_karte(k: dict, db, q: dict) -> str:
 <label>Schrittweite CHF<input name="schritt" value="{schritt:g}" inputmode="decimal"></label>
 </div><div class="zeile"><button>Optimieren</button></div></form>"""
     plan = sz.einkauf_optimieren(k, person, budget, von, bis, schwelle, schritt, heute)
+    geplant = _einkauf_geplant_html(k)
     if not plan.plan:
-        return karte("PK-Einkauf optimieren", form + hinweisliste(plan.hinweise or ["Kein Einkauf sinnvoll oder kein Potenzial."]))
+        return '<div id="einkauf">' + karte("PK-Einkauf optimieren", geplant + form + hinweisliste(
+            plan.hinweise or ["Kein Einkauf sinnvoll oder kein Potenzial."])) + "</div>"
     eingekauft = sum(plan.plan.values())
     kpis = "".join([
         kpi(chf(eingekauft), f"Einkauf von {chf(plan.potenzial)} Potenzial"),
@@ -2207,15 +2211,40 @@ def einkauf_karte(k: dict, db, q: dict) -> str:
 {"".join(f'<input type="hidden" name="{n}" value="{escape(str(v))}">' for n, v in
          (("person", person), ("budget", budget), ("von", von), ("bis", bis), ("schwelle", schwelle), ("schritt", schritt)))}
 <div class="zeile"><button>Plan als geplante Einkäufe übernehmen</button>
-<span class="leise">Ergänzt «einkauf_geplant» von {escape(person)}; wirkt auf PK-Prognose, Amortisation und Berater.</span></div></form>"""
+<button class="zweit" formaction="szenarien/einkauf_simulation">Als Simulation speichern</button></div>
+<p class="leise">«Übernehmen» ergänzt die geplanten Einkäufe von {escape(person)} (wirkt auf PK-Prognose, Steuern,
+Amortisation, Liquidität und Berater). «Als Simulation» lässt die Einstellungen unverändert und stellt den Plan unter
+<a href="simulationen">Simulationen</a> neben die heutige Planung.</p></form>"""
     gesperrt = (f'<p class="leise">Gesperrt (3 Jahre vor Kapitalbezug): {", ".join(map(str, plan.gesperrt))}</p>'
                 if plan.gesperrt else "")
     erklaerung = ('<p class="leise">Die App verteilt den Einkauf in Schritten jeweils auf das Jahr mit der höchsten Ersparnis '
                   'für den nächsten Franken (gleiches Einkommen jedes Jahr angenommen). Optimal ist, solange der letzte Franken '
                   'mehr Steuern spart als der spätere Bezug kostet – typisch 20–30 %. Die Kurve zeigt, wie stark die Ersparnis '
                   'pro Franken sinkt, wenn in einem einzigen Jahr mehr eingekauft wird.</p>')
-    return karte("PK-Einkauf optimieren", form + f'<div class="kpis">{kpis}</div>' + tab + gesperrt + kurve
-                 + hinweisliste(plan.hinweise) + uebernehmen + erklaerung)
+    return '<div id="einkauf">' + karte("PK-Einkauf optimieren", geplant + form + f'<div class="kpis">{kpis}</div>' + tab
+                                        + gesperrt + kurve + hinweisliste(plan.hinweise) + uebernehmen + erklaerung) + "</div>"
+
+
+def _einkauf_geplant_html(k: dict) -> str:
+    """Bereits geplante PK-Einkäufe mit Entfernen pro Eintrag bzw. für alle."""
+    teile = []
+    for p in k["personen"]:
+        liste = p["pk"].get("einkauf_geplant") or []
+        if not liste:
+            continue
+
+        def knopf(nr, text, frage):
+            return (f'<form method="post" action="szenarien/einkauf_loeschen" class="inline" onsubmit="return confirm('
+                    f'\'{frage}\')"><input type="hidden" name="person" value="{escape(p["name"])}"><input type="hidden" '
+                    f'name="nr" value="{nr}"><button class="zweit klein">{text}</button></form>')
+        zeilen = [[str(e.get("jahr")), chf(float(e.get("betrag") or 0)), knopf(i, "Entfernen", f"Einkauf {e.get('jahr')} entfernen?")]
+                  for i, e in enumerate(liste)]
+        zeilen.append(["<b>Total</b>", f"<b>{chf(sum(float(e.get('betrag') or 0) for e in liste))}</b>",
+                       knopf("alle", "Alle entfernen", f"Alle geplanten Einkäufe von {p['name']} entfernen?")])
+        teile.append(f"<h3>Geplant: {escape(p['name'])}</h3>" + tabelle(["Jahr", "Einkauf", ""], zeilen, zahlen_ab=1))
+    return ("".join(teile) + '<p class="leise">Diese Einkäufe stehen in den Einstellungen und wirken bereits auf die '
+            'Planung. Varianten ohne Risiko probierst du unter <a href="simulationen">Simulationen</a> aus.</p>'
+            if teile else "")
 
 
 def heirat_karte(k: dict, db) -> str:
@@ -4583,4 +4612,121 @@ def liquiditaet(k: dict, db) -> str:
            "in dem sie anfallen.")
         + ' Lebensziele erscheinen mit <code>monat</code> im richtigen Monat, sonst im Juli. Notreserve laut '
           '<a href="sparplan">Sparen &amp; Anlegen</a>.</p>')))
+    return "".join(teile)
+
+
+# ---------------------------------------------------------------- Simulationen
+
+def simulationen(k: dict, db, q: dict | None = None) -> str:
+    """Benannte Varianten des Plans verwalten und nebeneinander vergleichen."""
+    import simulation as si
+    q = q or {}
+    sid = str((q.get("id") or [""])[0])
+    sims = si.alle(db)
+    bearbeiten = next((s for s in sims if str(s["id"]) == sid), None)
+    teile = []
+    if sims:
+        erg = si.vergleich(k, db)
+        basis = erg[0][1]
+        zeilen = []
+        for s, e in erg:
+            if e.fehler:
+                zeilen.append([escape(e.name), f'<span class="schlecht">{escape(e.fehler)}</span>', "", "", "", "", "", ""])
+                continue
+
+            def diff(x, ref, besser_hoeher=True):
+                if s is None or round(x) == round(ref):
+                    return ""
+                d = x - ref
+                gut = (d > 0) == besser_hoeher
+                return f' <small class="{"gut" if gut else "schlecht"}">{"+" if d > 0 else "−"}{chf(abs(d))}</small>'
+            aenderungen = "".join(f"<li>{escape(si.beschreiben(a))}</li>" for a in (s or {}).get("aenderungen", []))
+            name = (f"<b>{escape(e.name)}</b>" + (f'<ul class="hinweise klein">{aenderungen}</ul>' if aenderungen else "")
+                    + (f'<small class="leise">{escape(s["notiz"])}</small>' if s and s.get("notiz") else ""))
+            if s is None:
+                name = "<b>Heute</b><br><small class=\"leise\">aktuelle Einstellungen</small>"
+                aktionen = ""
+            else:
+                aktionen = (f'<span class="aktionen"><a class="knopf zweit klein" href="simulationen?id={s["id"]}#bearbeiten">Bearbeiten</a>'
+                            + "".join(f'<form method="post" action="simulationen/{a}" class="inline"{z}><input type="hidden" '
+                                      f'name="id" value="{s["id"]}"><button class="zweit klein">{t}</button></form> '
+                                      for a, t, z in (("kopieren", "Kopieren", ""),
+                                                      ("uebernehmen", "Übernehmen",
+                                                       ' onsubmit="return confirm(\'Änderungen dieser Simulation in '
+                                                       'die Einstellungen übernehmen?\')"'),
+                                                      ("loeschen", "Löschen",
+                                                       ' onsubmit="return confirm(\'Simulation löschen?\')"'))) + "</span>")
+            reicht = "bis Endalter" if e.reicht_bis is None else str(e.reicht_bis)
+            zeilen.append([name, escape(e.pension),
+                           chf(e.luecke) + diff(e.luecke, basis.luecke, False),
+                           chf(e.vermoegen_pension) + diff(e.vermoegen_pension, basis.vermoegen_pension),
+                           f"{e.erfolg:.0f} %" + ("" if s is None or e.erfolg == basis.erfolg else
+                                                  f' <small class="{"gut" if e.erfolg > basis.erfolg else "schlecht"}">'
+                                                  f'{e.erfolg - basis.erfolg:+.0f}</small>'),
+                           reicht, chf(e.einkauf), aktionen])
+        teile.append(karte("Vergleich", tabelle(
+            ["Variante", "Pensionierung", "Lücke pro Jahr", "Vermögen bei Pension", "Erfolg", "Geld reicht",
+             "PK-Einkäufe", ""], zeilen, zahlen_ab=2, karten=True)
+            + dg.linie({e.name: [(j, round(v)) for j, v in e.verlauf] for _, e in erg if e.verlauf and not e.fehler},
+                       "Freies Vermögen (mittlerer Verlauf)")
+            + '<p class="leise">Lücke: Bedarf minus Renten und Kapitalverzehr pro Jahr in heutigen Franken. Erfolg: Anteil '
+              'der simulierten Börsenverläufe, in denen das Geld bis zum Endalter reicht. Vermögen und Verlauf: freies '
+              'Vermögen im mittleren Verlauf. Farbig: besser bzw. schlechter als heute. Alle Simulationen rechnen auf den '
+              'aktuellen Einstellungen – «Übernehmen» schreibt die Änderungen dorthin (der PK-Einkaufsplan wird dabei '
+              'ersetzt, nicht ergänzt).</p>'))
+    # Formular
+    werte: dict[tuple[str | None, str], object] = {}
+    if bearbeiten:
+        for a in bearbeiten["aenderungen"]:
+            if a["schluessel"] == "ziele":
+                werte.setdefault((None, "ziele"), []).append(a["wert"])
+            else:
+                werte[(a.get("person"), a["schluessel"])] = a["wert"]
+
+    def feld(person, i, schl, name, typ, grenzen):
+        heute_ = si.heute_wert(k, schl, person)
+        w = werte.get((person, schl))
+        fname = f"{'p' + str(i) if person else 'h'}:{schl}"
+        if typ == "wahl":
+            opts = '<option value="">unverändert</option>' + "".join(
+                f'<option value="{o}"{" selected" if w == o else ""}>{o}</option>' for o in grenzen)
+            return f'<label>{escape(name)} <small class="leise">heute {escape(str(heute_))}</small><select name="{fname}">{opts}</select></label>'
+        if typ == "einkauf":
+            v = si.einkauf_text(w) if w is not None else ""
+            ph = si.einkauf_text(heute_)
+        elif typ == "ziel":
+            liste = werte.get((None, "ziele")) or []
+            v = "\n".join(f"{z['name']}; {z['jahr']}; {int(z['betrag'])}" for z in liste)
+            return (f'<label class="breit">{escape(name)} <small class="leise">eines pro Zeile</small>'
+                    f'<textarea name="{fname}" rows="2" style="min-height:0;height:4.5em" placeholder="Weltreise; 2032; 40000">{escape(v)}</textarea></label>')
+        else:
+            v = "" if w is None else f"{w:g}" if isinstance(w, (int, float)) else str(w)
+            ph = "" if heute_ in (None, "") else f"{float(heute_):g}" if isinstance(heute_, (int, float)) else str(heute_)
+        breit = ' class="breit"' if typ == "einkauf" else ""
+        return (f'<label{breit}>{escape(name)}<input name="{fname}" value="{escape(v)}" placeholder="{escape(ph)}"'
+                f'{"" if typ == "einkauf" else " inputmode=decimal"}></label>')
+    bloecke = []
+    for i, p in enumerate(k["personen"]):
+        bloecke.append(f'<fieldset><legend>{escape(p["name"])}</legend><div class="felder">'
+                       + "".join(feld(p["name"], i, *d) for d in si.PERSON) + "</div></fieldset>")
+    bloecke.append('<fieldset><legend>Haushalt und Annahmen</legend><div class="felder">'
+                   + "".join(feld(None, 0, *d) for d in si.HAUSHALT) + "</div></fieldset>")
+    titel = f"Simulation «{bearbeiten['name']}» bearbeiten" if bearbeiten else "Neue Simulation"
+    form = (f'<form method="post" action="simulationen/speichern" data-status="Simulation wird gerechnet …">'
+            + (f'<input type="hidden" name="id" value="{bearbeiten["id"]}">' if bearbeiten else "")
+            + f'''<div class="felder"><label>Name<input name="name" required value="{escape(bearbeiten["name"] if bearbeiten else "")}"
+placeholder="z. B. Pension mit 62"></label><label class="breit">Notiz<input name="notiz" value="{escape(bearbeiten["notiz"] if bearbeiten else "")}"></label></div>'''
+            + "".join(bloecke)
+            + '<p class="leise">Nur ausfüllen, was sich gegenüber heute ändert – leere Felder bleiben wie in den '
+              'Einstellungen (grau: heutiger Wert). Pensum und Lohn gelten ab sofort bis zur Pensionierung.</p>'
+            + '<div class="zeile"><button>Simulation speichern</button>'
+            + (' <a class="knopf zweit" href="simulationen">Abbrechen</a>' if bearbeiten else "") + "</div></form>")
+    teile.append(f'<div id="bearbeiten">{karte(titel, form)}</div>')
+    if not sims:
+        teile.insert(0, karte("Simulationen", '<p>Mit Simulationen probierst du Varianten aus, ohne die Einstellungen zu '
+                                              'ändern – z. B. «Pension mit 62», «Pensum 80 %», «PK-Einkäufe 2027–2030» oder '
+                                              '«mehr Risiko». Die App rechnet jede Variante mit Pensionslücke, Vermögen, '
+                                              'Erfolgsquote und Steuern und stellt sie neben die heutige Planung. Die '
+                                              'Rechner unter <a href="szenarien">Szenarien</a> (PK-Einkauf) können ihr '
+                                              'Ergebnis direkt als Simulation speichern.</p>'))
     return "".join(teile)

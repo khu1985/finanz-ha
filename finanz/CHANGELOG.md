@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.51.0 – 2026-11-15
+
+- **Simulationen** (neuer Reiter unter Szenarien): benannte Varianten speichern, die nur einzelne Annahmen ändern –
+  Pensionierungsalter, Pensum (Lohn, PK und Sparen passen sich an), Lohn, Sparen, PK-Einkäufe, Kapitalbezug, 3a,
+  Bedarf, Anlagerisiko, Teuerung, zusätzliche Lebensziele. Vergleich mit heute (Pensionslücke, Vermögen bei der
+  Pensionierung, Erfolgsquote, Geld reicht bis, Verlauf als Diagramm); bearbeiten, kopieren, löschen, übernehmen.
+- **PK-Einkauf:** geplante Einkäufe werden im Optimierer angezeigt und lassen sich einzeln oder alle entfernen;
+  der optimierte Plan lässt sich als Simulation speichern statt direkt übernehmen.
+
 ## 0.50.0 – 2026-11-15
 
 - **Sparen für die Kinder** (Seite Kinder): pro Kind Bestand, Sparplan, Ziel (eigenes oder Vorschlag aus dem

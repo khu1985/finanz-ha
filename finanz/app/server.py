@@ -28,7 +28,7 @@ LOG = logging.getLogger("finanz")
 SPERRE = threading.Lock()
 MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
-MIT_ABFRAGE = {"lebensereignisse", "nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
+MIT_ABFRAGE = {"simulationen", "lebensereignisse", "nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
 SEITEN = {
     "": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
@@ -48,6 +48,7 @@ SEITEN = {
     "steuererklaerung": ("Steuern", seiten.steuererklaerung),
     "steuerzahlung": ("Steuern", seiten.steuerzahlung),
     "liquiditaet": ("Budget und Cashflow", seiten.liquiditaet),
+    "simulationen": ("Szenarien", seiten.simulationen),
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
     "dokumente": ("Dokumente", seiten.dokumente),
@@ -784,6 +785,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._steuern(pfad, form)
         if pfad.startswith("steuerzahlung/"):
             return self._steuerzahlung(pfad, form)
+        if pfad.startswith("simulationen/"):
+            return self._simulationen(pfad, form)
         if pfad == "solar/speichern":
             k = konfig.laden()
             c = dict(k.get("solar") or {})
@@ -904,6 +907,45 @@ class Handler(BaseHTTPRequestHandler):
                     and str(o.get("datum")) == str(weg.get("datum")) and float(o.get("zins") or 0) == weg["zins"])]
                 konfig.speichern(k)
             return "Offerte entfernt.", "szenarien#hypothek"
+        if pfad == "szenarien/einkauf_loeschen":
+            k = konfig.laden()
+            p = next((x for x in k["personen"] if x["name"] == form.get("person")), None)
+            if not p:
+                raise ValueError("Person nicht gefunden.")
+            liste = list(p["pk"].get("einkauf_geplant") or [])
+            wahl = str(form.get("nr") or "alle")
+            if wahl == "alle":
+                p["pk"]["einkauf_geplant"] = []
+                text = f"Alle geplanten PK-Einkäufe von {p['name']} entfernt."
+            else:
+                e = liste.pop(int(wahl))
+                p["pk"]["einkauf_geplant"] = liste
+                text = f"PK-Einkauf {e.get('jahr')} von {p['name']} entfernt."
+            konfig.speichern(k)
+            return text, "szenarien#einkauf"
+        if pfad == "szenarien/einkauf_simulation":
+            import simulation as si
+            import szenarien as sz
+            k = konfig.laden()
+            plan = sz.einkauf_optimieren(k, form["person"], vm.zahl(form.get("budget") or "0"), int(form["von"]),
+                                         int(form["bis"]), vm.zahl(form.get("schwelle") or "0"),
+                                         vm.zahl(form.get("schritt") or "5000"))
+            if not plan.plan:
+                raise ValueError("Kein Einkauf für eine Simulation.")
+            import copy
+            k2 = copy.deepcopy(k)
+            sz.plan_uebernehmen(k2, plan)
+            p2 = next(x for x in k2["personen"] if x["name"] == plan.person)
+            name = f"PK-Einkauf {plan.person} {min(plan.plan)}–{max(plan.plan)}"
+            with db() as v:
+                namen = {s["name"] for s in si.alle(v)}
+                n, i = name, 2
+                while n in namen:
+                    n, i = f"{name} ({i})", i + 1
+                neu = si.speichern(v, n, [{"person": plan.person, "schluessel": "pk.einkauf_geplant",
+                                           "wert": p2["pk"]["einkauf_geplant"]}],
+                                   f"Aus dem Einkaufs-Optimierer (total CHF {sum(plan.plan.values()):,.0f})." >> TS)
+            return f"Simulation «{n}» gespeichert.", f"simulationen?id={neu}#bearbeiten"
         if pfad == "szenarien/einkauf":
             import szenarien as sz
             k = konfig.laden()
@@ -1045,6 +1087,50 @@ class Handler(BaseHTTPRequestHandler):
                     return (f"Für {form['person']} übernommen: " + ", ".join(erledigt) if erledigt
                             else "Keine Werte ausgewählt."), f"vorsorge/dokument/{did}"
                 return "Gespeichert.", f"vorsorge/dokument/{did}"
+        raise ValueError("Unbekannte Aktion.")
+
+    def _simulationen(self, pfad: str, form: dict):
+        import simulation as si
+        k = konfig.laden()
+        aktion = pfad.split("/", 1)[1]
+        sid = int(form.get("id") or 0) or None
+        with db() as v:
+            if aktion == "speichern":
+                aenderungen = []
+                for i, p in enumerate(k["personen"]):
+                    for schl, *_ in si.PERSON:
+                        t = str(form.get(f"p{i}:{schl}") or "").strip()
+                        if t:
+                            aenderungen.append({"person": p["name"], "schluessel": schl,
+                                                "wert": si.pruefen(k, schl, p["name"], t)})
+                for schl, *_ in si.HAUSHALT:
+                    t = str(form.get(f"h:{schl}") or "").strip()
+                    if not t:
+                        continue
+                    if schl == "ziele":
+                        for zeile in t.splitlines():
+                            if zeile.strip():
+                                aenderungen.append({"schluessel": "ziele", "wert": si.pruefen(k, "ziele", None, zeile)})
+                    else:
+                        aenderungen.append({"schluessel": schl, "wert": si.pruefen(k, schl, None, t)})
+                if not aenderungen:
+                    raise ValueError("Mindestens eine Annahme ändern – sonst entspricht die Simulation dem heutigen Plan.")
+                name = str(form.get("name") or "")
+                si.speichern(v, name, aenderungen, str(form.get("notiz") or ""), sid)
+                return f"Simulation «{name.strip()}» gespeichert.", "simulationen"
+            s = si.holen(v, sid or 0)
+            if not s:
+                raise ValueError("Simulation nicht gefunden.")
+            if aktion == "loeschen":
+                si.loeschen(v, s["id"])
+                return f"Simulation «{s['name']}» gelöscht.", "simulationen"
+            if aktion == "kopieren":
+                neu = si.kopieren(v, s["id"])
+                return "Kopie erstellt – jetzt anpassen.", f"simulationen?id={neu}#bearbeiten"
+            if aktion == "uebernehmen":
+                konfig.speichern(si.uebernehmen(k, s))
+                return (f"Simulation «{s['name']}» in die Einstellungen übernommen: "
+                        + "; ".join(si.beschreiben(a) for a in s["aenderungen"]) + ".", "simulationen")
         raise ValueError("Unbekannte Aktion.")
 
     def _steuerzahlung(self, pfad: str, form: dict):

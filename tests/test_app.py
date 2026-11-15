@@ -443,3 +443,30 @@ def test_kindersparen_seite(server, daten):
     assert c["sparen_monat"] == 150 and c["sparen_anlage"] == "fonds" and "sparen_ziel" not in c
     html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
     assert "Anna (Kind)" in html and "Kindersparen" in html
+
+
+def test_simulationen_seite(server, daten):
+    k = konfig.laden()
+    p0 = k["personen"][0]["name"]
+    k["personen"][0]["pk"]["einkauf_geplant"] = [{"jahr": 2030, "betrag": 10000}, {"jahr": 2031, "betrag": 5000}]
+    konfig.speichern(k)
+    html = urllib.request.urlopen(f"{server}/szenarien").read().decode()
+    assert "Geplant: " in html and 'action="szenarien/einkauf_loeschen"' in html
+    code, _ = _post(f"{server}/szenarien/einkauf_loeschen", {"person": p0, "nr": "0"})
+    assert code == 303 and konfig.laden()["personen"][0]["pk"]["einkauf_geplant"] == [{"jahr": 2031, "betrag": 5000}]
+    _post(f"{server}/szenarien/einkauf_loeschen", {"person": p0, "nr": "alle"})
+    assert konfig.laden()["personen"][0]["pk"]["einkauf_geplant"] == []
+    html = urllib.request.urlopen(f"{server}/simulationen").read().decode()
+    assert "Neue Simulation" in html and 'name="p0:pensionierung_alter"' in html
+    code, ziel = _post(f"{server}/simulationen/speichern", {"name": "Pension 62", "p0:pensionierung_alter": "62",
+                                                           "h:ziele": "Muster Reise; 2032; 30000"})
+    assert code == 303
+    html = urllib.request.urlopen(f"{server}/simulationen").read().decode()
+    assert "Vergleich" in html and "Pension 62" in html and "Pensionierung mit 62" in html
+    code, _ = _post(f"{server}/simulationen/uebernehmen", {"id": "1"})
+    k = konfig.laden()
+    assert code == 303 and k["personen"][0]["pensionierung_alter"] == 62 and k["ziele"][-1]["name"] == "Muster Reise"
+    code, ziel = _post(f"{server}/simulationen/kopieren", {"id": "1"})
+    assert "id=2" in ziel
+    _post(f"{server}/simulationen/loeschen", {"id": "2"})
+    assert "(Kopie)" not in urllib.request.urlopen(f"{server}/simulationen").read().decode()

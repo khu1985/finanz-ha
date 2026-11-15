@@ -2300,3 +2300,50 @@ def test_kindersparen(k):
     # Erinnerung zum 18. Geburtstag
     k["haushalt"]["kinder"][0]["sparen_alter"] = 18
     assert any("wird 18" in e.titel for e in ksp.erinnerungen(k, db, date(2036, 4, 1)))
+
+
+def test_simulationen(k):
+    import simulation as si
+    db = vm.verbinden(":memory:")
+    p0 = k["personen"][0]["name"]
+    assert si.einkauf_lesen("2027: 20'000, 2028=15000") == [{"jahr": 2027, "betrag": 20000}, {"jahr": 2028, "betrag": 15000}]
+    assert si.einkauf_lesen("keine") == []
+    assert si.ziel_lesen("Weltreise; 2032; 40'000") == {"name": "Weltreise", "jahr": 2032, "betrag": 40000.0}
+    with pytest.raises(ValueError):
+        si.pruefen(k, "pensionierung_alter", p0, "80")
+    aend = [{"person": p0, "schluessel": "pensionierung_alter", "wert": si.pruefen(k, "pensionierung_alter", p0, "62")},
+            {"person": p0, "schluessel": "pk.einkauf_geplant", "wert": si.pruefen(k, "pk.einkauf_geplant", p0, "keine")},
+            {"schluessel": "anlage.risiko", "wert": "hoch"},
+            {"schluessel": "ziele", "wert": si.ziel_lesen("Muster Reise; 2032; 30000")}]
+    k["personen"][0]["pk"]["einkauf_geplant"] = [{"jahr": 2027, "betrag": 10000}]
+    k2 = si.anwenden(k, aend)
+    assert k2["personen"][0]["pensionierung_alter"] == 62 and k2["personen"][0]["pk"]["einkauf_geplant"] == []
+    assert k2["anlage"]["risiko"] == "hoch" and k2["ziele"][-1]["name"] == "Muster Reise"
+    assert k["personen"][0]["pk"]["einkauf_geplant"] == [{"jahr": 2027, "betrag": 10000}]   # Original unverändert
+    sid = si.speichern(db, "Pension 62", aend, "Test")
+    with pytest.raises(ValueError):
+        si.speichern(db, "Pension 62", aend)
+    kid = si.kopieren(db, sid)
+    assert si.holen(db, kid)["name"] == "Pension 62 (Kopie)"
+    erg = si.vergleich(k, db)
+    assert [e.name for _, e in erg] == ["Heute", "Pension 62", "Pension 62 (Kopie)"]
+    heute, sim = erg[0][1], erg[1][1]
+    assert not heute.fehler and not sim.fehler and heute.einkauf == 10000 and sim.einkauf == 0
+    assert str(int(k["personen"][0]["geburtsdatum"][:4]) + 62) in sim.pension and sim.verlauf
+    assert "Pensionierung mit 62" in si.beschreiben(aend[0])
+    si.loeschen(db, kid)
+    assert len(si.alle(db)) == 1
+
+
+def test_simulation_pensum(k):
+    import simulation as si
+    p = k["personen"][0]
+    p.update({"pensum": 100, "lohn_brutto": 100000, "sparen_monat": 1500})
+    p["pk"]["sparbeitrag_jahr"] = 12000
+    k2 = si.anwenden(k, [{"person": p["name"], "schluessel": "pensum", "wert": 80}])
+    q = k2["personen"][0]
+    assert q["lohn_brutto"] == 80000 and q["pk"]["sparbeitrag_jahr"] == 9600
+    assert 1500 - 1500 < 1500 - q["sparen_monat"] < 20000 / 12          # weniger Sparen, aber weniger als brutto
+    k3 = si.anwenden(k, [{"person": p["name"], "schluessel": "pensum", "wert": 80},
+                         {"person": p["name"], "schluessel": "sparen_monat", "wert": 1000}])
+    assert k3["personen"][0]["sparen_monat"] == 1000 and k3["personen"][0]["lohn_brutto"] == 80000
