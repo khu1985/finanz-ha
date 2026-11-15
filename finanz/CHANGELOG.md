@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.59.1 – 2026-11-15
+
+- Amortisationsvergleich: Liquidität und verpfändete 3a/3b pro Person als eigene Tabelle (vorher in einer Zeile, die
+  sich als «3a/3b über 300'000» lesen liess), mit der höchsten gleich hohen direkten Amortisation pro Person.
+
 ## 0.59.0 – 2026-11-15
 
 - **Amortisation bei Fälligkeit: Höhe im Vergleich** (Seite Wohnen): Tabelle mit direkter Amortisation in Schritten,

@@ -1073,8 +1073,12 @@ def amortisation_vergleich_karte(k: dict, db) -> str:
         "Was bedeuten die Spalten?")
     personen = ""
     if v.personen:
-        personen = '<p class="leise">Liquidität bei Fälligkeit pro Person: ' + ", ".join(
-            f"{escape(n)} CHF {chf(l)}" + (f" (+ 3a/3b CHF {chf(i)})" if i else "") for n, l, i in v.personen) + ".</p>"
+        personen = "<h3>Pro Person bei Fälligkeit</h3>" + tabelle(
+            ["Person", "Konten (freie Liquidität)", "verpfändete 3a/3b nach Steuern", "höchstens direkt (gleich viel)"],
+            [[escape(n), chf(l), chf(i), chf(v.max_gleich / len(v.personen)) if v.max_gleich is not None else "–"]
+             for n, l, i in v.personen], zahlen_ab=1) + (
+            '<p class="leise">Konten: eigene freie Konten plus Anteil am Gemeinschaftskonto plus Sparen bis zur '
+            'Fälligkeit (ohne Arten unter «nicht antasten»). 3a/3b: Zuordnung über den Namen des Vertrags.</p>')
     tab = tabelle(["direkt amortisiert", "total mit 3a/3b", "Resthypothek", "Zinsen pro Jahr", "Steuerersparnis Zinsabzug",
                    "Netto-Zinskosten", "Restliquidität", f"Ertrag {v.ertrag:g} %", "nach Steuern", "gegenüber 0 direkt",
                    "Belehnung"], zeilen, zahlen_ab=1, karten=True)
