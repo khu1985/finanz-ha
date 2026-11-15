@@ -30,7 +30,8 @@ MAX_UPLOAD = 16 * 1024 * 1024   # Grenze des Home-Assistant-Ingress pro Anfrage
 
 MIT_ABFRAGE = {"steuerzahlung", "simulationen", "lebensereignisse", "nachlass/fragebogen", "verfuegungen", "steuererklaerung", "bericht", "dokumente", "vorschlaege"}
 SEITEN = {
-    "": ("Übersicht", seiten.uebersicht),
+    "": ("Heute", seiten.heute),
+    "uebersicht": ("Übersicht", seiten.uebersicht),
     "vorsorge": ("Vorsorge", seiten.vorsorge),
     "steuern": ("Steuern", seiten.steuern),
     "wohnen": ("Wohnen", seiten.wohnen),

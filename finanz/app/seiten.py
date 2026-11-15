@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from tausender import TS  # noqa: E402
 
-from datetime import date
+from datetime import date, timedelta
 import re
 from html import escape
 
@@ -23,36 +23,38 @@ import szenarien as sz
 import vorsorge as vs
 import wohnen as wo
 
+# Hauptmenü: wenige Einträge; verwandte Seiten liegen als Reiter darunter (REITER)
 NAVIGATION = [
-    ("Überblick", [("", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")]),
-    ("Geld", [("budget", "Budget"), ("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen")]),
-    ("Steuern", [("steuern", "Steuern")]),
-    ("Zukunft", [("vorsorge", "Vorsorge"), ("finanzplan", "Finanzplan"), ("szenarien", "Szenarien"),
-                 ("lebensereignisse", "Lebensereignisse")]),
-    ("Familie & Wohnen", [("kinder", "Kinder"), ("wohnen", "Wohnen"), ("solar", "Solar & vZEV"), ("fahrzeuge", "Fahrzeuge"),
-                          ("versicherungen", "Versicherungen")]),
-    ("Absicherung", [("nachlass", "Nachlass"), ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")]),
-    ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
+    ("Heute", [("", "Heute")]),
+    ("Geld", [("budget", "Budget"), ("vermoegen", "Vermögen"), ("steuern", "Steuern")]),
+    ("Zukunft", [("vorsorge", "Vorsorge"), ("finanzplan", "Finanzplan")]),
+    ("Familie & Wohnen", [("wohnen", "Wohnen"), ("kinder", "Kinder"), ("versicherungen", "Versicherungen")]),
+    ("Absicherung", [("nachlass", "Nachlass")]),
+    ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen")]),
+]
+# Seiten, die als Reiter einer Seite erscheinen (erster Reiter = Menüeintrag)
+REITER = [
+    [("", "Heute"), ("uebersicht", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")],
+    [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
+    [("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen")],
+    [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
+    [("finanzplan", "Finanzplan"), ("szenarien", "Rechner"), ("simulationen", "Simulationen"),
+     ("lebensereignisse", "Lebensereignisse")],
+    [("wohnen", "Wohnen"), ("solar", "Solar & vZEV"), ("fahrzeuge", "Fahrzeuge")],
+    [("nachlass", "Nachlass"), ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")],
+    [("einstellungen", "Einstellungen"), ("datenqualitaet", "Datenqualität"), ("annahmen", "Annahmen"),
+     ("daten", "Daten & Import"), ("vorschlaege", "Vorschläge"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
 ]
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
-MENU_ALIAS = {"steuererklaerung": "steuern", "steuerzahlung": "steuern", "liquiditaet": "budget", "simulationen": "szenarien", "datenqualitaet": "einstellungen", "annahmen": "einstellungen", "protokoll": "einstellungen", "aenderungen": "einstellungen",
-              "daten": "einstellungen"}
-OFFEN_IMMER = {"Überblick"}
-# Seiten, die als Reiter einer Seite erscheinen
-REITER = [
-    [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
-    [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
-    [("szenarien", "Rechner"), ("simulationen", "Simulationen")],
-    [("einstellungen", "Einstellungen"), ("datenqualitaet", "Datenqualität"), ("annahmen", "Annahmen"),
-     ("daten", "Daten & Import"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
-]
+MENU_ALIAS = {p: gruppe[0][0] for gruppe in REITER for p, _ in gruppe[1:]}
+OFFEN_IMMER = {g for g, _ in NAVIGATION}          # wenige Einträge: alle Gruppen offen
 
 
 def reiter(pfad: str, warnungen: int = 0) -> str:
     for gruppe in REITER:
         if any(pfad == p for p, _ in gruppe):
             return '<div class="reiterleiste" role="navigation" aria-label="Reiter">' + "".join(
-                f'<a href="{p}" class="{"aktiv" if p == pfad else ""}"{" aria-current=\"page\"" if p == pfad else ""}>'
+                f'<a href="{p or "./"}" class="{"aktiv" if p == pfad else ""}"{" aria-current=\"page\"" if p == pfad else ""}>'
                 f'{escape(t)}' + (f'<span class="zahl" title="Warnungen heute">{warnungen}</span>'
                                   if p == "protokoll" and warnungen else "") + "</a>" for p, t in gruppe) + "</div>"
     return ""
@@ -172,6 +174,7 @@ details.woher>div p{margin:0 0 6px}details.woher ul.hinweise{margin:0 0 6px;padd
 .kpi details.woher b,.kpi details.woher strong{display:inline;font-size:inherit;font-weight:600;margin:0}
 .kpi details.woher span,.kpi details.woher small{display:inline;font-size:12px;margin:0}
 .kpis .kpi:has(details.woher[open]){grid-column:1/-1}
+p.kurz{font-size:17px;font-weight:600;margin:4px 0 14px;padding:10px 14px;border-left:4px solid var(--akzent);background:var(--karte);border-radius:6px}
 .vergleich-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}.vergleich-form .felder{display:flex;gap:12px;margin:0}
 .vergleich-form .felder label{width:150px}.vergleich-form .zeile{margin:0}
 .erklaer-zeile{margin:10px 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
@@ -639,6 +642,105 @@ def hinweisliste(punkte: list[str]) -> str:
 
 
 # ---------------------------------------------------------------- Übersicht
+
+def heute(k: dict, db) -> str:
+    """Startseite: was jetzt zählt – fällige Aufgaben, Bereiche zum Handeln, vier Kennzahlen."""
+    import erinnerungen as er
+    tag = date.today()
+    try:
+        ampeln = am.bewerten(k, db)
+    except Exception:  # noqa: BLE001
+        ampeln = []
+    handeln = sorted((a for a in ampeln if a.status in (am.ROT, am.GELB)), key=lambda a: -am.RANG[a.status])
+    rot = [a for a in handeln if a.status == am.ROT]
+    try:
+        aufgaben = [e for e in er.alle(k, db, tag) if e.tage(tag) <= 30]
+    except Exception:  # noqa: BLE001
+        aufgaben = []
+    dringend = [e for e in aufgaben if e.tage(tag) <= 7]
+
+    # Kurz: ein Satz
+    teile = []
+    if dringend:
+        teile.append(f"{len(dringend)} Aufgabe{'' if len(dringend) == 1 else 'n'} diese Woche")
+    if rot:
+        teile.append(f"{len(rot)} Bereich{'' if len(rot) == 1 else 'e'} zum Handeln")
+    if teile:
+        kurz = " und ".join(teile) + " – alles andere kann warten."
+    elif aufgaben or handeln:
+        kurz = "Nichts Dringendes. " + (f"{len(aufgaben)} Aufgabe{'' if len(aufgaben) == 1 else 'n'} im nächsten Monat"
+                                         if aufgaben else f"{len(handeln)} Bereich{'' if len(handeln) == 1 else 'e'} zum Prüfen") + "."
+    else:
+        kurz = "Alles im grünen Bereich – heute gibt es nichts zu tun."
+    html = [f'<p class="kurz">{escape(kurz)}</p>']
+
+    # Kennzahlen
+    kpis = []
+    try:
+        nv = vm.nettovermoegen(db)
+        verl = vm.verlauf(db)
+        vor = next((w for d, w in reversed(verl) if str(d)[:10] <= (tag - timedelta(days=30)).isoformat()), None)
+        plausibel = vor and abs(nv["total"] - vor) <= 0.2 * max(abs(nv["total"]), 1)   # sonst fehlten damals Saldi
+        diff = (f" ({'+' if nv['total'] - vor >= 0 else '−'}{chf(abs(nv['total'] - vor))} in 30 Tagen)"
+                if plausibel else "")
+        kpis.append(kpi(chf(nv["total"]), "Nettovermögen" + diff))
+        bank = sum(x["wert"] for x in vm.konten(db) if x["art"] == "bank" and not x.get("aufgeloest"))
+        kpis.append(kpi(chf(bank), "auf den Bankkonten"))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import steuerzahlung as sz_
+        posten = sz_.auswerten(k, db, tag)
+        offen = [p for p in posten if p.offen > 0]
+        naechst = min(offen, key=lambda p: p.faellig, default=None)
+        kpis.append(kpi(chf(sz_.offen_total(posten)), "Steuern offen" + (f" · nächste {naechst.faellig:%d.%m.%Y}"
+                                                                         if naechst else ""),
+                        "", am.ROT if any(p.faellig < tag and p.quelle != "definitiv" for p in offen) else ""))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        l_ = vs.pensionsluecke(k, vm.nettovermoegen(db)["frei"], tag.year)
+        kpis.append(kpi(chf(-l_.luecke / 12) if l_.luecke else "keine", f"Pensionslücke pro Monat ab {l_.jahr}",
+                        "schlecht" if l_.luecke else "gut", am.luecke_status(l_.luecke, l_.bedarf)))
+    except Exception:  # noqa: BLE001
+        pass
+    if kpis:
+        html.append(f'<div class="kpis">{"".join(kpis)}</div>')
+
+    # Aufgaben
+    if aufgaben:
+        zeilen = []
+        for e in aufgaben[:5]:
+            t = e.tage(tag)
+            wann = "überfällig" if t < 0 else "heute" if t == 0 else f"in {t} Tagen"
+            link = f' <a href="{e.seite}">öffnen</a>' if e.seite else ""
+            zeilen.append(
+                f'<li class="erinnerung">{licht(er.status(e, tag), wann)}<div><b>{escape(e.titel)}</b>'
+                f'<span class="leise"> · {wann}</span><br><span>{escape(e.text)}</span>{link}</div>'
+                f'<form method="post" action="erinnerungen/erledigt" data-status="Wird gespeichert …">'
+                f'<input type="hidden" name="schluessel" value="{escape(e.schluessel)}"><button class="zweit klein">'
+                'erledigt</button></form></li>')
+        mehr = (f'<p class="leise">{len(aufgaben) - 5} weitere im nächsten Monat – <a href="uebersicht">Übersicht</a>.</p>'
+                if len(aufgaben) > 5 else "")
+        html.append(karte("Zu tun in den nächsten 30 Tagen", f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>' + mehr))
+    # Bereiche
+    if handeln:
+        kacheln = "".join(
+            f'<a class="ampel-kachel {a.status}" href="{a.seite}">{licht(a.status)}<div><b>{escape(a.bereich)}</b>'
+            f'<span>{escape(a.text)}</span></div></a>' for a in handeln[:5])
+        gruen = sum(1 for a in ampeln if a.status == am.GRUEN)
+        html.append(karte("Wo es hakt", f'<div class="ampeln">{kacheln}</div>'
+                          + (f'<p class="leise">{len(handeln) - 5} weitere – ' if len(handeln) > 5 else '<p class="leise">')
+                          + f'{gruen} Bereiche in Ordnung. Alles im Detail: <a href="uebersicht">Übersicht</a>.</p>'))
+    # Warnungen der App (Saldi alt, Import-Ordner, Protokoll)
+    try:
+        chips = re.findall(r'<span class="chip warn">.*?</span>', statuszeile(k, db))
+        if chips:
+            html.append(f'<div class="status-zeile">{"".join(chips)}</div>')
+    except Exception:  # noqa: BLE001
+        pass
+    return "".join(html)
+
 
 def uebersicht(k: dict, db) -> str:
     jetzt = date.today().year

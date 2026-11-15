@@ -161,7 +161,7 @@ def test_bank_upload_und_erinnerung(server):
     inhalt = (Path(__file__).parent / "bank" / "raiffeisen.csv").read_bytes()
     code, ziel = _upload(f"{server}/vermoegen/bank", "datei", "raiffeisen.csv", inhalt)
     assert code == 303 and "Monatssaldi" in urllib.parse.unquote(ziel) and "f=1" not in ziel
-    html = urllib.request.urlopen(f"{server}/").read().decode()
+    html = urllib.request.urlopen(f"{server}/uebersicht").read().decode()
     assert "Anstehend" in html or "Erinnerungen" in html
     html = urllib.request.urlopen(f"{server}/szenarien").read().decode()
     assert "Hypothekar-Strategie" in html
@@ -512,7 +512,7 @@ def test_datenqualitaet_und_annahmen(server, daten):
     assert code == 303
     code, _ = _post(f"{server}/datenqualitaet/bestaetigen", {"alle": "1"})
     assert code == 303
-    html = urllib.request.urlopen(f"{server}/").read().decode()
+    html = urllib.request.urlopen(f"{server}/uebersicht").read().decode()
     assert 'class="woher"' in html
     html = urllib.request.urlopen(f"{server}/annahmen").read().decode()
     assert 'name="annahmen.teuerung"' in html and "Gesetzliche Werte" in html
@@ -563,3 +563,16 @@ def test_amortisationsvergleich_aktualisieren(server, daten):
     code, _ = _post(f"{server}/wohnen/amortisationsvergleich", {"zins": "50", "ertrag": "1"})
     assert konfig.laden()["wohnen"]["vergleich_zins"] == 2.25        # ungültig → nicht gespeichert
     assert urllib.request.urlopen(f"{server}/wohnen").status == 200
+
+
+def test_startseite_heute_und_menu(server, daten):
+    html = urllib.request.urlopen(f"{server}/").read().decode()
+    assert '<p class="kurz">' in html and "<h1>Heute</h1>" in html
+    assert 'href="uebersicht"' in html and 'class="reiterleiste"' in html
+    nav = html.split('<nav id="nav"', 1)[1].split("</nav>", 1)[0]
+    assert nav.count("<a ") <= 13 and "Sparen &amp; Anlegen" not in nav and "Simulationen" not in nav
+    # Seiten ohne Menüeintrag: Menüeintrag der Gruppe hervorgehoben, Reiter sichtbar
+    html = urllib.request.urlopen(f"{server}/sparplan").read().decode()
+    nav = html.split('<nav id="nav"', 1)[1].split("</nav>", 1)[0]
+    assert 'href="vermoegen" class="aktiv"' in nav and 'href="sparplan" class="aktiv"' in html
+    assert urllib.request.urlopen(f"{server}/uebersicht").status == 200

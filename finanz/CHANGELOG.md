@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.60.0 – 2026-11-15
+
+- **Neue Startseite «Heute»:** ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen, Bankkonten, offene Steuern,
+  Pensionslücke pro Monat); Aufgaben der nächsten 30 Tage (höchstens 5, mit «erledigt»); Bereiche mit gelber bzw.
+  roter Ampel (höchstens 5); Warnungen der App. Die bisherige Übersicht ist ein Reiter daneben.
+- **Schlankeres Menü:** 12 statt 22 Einträge, alle Gruppen offen. Verwandte Seiten sind Reiter: Heute (Übersicht,
+  Jahresbericht, Berater), Vermögen (Sparen & Anlegen), Finanzplan (Rechner, Simulationen, Lebensereignisse), Wohnen
+  (Solar & vZEV, Fahrzeuge), Nachlass (Verfügungen, Notfallordner), Einstellungen (… Vorschläge …).
+
 ## 0.59.1 – 2026-11-15
 
 - Amortisationsvergleich: Liquidität und verpfändete 3a/3b pro Person als eigene Tabelle (vorher in einer Zeile, die

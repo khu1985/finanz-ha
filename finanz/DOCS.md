@@ -60,17 +60,16 @@ personen:
 
 ## Bedienung
 
-- **Menü** in Gruppen nach der Frage, mit der man die App öffnet:
+- **Menü** mit wenigen Einträgen; verwandte Seiten liegen als Reiter darunter:
 
-  | Gruppe | Seiten |
+  | Gruppe | Menüeintrag (Reiter) |
   |---|---|
-  | Überblick | Übersicht, Jahresbericht, Berater |
-  | Geld | Budget, Vermögen, Sparen & Anlegen |
-  | Steuern | Steuern mit den Reitern «Planung und Dokumente» und «Steuererklärung» |
-  | Zukunft | Vorsorge, Finanzplan, Szenarien, Lebensereignisse |
-  | Familie & Wohnen | Kinder, Wohnen, Solar & vZEV, Fahrzeuge, Versicherungen |
-  | Absicherung | Nachlass, Verfügungen, Notfallordner |
-  | App | Dokumente, Einstellungen (mit den Reitern Daten & Import, Protokoll und Änderungen), Vorschläge |
+  | Heute | Heute (Übersicht, Jahresbericht, Berater) |
+  | Geld | Budget (Liquidität 12 Monate), Vermögen (Sparen & Anlegen), Steuern (Steuern bezahlen, Steuererklärung) |
+  | Zukunft | Vorsorge, Finanzplan (Rechner, Simulationen, Lebensereignisse) |
+  | Familie & Wohnen | Wohnen (Solar & vZEV, Fahrzeuge), Kinder, Versicherungen |
+  | Absicherung | Nachlass (Verfügungen, Notfallordner) |
+  | App | Dokumente, Einstellungen (Datenqualität, Annahmen, Daten & Import, Vorschläge, Protokoll, Änderungen) |
 
   Auf grossen Bildschirmen als Seitenleiste, auf dem Handy hinter dem Knopf «Menü» – dort sind die Gruppen durch
   Linien getrennt, die Seiten eingerückt und die Gruppen aufklappbar: offen ist der Überblick und die Gruppe der aktuellen Seite, ein Klick auf den Gruppentitel öffnet bzw.
@@ -97,7 +96,8 @@ personen:
 | Seite | Inhalt |
 |---|---|
 | Jahresbericht | Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
-| Übersicht | Ampeln, anstehende Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
+| Heute | Startseite: ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen mit Veränderung in 30 Tagen, Bankkonten, offene Steuern, Pensionslücke pro Monat); Aufgaben der nächsten 30 Tage (höchstens 5, mit «erledigt»); Bereiche mit gelber bzw. roter Ampel (höchstens 5); Warnungen der App |
+| Übersicht | Reiter unter «Heute»: alle Ampeln, alle anstehenden Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr, Fälligkeit, Vergütungs- und Verzugszins, Rechnungen und Zahlungen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Amortisationsstrategie (Varianten bis zur Pensionierung), Wert der Liegenschaft und Erneuerungsplanung |
