@@ -42,13 +42,14 @@ def _legende(namen: list[str]) -> str:
     return f'<div class="legende">{"".join(teile)}</div>' if len(namen) > 1 else ""
 
 
-def linie(serien: dict[str, list[tuple]], titel: str = "") -> str:
+def linie(serien: dict[str, list[tuple]], titel: str = "", sortieren: bool = True) -> str:
     punkte = [p for s in serien.values() for p in s]
     if not punkte:
         return '<p class="leer">Noch keine Daten.</p>'
     xs = list(dict.fromkeys(p[0] for s in serien.values() for p in s))
     try:
-        xs.sort()
+        if sortieren:
+            xs.sort()
     except TypeError:
         pass
     ys = [p[1] for p in punkte]
@@ -66,7 +67,7 @@ def linie(serien: dict[str, list[tuple]], titel: str = "") -> str:
                      f'<text class="achse" x="{L - 6}" y="{py(t) + 4:.1f}" text-anchor="end">{chf_kurz(t)}</text>')
     schritt = max(1, len(xs) // 6)
     marken = [i for i in range(len(xs)) if i % schritt == 0]
-    if marken and len(xs) - 1 - marken[-1] < schritt / 2 and len(marken) > 1:
+    if marken and len(xs) - 1 - marken[-1] <= schritt / 2 and len(marken) > 1:
         marken.pop()                                    # letzte Beschriftung nicht überlappen lassen
     if len(xs) - 1 not in marken:
         marken.append(len(xs) - 1)

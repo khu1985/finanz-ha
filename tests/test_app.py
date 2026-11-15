@@ -1,4 +1,5 @@
 import threading
+from datetime import date
 import urllib.error
 import re
 import urllib.parse
@@ -409,3 +410,22 @@ def test_vermoegen_pro_person(server, daten):
     teil = html[i:i + 6000]
     assert "gemeinsam" in teil and "st-teil" in teil and "Wertschriften, Krypto" in teil
     assert "nach Schulden" in teil and "je zur Hälfte" in teil
+
+
+def test_steuern_bezahlen_und_liquiditaet(server, daten):
+    j = str(date.today().year + 1)
+    html = urllib.request.urlopen(f"{server}/steuerzahlung").read().decode()
+    assert "Offene Steuern" in html and "Steuern bezahlen" in html and 'action="steuerzahlung/rechnung"' in html
+    code, ziel = _post(f"{server}/steuerzahlung/rechnung", {"jahr": j, "art": "kanton", "typ": "provisorisch",
+                                                            "betrag": "12000"})
+    assert code == 303 and ziel.startswith("/steuerzahlung")
+    code, _ = _post(f"{server}/steuerzahlung/zahlung", {"jahr": j, "art": "kanton", "datum": j + "-01-31",
+                                                       "betrag": "2000"})
+    assert code == 303
+    code, _ = _post(f"{server}/steuerzahlung/einstellungen", {"faellig_kanton": "31.10.", "raten": "monatlich"})
+    assert code == 303 and konfig.laden()["steuerzahlung"] == {"faellig_kanton": "10-31", "raten": "monatlich",
+                                                                "gemeinde_separat": False}
+    html = urllib.request.urlopen(f"{server}/steuerzahlung").read().decode()
+    assert f"31.10.{j}" in html and "10’000" in html.replace("'", "’")
+    html = urllib.request.urlopen(f"{server}/liquiditaet").read().decode()
+    assert "Kontostand in den nächsten 12 Monaten" in html and "Monat für Monat" in html and "(Rate)" in html

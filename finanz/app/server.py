@@ -46,6 +46,8 @@ SEITEN = {
     "solar": ("Solar & vZEV", seiten.solar),
     "kinder": ("Kinder", seiten.kinder),
     "steuererklaerung": ("Steuern", seiten.steuererklaerung),
+    "steuerzahlung": ("Steuern", seiten.steuerzahlung),
+    "liquiditaet": ("Budget und Cashflow", seiten.liquiditaet),
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
     "dokumente": ("Dokumente", seiten.dokumente),
@@ -757,6 +759,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._berater(pfad, form)
         if pfad.startswith("steuern"):
             return self._steuern(pfad, form)
+        if pfad.startswith("steuerzahlung/"):
+            return self._steuerzahlung(pfad, form)
         if pfad == "solar/speichern":
             k = konfig.laden()
             c = dict(k.get("solar") or {})
@@ -1018,6 +1022,51 @@ class Handler(BaseHTTPRequestHandler):
                     return (f"Für {form['person']} übernommen: " + ", ".join(erledigt) if erledigt
                             else "Keine Werte ausgewählt."), f"vorsorge/dokument/{did}"
                 return "Gespeichert.", f"vorsorge/dokument/{did}"
+        raise ValueError("Unbekannte Aktion.")
+
+    def _steuerzahlung(self, pfad: str, form: dict):
+        import steuerzahlung as sz
+        k = konfig.laden()
+
+        def jahr() -> int:
+            t = str(form.get("jahr") or "").strip()
+            if not t.isdigit():
+                raise ValueError("Steuerjahr angeben (z. B. 2026).")
+            return int(t)
+        aktion = pfad.split("/", 1)[1]
+        if aktion == "einstellungen":
+            c = dict(k.get("steuerzahlung") or {})
+            for feld in ("faellig_kanton", "faellig_gemeinde"):
+                t = str(form.get(feld) or "").strip()
+                if t and not sz._mmtt(t):
+                    raise ValueError(f"Datum «{t}» nicht erkannt – als TT.MM. eingeben.")
+                c[feld] = sz._mmtt(t) if t else ""
+            for feld in ("verguetungszins", "verzugszins", "gemeinde_anteil"):
+                t = str(form.get(feld) or "").strip()
+                c[feld] = vm.zahl(t) if t else None
+            c["raten"] = "monatlich" if form.get("raten") == "monatlich" else "einmal"
+            c["gemeinde_separat"] = bool(form.get("gemeinde_separat"))
+            k["steuerzahlung"] = {x: y for x, y in c.items() if y not in (None, "")}
+            konfig.speichern(k)
+            return "Einstellungen zum Steuerbezug gespeichert.", "steuerzahlung"
+        with db() as v:
+            if aktion == "rechnung":
+                sz.rechnung_speichern(v, jahr(), str(form.get("art")), str(form.get("typ")),
+                                      vm.zahl(str(form.get("betrag") or "")), str(form.get("faellig") or ""))
+                return "Rechnung gespeichert.", "steuerzahlung"
+            if aktion == "rechnung_loeschen":
+                sz.rechnung_loeschen(v, jahr(), str(form.get("art")), str(form.get("typ")))
+                return "Rechnung gelöscht.", "steuerzahlung"
+            if aktion == "zahlung":
+                sz.zahlung_speichern(v, jahr(), str(form.get("art")), str(form.get("datum") or ""),
+                                     vm.zahl(str(form.get("betrag") or "")), str(form.get("notiz") or ""))
+                return "Zahlung gespeichert.", "steuerzahlung"
+            if aktion == "zahlung_loeschen":
+                sz.zahlung_loeschen(v, int(form.get("id") or 0))
+                return "Zahlung gelöscht.", "steuerzahlung"
+            if aktion == "uebernehmen":
+                n = sz.buchungen_uebernehmen(k, v)
+                return f"{n} Steuerzahlung{'' if n == 1 else 'en'} übernommen.", "steuerzahlung"
         raise ValueError("Unbekannte Aktion.")
 
     def _steuern(self, pfad: str, form: dict):

@@ -99,12 +99,12 @@ personen:
 | Jahresbericht | Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Übersicht | Ampeln, anstehende Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
-| Steuern | Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
+| Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr, Fälligkeit, Vergütungs- und Verzugszins, Rechnungen und Zahlungen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Wert der Liegenschaft und Erneuerungsplanung |
 | Kinder | Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
 | Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Vermögen pro Person (Diagramm), Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
-| Budget | Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
+| Budget | Reiter «Liquidität 12 Monate»: Kontostand Monat für Monat mit Steuern und grossen Rechnungen, Tiefpunkt, Notreserve; Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Solar & vZEV | Werte der vZEV-App (Verkauf an Mieter, Eigenverbrauch, Einspeisung), Nutzen nach Unterhalt und Steuern, Investition mit Abzug und Rendite, Komponenten, offene Rechnungen |
 | Fahrzeuge | Wert (als Konto unter Vermögen), Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, MFK und Leasingende als Erinnerung |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
@@ -163,6 +163,26 @@ personen:
 - **Kapitalbezug PK und 3a:** alles im Pensionsjahr gegenüber gestaffelt, pro Steuereinheit.
 - **Vermögenssteuer:** Betrag aus der Veranlagung (`steuern.vermoegenssteuer`, auch aus Steuerdokumenten) oder
   steuerbares Vermögen × `kennzahlen.vermoegen_promille` ‰. «Steuern total pro Jahr» = Einkommens- plus Vermögenssteuer.
+
+
+### Steuern bezahlen
+
+Reiter unter Steuern: was pro Steuerjahr noch offen ist und bis wann.
+
+| Steuer | Rechnung | fällig | Zinsen 2026 |
+|---|---|---|---|
+| Staats- und Gemeindesteuer (BL) | provisorisch im Januar, definitiv nach der Veranlagung | 30. September des Steuerjahres | Vergütungszins 0,1 % auf Vorauszahlungen, Verzugszins 5 % |
+| Direkte Bundessteuer | nach dem Steuerjahr | 1. März des Folgejahres, zahlbar bis 31. März | Vergütungszins 0 %, Verzugszins 4 % |
+
+- **Betrag:** definitive vor provisorischer Rechnung vor Schätzung aus «Steuern heute». Rechnungen von Hand oder aus
+  hochgeladenen Steuerdokumenten (provisorische Rechnung, Veranlagungsverfügung).
+- **Bezahlt:** Zahlungen von Hand oder aus den Buchungen der Kategorie «Steuern» übernommen (Steuer und Jahr aus dem
+  Text geraten, Bundessteuer im ersten Halbjahr fürs Vorjahr).
+- **Ergebnis:** offen, Fälligkeit, aufgelaufener Verzugszins, Vergütungszins beim Bezahlen heute (verglichen mit dem
+  Zins des Sparkontos aus dem Anlage-Check), Betrag pro Monat bis zur Fälligkeit, Nachzahlung bzw. Rückerstattung.
+- **Einstellungen** (`steuerzahlung`): Fälligkeit der Staatssteuer, eigene Zinssätze, Raten im Liquiditätsplan,
+  Gemeinde mit eigener Rechnung (Anteil und Fälligkeit). Für andere Kantone kennt die App den Vergütungszins 2026;
+  die Fälligkeit (30. September angenommen) steht auf der provisorischen Rechnung.
 
 ## Wohnen
 
@@ -387,6 +407,24 @@ Einnahmen und Ausgaben laufen.
   | Telekom und Abos | Nachrichtenübermittlung |
   | Krankenkasse | Prämien Grund- und Zusatzversicherung |
   | Steuern, Gesundheit, Versicherungen, Spenden, Gebühren | gleichnamige Positionen |
+
+
+### Liquidität 12 Monate
+
+Reiter unter Budget: der Kontostand der Bankkonten Monat für Monat über die nächsten 12 Monate.
+
+- **Start:** heutige Saldi der Konten der Art «Bank» (unter Vermögen).
+- **Laufend:** Einnahmen, laufende Ausgaben und Sparen aus den Buchungen (ab 3 Monaten mit Lohn) – Einnahmen pro
+  Kalendermonat, wenn 12 Monate vorliegen, damit 13. Monatslohn und Bonus im richtigen Monat erscheinen. Ohne
+  Buchungen gilt das Sparpotenzial der Einstellungen als Überschuss vor den grossen Posten.
+- **Grosse Posten im Monat, in dem sie anfallen** (und aus dem Durchschnitt herausgenommen): offene Steuern laut
+  «Steuern bezahlen» (auf einmal oder in Monatsraten), Rechnungen, die nicht monatlich kommen (aus den Buchungen
+  erkannt), Versicherungsprämien ohne erkannte Buchung (jährlich im Monat des Vertragsbeginns), Verkehrssteuer
+  (Januar angenommen), Vignette und MFK der Fahrzeuge, geplante PK-Einkäufe, 3a im Dezember (wenn die Buchungen
+  keine Einzahlungen zeigen) und Lebensziele (mit `monat` im richtigen Monat, sonst Juli).
+- **Ergebnis:** Diagramm mit Notreserve, Tiefpunkt, Tabelle pro Monat und der Betrag, der pro Monat für Steuern und
+  grosse Rechnungen auf ein separates Konto gehört. Erinnerung, wenn der Stand in den nächsten drei Monaten unter
+  null oder unter die halbe Notreserve fällt.
 
 ## Versicherungen
 
@@ -638,6 +676,8 @@ Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfä
 | Autobahnvignette des neuen Jahres (mit Fahrzeugen) | Dezember | 31. Januar |
 | vZEV-Jahresabrechnung für die Steuererklärung (mit Solaranlage) | Januar bis März | 31. März |
 | Überfällige vZEV-Rechnungen der Mieter (aus der vZEV-App) | solange überfällig | sofort |
+| Steuern bezahlen (offener Betrag laut Rechnung oder Schätzung) | 45 Tage vorher bis 60 Tage danach | Fälligkeit (BL: 30. September; Bund: 31. März des Folgejahres) |
+| Kontostand knapp (Liquiditätsplan: unter null oder unter der halben Notreserve) | in den nächsten 3 Monaten | Monat des Engpasses |
 | Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
 
 **Frist der Steuererklärung.** Die App kennt die ordentliche Frist und die spätestmögliche Erstreckung aller
@@ -1202,6 +1242,7 @@ oder **Einstellungen → Experte**.
 | `ziele` | Lebensziele: `name`, `betrag`, `jahr`, `art` (muss/wunsch); der Ersatz von Fahrzeugen kommt automatisch dazu |
 | `finanzplan` | `bis_alter` (Standard 95), `kinderkosten` (`false` = Kinderkosten nicht einrechnen) |
 | `fahrzeuge` | pro Auto Name, Antrieb, Halter/in, Erstzulassung, Kauf, Wert, Kilometer, Verbrauch, Gewicht, Kosten, Leasing, Ersatz (siehe [Fahrzeuge](#fahrzeuge)) |
+| `steuerzahlung` | Bezug der Steuern: `faellig_kanton`, `faellig_gemeinde` (MM-TT), `verguetungszins`, `verzugszins`, `raten` (einmal/monatlich), `gemeinde_separat`, `gemeinde_anteil` (siehe [Steuern bezahlen](#steuern-bezahlen)) |
 | `solar` | Solaranlage und vZEV: Investition, Förderung, Komponenten, Stromkosten, Präfix der vZEV-Sensoren, Jahreswerte von Hand; `werte_vzev` füllt die App (siehe [Solar und vZEV](#solaranlage-und-vzev)) |
 | `ocr` | `sprachen` (Standard `deu`, z. B. `deu+fra`), `max_seiten` (Standard 6) |
 | `kennzahlen` | AHV, BVG, 3a, Bundessteuertarif und Abzüge, Tragbarkeit, Kinderabzüge, `vermoegen_promille`, `individualbesteuerung_ab` (Stand 2026) |

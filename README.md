@@ -76,7 +76,7 @@ flowchart TB
         direction TB
         S["server.py<br/>Webserver, Formulare, Uploads"]
         D["Dokumente<br/>bankimport, camt, budget, abos, versicherungen,<br/>dokumente, steuerdokumente, esteuerauszug,<br/>ocr, sichtung"]
-        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, dreia, waehrung, kinder, kinderphasen,<br/>fahrzeuge, solar, zuzug"]
+        K["Rechenkern<br/>vorsorge, steuern, wohnen, immobilie,<br/>vermoegen, dreia, waehrung, kinder, kinderphasen,<br/>fahrzeuge, solar, zuzug,<br/>steuerzahlung, liquiplan"]
         Z["Szenarien<br/>szenarien, finanzplan, teilzeit, fruehpension,<br/>hypothek, anlage, sparplan, wertschriften,<br/>krankenkasse, kkpraemien, marktzinsen, berater"]
         C["Checklisten und Bericht<br/>nachlass, fragebogen, verfuegungen,<br/>steuererklaerung, notfall, vorschlaege,<br/>bericht (Monatsstände)"]
         A["ampel.py, erinnerungen.py, sensoren.py<br/>Bewertung, Aufgaben, Sensoren;<br/>zwischenspeicher, leistung, usability"]
@@ -159,6 +159,8 @@ flowchart TB
 | `finanz/app/notfall.py` | Notfallordner, Meldeliste für den Todesfall |
 | `finanz/app/solar.py` | Solaranlage und vZEV: Sensoren der vZEV-App, Rendite, Steuern, Komponenten, Finanzplan |
 | `finanz/app/fahrzeuge.py` | Fahrzeuge: Wert, Kosten, Leasing, Ersatz, MFK |
+| `finanz/app/steuerzahlung.py` | Steuern bezahlen: Rechnungen, Zahlungen, offene Beträge, Fälligkeit, Zinsen |
+| `finanz/app/liquiplan.py` | Liquiditätsplan: Kontostand Monat für Monat über 12 Monate |
 | `finanz/app/kinder.py` | Kinder: Abzüge, Gutschriften, Zulagen, Zeitachse |
 | `finanz/app/kinderphasen.py` | Lebenslauf der Kinder: Phasen von Kita bis Studium, eigene Kosten und Vergleichswerte, Kosten pro Jahr, Wirkung auf den Finanzplan |
 | `finanz/app/zuzug.py` | Zuzug in die Schweiz: AHV-Jahre, PK-Einkaufsgrenze, Quellensteuer, Fristen |
@@ -232,6 +234,8 @@ flowchart TD
     PLAN -. übernehmen .-> EK[("pk.einkauf_geplant")]
     AB --> TZ["Teilzeit-Rechner<br/>Nettolohn, Steuern, Kita"]
     T --> HV["Vergleich verheiratet ↔ Konkubinat<br/>mit und ohne Individualbesteuerung"]
+    T --> BZ["Steuern bezahlen<br/>Rechnung oder Schätzung − Zahlungen;<br/>Fälligkeit, Vergütungs- und Verzugszins"]
+    BZ --> LQ["Liquiditätsplan 12 Monate"]
     T --> CL["Checkliste Steuererklärung<br/>Belege, Saldi per 31.12., Vorjahr"]
 ```
 
@@ -348,6 +352,8 @@ flowchart TD
     FZ["Fahrzeuge<br/>MFK, Leasingende, Vignette im Dezember"] -.-> UE
     PV["Januar–März<br/>vZEV-Jahresabrechnung für die Steuererklärung"] -.-> SE
     JB["Dezember–Januar<br/>Jahresbericht: Vergleich mit dem Vorjahr, Massnahmen"] -.-> J
+    ST["Januar und März<br/>provisorische Steuerrechnung erfassen;<br/>Staatssteuer fällig 30.9. (BL), Bundessteuer 31.3."] -.-> UE
+    LQ["laufend<br/>Liquiditätsplan: Engpass in den nächsten 3 Monaten"] -.-> UE
     LG["rund 1 Jahr vor fälligen Erneuerungen<br/>Offerten, Förderbeiträge, Erneuerungsfonds"] -.-> UE
 ```
 

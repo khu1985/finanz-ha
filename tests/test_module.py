@@ -2213,3 +2213,59 @@ def test_solar_in_finanzplan_steuererklaerung_und_erneuerung(k, daten):
     c = se.erstellen(k, db, 2025, date(2026, 2, 1))
     schl = {x.schluessel for x in c.punkte}
     assert {"solar_ertrag", "solar_investition"} <= schl
+
+
+def test_steuerzahlung_offen_faellig_zinsen(k):
+    import steuerzahlung as sz
+    import budget as bu
+    db = vm.verbinden(":memory:")
+    k["haushalt"]["kanton"] = "BL"
+    heute = date(2026, 11, 15)
+    assert sz.faellig(k, "kanton", 2026) == (date(2026, 9, 30), False)
+    assert sz.faellig(k, "bund", 2026) == (date(2027, 3, 31), False) and sz.zinsen(k, "kanton") == (0.1, 5.0)
+    # ohne Daten: nur Künftiges, geschätzt aus «Steuern heute»
+    p = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}
+    assert set(p) == {(2026, "bund"), (2027, "kanton")} and p[(2027, "kanton")].quelle == "geschätzt"
+    # provisorische Rechnung 2026, teilweise bezahlt → überfällig mit Verzugszins
+    sz.rechnung_speichern(db, 2026, "kanton", "provisorisch", 20000)
+    sz.zahlung_speichern(db, 2026, "kanton", "2026-09-25", 15000)
+    x = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}[(2026, "kanton")]
+    assert x.offen == 5000 and x.verzug_bisher == round(5000 * 0.05 * 46 / 365) and "Verzugszins" in x.hinweise[0]
+    # definitive Rechnung: Differenz zur provisorischen
+    sz.rechnung_speichern(db, 2026, "kanton", "definitiv", 19000)
+    x = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}[(2026, "kanton")]
+    assert x.soll == 19000 and x.differenz == -1000 and x.offen == 4000
+    # Zahlungen aus Buchungen: Steuer und Jahr geraten, nur einmal übernommen
+    bu.speichern(db, "Privatkonto", [("2026-03-20", -9000.0, "Steuerverwaltung Bundessteuer"),
+                                     ("2026-06-30", -4000.0, "Steuerverwaltung BL Staatssteuer 2026")], k)
+    neu = sz.aus_buchungen(k, db)
+    assert {(b["art"], b["jahr"]) for b in neu} == {("bund", 2025), ("kanton", 2026)}
+    assert sz.buchungen_uebernehmen(k, db) == 2 and sz.aus_buchungen(k, db) == []
+    x = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}[(2026, "kanton")]
+    assert x.offen == 0
+    # künftige Fälligkeit: Betrag pro Monat zum Zurücklegen
+    y = {(x.jahr, x.art): x for x in sz.auswerten(k, db, heute)}[(2027, "kanton")]
+    assert y.monatlich == round(y.offen / 11)
+    assert any(e.seite == "steuerzahlung" for e in sz.erinnerungen(k, db, date(2027, 9, 1)))
+
+
+def test_liquiditaetsplan(k):
+    import liquiplan as lp
+    import steuerzahlung as sz
+    db = vm.verbinden(":memory:")
+    k["haushalt"]["kanton"] = "BL"
+    kid = vm.konto_anlegen(db, "Muster Privat")
+    vm.saldo_setzen(db, kid, "2026-10-31", 30000)
+    sz.rechnung_speichern(db, 2027, "kanton", "provisorisch", 24000)
+    k["ziele"] = [{"name": "Muster Reise", "betrag": 8000, "jahr": 2027, "monat": 5}]
+    p = lp.rechnen(k, db, date(2026, 11, 15))
+    assert len(p.monate) == 12 and p.start == 30000 and p.quelle == "einstellungen"
+    namen = {(m.monat.month, x.name) for m in p.monate for x in m.posten}
+    assert (9, "Staats- und Gemeindesteuer 2027") in namen and (5, "Muster Reise") in namen
+    assert all(m.ende == m.start + m.einnahmen + m.laufend + m.sparen + m.einzeln for m in p.monate)
+    assert p.monate[1].start == p.monate[0].ende and p.zuruecklegen > 0
+    # Monatsraten statt auf einmal
+    k["steuerzahlung"] = {"raten": "monatlich"}
+    p = lp.rechnen(k, db, date(2026, 11, 15))
+    raten = [x for m in p.monate for x in m.posten if x.name.startswith("Staats") and "Rate" in x.name]
+    assert len(raten) == 11 and round(sum(-x.betrag for x in raten)) == 24000

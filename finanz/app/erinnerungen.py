@@ -157,6 +157,11 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     erg.extend(fz.erinnerungen(k, heute))
     import solar
     erg.extend(solar.erinnerungen(k, db, heute))
+    for modul in ("steuerzahlung", "liquiplan"):
+        try:
+            erg.extend(__import__(modul).erinnerungen(k, db, heute))
+        except Exception as e_:  # noqa: BLE001
+            LOG.warning("Erinnerungen %s: %s", modul, e_)
     import immobilie as im
     erg.extend(im.erinnerungen(k, heute))
 

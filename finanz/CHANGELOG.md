@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.49.0 – 2026-11-15
+
+- **Liquidität 12 Monate** (neuer Reiter unter Budget): Kontostand der Bankkonten Monat für Monat mit Steuern,
+  Rechnungen, die nicht monatlich kommen, Versicherungsprämien, Fahrzeugkosten, PK-Einkäufen, 3a und Lebenszielen im
+  richtigen Monat; Tiefpunkt, Vergleich mit der Notreserve, Betrag pro Monat zum Zurücklegen und eine Erinnerung bei
+  einem Engpass in den nächsten drei Monaten.
+- **Steuern bezahlen** (neuer Reiter unter Steuern): offene Beträge je Steuerjahr aus provisorischer bzw. definitiver
+  Rechnung (von Hand oder aus den Steuerdokumenten) oder Schätzung, Zahlungen von Hand oder aus den Buchungen,
+  Fälligkeit (BL 30. September, Bund 31. März des Folgejahres), Verzugszins, Vergütungszins für Vorauszahlungen im
+  Vergleich zum Sparkonto, Nachzahlung bzw. Rückerstattung, Erinnerung vor der Fälligkeit. Gemeinde mit eigener
+  Rechnung einstellbar.
+- Liniendiagramme: letzte Beschriftung der x-Achse überlappt nicht mehr.
+
 ## 0.48.0 – 2026-11-14
 
 - **Vermögen pro Person:** neue Karte oben auf «Vermögen» mit gestapeltem Balken je Person und «gemeinsam» (Konten,

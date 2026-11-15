@@ -35,12 +35,13 @@ NAVIGATION = [
     ("App", [("dokumente", "Dokumente"), ("einstellungen", "Einstellungen"), ("vorschlaege", "Vorschläge")]),
 ]
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
-MENU_ALIAS = {"steuererklaerung": "steuern", "protokoll": "einstellungen", "aenderungen": "einstellungen",
+MENU_ALIAS = {"steuererklaerung": "steuern", "steuerzahlung": "steuern", "liquiditaet": "budget", "protokoll": "einstellungen", "aenderungen": "einstellungen",
               "daten": "einstellungen"}
 OFFEN_IMMER = {"Überblick"}
 # Seiten, die als Reiter einer Seite erscheinen
 REITER = [
-    [("steuern", "Planung und Dokumente"), ("steuererklaerung", "Steuererklärung")],
+    [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
+    [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
     [("einstellungen", "Einstellungen"), ("daten", "Daten & Import"), ("protokoll", "Protokoll"),
      ("aenderungen", "Änderungen")],
 ]
@@ -207,7 +208,7 @@ label.wahl input{width:auto;margin-top:3px;flex:none}
 .hbalken{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:baseline;padding:6px 0}
 .hb-spur{grid-column:1/-1;background:var(--linie);border-radius:4px;height:10px;overflow:hidden}
 .hb-wert{display:block;height:100%;background:var(--akzent);border-radius:4px}
-.hb-zahl{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.hb-zahl small{color:var(--leise)}
+.zeilen-posten{display:block}.hb-zahl{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.hb-zahl small{color:var(--leise)}
 .st-spur{display:flex;height:16px;gap:1px;background:transparent}.st-teil{display:block;height:100%}
 .st-teil:first-child{border-radius:4px 0 0 4px}.st-teil:last-child{border-radius:0 4px 4px 0}
 table.matrix td,table.matrix th{white-space:nowrap}
@@ -4349,4 +4350,168 @@ def verfuegungen(k: dict, db, q: dict | None = None) -> str:
                  f'{vermerk}</div>'
                  '<p class="leise nicht-drucken">Platzhalter in [eckigen Klammern] beim Abschreiben ersetzen.</p></section>')
     teile.append(hinweis)
+    return "".join(teile)
+
+
+# ---------------------------------------------------------------- Steuern bezahlen
+
+def steuerzahlung(k: dict, db) -> str:
+    """Steuern bezahlen: offene Beträge je Steuerjahr, Fälligkeit, Zinsen, Rechnungen und Zahlungen."""
+    import steuerzahlung as sz
+    heute = date.today()
+    posten = sz.auswerten(k, db, heute)
+    offen = [p for p in posten if p.offen > 0]
+    naechste = min((p for p in offen if p.faellig >= heute), key=lambda p: p.faellig, default=None)
+    ueber = [p for p in offen if p.faellig < heute]
+    teile = ['<div class="kpis">' + "".join([
+        kpi(chf(sz.offen_total(posten)), "offen insgesamt", "warn" if ueber else "",
+            am.ROT if any(p.quelle != "definitiv" for p in ueber) else (am.GELB if offen else am.GRUEN)),
+        kpi(f"{naechste.faellig:%d.%m.%Y}" if naechste else "–",
+            f"nächste Fälligkeit ({naechste.name} {naechste.jahr})" if naechste else "nächste Fälligkeit"),
+        kpi(chf(sum(p.monatlich for p in offen)), "pro Monat zurücklegen bis zur Fälligkeit"),
+    ]) + "</div>"]
+    zeilen = []
+    for p in posten:
+        if p.offen > 0 and p.faellig < heute:
+            st_ = licht(am.ROT if p.quelle != "definitiv" else am.GELB, "überfällig")
+        elif p.offen > 0:
+            st_ = licht(am.GELB if (p.faellig - heute).days <= 45 else am.GRAU, "offen")
+        else:
+            st_ = licht(am.GRUEN, "bezahlt")
+        zeilen.append([str(p.jahr), escape(p.name), f"{chf(p.soll)} <small class=\"leise\">{escape(p.quelle)}</small>",
+                       chf(p.bezahlt), f"{st_} {chf(p.offen)}",
+                       f"{p.faellig:%d.%m.%Y}" + (' <small class="leise">angenommen</small>' if p.faellig_angenommen else ""),
+                       "<br>".join(escape(h) for h in p.hinweise)])
+    fae_j, _ = sz.faellig(k, "kanton", heute.year)
+    if fae_j < heute and not any(p.jahr == heute.year and p.art == "kanton" for p in posten):
+        zeilen.append(["", "", "", "", "", "", f'<span class="leise">Für {heute.year} sind noch keine Rechnung und keine '
+                       f'Zahlung der Staatssteuer erfasst (fällig war sie am {fae_j:%d.%m.%Y}) – unten eintragen bzw. aus '
+                       'den Buchungen übernehmen, dann rechnet die App Nachzahlung oder Rückerstattung.</span>'])
+    teile.append(karte("Offene Steuern", tabelle(["Jahr", "Steuer", "Betrag", "bezahlt", "offen", "fällig", "Hinweis"],
+                                                 zeilen, zahlen_ab=2, karten=True) if zeilen else
+                       '<p class="leer">Noch nichts erfasst – Rechnung oder Zahlung unten eintragen.</p>'))
+    arten = "".join(f'<option value="{a}">{escape(sz.bezeichnung(k, a))}</option>' for a in sz.arten(k))
+    typen = "".join(f'<option value="{t}">{escape(n)}</option>' for t, n in sz.TYPEN.items())
+    jahr_std = heute.year if heute.month >= 2 else heute.year - 1
+    re_ = sz.rechnungen(k, db)
+    rz = []
+    for (j, a, t), r in sorted(re_.items(), reverse=True):
+        knopf = (f'<form method="post" action="steuerzahlung/rechnung_loeschen" class="inline"><input type="hidden" '
+                 f'name="jahr" value="{j}"><input type="hidden" name="art" value="{a}"><input type="hidden" name="typ" '
+                 f'value="{t}"><button class="zweit klein">Löschen</button></form>' if r["quelle"] == "eigene Angabe" else
+                 '<a href="steuern#dokumente">Dokument</a>')
+        rz.append([str(j), escape(sz.bezeichnung(k, a)), escape(sz.TYPEN[t]), chf(r["betrag"]),
+                   escape(r.get("faellig") or ""), knopf])
+    teile.append(karte("Rechnungen", (tabelle(["Jahr", "Steuer", "Art", "Betrag", "fällig", ""], rz, zahlen_ab=3)
+                                       if rz else "") + f"""
+<form method="post" action="steuerzahlung/rechnung"><div class="felder">
+<label>Steuerjahr<input name="jahr" inputmode="numeric" value="{jahr_std}"></label>
+<label>Steuer<select name="art">{arten}</select></label><label>Art<select name="typ">{typen}</select></label>
+<label>Betrag (CHF)<input name="betrag" inputmode="decimal" required></label>
+<label>Fällig am (leer = Standard)<input name="faellig" type="date"></label></div>
+<div class="zeile"><button>Rechnung speichern</button></div></form>
+<p class="leise">Hochgeladene provisorische Rechnungen und Veranlagungsverfügungen unter <a href="steuern">Steuern</a>
+werden automatisch berücksichtigt; eine eigene Angabe hat Vorrang.</p>"""))
+    neu = sz.aus_buchungen(k, db)
+    zz = [[f"{date.fromisoformat(z['datum']):%d.%m.%Y}", str(z["jahr"]), escape(sz.bezeichnung(k, z["art"])),
+           chf(z["betrag"]), escape(z["notiz"]),
+           f'<form method="post" action="steuerzahlung/zahlung_loeschen" class="inline"><input type="hidden" name="id" '
+           f'value="{z["id"]}"><button class="zweit klein">Löschen</button></form>'] for z in sz.zahlungen(db)]
+    uebernehmen = (f'<form method="post" action="steuerzahlung/uebernehmen" class="zeile"><button class="zweit">'
+                   f'{len(neu)} Steuerzahlung{"" if len(neu) == 1 else "en"} aus den Buchungen übernehmen</button></form>'
+                   '<p class="leise">Steuerjahr und Steuer werden aus dem Buchungstext geraten (Bundessteuer im ersten '
+                   'Halbjahr fürs Vorjahr) – danach in der Liste prüfen.</p>' if neu else "")
+    teile.append(karte("Zahlungen", uebernehmen + (tabelle(["Datum", "Jahr", "Steuer", "Betrag", "Notiz", ""], zz,
+                                                           zahlen_ab=3, filter=len(zz) > 8) if zz else "") + f"""
+<form method="post" action="steuerzahlung/zahlung"><div class="felder">
+<label>Steuerjahr<input name="jahr" inputmode="numeric" value="{heute.year}"></label>
+<label>Steuer<select name="art">{arten}</select></label>
+<label>Datum<input name="datum" type="date" value="{heute.isoformat()}" required></label>
+<label>Betrag (CHF)<input name="betrag" inputmode="decimal" required></label>
+<label>Notiz<input name="notiz"></label></div>
+<div class="zeile"><button>Zahlung speichern</button></div></form>"""))
+    c = sz.cfg(k)
+    vg, vz = sz.zinsen(k, "kanton")
+    fae, angenommen = sz.faellig(k, "kanton", heute.year)
+
+    def wert(x):
+        return "" if c.get(x) in (None, "") else escape(str(c.get(x)))
+    raten = str(c.get("raten") or "einmal")
+    teile.append(karte("Einstellungen zum Bezug", f"""
+<form method="post" action="steuerzahlung/einstellungen"><div class="felder">
+<label>Fälligkeit Staatssteuer (TT.MM.; jetzt {fae:%d.%m.}{" angenommen" if angenommen else ""})
+<input name="faellig_kanton" value="{wert("faellig_kanton")}" placeholder="30.09."></label>
+<label>Vergütungszins Vorauszahlung % (jetzt {vg:g})<input name="verguetungszins" inputmode="decimal" value="{wert("verguetungszins")}"></label>
+<label>Verzugszins % (jetzt {vz:g})<input name="verzugszins" inputmode="decimal" value="{wert("verzugszins")}"></label>
+<label>Im Liquiditätsplan<select name="raten"><option value="einmal"{" selected" if raten != "monatlich" else ""}>auf einmal bei Fälligkeit</option>
+<option value="monatlich"{" selected" if raten == "monatlich" else ""}>in Monatsraten bis zur Fälligkeit</option></select></label>
+<label class="entfernen"><input type="checkbox" name="gemeinde_separat" value="1"{" checked" if c.get("gemeinde_separat") else ""}>
+Gemeinde stellt eine eigene Rechnung</label>
+<label>Anteil Gemeinde an Staats- und Gemeindesteuer %<input name="gemeinde_anteil" inputmode="decimal" value="{wert("gemeinde_anteil")}"></label>
+<label>Fälligkeit Gemeindesteuer (TT.MM.)<input name="faellig_gemeinde" value="{wert("faellig_gemeinde")}"></label>
+</div><div class="zeile"><button>Speichern</button></div></form>"""))
+    links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in sz.QUELLEN)
+    teile.append(karte("So funktioniert der Bezug", (
+        '<ul class="hinweise"><li>Kanton: Die provisorische Rechnung kommt zu Beginn des Steuerjahres (BL: im Januar); '
+        'fällig ist sie im Steuerjahr selbst (BL: 30. September). Danach läuft Verzugszins, vorher gibt es auf '
+        'Vorauszahlungen Vergütungszins.</li><li>Bund: Die direkte Bundessteuer ist am 1. März des Folgejahres fällig '
+        'und innert 30 Tagen zu zahlen; 2026 gibt es auf Vorauszahlungen keinen Vergütungszins (0 %).</li>'
+        '<li>Mit der definitiven Rechnung (nach der Veranlagung) folgt die Schlussabrechnung: Nachzahlung oder '
+        'Rückerstattung samt Zins.</li><li>Ohne Rechnung schätzt die App den Betrag aus <a href="steuern">Steuern '
+        'heute</a>.</li></ul>' f'<p class="leise">Quellen:</p><ul class="hinweise">{links}</ul>')))
+    return "".join(teile)
+
+
+# ---------------------------------------------------------------- Liquidität
+
+def liquiditaet(k: dict, db) -> str:
+    """Liquiditätsplan: Kontostand Monat für Monat über die nächsten 12 Monate."""
+    import liquiplan as lp
+    p = lp.rechnen(k, db)
+    t = p.tief
+    status = am.ROT if t.ende < 0 else (am.GELB if p.reserve and t.ende < p.reserve else am.GRUEN)
+    teile = ['<div class="kpis">' + "".join([
+        kpi(chf(p.start), "auf den Bankkonten heute" + (f" (Saldi {date.fromisoformat(p.stand_vom):%d.%m.})"
+                                                         if p.stand_vom else "")),
+        kpi(chf(t.ende), f"Tiefpunkt im {t.name}", "schlecht" if t.ende < 0 else "", status),
+        kpi(chf(p.monate[-1].ende), f"Ende {p.monate[-1].name}"),
+        kpi(chf(p.zuruecklegen), "pro Monat für grosse Rechnungen zurücklegen"),
+    ]) + "</div>"]
+    serien = {"Bankkonten am Monatsende": [(m.name, round(m.ende)) for m in p.monate]}
+    if p.reserve:
+        serien["Notreserve"] = [(m.name, p.reserve) for m in p.monate]
+    teile.append(karte("Kontostand in den nächsten 12 Monaten", dg.linie(serien, "Liquiditätsplan", sortieren=False)
+                       + hinweisliste(p.hinweise)))
+    zeilen = []
+    for m in p.monate:
+        gross = sorted((x for x in m.posten), key=lambda x: x.betrag)
+        details = "".join(
+            f'<span class="zeilen-posten"><a href="{x.seite}">{escape(x.name)}</a> {chf(x.betrag)}'
+            + (' <small class="leise">geschätzt</small>' if x.geschaetzt else "") + "</span>" for x in gross)
+        details = f"<span>{details}</span>" if details else ""
+        zeilen.append([m.name, chf(m.einnahmen), chf(m.laufend + m.sparen), chf(m.einzeln), details or "–",
+                       f'<b class="{"schlecht" if m.ende < 0 else ("warn" if p.reserve and m.ende < p.reserve else "")}">'
+                       f'{chf(m.ende)}</b>'])
+    kopf_ein = "Einnahmen" if p.quelle == "buchungen" else "Überschuss vor grossen Posten"
+    teile.append(karte("Monat für Monat", tabelle(["Monat", kopf_ein, "laufend und Sparen", "einzeln",
+                                                   "grosse Posten", "Stand Ende"], zeilen, zahlen_ab=1, karten=True)))
+    rubriken: dict[str, float] = {}
+    for m in p.monate:
+        for x in m.posten:
+            rubriken[x.rubrik] = rubriken.get(x.rubrik, 0.0) - x.betrag
+    if rubriken:
+        teile.append(karte("Grosse Posten in 12 Monaten", dg.balken_liste(sorted(rubriken.items(), key=lambda x: -x[1]))
+                           + '<p class="leise">Steuern laut <a href="steuerzahlung">Steuern bezahlen</a>; Rechnungen, '
+                             'die nicht monatlich kommen, aus den Buchungen erkannt (<a href="budget">Budget</a>); '
+                             'Versicherungen ohne erkannte Buchung jährlich im Monat des Vertragsbeginns.</p>'))
+    teile.append(karte("So rechnet der Plan", (
+        f'<p>Start: Saldi der Bankkonten unter <a href="vermoegen">Vermögen</a>. '
+        + ("Einnahmen, laufende Ausgaben und Sparen aus den importierten Buchungen – Einnahmen pro Kalendermonat, wenn "
+           "12 Monate vorliegen (13. Monatslohn im richtigen Monat). Steuern und die grossen Posten sind aus dem "
+           "Durchschnitt herausgenommen und erscheinen im Monat, in dem sie anfallen."
+           if p.quelle == "buchungen" else
+           "Ohne Buchungen: Sparpotenzial aus den Einstellungen als Überschuss pro Monat, die grossen Posten im Monat, "
+           "in dem sie anfallen.")
+        + ' Lebensziele erscheinen mit <code>monat</code> im richtigen Monat, sonst im Juli. Notreserve laut '
+          '<a href="sparplan">Sparen &amp; Anlegen</a>.</p>')))
     return "".join(teile)
