@@ -339,6 +339,25 @@ class Vergleich:
     personen: list[tuple[str, float, float]] = field(default_factory=list)   # (Name, Liquidität, indirekt)
     max_gleich: float | None = None  # höchste direkte Amortisation bei gleichem Anteil pro Person
     hinweise: list[str] = field(default_factory=list)
+    grenz_personen: list[tuple[str, float, float, float]] = field(default_factory=list)  # (Name, heute %, Jahr %, Einkauf)
+    pro_100k: float = 0.0            # Vorteil pro CHF 100'000 direkt und Jahr
+    praktisch_gleich: bool = False   # Unterschied unter 0.1 % pro Jahr
+
+
+def grenzsatz(k: dict, person: str | None, einkauf: float = 0.0) -> float:
+    """Grenzsteuersatz (0–1) einer Person bzw. des Haushalts, nachdem `einkauf` (PK-Einkauf) abgezogen ist."""
+    import steuern as st
+    try:
+        a = st.ersparnis_abzug(k, einkauf, person)["total"]
+        b = st.ersparnis_abzug(k, einkauf + 1000, person)["total"]
+        return max(0.0, min(0.6, (b - a) / 1000))
+    except Exception:  # noqa: BLE001
+        return float(st.steuern_heute(k).get("grenz_total") or 30) / 100
+
+
+def _einkauf_im(k: dict, name: str | None, jahr: int) -> float:
+    return sum(float(e.get("betrag") or 0) for p in k["personen"] if name is None or p["name"] == name
+               for e in p["pk"].get("einkauf_geplant") or [] if int(e.get("jahr") or 0) == jahr)
 
 
 def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = None,
@@ -365,8 +384,20 @@ def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = Non
     zins = zins or _z(w.get("hypothek_zins"), 1.5)
     ertrag = _z(w.get("vergleich_ertrag")) if ertrag is None else ertrag
     ertrag = ertrag or float(cfg["rendite"].get("tief", 2.0))
-    grenz = float(st.steuern_heute(k).get("grenz_total") or 30) / 100
     abschaffung = int(_z(k["kennzahlen"].get("eigenmietwert_abschaffung"), 2029))
+    jahr_danach = a.faellig.year + 1
+    konk = k["haushalt"].get("zivilstand", "verheiratet") != "verheiratet" and len(k["personen"]) > 1
+    grenz_personen = []
+    if konk:
+        for p in k["personen"]:
+            e_ = _einkauf_im(k, p["name"], jahr_danach)
+            grenz_personen.append((p["name"], grenzsatz(k, p["name"]) * 100, grenzsatz(k, p["name"], e_) * 100, e_))
+        grenz = sum(g for _, _, g, _ in grenz_personen) / len(grenz_personen) / 100   # Zinsen je zur Hälfte
+    else:
+        e_ = _einkauf_im(k, None, jahr_danach)
+        grenz = grenzsatz(k, None, e_)
+        if e_:
+            grenz_personen.append(("Haushalt", grenzsatz(k, None) * 100, grenz * 100, e_))
     try:
         abzug_nachher = wo.eigenmietwert_wegfall(k)["zins_quote"] / 100
     except Exception:  # noqa: BLE001
@@ -376,6 +407,7 @@ def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = Non
     liquid = float(a.liquiditaet_heute + a.sparen - a.einkaeufe)
     reserve = float(a.reserve)
     netto_ertrag = (ertrag / 100) * (1 - grenz / 3)      # ⅓ des Ertrags steuerbar (Zins/Dividende), Rest Kursgewinn
+    g_person = {n: g / 100 for n, _, g, _ in grenz_personen}
 
     # Konkubinat: jede Person amortisiert gleich viel aus eigenem Geld
     personen = []
@@ -401,9 +433,16 @@ def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = Non
         anl = liquid - x
         e = max(0.0, anl) * ertrag / 100
         ueber = ""
+        e_netto = max(0.0, anl) * netto_ertrag
         if personen:
-            ueber = next((nm for nm, l_p, _ in personen if x / len(personen) > l_p - reserve / len(personen) + 1), "")
-        return Zeile(x, total, rest, z, sp, z - sp, anl, e, max(0.0, anl) * netto_ertrag, 0.0,
+            n = len(personen)
+            ueber = next((nm for nm, l_p, _ in personen if x / n > l_p - reserve / n + 1), "")
+            rest_p = {nm: max(0.0, l_p - x / n) for nm, l_p, _ in personen}
+            summe = sum(rest_p.values())
+            if summe and g_person:     # Ertrag wird bei der Person versteuert, der das Geld gehört
+                g_eff = sum(r * g_person.get(nm, grenz) for nm, r in rest_p.items()) / summe
+                e_netto = max(0.0, anl) * (ertrag / 100) * (1 - g_eff / 3)
+        return Zeile(x, total, rest, z, sp, z - sp, anl, e, e_netto, 0.0,
                      rest / wert * 100 if wert else 0.0, ueber)
 
     grenze = max(0.0, min(liquid - reserve, hypothek - indirekt))
@@ -413,9 +452,21 @@ def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = Non
     for z_ in zeilen:
         z_.vorteil = (basis.netto_zinsen - basis.ertrag_netto) - (z_.netto_zinsen - z_.ertrag_netto)
     hinweise = []
+    pro_100k = zeilen[-1].vorteil / (zeilen[-1].direkt / 100_000) if len(zeilen) > 1 and zeilen[-1].direkt else 0.0
+    praktisch_gleich = abs(pro_100k) < 100                       # unter 0.1 % pro Jahr
+    if grenz_personen:
+        hinweise.append(f"Grenzsteuersatz {jahr_danach}: " + ", ".join(
+            f"{n} {g:.0f} %" + (f" (heute {h:.0f} %, nach PK-Einkauf CHF {_chf(e_)})" if e_ else "")
+            for n, h, g, e_ in grenz_personen)
+            + (" – die Zinsen tragen beide je zur Hälfte, den Ertrag versteuert, wem das Geld gehört." if konk else "."))
+    if praktisch_gleich and len(zeilen) > 1:
+        hinweise.append(f"Praktisch gleich: Jede CHF 100'000 direkt ändern das Ergebnis nur um rund CHF {_chf(abs(pro_100k))} "
+                        "pro Jahr (unter 0.1 %). Hier entscheiden Sicherheit (Zins sicher gespart) und Flexibilität "
+                        "(Geld verfügbar), nicht die Rechnung.")
     kosten = zins * (1 - grenz * abzug)
     hinweise.append(f"Ein amortisierter Franken spart nach Steuern {kosten:.2f} %, angelegt bringt er nach Steuern rund "
-                    f"{netto_ertrag * 100:.2f} % – " + ("Amortisieren lohnt sich." if kosten > netto_ertrag * 100 else
+                    f"{netto_ertrag * 100:.2f} % – " + ("praktisch gleich viel." if praktisch_gleich else
+                                                       "Amortisieren lohnt sich." if kosten > netto_ertrag * 100 else
                                                        "Anlegen bringt mehr, ist aber nicht garantiert."))
     gleich_bei = netto_ertrag * 100 / (1 - grenz * abzug) if abzug < 1 or grenz < 1 else 0
     hinweise.append(f"Gleichstand bei einem Hypothekarzins von rund {gleich_bei:.2f} % (bei {ertrag:g} % Anlageertrag).")
@@ -430,4 +481,5 @@ def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = Non
                                                                    if max(i for _, _, i in personen) - min(i for _, _, i in personen) > 2000
                                                                    else "."))
     return Vergleich(a.faellig, round(hypothek), round(wert), zins, ertrag, grenz * 100, abzug, round(indirekt),
-                     round(liquid), round(reserve), zeilen, personen, max_gleich, hinweise)
+                     round(liquid), round(reserve), zeilen, personen, max_gleich, hinweise, grenz_personen,
+                     round(pro_100k), praktisch_gleich)

@@ -2737,3 +2737,28 @@ def test_amortisation_verpfaendet_bei_faelligkeit_und_vergleich(k):
     assert any(z.ueber_person == b for z in v.zeilen)
     k["wohnen"]["verpfaendet_aufloesen"] = "pension"
     assert ams.vergleich(k, db, 2.0, 1.5, heute).indirekt == 0
+
+
+def test_amortisationsvergleich_grenzsatz_nach_einkauf_und_praktisch_gleich(k):
+    import amortisation as ams
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 15)
+    a = k["personen"][0]["name"]
+    k["haushalt"]["zivilstand"] = "ledig"
+    k["wohnen"].update({"aktiv": True, "kaufpreis": 2000000, "eigenmittel": 600000, "hypothek_zins": 1.5,
+                        "hypothek_faellig": "2030-07-01", "reserve": 50000, "vermietet_anteil": 40, "verpfaendet": []})
+    for p in k["personen"]:
+        kid = vm.konto_anlegen(db, f"Konto {p['name']}", person=p["name"])
+        vm.saldo_setzen(db, kid, "2026-10-31", 400000)
+    ohne = ams.vergleich(k, db, 2.0, 1.5, heute)
+    k["personen"][0]["pk"]["einkauf_geplant"] = [{"jahr": 2031, "betrag": 60000}]
+    mit = ams.vergleich(k, db, 2.0, 1.5, heute)
+    g = {n: (h, j, e) for n, h, j, e in mit.grenz_personen}
+    assert g[a][2] == 60000 and g[a][1] < g[a][0]                    # Einkauf 2031 senkt den Grenzsteuersatz
+    assert mit.grenz < ohne.grenz
+    assert mit.zeilen[0].steuerersparnis < ohne.zeilen[0].steuerersparnis
+    assert any("Grenzsteuersatz 2031" in h for h in mit.hinweise)
+    # 1.6 % Zins gegen 1.5 % Ertrag: Unterschied unter 0.1 % → praktisch gleich
+    knapp = ams.vergleich(k, db, 1.6, 1.5, heute)
+    assert knapp.praktisch_gleich and abs(knapp.pro_100k) < 100
+    assert not ams.vergleich(k, db, 3.0, 1.0, heute).praktisch_gleich

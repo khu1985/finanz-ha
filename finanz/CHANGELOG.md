@@ -4,6 +4,10 @@
 
 - Amortisationsvergleich: Liquidität und verpfändete 3a/3b pro Person als eigene Tabelle (vorher in einer Zeile, die
   sich als «3a/3b über 300'000» lesen liess), mit der höchsten gleich hohen direkten Amortisation pro Person.
+- Amortisationsvergleich mit dem Grenzsteuersatz im Jahr nach der Fälligkeit **nach geplanten PK-Einkäufen**, im
+  Konkubinat pro Person (Zinsen je zur Hälfte, Ertrag bei der Person, der das Geld gehört).
+- «Praktisch gleich» statt «vorne», wenn 100'000 mehr oder weniger Amortisation das Ergebnis um weniger als 0.1 % pro
+  Jahr ändern.
 
 ## 0.59.0 – 2026-11-15
 

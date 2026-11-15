@@ -1039,7 +1039,7 @@ def amortisation_vergleich_karte(k: dict, db) -> str:
     zeilen = []
     for z in v.zeilen:
         marke = ""
-        if beste is not None and z is beste and z.vorteil > 0:
+        if beste is not None and z is beste and z.vorteil > 0 and not v.praktisch_gleich:
             marke = ' <span class="chip gut">vorne</span>'
         if z.ueber_person:
             marke += f' <span class="chip">über Liquidität {escape(z.ueber_person)}</span>'
@@ -1060,7 +1060,8 @@ def amortisation_vergleich_karte(k: dict, db) -> str:
         f"<li><b>total mit 3a/3b:</b> plus die verpfändete Vorsorge, die bei der Fälligkeit aufgelöst wird (CHF "
         f"{chf(v.indirekt)} nach der Steuer beim Bezug).</li>"
         f"<li><b>Zinsen pro Jahr:</b> Resthypothek × {v.zins:g} % im ersten vollen Jahr danach ({jahr + 1}).</li>"
-        f"<li><b>Steuerersparnis Zinsabzug:</b> Zinsen × Grenzsteuersatz {v.grenz:.0f} % × abziehbarer Anteil "
+        f"<li><b>Steuerersparnis Zinsabzug:</b> Zinsen × Grenzsteuersatz {v.grenz:.0f} % im Jahr {jahr + 1} (nach "
+        "geplanten PK-Einkäufen dieses Jahres; im Konkubinat Mittel beider Personen) × abziehbarer Anteil "
         f"{v.abzug * 100:.0f} %" + (" (nach dem Wegfall des Eigenmietwerts nur der vermietete Teil)." if v.abzug < 1 else ".")
         + "</li>"
         f"<li><b>Restliquidität:</b> freie Konten heute plus Sparen bis zur Fälligkeit, minus geplante PK-Einkäufe, minus "
