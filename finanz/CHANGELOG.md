@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.60.1 – 2026-11-15
+
+- Dokumentation nachgeführt: neues Menü mit Reitern (wo welche Seite liegt), Startseite «Heute» in Erste Schritte,
+  Erinnerungen und Ampeln; Amortisationsvergleich (Grenzsteuersatz nach PK-Einkauf, «praktisch gleich»), neue
+  Schlüssel unter `wohnen`; Konkubinat (Steuerkonto pro Person, gleich viel amortisieren, Staats- und
+  Gemeindesteuer); veraltete Pfade («App → Vorschläge», «Einstellungen → Experte») korrigiert.
+
 ## 0.60.0 – 2026-11-15
 
 - **Neue Startseite «Heute»:** ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen, Bankkonten, offene Steuern,

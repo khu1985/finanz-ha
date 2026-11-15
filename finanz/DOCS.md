@@ -32,7 +32,7 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
      Nachname (für Verfügungen und Schreiben), Geburtsdatum, Bruttolohn,
      Sparpotenzial, AHV-Beitragsjahre, Werte aus dem Vorsorgeausweis, 3a; Steuern aus der letzten Veranlagung;
      Wohneigentum.
-   - Eine vorbereitete `finanz.yaml` unter **Einstellungen → Experte** einfügen oder in den
+   - Eine vorbereitete `finanz.yaml` unter **Einstellungen → Daten & Import → Experte** einfügen oder in den
      [Import-Ordner](#persönliche-daten-und-import-ordner) kopieren.
 2. **Dokumente hochladen** – die App liest die Werte aus und übernimmt sie auf Knopfdruck:
    - Vorsorgeausweise, 3a- und IK-Auszüge unter **Vorsorge**
@@ -44,8 +44,8 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    Ausbildungsweg ergänzen.
 5. Nach Bedarf: **Fahrzeuge**, **Solar & vZEV** (Werte aus der vZEV-App), 3a-Konten und Sparkonten mit Bezugslimite
    unter **Vermögen**, Lebensziele im **Finanzplan**.
-6. Die **Übersicht** und ihre Ampeln zeigen, wo etwas zu tun ist. Werte mit «TODO» in der Konfiguration sind
-   Platzhalter; ihre Zahl steht in der Statuszeile.
+6. **Heute** (Startseite) zeigt, was jetzt zu tun ist; die **Übersicht** daneben alle Ampeln. Werte mit «TODO» in
+   der Konfiguration sind Platzhalter; ihre Zahl steht in der Statuszeile der Übersicht.
 
 Geplante PK-Einkäufe, verpfändete Vorsorge oder eine weitere Person werden im YAML-Editor erfasst, z. B.:
 
@@ -72,10 +72,11 @@ personen:
   | App | Dokumente, Einstellungen (Datenqualität, Annahmen, Daten & Import, Vorschläge, Protokoll, Änderungen) |
 
   Auf grossen Bildschirmen als Seitenleiste, auf dem Handy hinter dem Knopf «Menü» – dort sind die Gruppen durch
-  Linien getrennt, die Seiten eingerückt und die Gruppen aufklappbar: offen ist der Überblick und die Gruppe der aktuellen Seite, ein Klick auf den Gruppentitel öffnet bzw.
-  schliesst sie. Auf Tablets eine wischbare Leiste mit allen Seiten. Ein farbiger Punkt markiert Seiten (und
-  zugeklappte Gruppen) mit gelber oder roter Ampel; bei Einstellungen bzw. dem Reiter Protokoll steht die Zahl der
-  Warnungen von heute. Adressen und Lesezeichen bleiben gleich.
+  Linien getrennt und die Seiten eingerückt; alle Gruppen sind offen. Auf Tablets eine wischbare Leiste mit allen
+  Seiten. Die Reiter stehen oben auf der Seite; auf einem Reiter ist im Menü der Eintrag der Gruppe hervorgehoben.
+  Ein farbiger Punkt markiert Menüeinträge (samt ihren Reitern) mit gelber oder roter Ampel; bei Einstellungen bzw.
+  dem Reiter Protokoll steht die Zahl der Warnungen von heute. Adressen und Lesezeichen bleiben gleich – nur die
+  frühere Startseite «Übersicht» liegt jetzt unter `uebersicht`.
 - **Filter** über längeren Tabellen (Konten, Dokumente, Versicherungen, Vorsorgedokumente, Wertschriften, Finanzplan
   Jahr für Jahr): «Filter» aufklappen; pro Spalte Textsuche («enthält …») oder – bei wenigen verschiedenen Werten wie
   Art, Person, Sparte, Phase – Mehrfachauswahl. Die Zeile zeigt, wie viele Einträge passen; der Filter bleibt beim
@@ -86,7 +87,9 @@ personen:
 - **Statusanzeige:** Ladebalken beim Seitenwechsel; bei Uploads, Importen, KI und Beratern ein Hinweisfenster mit
   Spinner, Anzahl und Grösse der Dateien. Knöpfe sind während der Verarbeitung gesperrt.
 - **Statuszeile** auf der Übersicht: Stand der Saldi, Anzahl Verträge und Dokumente, offene TODO, wartende Dateien im
-  Import-Ordner, KI an/aus, Warnungen von heute.
+  Import-Ordner, KI an/aus, Warnungen von heute; auf «Heute» nur die Warnungen daraus.
+- **Erklärungen «i»** an Kennzahlen und Tabellen: wie gerechnet wird und aus welchen Einstellungen (mit Herkunft und
+  Stand), siehe [Datenqualität und Annahmen](#datenqualität-und-annahmen).
 - **Protokoll:** neueste Einträge zuerst, Filter nach Stufe, Download. Die Stufe für neue Einträge steht in der
   App-Konfiguration (`log_level`).
 - **Handy:** Kennzahlen zweispaltig, breite Tabellen als Karten, grosse Bedienelemente.
@@ -95,27 +98,27 @@ personen:
 
 | Seite | Inhalt |
 |---|---|
-| Jahresbericht | Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Heute | Startseite: ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen mit Veränderung in 30 Tagen, Bankkonten, offene Steuern, Pensionslücke pro Monat); Aufgaben der nächsten 30 Tage (höchstens 5, mit «erledigt»); Bereiche mit gelber bzw. roter Ampel (höchstens 5); Warnungen der App |
 | Übersicht | Reiter unter «Heute»: alle Ampeln, alle anstehenden Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
+| Jahresbericht | Reiter unter «Heute»: Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
-| Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr, Fälligkeit, Vergütungs- und Verzugszins, Rechnungen und Zahlungen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Amortisationsstrategie (Varianten bis zur Pensionierung), Wert der Liegenschaft und Erneuerungsplanung |
+| Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr (im Konkubinat pro Person), Fälligkeit, Vergütungs- und Verzugszins, Steuerkonto mit allen Positionen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Amortisation bei Fälligkeit im Vergleich (Höhe, Zins und Ertrag wählbar), Amortisationsstrategie (Varianten bis zur Pensionierung), Wert der Liegenschaft und Erneuerungsplanung; Reiter «Solar & vZEV» und «Fahrzeuge» |
 | Kinder | Sparen für die Kinder (Bestand, Sparplan, Ziel, Wert am Ziel), Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
-| Sparen & Anlegen | Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
+| Sparen & Anlegen | Reiter unter «Vermögen»: Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Vermögen pro Person (Diagramm), Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
 | Budget | Reiter «Liquidität 12 Monate»: Kontostand Monat für Monat mit Steuern und grossen Rechnungen, Tiefpunkt, Notreserve; Einnahmen, Ausgaben nach Kategorie und Monat, Sparquote, Vergleich mit dem Sparpotenzial, wiederkehrende Zahlungen, Vergleich mit Schweizer Haushalten, eigene Regeln |
 | Solar & vZEV | Werte der vZEV-App (Verkauf an Mieter, Eigenverbrauch, Einspeisung), Nutzen nach Unterhalt und Steuern, Investition mit Abzug und Rendite, Komponenten, offene Rechnungen |
 | Fahrzeuge | Wert (als Konto unter Vermögen), Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, MFK und Leasingende als Erinnerung |
 | Versicherungen | Verträge, Deckungscheck, Kündigungstermine, Krankenkasse (Franchise, Modell, alle Kassen im Vergleich), Risiko Invalidität und Tod, Prämien |
-| Lebensereignisse | Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
+| Lebensereignisse | Reiter unter «Finanzplan»: Stellenverlust, Trennung bzw. Scheidung, Kosten im Paar aufteilen |
 | Finanzplan | Lebensziele, Jahr für Jahr bis 95, Bandbreite aus 1000 simulierten Verläufen, Wahrscheinlichkeit, dass das Geld reicht, tragbarer Bedarf |
-| Szenarien | PK-Einkauf: Varianten im Vergleich (Steuern, Kapitalbezug, Zins, IV-Deckung); Reiter «Simulationen»: Varianten verwalten und vergleichen; PK-Einkauf optimieren (geplante Einkäufe entfernen), Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
+| Szenarien | Reiter «Rechner» unter «Finanzplan»: PK-Einkauf: Varianten im Vergleich (Steuern, Kapitalbezug, Zins, IV-Deckung); Reiter «Simulationen»: Varianten verwalten und vergleichen; PK-Einkauf optimieren (geplante Einkäufe entfernen), Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
-| Verfügungen | Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
-| Notfallordner | Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
-| Berater | Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
+| Verfügungen | Reiter unter «Nachlass»: Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
+| Notfallordner | Reiter unter «Nachlass»: Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
+| Berater | Reiter unter «Heute»: Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen; Reiter «Datenqualität» (Herkunft, Bestätigen, Widersprüche), «Annahmen» (alle Annahmen an einem Ort); Reiter «Daten & Import»: Sensoren, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |
 | Vorschläge | Aus den eigenen Daten abgeleitete, anonymisierte Verbesserungsvorschläge für die App, wahlweise mit anonymisierten Textauszügen; erledigte werden selbst abgehakt; UX-Score (Kurzbefragung, Verhalten, Usability); Usability-Score pro Seite; Leistung (Ladezeiten, Rechenzeiten, System, Datenmengen); kopieren, herunterladen oder als GitHub-Issue öffnen |
@@ -211,7 +214,7 @@ Varianten von heute bis zur ersten Pensionierung, Jahr für Jahr gleich gerechne
 
 | Variante | Vorgehen |
 |---|---|
-| Nicht amortisieren | Hypothek bleibt, Geld bleibt angelegt |
+| Nicht (direkt) amortisieren | Hypothek bleibt bis auf die verpfändete 3a/3b, Geld bleibt angelegt |
 | Ziel bei Fälligkeit | `wohnen.amortisation_ziel` bei der nächsten Fälligkeit |
 | Maximum bei Fälligkeit | so viel wie möglich (höchstens `amortisation_max`), Notreserve bleibt |
 | Fälligkeit + jährlich | Ziel bei Fälligkeit, danach jedes Jahr die Hälfte des Sparens (braucht eine flexible Tranche) |
@@ -228,7 +231,8 @@ Nebenkosten im Verhältnis zu Renten und 80 % der Mieteinnahmen) und tiefste Liq
 Diagramm der Hypothek über die Zeit. Schuldzinsen sind bis zum Wegfall des Eigenmietwerts (1.1.2029) voll abziehbar,
 danach nur noch für den vermieteten Teil. Festhypotheken werden nur bei Fälligkeit (danach alle 5 Jahre angenommen)
 amortisiert. Markiert sind die Variante, die bei sicherer Anlage vorne liegt, und die mit Wertschriften – jeweils
-unter denen, die die Notreserve halten und im Alter tragbar sind.
+unter denen, die die Notreserve halten und im Alter tragbar sind. «i» an Kennzahlen, Varianten und Spalten erklärt
+die Rechnung.
 
 ### Amortisation bei Fälligkeit: Höhe im Vergleich
 
@@ -241,6 +245,13 @@ sind frei wählbar («Aktualisieren», gespeichert als `wohnen.vergleich_zins` u
 Wohnen bzw. konservative Rendite). Im Konkubinat amortisiert jede Person gleich viel aus eigenem Geld: Die Tabelle
 zeigt die Liquidität und die verpfändete Vorsorge pro Person (Zuordnung über den Namen des Vertrags) und markiert
 Beträge, deren Hälfte die Liquidität einer Person (abzüglich ihres Anteils an der Notreserve) übersteigt.
+
+- **Grenzsteuersatz:** im Jahr nach der Fälligkeit, nachdem die für dieses Jahr geplanten PK-Einkäufe abgezogen sind
+  (`personen[].pk.einkauf_geplant`). Im Konkubinat pro Person: Die Zinsen tragen beide je zur Hälfte, den Ertrag
+  versteuert, wem das Geld gehört. Ein Hinweis nennt die verwendeten Sätze.
+- **Markierung:** «vorne» bei der besten Höhe, die beide Personen tragen können; ändern CHF 100'000 mehr oder weniger
+  das Ergebnis um weniger als 0.1 % pro Jahr, steht «praktisch gleich» – dann entscheiden Sicherheit und
+  Flexibilität.
 
 ### Teilweise vermietet und Miteigentum
 
@@ -740,7 +751,8 @@ einfügen. Alle Beratungen bleiben gespeichert. Die Berater sind KI-Profile, kei
 ![Jahreslauf](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/prozess-jahr.svg)
 
 Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfällig, gelb ≤ 30 Tage) und dem Knopf
-«erledigt», der die Aufgabe bis zur nächsten Periode ausblendet:
+«erledigt», der die Aufgabe bis zur nächsten Periode ausblendet; «Heute» zeigt davon die nächsten 30 Tage (höchstens
+fünf):
 
 | Erinnerung | Zeitraum | Fällig |
 |---|---|---|
@@ -1095,20 +1107,23 @@ zeigt Jahre in der Schweiz, mögliche AHV-Jahre, Einkaufsgrenze, Quellensteuer u
 ## Nicht verheiratet (Konkubinat)
 
 `haushalt.zivilstand: ledig` und unter `steuern.personen` je eine Steuererklärung erfassen (`person`,
-`steuerbar_bund`, `steuerbar_kanton`, `steuer_kanton_gemeinde`, `grenzsteuersatz_kanton`, `kinder`). Dann gilt:
+`steuerbar_bund`, `steuerbar_kanton`, `staatssteuer`, `gemeindesteuer` bzw. `steuer_kanton_gemeinde`,
+`grenzsteuersatz_kanton`, `kinder`). Dann gilt:
 
 - getrennte Steuern; die Person mit `kinder: 1` erhält Elterntarif und Verheiratetentarif beim Bund
 - Kapitalbezüge pro Person
 - AHV ohne Plafonierung, aber auch ohne Witwen-/Witwerrente für den Partner
 - PK-Lebenspartnerrente nur, wenn die Partnerschaft der Kasse gemeldet ist (`risiko.partner_bei_pk_gemeldet`)
 - Hinweise zu Begünstigung und Erbschaftssteuer
+- Steuern bezahlen: eigenes Steuerkonto pro Person (Rechnungen, Zahlungen, Guthaben)
+- Vermögen pro Person; Amortisation: jede Person gleich viel aus eigenem Geld (Vergleich bei Fälligkeit)
 
 Steuerdokumente legen fehlende Einträge unter `steuern.personen` bei der Übernahme selbst an.
 
 ## Ampeln
 
-Grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten. Die Übersicht zeigt alle Bereiche als
-Kacheln (dringendste zuerst, mit Link); Ampeln stehen auch bei Kennzahlen, im Deckungscheck, bei Kündigungsterminen,
+Grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten. «Heute» zeigt die gelben und roten Bereiche
+(höchstens fünf), die Übersicht alle Bereiche als Kacheln (dringendste zuerst, mit Link); Ampeln stehen auch bei Kennzahlen, im Deckungscheck, bei Kündigungsterminen,
 Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 
 | Bereich | Grün | Gelb | Rot |
@@ -1156,7 +1171,7 @@ fehlt oder ist unmöglich, **grau** = optional bzw. leer (Standard). Oben stehen
 
 ## Vorschläge für die Weiterentwicklung
 
-**App → Vorschläge** zeigt, wo die App mit deinen Daten an Grenzen stösst – als Liste, die du anonymisiert an die
+**Einstellungen → Vorschläge** zeigt, wo die App mit deinen Daten an Grenzen stösst – als Liste, die du anonymisiert an die
 Entwicklung weitergeben kannst.
 
 **Selbst abgehakt:** Die App merkt sich die offenen Vorschläge (Dokumente, kantonale Werte, Einstellungen). Kommt einer
@@ -1263,7 +1278,7 @@ sonst läuft nur die Erkennung mit dem gespeicherten Text – das PDF ändert si
 
 ## Dokumente verwalten und löschen
 
-Unter **App → Dokumente** stehen alle hochgeladenen Policen, Vorsorge- und Steuerdokumente sowie die Buchungen pro
+Unter **Dokumente** (Gruppe App) stehen alle hochgeladenen Policen, Vorsorge- und Steuerdokumente sowie die Buchungen pro
 Konto in einer Liste: Bereich, Art, Person, Datum, Dateigrösse und ein Link zum Original. Oben zeigen Kennzahlen die
 Anzahl Dokumente mit Datei, den belegten Speicher, Duplikate und Dokumente ohne lesbaren Text (gescannt); mit den
 Reitern lässt sich nach Bereich filtern.
@@ -1385,14 +1400,14 @@ Begründung und wo sie wirken, direkt änderbar; darunter die gesetzlichen Werte
 ## Konfiguration
 
 Alles steht in `finanz.yaml`; fehlende Schlüssel ergänzt die App aus der Vorlage. Bearbeiten über das Formular
-oder **Einstellungen → Experte**.
+oder **Einstellungen → Daten & Import → Experte**.
 
 | Abschnitt | Inhalt |
 |---|---|
 | `haushalt` | Name, Zivilstand (`verheiratet`/`ledig`), Kanton, `kinder[]` (siehe [Kinder](#kinder) und [Lebenslauf](#lebenslauf-der-kinder)), Bedarf im Ruhestand, Kapitalverzehr |
 | `personen[]` | `name` (Vorname, Anzeige in der App), `nachname` (für Verfügungen und Schreiben), Geburtsdatum, Pensionierungsalter, Bruttolohn, Sparpotenzial; `ahv`, `pk` (inkl. Ausweis-Prognose, versicherter Lohn, Einkäufe, Kapitalbezug), `risiko`, `saeule3a` (mit 3a-Konten unter Vermögen nachgeführt: `guthaben`, `konten`, `anteile`), `zuzug` |
 | `steuern` | Haushaltswerte (verheiratet) oder `personen[]` (Konkubinat): `staatssteuer` und `gemeindesteuer` laut Veranlagung, `gemeindesteuerfuss` (% der Staatssteuer), `steuer_kanton_gemeinde` (Total = Summe; ist nur das Total bekannt, teilt die App es mit dem Steuerfuss auf), steuerbares Vermögen und Vermögenssteuer, Kapitalbezugssätze Kanton, Splitting für den Heiratsvergleich |
-| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel, Reserve, `nicht_antasten`, `verpfaendet`, `strategie` |
+| `wohnen` | Wert, Eigenmittel, Zins, Eigenmietwert (Staat, ganze Liegenschaft), `eigenmietwert_bund`, `vermietet_anteil`, `zimmer`, `zimmer_ungenutzt`, `selbstnutzung_seit`, Mieteinnahmen, Fälligkeit, Amortisationsziel und -maximum, Reserve, `nicht_antasten`, `verpfaendet` (Name mit der Person, z. B. «3a Mobiliar Anna»), `steuer_bezug_verpfaendet`, `verpfaendet_aufloesen` (`faelligkeit`/`pension`), `vergleich_zins`, `vergleich_ertrag`, `strategie`, `liegenschaft` |
 | `erinnerungen` | `benachrichtigung`, `steuererklaerung_frist` (leer = Kanton), `fristerstreckung`, `eigene` |
 | `krankenkasse` | `personen[]` (Prämie, Franchise, Kosten, Modell, Unfall, Angebote), `rabatt_modell`, `unfall_anteil`, `region` (Prämienregion; leer = aus der Police) |
 | `anlage` | `risiko`, `zins_konto`, `zins_sicher`, `krypto_max` |

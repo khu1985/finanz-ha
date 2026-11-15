@@ -15,8 +15,8 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Heute | Startseite: ein Satz, was jetzt zählt, vier Kennzahlen, Aufgaben der nächsten 30 Tage, Bereiche zum Handeln |
 | Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
-| Steuern | Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
+| Steuern | Steuern bezahlen mit Steuerkonto (pro Person im Konkubinat), Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Höhe der Amortisation im Vergleich (Zins und Ertrag wählbar, gleich viel pro Person im Konkubinat), Amortisationsstrategie bis zur Pensionierung, Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Solar & vZEV | Werte der vZEV-App über Home Assistant: Ertrag, Rendite, Steuern (Abzug der Investition, Einspeisung netto), Komponenten in der Erneuerungsplanung, Einnahmen im Finanzplan |
 | Fahrzeuge | Wert als steuerbares Vermögen, Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, Erinnerungen für MFK und Leasingende |
 | Kinder | Lebenslauf je Kind von der Kita über Schule und Lehre bzw. Gymnasium bis zum Studium – mit eigenen Kosten und Vergleichswerten je Phase (Zürcher Kinderkosten-Tabelle, Kita-Vollkosten, Studienbudget); Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse, Finanzplan und Erinnerungen |
@@ -35,9 +35,9 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Erinnerungen | 3a, PK-Einkauf (inkl. optimaler Betrag), 3a-Lücken, Liegenschaftsunterhalt, Krankenkasse, Kündigungsfristen, Steuererklärung mit Frist des Wohnkantons, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
 | Sensoren | Kennzahlen, Ampel, Erinnerungen und Fristen als `sensor.finanz_*` für Dashboards und Automationen |
-| Einstellungen | Formular mit Plausibilitäts-Ampel, YAML-Editor, Import-Ordner, Export, Dokumente neu sichten; Protokoll und Änderungen in der App |
+| Einstellungen | Formular mit Plausibilitäts-Ampel, Datenqualität (Herkunft und Widersprüche), Annahmen, YAML-Editor, Import-Ordner, Export, Dokumente neu sichten; Protokoll und Änderungen in der App |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: öffnen, Text-Ampel, Duplikate, löschen |
-| Vorschläge | Anonymisierte Verbesserungsvorschläge aus den eigenen Daten (wahlweise mit Textauszügen), erledigte werden nach Updates selbst abgehakt; Leistungsmessung (Ladezeiten, Rechenzeiten, System) pro Version |
+| Vorschläge | UX-Score (Umfrage, Nutzung, Usability); anonymisierte Verbesserungsvorschläge aus den eigenen Daten (wahlweise mit Textauszügen), erledigte werden nach Updates selbst abgehakt; Leistungsmessung (Ladezeiten, Rechenzeiten, System) pro Version |
 
 ## Installation
 
@@ -161,7 +161,7 @@ flowchart TB
 | `finanz/app/solar.py` | Solaranlage und vZEV: Sensoren der vZEV-App, Rendite, Steuern, Komponenten, Finanzplan |
 | `finanz/app/fahrzeuge.py` | Fahrzeuge: Wert, Kosten, Leasing, Ersatz, MFK |
 | `finanz/app/steuerzahlung.py` | Steuern bezahlen: Rechnungen, Zahlungen, offene Beträge, Fälligkeit, Zinsen |
-| `finanz/app/amortisation.py` | Amortisationsstrategie: Varianten bis zur Pensionierung im Vergleich |
+| `finanz/app/amortisation.py` | Amortisationsstrategie: Varianten bis zur Pensionierung; Höhe der Amortisation bei Fälligkeit im Vergleich; verpfändete 3a/3b |
 | `finanz/app/herkunft.py` | Herkunft der Werte: Quelle, Stand, Bestätigung, Beispielwerte der Vorlage |
 | `finanz/app/konsistenz.py` | Widersprüche zwischen Einstellungen, Dokumenten, Konten und Buchungen |
 | `finanz/app/ux.py` | UX-Score: Kurzbefragung (UEQ-S), Verhalten (Nutzung, Fehler, Datenaktualität) und Usability |
