@@ -154,7 +154,7 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     import kinderphasen as kp
     erg.extend(kp.erinnerungen(k, heute))
     import fahrzeuge as fz
-    erg.extend(fz.erinnerungen(k, heute))
+    erg.extend(fz.erinnerungen(k, heute, db))
     import solar
     erg.extend(solar.erinnerungen(k, db, heute))
     for modul in ("steuerzahlung", "liquiplan", "kindersparen", "ux"):

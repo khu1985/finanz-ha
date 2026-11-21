@@ -385,6 +385,22 @@ def test_fahrzeuge_seite(server, daten):
     html = urllib.request.urlopen(f"{server}/fahrzeuge").read().decode()
     assert "Muster Kombi" in html and "Rappen pro km" in html
     assert "Fahrzeug Muster Kombi" in urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    # Wartung: Sensoren und Online-Plan bleiben beim Speichern erhalten
+    k = konfig.laden()
+    k["fahrzeuge"][0]["sensoren"] = {"km": "sensor.muster_odometer"}
+    k["fahrzeuge"][0]["geraet"] = "Muster Kombi"
+    konfig.speichern(k)
+    code, _ = _post(f"{server}/fahrzeuge/speichern", {"i": "0", "name": "Muster Kombi", "antrieb": "diesel",
+                                                      "erstzulassung": "2022-05", "modell": "Muster Kombi 2.0",
+                                                      "km_stand": "45000", "service_datum": "2026-03-10",
+                                                      "reifen": "ganzjahr"})
+    f = konfig.laden()["fahrzeuge"][0]
+    assert f["sensoren"] == {"km": "sensor.muster_odometer"} and f["km_stand"] == 45000 and f["km_datum"]
+    html = urllib.request.urlopen(f"{server}/fahrzeuge").read().decode()
+    assert "<h3>Wartung</h3>" in html and "nächster Service" in html and "Sensoren aus Home Assistant" in html
+    assert "sensor.muster_odometer" in html and "Ganzjahr" in html
+    code, _ = _post(f"{server}/fahrzeuge/loesen", {"i": "0"})
+    assert "sensoren" not in konfig.laden()["fahrzeuge"][0]
     _post(f"{server}/fahrzeuge/loeschen", {"i": "0"})
     assert konfig.laden()["fahrzeuge"] == []
 

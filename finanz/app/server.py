@@ -249,6 +249,7 @@ class Handler(BaseHTTPRequestHandler):
                     with herkunft.quelle("automatisch abgeglichen"):
                         konfig.speichern(k)
                 fahrzeuge.abgleichen(k, verbindung)          # Fahrzeugwert als Konto (steuerbares Vermögen)
+                fahrzeuge.aktualisieren(k, verbindung)       # Sensoren der Fahrzeuge einmal am Tag
                 inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
             meldung = unquote(q.get("m", [""])[0])
             html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
@@ -901,7 +902,10 @@ class Handler(BaseHTTPRequestHandler):
             import fahrzeuge as fz
             k = konfig.laden()
             liste = list(k.get("fahrzeuge") or [])
-            neu = {}
+            i = int(form.get("i")) if str(form.get("i") or "").isdigit() else None
+            alt = dict(liste[i]) if i is not None and i < len(liste) else {}
+            formfelder = {f_ for f_, _, _ in seiten.FAHRZEUG_FELDER}
+            neu = {s: v for s, v in alt.items() if s not in formfelder}   # Sensoren, Online-Plan bleiben
             for feld, _, typ in seiten.FAHRZEUG_FELDER:
                 t = str(form.get(feld) or "").strip()
                 if not t:
@@ -912,7 +916,10 @@ class Handler(BaseHTTPRequestHandler):
             if neu.get("antrieb") not in fz.ANTRIEBE:
                 neu["antrieb"] = "benzin"
             neu["ersatz_planen"] = bool(form.get("ersatz_planen"))
-            i = int(form.get("i")) if str(form.get("i") or "").isdigit() else None
+            if neu.get("km_stand") and neu.get("km_stand") != alt.get("km_stand") and not form.get("km_datum"):
+                neu["km_datum"] = datetime.now().date().isoformat()
+            if neu.get("km_stand") and alt.get("km_datum") == neu.get("km_datum") and neu.get("km_stand") != alt.get("km_stand"):
+                neu["km_datum"] = datetime.now().date().isoformat()
             if i is not None and i < len(liste):
                 liste[i] = neu
             else:
@@ -920,6 +927,63 @@ class Handler(BaseHTTPRequestHandler):
             k["fahrzeuge"] = liste
             konfig.speichern(k)
             return f"Fahrzeug «{neu['name']}» gespeichert.", "fahrzeuge"
+        if pfad in ("fahrzeuge/ha_suchen", "fahrzeuge/verknuepfen", "fahrzeuge/loesen", "fahrzeuge/wartung_online",
+                    "fahrzeuge/wartung_pruefen"):
+            import fahrzeuge as fz
+            k = konfig.laden()
+            liste = fz.liste(k)
+            if pfad == "fahrzeuge/ha_suchen":
+                with db() as v:
+                    gefunden = fz.ha_suchen(v)
+                if not gefunden:
+                    return ("Kein Fahrzeug gefunden – Home Assistant kennt kein Gerät mit Kilometerzähler (z. B. die "
+                            "Integration «Kia Uvo / Hyundai Bluelink» einrichten)."), "fahrzeuge"
+                return f"{len(gefunden)} Fahrzeug(e) in Home Assistant gefunden.", "fahrzeuge"
+            i = int(form.get("i") or -1)
+            if not 0 <= i < len(liste):
+                raise ValueError("Fahrzeug nicht gefunden.")
+            f = liste[i]
+            if pfad == "fahrzeuge/verknuepfen":
+                with db() as v:
+                    g = next((g for g in fz.gefundene(v) if g.name == str(form.get("geraet"))), None)
+                    if not g:
+                        raise ValueError("Gerät nicht mehr gefunden – bitte neu suchen.")
+                    for x in liste:                                   # ein Gerät gehört zu einem Fahrzeug
+                        if x.get("geraet") == g.name:
+                            x.pop("geraet", None)
+                            x.pop("sensoren", None)
+                    f["geraet"], f["sensoren"] = g.name, dict(g.sensoren)
+                    if not f.get("modell") and (g.hersteller or g.modell):
+                        f["modell"] = f"{g.hersteller} {g.modell}".strip()[:80]
+                    k["fahrzeuge"] = liste
+                    konfig.speichern(k)
+                    try:
+                        fz.holen(k, v)
+                    except Exception as e:  # noqa: BLE001
+                        LOG.info("Fahrzeug-Sensoren lesen: %s", e)
+                return f"«{g.name}» mit {f['name']} verknüpft – die Werte werden jeden Tag gelesen.", "fahrzeuge"
+            if pfad == "fahrzeuge/loesen":
+                f.pop("geraet", None)
+                f.pop("sensoren", None)
+                k["fahrzeuge"] = liste
+                konfig.speichern(k)
+                return "Verknüpfung gelöst.", "fahrzeuge"
+            if pfad == "fahrzeuge/wartung_online":
+                if not (k.get("ki") or {}).get("aktiv"):
+                    raise ValueError("Die KI-Aufgabe ist nicht aktiv (Einstellungen → KI).")
+                f["wartung"] = fz.online_abfragen(k, i)
+                k["fahrzeuge"] = liste
+                import herkunft
+                with herkunft.quelle("Online-Abfrage Wartungsplan (KI)"):
+                    konfig.speichern(k)
+                return "Wartungsplan abgefragt – bitte mit dem Serviceheft vergleichen.", "fahrzeuge"
+            if str(form.get("aktion")) == "ok" and isinstance(f.get("wartung"), dict):
+                f["wartung"]["geprueft"] = True
+            else:
+                f.pop("wartung", None)
+            k["fahrzeuge"] = liste
+            konfig.speichern(k)
+            return "Wartungsplan aktualisiert.", "fahrzeuge"
         if pfad == "fahrzeuge/loeschen":
             k = konfig.laden()
             liste = list(k.get("fahrzeuge") or [])

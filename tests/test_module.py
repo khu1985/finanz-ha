@@ -2762,3 +2762,63 @@ def test_amortisationsvergleich_grenzsatz_nach_einkauf_und_praktisch_gleich(k):
     knapp = ams.vergleich(k, db, 1.6, 1.5, heute)
     assert knapp.praktisch_gleich and abs(knapp.pro_100k) < 100
     assert not ams.vergleich(k, db, 3.0, 1.0, heute).praktisch_gleich
+
+
+def test_fahrzeug_sensoren_erkennen_und_gruppieren():
+    import fahrzeuge as fz
+    roh = [
+        {"e": "sensor.ev3_odometer", "n": "EV3 Odometer", "s": "12345", "u": "km", "c": "distance", "g": "EV3",
+         "h": "Kia", "m": "EV3"},
+        {"e": "sensor.ev3_next_service_distance", "n": "EV3 Next Service Distance", "s": "17655", "u": "km",
+         "c": "distance", "g": "EV3", "h": "Kia", "m": "EV3"},
+        {"e": "sensor.ev3_last_service_distance", "n": "EV3 Last Service Distance", "s": "0", "u": "km",
+         "c": "distance", "g": "EV3", "h": "Kia", "m": "EV3"},
+        {"e": "binary_sensor.ev3_tire_pressure_all", "n": "EV3 Tire Pressure All", "s": "off", "u": "", "c": "problem",
+         "g": "EV3", "h": "Kia", "m": "EV3"},
+        {"e": "sensor.golf_service_inspection_days", "n": "Service inspection days", "s": "200", "u": "d", "c": "",
+         "g": "Golf", "h": "Volkswagen", "m": "Golf"},
+        {"e": "sensor.golf_mileage", "n": "Golf Mileage", "s": "50000", "u": "km", "c": "distance", "g": "Golf",
+         "h": "Volkswagen", "m": "Golf"},
+        {"e": "sensor.velo_distance", "n": "Velo Strecke heute", "s": "12", "u": "km", "c": "distance", "g": "Velo",
+         "h": "Muster", "m": "Tacho"},
+    ]
+    g = {x.name: x for x in fz.geraete_aus(roh)}
+    assert set(g) == {"EV3", "Golf"}                                  # Velo ohne Kilometerzähler
+    assert g["EV3"].sensoren == {"km": "sensor.ev3_odometer", "service_km": "sensor.ev3_next_service_distance",
+                                 "reifendruck": "binary_sensor.ev3_tire_pressure_all"}
+    assert g["Golf"].sensoren["service_tage"] == "sensor.golf_service_inspection_days"
+    assert fz.zu_fahrzeug(g["EV3"], {"name": "Familienauto", "modell": "Kia EV3"})
+    assert not fz.zu_fahrzeug(g["Golf"], {"name": "Familienauto", "modell": "Kia EV3"})
+
+
+def test_fahrzeug_wartung_kia_ev3_und_erinnerungen(k):
+    import fahrzeuge as fz
+    db = vm.verbinden(":memory:")
+    k["fahrzeuge"] = [{"name": "Familienauto", "modell": "Kia EV3", "antrieb": "elektro", "erstzulassung": "2025-03",
+                       "kaufpreis": 45000, "km_jahr": 15000, "reifen": "wechsel"}]
+    heute = date(2026, 10, 5)
+    a = fz.alle(k, db, heute)[0]
+    w = fz.wartung(k["fahrzeuge"][0], a, db, heute)
+    assert w.plan.startswith("Kia EV3") and w.service_monate == 24 and w.service_km == 30000
+    assert w.naechster == date(2027, 3, 1)                            # 24 Monate nach der Inverkehrsetzung
+    assert w.garantie_ende == date(2032, 3, 1) and w.garantie_km == 150000
+    assert any("eCall" in t for t, _, _ in w.arbeiten)
+    titel = [e.titel for e in fz.erinnerungen(k, heute, db)]
+    assert "Winterreifen montieren: Familienauto" in titel
+    assert not any(t.startswith("Service") for t in titel)
+    # Sensoren: Kilometerstand gemessen, km bis Service vom Hersteller → Service bald
+    fz.einlesen(db, "Familienauto", {"km": 20000}, date(2026, 7, 1))
+    fz.einlesen(db, "Familienauto", {"km": 25000, "service_km": 1500, "reifendruck": 1}, heute)
+    w = fz.wartung(k["fahrzeuge"][0], a, db, heute)
+    assert w.km_stand == 25000 and w.km_jahr_quelle.startswith("gemessen") and round(w.km_jahr, -3) == 19000
+    assert w.rest_km == 1500 and w.naechster < date(2026, 11, 15)
+    titel = [e.titel for e in fz.erinnerungen(k, heute, db)]
+    assert "Service Familienauto" in titel and "Reifendruck Familienauto" in titel
+    # anderes Modell ohne Plan: typisch, Online-Werte überschreiben
+    f2 = {"name": "Zweitwagen", "antrieb": "benzin", "erstzulassung": "2020-01",
+          "wartung": {"service_monate": 12, "service_km": 15000, "datum": "2026-11-21", "geprueft": False}}
+    k["fahrzeuge"].append(f2)
+    a2 = fz.alle(k, db, heute)[1]
+    w2 = fz.wartung(f2, a2, db, heute)
+    assert w2.service_km == 15000 and w2.pruefen and w2.plan.startswith("Online")
+    assert fz.wartung({"name": "X", "antrieb": "benzin"}, a2, db, heute).plan.startswith("typisch")

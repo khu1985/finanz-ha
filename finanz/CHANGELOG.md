@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.61.0 – 2026-11-21
+
+- **Fahrzeuge: Wartung und Erinnerungen.** Pro Fahrzeug Wartungsplan (eingebaut für den Kia EV3 mit Quelle, sonst
+  typisch je Antrieb oder eigene Intervalle), Kilometerstand, nächster Service (Zeit oder Kilometer), Garantie,
+  Arbeiten laut Plan. Neue Erinnerungen: Service, Reifenwechsel (Oktober und April), Reifendruck-Warnung,
+  Garantieende, einzelne Arbeiten; Ampel «Fahrzeuge» meldet einen fälligen Service.
+- **Sensoren aus Home Assistant:** «In Home Assistant suchen» findet Fahrzeuge an ihrem Kilometerzähler (z. B. Kia
+  Uvo / Hyundai Bluelink, VW, BMW, Mercedes, Tesla) samt km bis Service, Tage bis Service und Reifendruck-Warnung;
+  nach dem Verknüpfen liest die App die Werte täglich und misst die Fahrleistung.
+- **Wartungsplan online abfragen** über die KI-Aufgabe von Home Assistant für Modelle ohne eingebauten Plan – zum
+  Prüfen markiert.
+
 ## 0.60.1 – 2026-11-15
 
 - Dokumentation nachgeführt: neues Menü mit Reitern (wo welche Seite liegt), Startseite «Heute» in Erste Schritte,

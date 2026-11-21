@@ -306,8 +306,18 @@ def bewerten(k: dict, db, heute: date | None = None) -> list[Ampel]:
             bald = [a for a in autos if (a.mfk and 0 <= (a.mfk - heute).days <= 60)
                     or (a.leasing_ende and 0 <= (a.leasing_ende - heute).days <= 180)]
             ohne = [a for a in autos if "Versicherung" not in a.kosten]
-            erg.append(Ampel("Fahrzeuge", GELB if bald or ohne else GRUEN,
-                             (f"MFK bzw. Leasingende bald: {', '.join(a.name for a in bald)}" if bald else
+            service = []
+            for a, f in zip(autos, fz.liste(k)):
+                try:
+                    w = fz.wartung(f, a, db, heute)
+                except Exception:  # noqa: BLE001
+                    continue
+                if (w.naechster and (w.naechster - heute).days <= 30) or (w.rest_km is not None and w.rest_km <= 1000) \
+                        or w.reifendruck_warnung:
+                    service.append(a.name)
+            erg.append(Ampel("Fahrzeuge", GELB if bald or ohne or service else GRUEN,
+                             (f"Service bzw. Reifendruck: {', '.join(service)}" if service else
+                              f"MFK bzw. Leasingende bald: {', '.join(a.name for a in bald)}" if bald else
                               f"Versicherung fehlt: {', '.join(a.name for a in ohne)}" if ohne else
                               f"{len(autos)} Fahrzeug(e), CHF {chf(sum(a.total for a in autos))} pro Jahr"), "fahrzeuge"))
     except Exception as e:  # noqa: BLE001

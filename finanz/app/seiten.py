@@ -3415,6 +3415,13 @@ FAHRZEUG_FELDER = [
     ("finanzierung", "Finanzierung", "finanzierung"), ("leasing_rate", "Leasingrate pro Monat", "zahl"),
     ("leasing_ende", "Leasing bis", "date"), ("ersatz_jahr", "Ersetzen im Jahr (leer = nach 12 Jahren)", "zahl"),
     ("ersatz_preis", "Preis des nächsten Autos (leer = Kaufpreis)", "zahl"),
+    ("modell", "Marke und Modell (für den Wartungsplan, z. B. Kia EV3)", "text"),
+    ("km_stand", "Kilometerstand (leer, wenn ein Sensor verknüpft ist)", "zahl"), ("km_datum", "Kilometerstand per", "date"),
+    ("service_datum", "Letzter Service am", "date"), ("service_km_stand", "Kilometerstand beim letzten Service", "zahl"),
+    ("service_monate", "Serviceintervall Monate (leer = Plan)", "zahl"),
+    ("service_intervall_km", "Serviceintervall km (leer = Plan)", "zahl"),
+    ("reifen", "Reifen", "reifen"), ("garantie_jahre", "Garantie Jahre (leer = Plan)", "zahl"),
+    ("garantie_km", "Garantie km (leer = Plan)", "zahl"),
 ]
 
 
@@ -3431,6 +3438,10 @@ def _fahrzeug_form(k: dict, f: dict, i: int | None) -> str:
         elif typ == "person":
             ein = '<select name="person"><option value="">gemeinsam</option>' + "".join(
                 f'<option{" selected" if w == p else ""}>{escape(p)}</option>' for p in personen) + "</select>"
+        elif typ == "reifen":
+            ein = '<select name="reifen">' + "".join(
+                f'<option value="{a}"{" selected" if (w or "wechsel") == a else ""}>{t}</option>'
+                for a, t in (("wechsel", "Sommer- und Winterreifen (Wechsel)"), ("ganzjahr", "Ganzjahresreifen"))) + "</select>"
         elif typ == "finanzierung":
             ein = '<select name="finanzierung">' + "".join(
                 f'<option value="{a}"{" selected" if (w or "kauf") == a else ""}>{t}</option>'
@@ -3445,6 +3456,106 @@ def _fahrzeug_form(k: dict, f: dict, i: int | None) -> str:
     versteckt = f'<input type="hidden" name="i" value="{i}">' if i is not None else ""
     return (f'<form method="post" action="fahrzeuge/speichern">{versteckt}<div class="felder">{"".join(teile)}</div>'
             f'<div class="zeile"><button>{"Speichern" if i is not None else "Fahrzeug hinzufügen"}</button></div></form>')
+
+
+def _fahrzeug_wartung(k: dict, db, f: dict, a) -> str:
+    """Wartung: Plan, Kilometerstand, nächster Service, Garantie, Arbeiten, Sensoren und Online-Abfrage."""
+    import fahrzeuge as fz
+    try:
+        w = fz.wartung(f, a, db)
+    except Exception as e:  # noqa: BLE001
+        return f'<p class="leise">Wartung nicht berechenbar: {escape(str(e))}</p>'
+    heute_ = date.today()
+    info = [f"Plan: {escape(w.plan)}", f"Service alle {w.service_monate} Monate bzw. {chf(w.service_km)} km"]
+    if w.km_stand is not None:
+        info.append(f"Kilometerstand {chf(w.km_stand)} ({escape(w.km_quelle)})")
+    info.append(f"{chf(w.km_jahr)} km pro Jahr ({escape(w.km_jahr_quelle)})")
+    kpis_ = []
+    if w.naechster:
+        tage = (w.naechster - heute_).days
+        st_ = am.ROT if tage < 0 else am.GELB if tage <= 60 or (w.rest_km is not None and w.rest_km <= 2000) else am.GRUEN
+        kpis_.append(kpi(f"{w.naechster:%m.%Y}", "nächster Service" + (f" · noch {chf(w.rest_km)} km"
+                                                                       if w.rest_km is not None else ""), "", st_,
+                         woher_=woher(k, db, f"Früheres von Zeit und Kilometern: {escape(w.grund)}. "
+                                             "Nach dem Service Datum und Kilometerstand unter «Angaben bearbeiten» "
+                                             "eintragen – dann beginnt das Intervall neu.", [])))
+    if w.garantie_ende:
+        kpis_.append(kpi(f"{w.garantie_ende:%m.%Y}", "Garantie bis" + (f" bzw. {chf(w.garantie_km)} km"
+                                                                       if w.garantie_km else ""), "",
+                         am.GELB if 0 <= (w.garantie_ende - heute_).days <= 120 else ""))
+    kpis_.append(kpi("Wechsel" if w.reifen == "wechsel" else "Ganzjahr", "Reifen" + (
+        " · Winter ab Oktober, Sommer ab April" if w.reifen == "wechsel" else ""), "",
+        am.ROT if w.reifendruck_warnung else ""))
+    zeilen = [[escape(t), f"{d:%m.%Y}" if d else "–", chf(b) if b else "–"] for t, d, b in w.arbeiten]
+    quellen = "".join(f'<li>{f"<a href={chr(34)}{escape(u)}{chr(34)} target={chr(34)}_blank{chr(34)} rel={chr(34)}noopener{chr(34)}>{escape(t)}</a>" if u else escape(t)}</li>'
+                      for t, u in w.quellen)
+    pruef = ""
+    if w.pruefen:
+        pruef = (f'<div class="hinweis warn"><p>Diese Intervalle stammen aus der Online-Abfrage über die KI'
+                 f'{" (die KI war unsicher)" if (f.get("wartung") or {}).get("unsicher") else ""} – mit dem Serviceheft '
+                 f'vergleichen.</p><form method="post" action="fahrzeuge/wartung_pruefen" class="aktionen">'
+                 f'<input type="hidden" name="i" value="{a.i}"><button name="aktion" value="ok" class="klein">Stimmt</button>'
+                 '<button name="aktion" value="weg" class="zweit klein">Verwerfen</button></form></div>')
+    online = ""
+    if not fz.plan_fuer(f):
+        ki_an = bool((k.get("ki") or {}).get("aktiv"))
+        online = (f'<form method="post" action="fahrzeuge/wartung_online" class="zeile" data-status="Frage die KI …">'
+                  f'<input type="hidden" name="i" value="{a.i}"><button class="zweit klein"{"" if ki_an else " disabled"}>'
+                  'Wartungsplan online abfragen</button><span class="leise">'
+                  + (" über die KI-Aufgabe von Home Assistant" if ki_an else
+                     " – braucht die KI-Aufgabe (Einstellungen → KI aktiv)") + "</span></form>")
+    sensoren = ""
+    if f.get("sensoren"):
+        sensoren = ('<p class="leise">Sensoren aus Home Assistant'
+                    + (f" (Gerät «{escape(str(f.get('geraet')))}»)" if f.get("geraet") else "") + ": "
+                    + ", ".join(f"{fz.ROLLEN.get(r, r)} <code>{escape(e)}</code>" for r, e in f["sensoren"].items())
+                    + f'</p><form method="post" action="fahrzeuge/loesen" class="zeile"><input type="hidden" name="i" '
+                      f'value="{a.i}"><button class="zweit klein">Verknüpfung lösen</button></form>')
+    return ("<h3>Wartung</h3>" + (f'<div class="kpis">{"".join(kpis_)}</div>' if kpis_ else "")
+            + '<p class="leise">' + " · ".join(info) + "</p>" + pruef
+            + tabelle(["Arbeit laut Plan", "nächstes Mal", "bei km"], zeilen, zahlen_ab=2)
+            + (f'<ul class="leise">{quellen}</ul>' if quellen else "") + online + sensoren)
+
+
+def _fahrzeug_ha_karte(k: dict, db) -> str:
+    import fahrzeuge as fz
+    import os as _os
+    gefunden = fz.gefundene(db)
+    liste_ = fz.liste(k)
+    zeilen = []
+    for g in gefunden:
+        verkn = next((f["name"] for f in liste_ if f.get("geraet") == g.name), "")
+        werte = "<br>".join(f"{fz.ROLLEN[r]}: {escape(g.werte.get(r, ''))} <small class=\"leise\">{escape(e)}</small>"
+                            for r, e in g.sensoren.items())
+        if verkn:
+            aktion = f'<span class="chip gut">verknüpft mit {escape(verkn)}</span>'
+        else:
+            opt = "".join(f'<option value="{i}"{" selected" if fz.zu_fahrzeug(g, f) else ""}>{escape(f["name"])}</option>'
+                          for i, f in enumerate(liste_))
+            aktion = (f'<form method="post" action="fahrzeuge/verknuepfen" class="aktionen"><input type="hidden" '
+                      f'name="geraet" value="{escape(g.name)}"><select name="i">{opt}</select>'
+                      '<button class="klein">Verknüpfen</button></form>')
+        zeilen.append([f"<span><b>{escape(g.name)}</b><br><small class=\"leise\">{escape(g.hersteller)} {escape(g.modell)}"
+                       "</small></span>", f"<span>{werte}</span>", aktion])
+    im_ha = bool(_os.environ.get("SUPERVISOR_TOKEN"))
+    knopf = (f'<form method="post" action="fahrzeuge/ha_suchen" class="zeile" data-status="Suche Fahrzeuge …">'
+             f'<button class="zweit"{"" if im_ha else " disabled"}>In Home Assistant suchen</button>'
+             + ("" if im_ha else '<span class="leise"> – nur wenn die App im Home Assistant läuft</span>') + "</form>")
+    erkl = erklaerung(
+        "<p>Die App fragt Home Assistant nach allen Sensoren, die zu einem Gerät gehören und nach Kilometern, Service, "
+        "Inspektion oder Reifen aussehen (Entitäts-ID, Name oder Einheit km). Ein Gerät mit Kilometerzähler gilt als "
+        "Fahrzeug – z. B. aus «Kia Uvo / Hyundai Bluelink», BMW, Mercedes, VW, Tesla oder Renault.</p>"
+        '<ul class="hinweise"><li><b>Kilometerstand:</b> odometer, mileage, Kilometerstand – ergibt die gemessene '
+        "Fahrleistung pro Jahr.</li><li><b>km bis Service:</b> z. B. «Next Service Distance» (Kia Connect) – kommt "
+        "direkt vom Hersteller und hat Vorrang vor dem Plan.</li><li><b>Tage bis Service / Service-Termin</b> "
+        "(VW, Mercedes, BMW).</li><li><b>Reifendruck-Warnung:</b> Binärsensor – gibt sofort eine Erinnerung.</li></ul>"
+        "<p>Nach dem Verknüpfen liest die App die Werte einmal am Tag. Fehlt ein Sensor, über den YAML-Editor unter "
+        "<code>fahrzeuge[].sensoren</code> von Hand ergänzen (Rollen: km, service_km, service_tage, service_datum, "
+        "reifendruck).</p>", "Wie werden die Sensoren gefunden?")
+    inhalt = (f'<div class="erklaer-zeile"><span class="leise">Wie werden die Sensoren gefunden?</span> {erkl}</div>'
+              + knopf + (tabelle(["Gerät", "erkannte Sensoren", ""], zeilen, zahlen_ab=9) if zeilen else
+                         '<p class="leise">Noch nicht gesucht bzw. kein Gerät mit Kilometerzähler gefunden.</p>'))
+    return karte("Sensoren aus Home Assistant", inhalt)
 
 
 def fahrzeuge(k: dict, db) -> str:
@@ -3490,7 +3601,10 @@ def fahrzeuge(k: dict, db) -> str:
                     '</button></form>')
         teile.append(karte(a.name, '<p class="leise">' + " · ".join(info) + "</p>"
                            + tabelle(["Kosten", "CHF/Jahr"], zeilen) + hinweisliste(a.hinweise)
+                           + _fahrzeug_wartung(k, db, f, a)
                            + f"<details><summary>Angaben bearbeiten</summary>{_fahrzeug_form(k, f, a.i)}{loeschen}</details>"))
+    if autos:
+        teile.append(_fahrzeug_ha_karte(k, db))
     teile.append(karte("Fahrzeug erfassen", (f"<details{'' if autos else ' open'}><summary>Neues Fahrzeug</summary>"
                                               + _fahrzeug_form(k, {}, None) + "</details>")))
     links = "".join(f'<li><a href="{escape(u)}" target="_blank" rel="noopener">{escape(t)}</a></li>' for t, u in fz.QUELLEN)

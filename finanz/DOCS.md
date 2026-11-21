@@ -345,7 +345,7 @@ ob das Gebäude bei Auftrag schon mindestens zwei volle Jahre stand.
 
 ## Fahrzeuge
 
-Seite **Fahrzeuge** (unter Familie & Wohnen): pro Auto Name, Antrieb, Halter/in, erste Inverkehrsetzung, Kaufdatum
+Reiter **Fahrzeuge** unter Wohnen: pro Auto Name, Antrieb, Halter/in, erste Inverkehrsetzung, Kaufdatum
 und -preis, Kilometer pro Jahr, Verbrauch, Gesamtgewicht, Parkplatz, Versicherung, Finanzierung (gekauft oder Leasing
 mit Rate und Ende) und Ersatz (Jahr, Preis). Gespeichert unter `fahrzeuge[]`.
 
@@ -356,7 +356,33 @@ mit Rate und Ende) und Ersatz (Jahr, Preis). Gespeichert unter `fahrzeuge[]`.
 | Kosten pro Jahr | Wertverlust bzw. Leasingrate, Versicherung (eigene Angabe, sonst Motorfahrzeug-Policen), Verkehrssteuer (BL CHF 0.289846 pro kg Gesamtgewicht, sonst Schätzung 500 oder eigene Angabe), Vignette 40, Parkplatz, Energie (Benzin 1.71/l, Diesel 1.80/l, Strom 0.28/kWh), Unterhalt und Reifen (7 Rp./km, elektrisch 5 Rp./km, Schätzung) |
 | Vergleich | TCS-Musterauto 2026: Kaufpreis 45'000, 74 Rappen pro km (Fixkosten 6'977, variable Kosten 4'135 pro Jahr bei 15'000 km); dazu «Mobilität» aus dem Budget |
 | Ersatz | Jahr (Standard: Leasingende bzw. 12 Jahre nach der ersten Inverkehrsetzung) und Preis abzüglich Restwert – als Lebensziel im Finanzplan und unter Sparen & Anlegen (abschaltbar) |
-| Erinnerungen | MFK (nach 5, dann 3, danach alle 2 Jahre) 90 Tage vorher, Leasingende 6 Monate vorher, Vignette im Dezember |
+| Erinnerungen | MFK (nach 5, dann 3, danach alle 2 Jahre) 90 Tage vorher, Leasingende 6 Monate vorher, Vignette im Dezember; Service, Reifenwechsel, Reifendruck, Garantieende und einzelne Arbeiten laut Wartungsplan (siehe unten) |
+
+### Wartung
+
+Pro Fahrzeug unter «Angaben bearbeiten»: Marke und Modell, Kilometerstand (mit Datum), letzter Service (Datum und
+Kilometerstand), eigene Serviceintervalle, Reifen (Sommer/Winter oder Ganzjahr), Garantie.
+
+| Was | Woher |
+|---|---|
+| Wartungsplan | eigene Intervalle → Online-Abfrage (KI, zum Prüfen markiert) → eingebauter Plan des Modells mit Quelle (Kia EV3: Inspektion alle 24 Monate bzw. 30'000 km, Bremsflüssigkeit 24 Monate, Innenraumfilter 30'000 km, Kühlmittel erstmals nach 120 Monaten bzw. 180'000 km, eCall-Batterie 4 Jahre; Garantie 7 Jahre bzw. 150'000 km) → typisch je Antrieb (elektrisch 24 Monate/30'000 km, Benzin und Diesel 12 Monate/20'000 km, Hybrid 12 Monate/15'000 km) |
+| Kilometerstand und Fahrleistung | Sensor (gemessen ab 30 Tagen Verlauf) vor eigener Angabe (bis heute fortgeschrieben) |
+| nächster Service | früheres von Zeit (Monate nach dem letzten Service bzw. der Inverkehrsetzung) und Kilometern (km bis Service vom Fahrzeug bzw. Intervall minus gefahrene km, umgerechnet mit der Fahrleistung); Termin bzw. Tage bis Service vom Fahrzeug haben Vorrang |
+| Reifen | Erinnerung Winterreifen 1.10.–15.11., Sommerreifen 1.4.–15.5. (Faustregel «von O bis O»), Profil 4 bzw. 3 mm empfohlen |
+
+**Wartungsplan online abfragen:** Für Modelle ohne eingebauten Plan fragt die App über die KI-Aufgabe von Home
+Assistant (Einstellungen → KI) nach Serviceintervall, Arbeiten, Garantie und Quelle. Das Ergebnis steht unter
+`fahrzeuge[].wartung` und bleibt markiert, bis es mit «Stimmt» bestätigt oder verworfen wird. Hersteller bieten für
+Wartungspläne keine offene Schnittstelle; aktuelle Werte des eigenen Autos liefert die Herstellerintegration in Home
+Assistant (z. B. Kia Connect: «Next Service Distance»).
+
+**Sensoren aus Home Assistant:** «In Home Assistant suchen» fragt über die Template-API alle Sensoren ab, die zu einem
+Gerät gehören und nach Kilometern, Service, Inspektion oder Reifen aussehen. Ein Gerät mit Kilometerzähler (odometer,
+mileage, Kilometerstand) gilt als Fahrzeug; der Vorschlag zum Verknüpfen passt Name bzw. Modell an. Erkannte Rollen:
+`km`, `service_km` (z. B. «Next Service Distance», «service inspection distance»), `service_tage`, `service_datum`,
+`reifendruck` (Binärsensor). «Last Service …» wird übergangen. Nach dem Verknüpfen (`fahrzeuge[].geraet`,
+`fahrzeuge[].sensoren`) liest die App die Werte einmal am Tag (Tabelle `fahrzeug_werte`); Meilen werden in km
+umgerechnet. Fehlende Sensoren lassen sich im YAML-Editor ergänzen.
 
 ## Sparen und Anlegen
 

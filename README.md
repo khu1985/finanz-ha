@@ -159,7 +159,7 @@ flowchart TB
 | `finanz/app/steuererklaerung.py` | Checkliste Steuererklärung |
 | `finanz/app/notfall.py` | Notfallordner, Meldeliste für den Todesfall |
 | `finanz/app/solar.py` | Solaranlage und vZEV: Sensoren der vZEV-App, Rendite, Steuern, Komponenten, Finanzplan |
-| `finanz/app/fahrzeuge.py` | Fahrzeuge: Wert, Kosten, Leasing, Ersatz, MFK |
+| `finanz/app/fahrzeuge.py` | Fahrzeuge: Wert, Kosten, Leasing, Ersatz, MFK; Wartungsplan, Sensoren aus Home Assistant, Erinnerungen |
 | `finanz/app/steuerzahlung.py` | Steuern bezahlen: Rechnungen, Zahlungen, offene Beträge, Fälligkeit, Zinsen |
 | `finanz/app/amortisation.py` | Amortisationsstrategie: Varianten bis zur Pensionierung; Höhe der Amortisation bei Fälligkeit im Vergleich; verpfändete 3a/3b |
 | `finanz/app/herkunft.py` | Herkunft der Werte: Quelle, Stand, Bestätigung, Beispielwerte der Vorlage |
