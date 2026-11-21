@@ -601,3 +601,10 @@ def test_lange_seiten_zugeklappt(server, daten):
     for p in ("vermoegen", "versicherungen"):
         h = urllib.request.urlopen(f"{server}/{p}").read().decode()
         assert not [x for x in u.pruefen_html(h[h.find("<main"):]) if x.titel == "Seite sehr lang"]
+
+
+def test_vorschlaege_textauszuege_status(server, daten):
+    _post(f"{server}/vorschlaege", {"aktion": "idee", "idee": "Mehr Diagramme"})
+    html = urllib.request.urlopen(f"{server}/vorschlaege?auszuege=1").read().decode()
+    assert "Textauszug/-auszüge angehängt" in html and "Dokument(e) mit Erkennungsproblemen" in html
+    assert "Textauszug/-auszüge angehängt" not in urllib.request.urlopen(f"{server}/vorschlaege").read().decode()

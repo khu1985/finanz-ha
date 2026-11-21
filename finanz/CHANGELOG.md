@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.61.3 – 2026-11-21
+
+- Vorschläge: Mit «Textauszüge anhängen» zeigt die Seite, wie viele Auszüge angehängt sind und bei welchen
+  Dokumenten keiner möglich war (kein gespeicherter Text, keine passenden Zeilen, Fehler) – auch im Protokoll.
+  Ein Fehler bei einer Dokumentart verhindert die Auszüge der anderen nicht mehr.
+
 ## 0.61.2 – 2026-11-21
 
 - **Kürzere Seiten:** Selten Gebrauchtes ist als Karte zugeklappt (▸ Titel, ein Klick öffnet): Saldo erfassen,

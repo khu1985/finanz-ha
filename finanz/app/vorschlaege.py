@@ -628,22 +628,37 @@ def auszug(text: str, felder: set[str], private: list[str]) -> list[str]:
     return aus
 
 
-def textauszuege(k: dict, db) -> list[tuple[str, list[str]]]:
-    """(Dokument-Titel, anonymisierte Zeilen) für Dokumente mit Erkennungsproblemen – nur wenn gewünscht."""
+def textauszuege(k: dict, db, info: dict | None = None) -> list[tuple[str, list[str]]]:
+    """(Dokument-Titel, anonymisierte Zeilen) für Dokumente mit Erkennungsproblemen – nur wenn gewünscht.
+    `info` erhält: probleme (Dokumente mit Problemen), ohne_text, ohne_zeilen (Titel), fehler."""
     probleme: dict = {}
     egal: dict = {}
-    _vorsorge(db, egal, probleme)
-    _steuern(k, db, egal, probleme)
-    _versicherungen(db, egal, probleme)
+    info = info if info is not None else {}
+    info.update({"probleme": 0, "ohne_text": [], "ohne_zeilen": [], "fehler": ""})
+    for f in (lambda: _vorsorge(db, egal, probleme), lambda: _steuern(k, db, egal, probleme),
+              lambda: _versicherungen(db, egal, probleme)):
+        try:
+            f()
+        except Exception as e:  # noqa: BLE001 – ein Fehler soll die übrigen Auszüge nicht verhindern
+            LOG.warning("Textauszüge: %s", e)
+            info["fehler"] = str(e)[:200]
     private = _private_texte(k, db)
+    info["probleme"] = len(probleme)
     aus = []
     for p in sorted(probleme.values(), key=lambda p: (-len(p["felder"]), p["titel"])):
         titel = anonymisieren(p["titel"], private)
+        if not (p["text"] or "").strip():
+            info["ohne_text"].append(titel)
+            continue
         zeilen = auszug(p["text"], p["felder"], private)
         if zeilen:
             aus.append((titel, zeilen))
+        else:
+            info["ohne_zeilen"].append(titel)
         if len(aus) >= MAX_DOKUMENTE:
             break
+    LOG.info("Textauszüge: %d Dokument(e) mit Problemen, %d Auszüge, ohne Text %d, ohne passende Zeilen %d",
+             info["probleme"], len(aus), len(info["ohne_text"]), len(info["ohne_zeilen"]))
     return aus
 
 

@@ -4808,8 +4808,9 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
                         '<p class="leise">Namen, Beträge und Daten werden beim Weitergeben ersetzt – schreib trotzdem '
                         'nichts Persönliches hinein.</p>')
     kanton = str(k["haushalt"].get("kanton") or "").upper()
-    mit_auszug = (q or {}).get("auszuege") == ["1"]
-    auszuege = vs.textauszuege(k, db) if mit_auszug else None
+    mit_auszug = (q or {}).get("auszuege") in (["1"], ["on"])
+    a_info: dict = {}
+    auszuege = vs.textauszuege(k, db, a_info) if mit_auszug else None
     import leistung as le
     import usability as us
     if us.letztes(db)[0] is None:                       # erstes Mal: gleich prüfen (sonst im Hintergrund, täglich)
@@ -4823,6 +4824,16 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
                 '</label><p class="leise">Hilft, die Erkennung zu verbessern, ohne die PDFs zu schicken: nur Zeilen '
                 'rund um die betroffenen Felder, alle Ziffern durch 9 ersetzt (z. B. «CHF 9\'999.99»), Namen, Anrede- '
                 'und Adresszeilen entfernt. Prüfe den Text unten trotzdem, bevor du ihn weitergibst.</p></form>')
+    if mit_auszug:
+        teile_ = [f"{len(auszuege or [])} Textauszug/-auszüge angehängt (Abschnitt «Textauszüge» am Ende des Textes)"
+                  f" – {a_info.get('probleme', 0)} Dokument(e) mit Erkennungsproblemen."]
+        if a_info.get("ohne_text"):
+            teile_.append(f"Ohne gespeicherten Text: {', '.join(a_info['ohne_text'])} – Dokument erneut hochladen.")
+        if a_info.get("ohne_zeilen"):
+            teile_.append(f"Keine passenden Zeilen gefunden: {', '.join(a_info['ohne_zeilen'])}.")
+        if a_info.get("fehler"):
+            teile_.append(f"Fehler: {a_info['fehler']}")
+        schalter += (f'<p class="{"gut" if auszuege else "warn"}">' + escape(" ".join(teile_)) + "</p>")
     teil_text = karte("Weitergeben", (
         schalter
         + f'<textarea id="vorschlaege-text" class="mittel" readonly>{escape(text)}</textarea>'
