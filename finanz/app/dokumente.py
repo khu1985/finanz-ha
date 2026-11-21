@@ -53,7 +53,39 @@ PENSIONSKASSEN = ["Asga", "Publica", "BVK", "Basellandschaftliche Pensionskasse"
 
 ANBIETER_3A = ["VIAC", "frankly", "finpension", "Selma", "True Wealth", "Descartes", "Mobiliar", "PostFinance",
                "Raiffeisen", "UBS", "ZKB", "Zürcher Kantonalbank", "BLKB", "Basellandschaftliche", "Swissquote",
-               "Migros Bank", "Valiant", "Swiss Life", "AXA", "Helvetia", "Baloise", "Allianz"]
+               "Migros Bank", "Valiant", "Swiss Life", "AXA", "Helvetia", "Baloise", "Allianz", "Vaudoise", "Pax",
+               "Generali", "Zurich", "BHW"]
+
+
+def _mobiliar_guthaben(text: str) -> dict:
+    """Mobiliar «Informationen über den Versicherungsvertrag»: Gesamtguthaben (Summe unter den Anlagen),
+    Projektion am Vertragsende, Rückkaufswert. Beträge mit Leerzeichen als Tausendertrennung («12 345.60»)."""
+    erg: dict = {}
+    zeilen = [z.strip() for z in text.splitlines()]
+    nur_betrag = re.compile(r"^(?:CHF|Fr\.)?\s*(\d{1,3}(?:[ '’]\d{3})*[.,]\d{2})$")
+    for i, z in enumerate(zeilen):
+        if re.search(r"gesamtguthaben des vertrags", z, re.I) and "guthaben" not in erg:
+            for x in zeilen[i + 1:i + 14]:
+                m = nur_betrag.match(x)
+                if m:
+                    erg["guthaben"] = vi.zahl(m.group(1))
+                    break
+        if re.search(r"projektion des vertragsguthabens", z, re.I) and "projektion" not in erg:
+            w = [v for v in _betraege(re.sub(r"\d{1,2}\.\d{1,2}\.\d{2,4}", " ", z)) if v >= 100]
+            if w:
+                erg["projektion"] = w[-1]
+        if re.search(r"^rückkaufswert per", z, re.I) and "rueckkauf" not in erg:
+            rest = re.sub(r"\d{1,2}\.\d{1,2}\.\d{2,4}", " ", z)
+            w = [v for v in _betraege(rest) if v >= 100]
+            if not w:
+                for x in zeilen[i + 1:i + 4]:
+                    m = nur_betrag.match(x)
+                    if m:
+                        w = [vi.zahl(m.group(1))]
+                        break
+            if w:
+                erg["rueckkauf"] = w[-1]
+    return erg
 
 
 def tabellen(db) -> None:
@@ -210,20 +242,31 @@ def erkennen(text: str) -> dict:
         bekannt = next((a for a in PENSIONSKASSEN if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
         erg["anbieter"] = bekannt or (m.group(1).strip() if m else "")
     elif erg["typ"] == "saeule3a":
-        w = _wert_nach(text, r"(?:saldo|kontostand|guthaben|gesamtvermögen|vermögen total|total vermögen|depotwert)")
+        mob = _mobiliar_guthaben(text)
+        w = mob.get("guthaben") or _wert_nach(
+            text, r"(?:saldo|kontostand|(?<!vertrags)guthaben(?!s)|gesamtvermögen|vermögen total|total vermögen|depotwert)")
         if w is not None:
             erg["werte"]["guthaben_3a"] = w
-        w = _wert_nach(text, r"(?:einzahlungen|einzahlung|beiträge)\s*(?:\d{4})?")
+        w = _wert_nach(text, r"(?:einzahlungen|einzahlung|beiträge|jahresprämie|prämie pro jahr|gesamtprämie)\s*(?:\d{4})?")
         if w is not None and w <= 40000:
             erg["werte"]["beitrag_3a"] = w
         erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
     elif erg["typ"] == "saeule3b":
+        mob = _mobiliar_guthaben(text)
+        if mob.get("rueckkauf") or mob.get("guthaben"):
+            erg["werte"]["guthaben_3b"] = mob.get("rueckkauf") or mob["guthaben"]
+        if mob.get("projektion"):
+            erg["werte"]["erlebensfall_3b"] = mob["projektion"]
+        ohne_spar = "\n".join(z for z in text.splitlines()
+                              if not re.search(r"sparprämie|% der|projektion|anlage mit|fondsgebunden", z, re.I))
         for schluessel, muster in (
                 ("guthaben_3b", r"(?:rückkaufswert|vertragswert|policenwert|saldo|kontostand|guthaben|depotwert|vermögen total)"),
-                ("praemie_3b", r"(?:jahresprämie|prämie pro jahr|jährliche prämie|prämie|einzahlungen|einzahlung|beiträge)"),
+                ("praemie_3b", r"(?:jahresprämie|prämie pro jahr|jährliche prämie|gesamtprämie|prämie|einzahlungen|einzahlung|beiträge)"),
                 ("erlebensfall_3b", r"(?:garantiertes |voraussichtliches )?erlebensfall(?:kapital|leistung|summe)?"),
                 ("todesfall_3b", r"(?:todesfallkapital|todesfallsumme|todesfallleistung|leistung im todesfall|bei tod)")):
-            w = _wert_nach(text, muster)
+            if schluessel in erg["werte"]:
+                continue
+            w = _wert_nach(ohne_spar, muster)
             if w is not None:
                 erg["werte"][schluessel] = w
         erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")

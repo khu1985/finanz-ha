@@ -1,5 +1,20 @@
 # Änderungen
 
+## 0.62.0 – 2026-11-21
+
+- **Erkennung aus den Textauszügen verbessert:**
+  - Helvetia Erwerbsunfähigkeitsrente: Rente pro Jahr (das Datum «vor dem …» davor störte), Wartefrist aus «Beginn
+    der Leistungspflicht … Monate nach», Versicherungssumme = versicherte Jahresrente.
+  - Atupri: Jahresprämie aus «Total pro Fakturaperiode (jährlich)» statt Monatsprämie × 12.
+  - Mobiliar 3a/3b («Informationen über den Versicherungsvertrag»): Gesamtguthaben bzw. Rückkaufswert (Beträge mit
+    Leerzeichen als Tausendertrennung), Projektion am Vertragsende als Erlebensfallkapital; die Sparprämie bzw.
+    garantierte Anlage gilt nicht mehr als Prämie oder Guthaben.
+  - Weitere 3b-Anbieter: Vaudoise, Pax, Generali, Zurich, BHW.
+- **Vorschläge:** Steuerbeträge, die von Hand zu einer Steuererklärung erfasst wurden, gelten nicht mehr als
+  Erkennungsfehler (sie stehen nur in Veranlagung oder Rechnung). Textauszüge mit «# Korrektur»-Zeilen (Richtung
+  ohne Beträge), bis 20 Dokumente, gleiche Vorlagen nur einmal, bessere Zeilen für steuerbares Einkommen, Renten
+  und Guthaben.
+
 ## 0.61.3 – 2026-11-21
 
 - Vorschläge: Mit «Textauszüge anhängen» zeigt die Seite, wie viele Auszüge angehängt sind und bei welchen

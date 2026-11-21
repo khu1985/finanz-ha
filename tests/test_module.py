@@ -2827,3 +2827,39 @@ def test_fahrzeug_wartung_kia_ev3_und_erinnerungen(k):
     w2 = fz.wartung(f2, a2, db, heute)
     assert w2.service_km == 15000 and w2.pruefen and w2.plan.startswith("Online")
     assert fz.wartung({"name": "X", "antrieb": "benzin"}, a2, db, heute).plan.startswith("typisch")
+
+
+def test_erkennung_aus_textauszuegen_0_61():
+    import dokumente as dk
+    import vorschlaege as vs
+    # Helvetia Erwerbsunfähigkeitsrente: Datum vor dem Betrag, Jahresprämie mit «erstmals fällig am»
+    eu = ("Police für Ihre Helvetia Erwerbsunfähigkeitsrente, Freie Vorsorge (Säule 3b)\nPolicennummer X\n"
+          "· Rente bei Erwerbsunfähigkeit\nLeistungsart Zeitpunkt / Dauer Garantierte Leistungen\nin CHF\n"
+          "Rente bei Erwerbsunfähigkeit vor dem 01.08.2055 24'000.00\ninfolge Krankheit pro Jahr\n"
+          "Beginn der Leistungspflicht 24 Monate nach Eintritt der\nErwerbsunfähigkeit\n"
+          "Total Jahresprämie erstmals fällig am 01.08.2026 1'234.50\n")
+    e = vi.erkennen(eu)
+    assert e["sparte"] == "erwerbsunfaehigkeit" and e["iv_rente_jahr"] == 24000 and e["summe"] == 24000
+    assert e["praemie_jahr"] == 1234.5 and e["iv_wartefrist_monate"] == 24
+    # Atupri: Total pro Fakturaperiode (jährlich) vor der Monatsprämie
+    kk = ("Versicherungspolice KVG\nAtupri Gesundheitsversicherung\nObligatorische Krankenpflege, Muster Telmed\n"
+          "Jahresfranchise CHF 2'500.00\n4,812.60\n401.05\nTotal pro Fakturaperiode (jährlich)\nTotal Monatsprämie\n"
+          "401.05\nGültig ab:\n01.01.2026\n")
+    e = vi.erkennen(kk)
+    assert e["praemie_jahr"] == 4812.6 and e["franchise"] == 2500 and e["kuendigungsfrist_monate"] == 1
+    # Mobiliar 3b: Gesamtguthaben unter den Anlagen, Projektion = Erlebensfall, Sparprämie ist keine Prämie
+    mob = ("Informationen über den Versicherungsvertrag - Police Nr. 12.345.678\n"
+           "Wandelbare Sparversicherung und Prämienbefreiung (freie Vorsorge)\nVertragsende: 30.06.2055\n"
+           "Gesamtguthaben des Vertrags am 30.06.2026\nWandelbare Sparversicherung\n"
+           "Anlage mit zeitlich begrenzter Garantie (100% der Sparprämie) CHF 41 234.10\n"
+           "Fondsgebundene Anlage (0% der Sparprämie) CHF 0.00\nÜberschussbeteiligung CHF 512.30\nCHF 41 746.40\n"
+           "Aktualisierte Projektion des Vertragsguthabens am Ende des Vertrags\n"
+           "Projektion des Vertragsguthabens CHF 312 480.00\n")
+    w = dk.erkennen(mob)["werte"]
+    assert w["guthaben_3b"] == 41746.4 and w["erlebensfall_3b"] == 312480
+    assert w.get("praemie_3b") != 41234.1
+    # Richtung der Korrektur ohne Beträge
+    assert vs.richtung(1, 3) == "erkannt 1, richtig 3"
+    assert vs.richtung(401.05, 4812.6) == "richtig ≈ erkannt × 12"
+    assert vs.richtung("2026-01-01", "2019-01-01") == "richtig 7 Jahr(e) früher"
+    assert vs.richtung(None, 5) == "nicht erkannt"

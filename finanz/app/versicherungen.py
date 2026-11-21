@@ -341,9 +341,13 @@ def _kk_seite(seite: str) -> dict:
     """Eine Seite einer Krankenkassen-Police (KVG oder VVG) auslesen."""
     e: dict = {}
     t = seite
-    m = re.search(_BETRAG_KK + r"\s*\n\s*" + _BETRAG_KK + r"\s*\n\s*Total pro Fakturaperiode", t)
+    m = re.search(_BETRAG_KK + r"\s*\n\s*" + _BETRAG_KK + r"\s*\n\s*Total pro Fakturaperiode(?:\s*\((\w+)\))?", t)
     if m:
-        e["praemie_jahr"] = round(_kk_zahl(m.group(2)) * 12, 2)       # Total Monatsprämie × 12
+        jahr_, monat_ = _kk_zahl(m.group(1)), _kk_zahl(m.group(2))
+        if (m.group(3) or "").lower().startswith("jähr") and 11 * monat_ <= jahr_ <= 13 * monat_:
+            e["praemie_jahr"] = round(jahr_, 2)                         # Total pro Fakturaperiode (jährlich)
+        else:
+            e["praemie_jahr"] = round(monat_ * 12, 2)                   # Total Monatsprämie × 12
     else:
         m = re.search(r"(?:(?:total\s+)?monatsprämie|prämie pro monat|monatliche prämie)\D{0,15}" + _BETRAG_KK, t, re.I)
         if m:
@@ -448,7 +452,7 @@ def erkennen(text: str) -> dict:
                     continue
                 kk[schluessel] = wert
         return kk
-    return _allgemein(text) | iv_erkennen(text)
+    return _erwerbsunfaehigkeit(_allgemein(text) | iv_erkennen(text))
 
 
 _IV_WORT = r"(?:erwerbsunf\w*|invalid\w*|\bEU[- ]rente|\bIV[- ]rente|arbeitsunf\w*|erwerbsausfall\w*)"
@@ -473,7 +477,8 @@ def iv_erkennen(text: str) -> dict:
     if not re.search(_IV_WORT, text, re.I):
         return erg
     # Rente: Zeile mit IV-Wort und «Rente», Betrag in derselben oder der nächsten Zeile
-    for block in _zeilen_mit(text, _IV_WORT + r"|jahresrente|rentenleistung", r"rente"):
+    ohne_datum = re.sub(r"\b\d{1,2}\.\s?\d{1,2}\.\s?\d{4}\b", " ", text)       # «vor dem 01.08.2055» stört
+    for block in _zeilen_mit(ohne_datum, _IV_WORT + r"|jahresrente|rentenleistung", r"rente"):
         if re.search(r"kapital|prämie|beitrag", block.split("rente")[0], re.I) and not re.search(_IV_WORT, block, re.I):
             continue
         m = re.search(r"rente\w*[^0-9]{0,60}?" + BETRAG, block, re.I)
@@ -491,7 +496,8 @@ def iv_erkennen(text: str) -> dict:
         if m and re.search(r"\d{3}", m.group(1)) and zahl(m.group(1)) >= 1000:
             erg["iv_kapital"] = zahl(m.group(1))
             break
-    m = re.search(r"wartefrist\D{0,40}?(\d{1,4})\s*(monat|tag|woche)", text, re.I)
+    m = re.search(r"wartefrist\D{0,40}?(\d{1,4})\s*(monat|tag|woche)", text, re.I) or \
+        re.search(r"beginn der leistungspflicht\D{0,20}?(\d{1,3})\s*(monat|tag|woche)\w*\s+nach", text, re.I)
     if m:
         n = int(m.group(1))
         einheit = m.group(2).lower()
@@ -513,6 +519,13 @@ def iv_erkennen(text: str) -> dict:
         erg["iv_grad_min"] = int(m.group(1))
     if re.search(r"(?:prämien|beitrags)befreiung|befreiung\s+von\s+der\s+(?:prämien|beitrags)zahlung", t):
         erg["iv_beitragsbefreiung"] = 1
+    return erg
+
+
+def _erwerbsunfaehigkeit(erg: dict) -> dict:
+    """Erwerbsunfähigkeitsrente: versichert ist die Rente – als Versicherungssumme dieselbe Jahresrente."""
+    if erg.get("sparte") == "erwerbsunfaehigkeit" and erg.get("iv_rente_jahr") and not erg.get("summe"):
+        erg["summe"] = erg["iv_rente_jahr"]
     return erg
 
 

@@ -27,6 +27,8 @@ PRIO_TEXT = {HOCH: "hoch", MITTEL: "mittel", TIEF: "tief"}
 ISSUE_MAX = 6000            # Zeichen im Issue-Text (die URL darf nicht zu lang werden)
 
 # Erwartete Werte je Steuerdokument-Art; Tupel = eines davon genügt
+# Steuerbeträge: nur in Veranlagung, Rechnung bzw. Steuerberechnung – nicht im Formular der Steuererklärung
+NICHT_IN_ERKLAERUNG = {"staatssteuer", "gemeindesteuer", "steuer_kanton_gemeinde", "bundessteuer", "vermoegenssteuer"}
 STEUER_ERWARTET = {
     "veranlagung": [("steuerbar_kanton",), ("steuerbar_bund",), ("steuerbares_vermoegen",),
                     ("steuer_kanton_gemeinde", "staatssteuer"), ("bundessteuer",)],
@@ -161,12 +163,38 @@ def anonymisieren(text: str, private: list[str]) -> str:
 
 # ---------------------------------------------------------------- Quellen
 
-def _problem(probleme: dict | None, schluessel: str, titel: str, text: str, feld: str) -> None:
-    """Dokument mit Erkennungsproblem merken – für anonymisierte Textauszüge."""
+def _problem(probleme: dict | None, schluessel: str, titel: str, text: str, feld: str,
+             erkannt=None, richtig=None, beschriftung: str = "") -> None:
+    """Dokument mit Erkennungsproblem merken – für anonymisierte Textauszüge (mit Richtung der Korrektur)."""
     if probleme is None:
         return
-    p = probleme.setdefault(schluessel, {"titel": titel, "text": text, "felder": set()})
+    p = probleme.setdefault(schluessel, {"titel": titel, "text": text, "felder": set(), "korrekturen": []})
     p["felder"].add(feld)
+    if richtig not in (None, ""):
+        p["korrekturen"].append(f"{beschriftung or feld}: {richtung(erkannt, richtig)}")
+
+
+def richtung(erkannt, richtig) -> str:
+    """Wie sich der von Hand korrigierte Wert vom erkannten unterscheidet – ohne Beträge oder Daten preiszugeben."""
+    if erkannt in (None, "", 0):
+        return "nicht erkannt"
+    try:
+        a, b = float(erkannt), float(richtig)
+    except (TypeError, ValueError):
+        a = b = None
+    if a is not None and b is not None:
+        if abs(a) <= 36 and abs(b) <= 36 and a == int(a) and b == int(b):
+            return f"erkannt {int(a)}, richtig {int(b)}"                  # Monate, Prozent: nicht persönlich
+        if a:
+            return f"richtig ≈ erkannt × {b / a:.3g}"
+        return "erkannt 0"
+    sa, sb = str(erkannt), str(richtig)
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", sa) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", sb):
+        j = int(sb[:4]) - int(sa[:4])
+        if j:
+            return f"richtig {abs(j)} Jahr(e) {'später' if j > 0 else 'früher'}"
+        return "gleiches Jahr, " + ("anderer Monat" if sa[5:7] != sb[5:7] else "anderer Tag")
+    return "anderer Text"
 
 
 def _zaehlen(ziel: dict, schluessel: tuple, gewicht: int = MITTEL) -> None:
@@ -208,7 +236,7 @@ def _vorsorge(db, erg: dict, probleme: dict | None = None) -> None:
                     wie = "nicht erkannt" if e["werte"].get(f) in (None, "") else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): «{beschriftung.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
-                    _problem(probleme, *dok, f)
+                    _problem(probleme, *dok, f, e["werte"].get(f), d["werte"].get(f), beschriftung.get(f, f))
         else:
             for f in dk.WERTE_JE_TYP.get(d["typ"], []):
                 if d["werte"].get(f) in (None, ""):
@@ -247,11 +275,14 @@ def _steuern(k: dict, db, erg: dict, probleme: dict | None = None) -> None:
                 _zaehlen(erg, ("Dokumente erkennen", f"{art}: als «{sd.TYPEN.get(e['typ'], e['typ'])}» erkannt",
                                "von Hand auf die richtige Art korrigiert"), HOCH)
             for f in sorted(set(d["werte"]) | set(e["werte"])):
+                if d["typ"] == "erklaerung" and f in NICHT_IN_ERKLAERUNG and not re.search(
+                        r"steuerberechnung|provisorische berechnung|steuerbetrag", text, re.I):
+                    continue     # Steuerbeträge stehen in keiner Steuererklärung – von Hand ergänzt, kein Erkennungsfehler
                 if d["werte"].get(f) not in (None, "") and d["werte"].get(f) != e["werte"].get(f):
                     wie = "nicht erkannt" if e["werte"].get(f) in (None, "") else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen", f"{art}: «{beschriftung.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
-                    _problem(probleme, *dok, f)
+                    _problem(probleme, *dok, f, e["werte"].get(f), d["werte"].get(f), beschriftung.get(f, f))
         else:
             for gruppe in STEUER_ERWARTET.get(d["typ"], []):
                 if all(d["werte"].get(f) in (None, "") for f in gruppe):
@@ -301,7 +332,7 @@ def _versicherungen(db, erg: dict, probleme: dict | None = None) -> None:
                     _zaehlen(erg, ("Dokumente erkennen",
                                    f"{sparte} ({versicherer}): «{sichtung.VERTRAG_FELDER.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
-                    _problem(probleme, *dok, f)
+                    _problem(probleme, *dok, f, w, v.get(f), sichtung.VERTRAG_FELDER.get(f, f))
         else:
             for f in ["praemie_jahr", "versicherer"] + VERSICHERUNG_ERWARTET.get(v["sparte"], []):
                 if v.get(f) in (None, "", 0):
@@ -566,6 +597,11 @@ STICHWORTE = {
     "ablauf": r"ablauf|ende\b|bis\b|laufzeit|dauer|verfall|f[äa]llig",
     "summe": r"summe|versichert|leistung|kapital|deckung",
     "franchise": r"franchise", "modell": r"modell|hausarzt|telmed|hmo",
+    "steuerbar_kanton": r"steuerbar|reineinkommen|total (?:der )?eink|abzüge total|total (?:der )?abzüge",
+    "steuerbar_bund": r"steuerbar|reineinkommen|total (?:der )?eink|abzüge total|total (?:der )?abzüge",
+    "iv_rente_jahr": r"rente|erwerbsunf|invalid", "guthaben_3b": r"guthaben|rückkauf|total|wert",
+    "guthaben_3a": r"guthaben|saldo|total|wert|kontostand", "beitrag_3a": r"prämie|beitrag|einzahlung|jährlich",
+    "praemie_3b": r"prämie|beitrag|einzahlung|jährlich",
     "typ": r"", "sparte": r"", "versicherer": r"",
 }
 KOPF_FELDER = {"typ", "sparte", "versicherer"}   # dafür zählen die ersten Zeilen (Briefkopf, Titel)
@@ -576,7 +612,7 @@ PERSOENLICH = re.compile(r"geburtsdatum|\bgeb\.|nationalit|zivilstand|heimatort|
 ADRESSE = re.compile(r"\b(?:herrn?|frau|familie|eheleute)\b|\b\d{4}\s+[A-ZÄÖÜ][a-zäöüé]+|"
                      r"\b[A-ZÄÖÜ][a-zäöüé]+(?:strasse|weg|gasse|platz|allee|rain|ring)\s+\d", re.I)
 MAX_ZEILEN = 40
-MAX_DOKUMENTE = 12
+MAX_DOKUMENTE = 20
 
 
 def _stichworte(feld: str) -> str:
@@ -645,14 +681,19 @@ def textauszuege(k: dict, db, info: dict | None = None) -> list[tuple[str, list[
     private = _private_texte(k, db)
     info["probleme"] = len(probleme)
     aus = []
+    gesehen: set[tuple] = set()
     for p in sorted(probleme.values(), key=lambda p: (-len(p["felder"]), p["titel"])):
         titel = anonymisieren(p["titel"], private)
         if not (p["text"] or "").strip():
             info["ohne_text"].append(titel)
             continue
         zeilen = auszug(p["text"], p["felder"], private)
+        if zeilen and (titel, tuple(zeilen[:15])) in gesehen:
+            continue                                     # gleiche Vorlage (z. B. Steuererklärung beider Personen)
         if zeilen:
-            aus.append((titel, zeilen))
+            gesehen.add((titel, tuple(zeilen[:15])))
+            korr = [f"# Korrektur {x}" for x in dict.fromkeys(p.get("korrekturen") or [])]   # nur Verhältnisse
+            aus.append((titel, korr + zeilen))
         else:
             info["ohne_zeilen"].append(titel)
         if len(aus) >= MAX_DOKUMENTE:

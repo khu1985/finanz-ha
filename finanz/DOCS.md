@@ -1272,7 +1272,12 @@ Probleme mit demselben Dokument stehen in **einer Zeile** mit allen betroffenen 
 
 **Anonymisierte Textauszüge** (Häkchen unter «Weitergeben», standardmässig aus) helfen, die Erkennung zu verbessern,
 ohne die PDFs zu schicken. Pro betroffenem Dokument kommen nur die Zeilen rund um die betroffenen Felder in den Text
-(bei nicht erkannter Sparte oder Art der Briefkopf), höchstens 40 Zeilen und 12 Dokumente:
+(bei nicht erkannter Sparte oder Art der Briefkopf), höchstens 40 Zeilen und 20 Dokumente; gleiche Vorlagen (z. B.
+die Steuererklärung beider Personen) nur einmal. Zuoberst stehen Zeilen «# Korrektur …» mit der Richtung der
+Korrektur ohne Beträge: kleine Ganzzahlen (Monate) als «erkannt 1, richtig 3», Beträge als Verhältnis («richtig ≈
+erkannt × 12»), Daten als Abstand in Jahren. Die Seite zeigt, wie viele Auszüge angehängt sind und warum einer fehlt.
+Steuerbeträge, die von Hand zu einer Steuererklärung erfasst wurden, gelten nicht als Erkennungsfehler (sie stehen
+nur in Veranlagung bzw. Rechnung):
 
 | Was | Wie |
 |---|---|
