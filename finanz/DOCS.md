@@ -258,6 +258,9 @@ Beträge, deren Hälfte die Liquidität einer Person (abzüglich ihres Anteils a
 - **Markierung:** «vorne» bei der besten Höhe, die beide Personen tragen können; ändern CHF 100'000 mehr oder weniger
   das Ergebnis um weniger als 0.1 % pro Jahr, steht «praktisch gleich» – dann entscheiden Sicherheit und
   Flexibilität.
+- **Hinweise:** Fragen an die Bank zu den verpfändeten Policen (prämienfrei stellen, Rückkaufswert,
+  Begünstigung, Todesfallschutz) und – bei indirekter Amortisation – ein neues 3a-Konto nach der Auflösung, damit
+  der Steuerabzug weiterläuft.
 
 ### Teilweise vermietet und Miteigentum
 
@@ -743,7 +746,8 @@ Für jeden Todesfall (Person A stirbt, Person B stirbt) zeigt die Seite, was der
 | Liegenschaft | Anteil (Person → «Anteil an der Liegenschaft», sonst `nachlass.anteil_immobilie`) – was an die Erben auszuzahlen wäre, um die Liegenschaft zu behalten |
 
 Die **Checkliste** pro Person (Testament, PK-Partnerschaft gemeldet, Begünstigung 3a und Policen, Vorsorgeauftrag,
-Patientenverfügung, Konkubinatsvertrag, Regelung Liegenschaft, Willensvollstrecker, Notfallordner) wird unter
+Patientenverfügung, Konkubinatsvertrag, Regelung Liegenschaft, Willensvollstrecker, Todesfallschutz für den Partner,
+Notfallordner) wird unter
 `nachlass.checkliste` gespeichert. Ampel: rot im Konkubinat ohne Testamente, gelb bei offenen Punkten. Keine
 Rechtsberatung – Testament und Vorsorgeauftrag handschriftlich bzw. notariell errichten.
 
@@ -817,6 +821,9 @@ fünf):
 | Steuern bezahlen (offener Betrag laut Rechnung oder Schätzung) | 45 Tage vorher bis 60 Tage danach | Fälligkeit (BL: 30. September; Bund: 31. März des Folgejahres) |
 | Kontostand knapp (Liquiditätsplan: unter null oder unter der halben Notreserve) | in den nächsten 3 Monaten | Monat des Engpasses |
 | Saldi nachführen | wenn die letzten Saldi über einen Monat alt sind | – |
+| Monats-Check (offene Punkte der Checkliste) | jeden Monat | 10. des Monats |
+| Jahresabschluss des Vorjahres (offene Punkte der Checkliste) | Januar bis April | 31. März |
+| Verpfändete Policen: Fragen an die Bank (prämienfrei stellen, Rückkaufswert, Begünstigung, Todesfallschutz nach der Auflösung) | 42 Monate vor Fälligkeit der Hypothek | Fälligkeit |
 
 **Frist der Steuererklärung.** Die App kennt die ordentliche Frist und die spätestmögliche Erstreckung aller
 26 Kantone (Stand Steuerjahr 2025) und nimmt den Kanton aus `haushalt.kanton`. Wo die Frist auf dem Formular steht
@@ -1265,7 +1272,8 @@ Fehlt ein Teil, zählen die übrigen im gleichen Verhältnis. Die Karte zeigt di
 (z. B. Seiten, die nie geöffnet werden, Formulare mit vielen Eingabefehlern, veraltete Saldi, tiefes Vertrauen); sie
 stehen auch in der Liste (Bereich «UX»). Aufgezeichnet werden nur Seitenname, Zeit und ob ein Formular einen
 Eingabefehler hatte – in der eigenen Datenbank, Einträge älter als 400 Tage werden gelöscht. Ausschalten mit
-`ux.aufzeichnen: false`. Wenn die Befragung fällig ist, kommt eine Erinnerung.
+`ux.aufzeichnen: false`. Wenn die Befragung fällig ist, kommt eine Erinnerung – auch 14 Tage nach grösseren
+Änderungen an der Bedienung, damit der Score die neue Fassung misst.
 
 **Weitergeben** geschieht nie automatisch: Den Text unten kannst du prüfen, kopieren, als `.md` herunterladen oder
 mit «Als GitHub-Issue öffnen» auf GitHub vorbefüllt öffnen (abgeschickt wird erst mit «Submit»; Issues sind
@@ -1307,10 +1315,11 @@ Die Karte «Leistung» zeigt alles mit Ampel und dem Mittel der Vorversion. Dara
 deutlich langsamer wurde, Texterkennung über einer Minute pro Dokument, Datenbank über 100 MB, knapper
 Arbeitsspeicher oder hohe Last. Die Messwerte (nur Zeiten und Mengen, keine Inhalte) stehen im Text zum Weitergeben.
 
-**Zwischenspeicher.** Ampeln, Erinnerungen, Finanzplan, Steuererklärung, Pensionslücke und die Vertragsliste laufen
+**Zwischenspeicher.** Ampeln, Erinnerungen, Finanzplan, Steuererklärung, Pensionslücke, Vertragsliste und Vorschläge laufen
 auf fast jeder Seite und im Hintergrund. Ihre Ergebnisse verwendet die App wieder, bis sich etwas ändert: jede
 gespeicherte Änderung an Datenbank oder Konfiguration (auch aus dem Hintergrund) gilt sofort, spätestens nach 10
-Minuten wird ohnehin neu gerechnet. Die Karte «Leistung» zeigt den Anteil der Treffer.
+Minuten wird ohnehin neu gerechnet. Aufrufe mit und ohne heutiges Datum teilen sich einen Eintrag. Die Karte
+«Leistung» zeigt den Anteil der Treffer. Die Sensoren werden parallel an Home Assistant gesendet.
 
 **Neu sichten** liest den Text eines Dokuments nur noch neu, wenn bisher keiner gespeichert ist (z. B. bei Scans);
 sonst läuft nur die Erkennung mit dem gespeicherten Text – das PDF ändert sich ja nicht.
