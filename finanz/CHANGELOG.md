@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.65.0 – 2026-11-21
+
+- **Konkubinat-Check** (Reiter unter «Nachlass»): für unverheiratete Paare je Bereich – Tod (Erbe, Erbschaftssteuer,
+  Haus behalten, Pensionskasse, Säule 3a, Renten und Todesfallschutz), Urteilsunfähigkeit, Trennung, Kinder, Steuern
+  und AHV – was im Konkubinat gilt, wie es bei euch aussieht und der nächste Schritt. Status aus Nachlass-Checkliste,
+  PK-Meldung, gemeinsamem Haushalt, Nachlass-Fällen und Heiratsvergleich; Kurz-Zeile mit dem wichtigsten Schritt.
+
 ## 0.64.0 – 2026-11-21
 
 - **Kurz-Zeilen:** oben auf den Hauptseiten ein Satz mit der Kernaussage (z. B. «Hypothek …, Belehnung 59 %,

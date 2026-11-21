@@ -84,9 +84,19 @@ def _fahrzeuge(k, db) -> str:
     return f"{len(autos)} Fahrzeug{'' if len(autos) == 1 else 'e'}, zusammen rund {_chf(total)} pro Jahr (alle Kosten)."
 
 
+def _konkubinat(k, db) -> str:
+    import konkubinat as ko
+    if not ko.aktiv(k):
+        return ""
+    punkte = ko.pruefen(k, db)
+    gut, offen = ko.zusammenfassung(punkte)
+    erst = next((p for p in punkte if p.status == "rot" and p.tun), None) or next((p for p in punkte if p.tun), None)
+    return (f"{gut} von {gut + offen} Bereichen geregelt" + (f"; zuerst: {erst.tun}." if erst else "."))
+
+
 SAETZE = {"budget": _budget, "vermoegen": _vermoegen, "steuern": _steuern, "vorsorge": _vorsorge,
           "wohnen": _wohnen, "versicherungen": _versicherungen, "kinder": _kinder, "fahrzeuge": _fahrzeuge,
-          "finanzplan": None, "nachlass": None}
+          "finanzplan": None, "nachlass": None, "konkubinat": _konkubinat}
 
 
 def satz(pfad: str, k: dict, db) -> str:

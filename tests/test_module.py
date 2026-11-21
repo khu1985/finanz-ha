@@ -2960,3 +2960,26 @@ def test_ux_umfrage_nach_aenderung():
     db.execute("INSERT INTO ux_umfrage VALUES (?, ?)", ("2026-11-09", "{}"))
     assert not ux.umfrage_faellig(db, date(2026, 11, 30))
     assert ux.umfrage_faellig(db, date(2026, 12, 7))
+
+
+def test_konkubinat_check(k, konkubinat):
+    import konkubinat as ko
+    import kurz
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 21)
+    assert ko.pruefen(k | {"haushalt": {**k["haushalt"], "zivilstand": "verheiratet"}}, db, heute) == []
+    kk = copy.deepcopy(konkubinat)
+    kk["haushalt"]["kanton"] = "BL"
+    p = {x.titel: x for x in ko.pruefen(kk, db, heute)}
+    assert p["Erbe"].status == "rot" and "Testament" in p["Erbe"].tun
+    assert p["Erbschaftssteuer"].status == "gelb" and "Beginn" in p["Erbschaftssteuer"].tun
+    namen = [x["name"] for x in kk["personen"]]
+    kk["nachlass"] = {"zusammen_seit": 2015, "checkliste": {"testament": {n: True for n in namen}}}
+    p = {x.titel: x for x in ko.pruefen(kk, db, heute)}
+    assert p["Erbe"].status == "gruen" and not p["Erbe"].tun
+    assert p["Erbschaftssteuer"].status == "gruen" and "15 %" in p["Erbschaftssteuer"].lage
+    kk["nachlass"]["zusammen_seit"] = 2024
+    assert "bis 2029" in {x.titel: x for x in ko.pruefen(kk, db, heute)}["Erbschaftssteuer"].lage
+    gut, offen = ko.zusammenfassung(ko.pruefen(kk, db, heute))
+    assert gut >= 1 and offen >= 1
+    assert kurz.satz("konkubinat", kk, db).startswith(f"{gut} von {gut + offen} Bereichen geregelt")

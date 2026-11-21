@@ -31,6 +31,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen, Werten aus der App und Saldi per 31.12. |
 | Notfallordner | Druckbare Übersicht für Angehörige mit Konten, Vorsorge, Policen, Kontakten, Ablageorten, ersten Schritten, Antworten der Fragebögen und Meldeliste für den Todesfall |
 | Nachlass | Was der Partner im Todesfall erhält (Erbteil, Erbschaftssteuer, AHV/PK, Liegenschaft), Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Detail-Fragebögen pro Punkt |
+| Konkubinat | Reiter unter Nachlass: was für unverheiratete Paare gilt und was bei euch geregelt ist – Erbe, Erbschaftssteuer, Haus, PK, 3a, Renten, Vertretung, Trennung, Kinder, Vorteile bei Steuern und AHV |
 | Verfügungen | Entwürfe mit Fragen und Optionen: Testament (Pflichtteile, Verteilung), Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug – mit Vor- und Nachnamen |
 | Erinnerungen | 3a, PK-Einkauf (inkl. optimaler Betrag), 3a-Lücken, Liegenschaftsunterhalt, Krankenkasse, Kündigungsfristen, Steuererklärung mit Frist des Wohnkantons, Hypothek, eigene; optional Benachrichtigung über Home Assistant |
 | Berater | Sechs Beraterprofile mit Situation und Fakten aus der Planung; über die KI-Aufgabe von Home Assistant oder zum Kopieren |
@@ -142,6 +143,7 @@ flowchart TB
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
+| `finanz/app/konkubinat.py` | Konkubinat-Check: je Bereich (Tod, Urteilsunfähigkeit, Trennung, Kinder, Steuern und AHV) Lage, Status und nächster Schritt |
 | `finanz/app/checklisten.py` | Geführte Checklisten: Monats-Check und Jahresabschluss mit Status aus den Daten |
 | `finanz/app/verwaltung.py` | Übersicht, Duplikate und Löschen aller Dokumente |
 | `finanz/app/ocr.py` | Texterkennung (tesseract) für gescannte PDFs |

@@ -42,7 +42,8 @@ REITER = [
     [("finanzplan", "Finanzplan"), ("szenarien", "Rechner"), ("simulationen", "Simulationen"),
      ("lebensereignisse", "Lebensereignisse")],
     [("wohnen", "Wohnen"), ("solar", "Solar & vZEV"), ("fahrzeuge", "Fahrzeuge")],
-    [("nachlass", "Nachlass"), ("verfuegungen", "Verfügungen"), ("notfall", "Notfallordner")],
+    [("nachlass", "Nachlass"), ("konkubinat", "Konkubinat"), ("verfuegungen", "Verfügungen"),
+     ("notfall", "Notfallordner")],
     [("einstellungen", "Einstellungen"), ("datenqualitaet", "Datenqualität"), ("annahmen", "Annahmen"),
      ("daten", "Daten & Import"), ("vorschlaege", "Vorschläge"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
 ]
@@ -673,6 +674,31 @@ def _checkliste_html(liste) -> str:
     fertig = sum(1 for p in liste.punkte if p.fertig)
     return (f'<p class="leise">{fertig} von {len(liste.punkte)} erledigt · fällig {liste.faellig:%d.%m.%Y}</p>'
             f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>')
+
+
+def konkubinat_seite(k: dict, db) -> str:
+    """Konkubinat-Check: je Bereich, was im Konkubinat gilt und was bei euch geregelt ist."""
+    import konkubinat as ko
+    if not ko.aktiv(k):
+        return karte("Konkubinat", '<p class="leise">Der Konkubinat-Check gilt für unverheiratete Paare (Zivilstand '
+                                   'unter Einstellungen → Haushalt).</p>')
+    punkte = ko.pruefen(k, db)
+    gut, offen = ko.zusammenfassung(punkte)
+    teile = [f'<div class="kpis">{kpi(str(gut), "Bereiche geregelt", ampel=am.GRUEN if gut else "")}'
+             f'{kpi(str(offen), "Bereiche zu regeln", ampel=am.GELB if offen else am.GRUEN)}</div>']
+    for bereich in dict.fromkeys(p.bereich for p in punkte):
+        zeilen = []
+        for p in (x for x in punkte if x.bereich == bereich):
+            tun = (f'<b>{escape(p.tun)}</b>' if p.tun else
+                   ('<span class="gut">geregelt</span>' if p.status == am.GRUEN else '<span class="leise">Information</span>'))
+            link = f' <a href="{escape(p.seite)}" style="white-space:nowrap">öffnen</a>' if p.seite else ""
+            zeilen.append([f'{licht(p.status)} <b>{escape(p.titel)}</b>', escape(p.lage), tun + link])
+        teile.append(karte(bereich, tabelle(["Thema", "Lage im Konkubinat", "Nächster Schritt"], zeilen, zahlen_ab=9,
+                                            karten=True)))
+    teile.append('<p class="leise">Status aus der <a href="nachlass">Nachlass-Checkliste</a>, der PK-Meldung, dem Beginn '
+                 'des gemeinsamen Haushalts und dem <a href="szenarien">Heiratsvergleich</a>. Vereinfachte Übersicht, '
+                 'keine Rechtsberatung – für Testament, Erbvertrag und Konkubinatsvertrag eine Fachperson beiziehen.</p>')
+    return "".join(teile)
 
 
 def checklisten(k: dict, db) -> str:

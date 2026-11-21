@@ -89,7 +89,7 @@ personen:
 - **Statuszeile** auf der Übersicht: Stand der Saldi, Anzahl Verträge und Dokumente, offene TODO, wartende Dateien im
   Import-Ordner, KI an/aus, Warnungen von heute; auf «Heute» nur die Warnungen daraus.
 - **Kurz-Zeile** oben auf Budget, Vermögen, Steuern, Vorsorge, Finanzplan, Wohnen, Kinder, Versicherungen, Nachlass
-  und Fahrzeuge: die Kernaussage in einem Satz und – bei gelber oder roter Ampel der Seite – was zu tun ist.
+  und Fahrzeuge (dazu Konkubinat: wie viele Bereiche geregelt sind und was zuerst): die Kernaussage in einem Satz und – bei gelber oder roter Ampel der Seite – was zu tun ist.
 - **Zugeklappte Karten** (▸) für selten Gebrauchtes: Erfassen und Importieren unter Vermögen und Versicherungen,
   «Nach Art», «Prämien nach Sparte», «Alle Kassen im Vergleich», unter Wohnen Steuererklärung, Deklaration je
   Person, «Amortisation bis zur Fälligkeit» und Bauteile. Ein Link auf einen Abschnitt darin klappt ihn auf.
@@ -122,6 +122,7 @@ personen:
 | Szenarien | Reiter «Rechner» unter «Finanzplan»: PK-Einkauf: Varianten im Vergleich (Steuern, Kapitalbezug, Zins, IV-Deckung); Reiter «Simulationen»: Varianten verwalten und vergleichen; PK-Einkauf optimieren (geplante Einkäufe entfernen), Teilzeit und Kinderbetreuung, Frühpensionierung, Hypothekar-Strategie, Vergleich verheiratet ↔ Konkubinat (mit Individualbesteuerung) |
 | Steuererklärung | Checkliste pro Steuerjahr mit Belegen und Werten aus der App, Saldi per 31.12., Vorjahr |
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
+| Konkubinat | Reiter unter «Nachlass» (nur unverheiratete Paare): Konkubinat-Check je Bereich mit Lage, Ampel und nächstem Schritt (siehe [Nachlass](#nachlass-und-absicherung)) |
 | Verfügungen | Reiter unter «Nachlass»: Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
 | Notfallordner | Reiter unter «Nachlass»: Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
 | Berater | Reiter unter «Heute»: Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
@@ -750,6 +751,25 @@ Patientenverfügung, Konkubinatsvertrag, Regelung Liegenschaft, Willensvollstrec
 Notfallordner) wird unter
 `nachlass.checkliste` gespeichert. Ampel: rot im Konkubinat ohne Testamente, gelb bei offenen Punkten. Keine
 Rechtsberatung – Testament und Vorsorgeauftrag handschriftlich bzw. notariell errichten.
+
+### Konkubinat-Check
+
+Für unverheiratete Paare zeigt der Reiter «Konkubinat», wo sie anders gestellt sind als ein Ehepaar und was davon
+geregelt ist. Den Status leitet die App aus der Checkliste, der PK-Meldung (`personen[].risiko.partner_bei_pk_gemeldet`),
+dem Beginn des gemeinsamen Haushalts (`nachlass.zusammen_seit`), den Nachlass-Fällen und dem Heiratsvergleich ab:
+
+| Bereich | Thema | Grün, wenn |
+|---|---|---|
+| Tod | Erbe | beide ein Testament bzw. einen Erbvertrag haben |
+| Tod | Erbschaftssteuer | der gemeinsame Haushalt lange genug besteht (BL: 5 Jahre → 15 % statt 30 %) |
+| Tod | Haus behalten | kein Ausgleich an die Erben nötig ist und die Regelung für die Liegenschaft abgehakt ist (rot, wenn der Ausgleich höher ist als Vorsorgekapital und Policen) |
+| Tod | Pensionskasse | beide den Partner bei der PK gemeldet haben |
+| Tod | Säule 3a | die Begünstigung festgelegt ist und 5 Jahre Haushalt oder ein gemeinsames Kind vorliegen |
+| Tod | Renten und Todesfallschutz | Todesfallschutz und Begünstigte der Policen abgehakt sind; zeigt die Rentenlücke gegenüber einem Ehepaar |
+| Urteilsunfähigkeit | Vertretung | Vorsorgeauftrag und Patientenverfügung für beide vorliegen |
+| Trennung | Konkubinatsvertrag | ein Konkubinatsvertrag abgehakt ist |
+| Kinder | Gemeinsame Kinder | nur Information: Anerkennung, gemeinsame Sorge, Unterhaltsvertrag |
+| Steuern und AHV | Was das Konkubinat bringt | nur Information: Steuervorteil und ungekürzte AHV-Renten aus dem Heiratsvergleich |
 
 ### Fragebögen zum Nachlass
 

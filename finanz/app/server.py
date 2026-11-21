@@ -58,6 +58,7 @@ SEITEN = {
     "dokumente": ("Dokumente", seiten.dokumente),
     "vorschlaege": ("Vorschläge", seiten.vorschlaege),
     "nachlass/fragebogen": ("Fragebögen zum Nachlass", seiten.nachlass_fragebogen),
+    "konkubinat": ("Konkubinat-Check", seiten.konkubinat_seite),
     "verfuegungen": ("Verfügungen", seiten.verfuegungen),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "daten": ("Daten & Import", seiten.daten),
