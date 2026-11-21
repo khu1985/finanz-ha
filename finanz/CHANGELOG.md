@@ -1,5 +1,19 @@
 # Änderungen
 
+## 0.63.0 – 2026-11-21
+
+- **Erkennung aus den Korrektur-Hinweisen:**
+  - Krankenkassen-Familienpolicen: pro Person die eigene KVG- und VVG-Seite (vorher immer die erste Person – daher
+    falsche Prämie, Franchise und «Gültig ab»); beim Hochladen ein Vertrag pro Person. Kündigungsfrist der
+    Grundversicherung 3 Monate (Ende Semester), mit Hinweis auf die Frist 30.11. nach der Prämienmitteilung.
+  - Prämie: Total inkl. gesetzlicher Abgaben (smile), «garantierter Minimalbetrag», Rückkaufswert und Sparprämie
+    gelten nicht mehr als Prämie.
+  - Mobiliar-Policen (Vertragsurkunde) haben keine aktuellen Werte: kein Guthaben bzw. keine Prämie daraus – die
+    kommen aus der jährlichen «Information über den Versicherungsvertrag».
+  - Asga: Altersguthaben aus der Spalte mit dem Total (vorher BVG-Teil).
+  - Ablauf: frühestes «Ende der Prämienzahlung/Prämienbefreiung/Leistungspflicht».
+- **Vorschläge:** Beträge mit weniger als 0.5 % Abweichung gelten als richtig erkannt (Rundung).
+
 ## 0.62.0 – 2026-11-21
 
 - **Erkennung aus den Textauszügen verbessert:**

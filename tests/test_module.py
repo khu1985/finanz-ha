@@ -2846,7 +2846,7 @@ def test_erkennung_aus_textauszuegen_0_61():
           "Jahresfranchise CHF 2'500.00\n4,812.60\n401.05\nTotal pro Fakturaperiode (jährlich)\nTotal Monatsprämie\n"
           "401.05\nGültig ab:\n01.01.2026\n")
     e = vi.erkennen(kk)
-    assert e["praemie_jahr"] == 4812.6 and e["franchise"] == 2500 and e["kuendigungsfrist_monate"] == 1
+    assert e["praemie_jahr"] == 4812.6 and e["franchise"] == 2500 and e["kuendigungsfrist_monate"] == 3
     # Mobiliar 3b: Gesamtguthaben unter den Anlagen, Projektion = Erlebensfall, Sparprämie ist keine Prämie
     mob = ("Informationen über den Versicherungsvertrag - Police Nr. 12.345.678\n"
            "Wandelbare Sparversicherung und Prämienbefreiung (freie Vorsorge)\nVertragsende: 30.06.2055\n"
@@ -2863,3 +2863,38 @@ def test_erkennung_aus_textauszuegen_0_61():
     assert vs.richtung(401.05, 4812.6) == "richtig ≈ erkannt × 12"
     assert vs.richtung("2026-01-01", "2019-01-01") == "richtig 7 Jahr(e) früher"
     assert vs.richtung(None, 5) == "nicht erkannt"
+
+
+def test_erkennung_aus_textauszuegen_0_62():
+    import dokumente as dk
+    # Familienpolice: eine KVG-Seite je Person – die Werte der gesuchten Person
+    seite = ("Versicherungspolice KVG\nAtupri Gesundheitsversicherung\nSie sind versichert für:\n{p}, 01.02.{j}\n"
+             "Obligatorische Krankenpflege, Muster Telmed\nJahresfranchise CHF {f}\n{jahr}\n{monat}\n"
+             "Total pro Fakturaperiode (jährlich)\nTotal Monatsprämie\n{monat}\nGültig ab:\n01.01.2026\n")
+    text = (seite.format(p="Ben Muster", j=2020, f="0.00", jahr="1,200.00", monat="100.00") + "\f"
+            + seite.format(p="Anna Muster", j=1985, f="2'500.00", jahr="4,812.60", monat="401.05"))
+    assert [p["person"] for p in vi.kk_policen(text)] == ["Ben Muster", "Anna Muster"]
+    e = vi.erkennen(text, "Anna Muster")
+    assert e["praemie_jahr"] == 4812.6 and e["franchise"] == 2500 and e["person"] == "Anna Muster"
+    assert vi.erkennen(text)["praemie_jahr"] == 1200
+    # smile: Total inkl. gesetzlicher Abgaben
+    smile = ("Helvetia Schweizerische Versicherungsgesellschaft AG\nHausratversicherung\nDeine Jahresprämie Total CHF 300.00\n"
+             "Gesetzliche Abgaben CHF 15.00\nJahresprämie\nCHF 315.00\n")
+    assert vi.praemie_erkennen(smile) == 315
+    # Mobiliar-Police ohne aktuelle Werte: kein Guthaben, keine Prämie aus «garantierter Minimalbetrag»
+    police = ("Police\nWandelbare Sparversicherung und Prämienbefreiung - Freie Vorsorge\nPolice Nr. 1\n"
+              "Prämienübersicht\nVersicherte Leistungen für Anna Muster, 01.01.1985\nMonatliche\nPrämie\n"
+              "Im Falle eines Rückkaufs an diesem Datum, beträgt der\ngarantierte Minimalbetrag CHF 112 345.00.\n"
+              "Vertragsguthaben\n100% des angesammelten\nSparguthabens\n568.80\n")
+    assert dk.nur_police(police)
+    w = dk.erkennen(police)["werte"]
+    assert "guthaben_3b" not in w and "praemie_3b" not in w
+    assert vi.praemie_erkennen(police) != 112345
+    # Asga: Altersguthaben in zwei Spalten (BVG | total) → total
+    asga = ("Vorsorgeausweis Pensionskasse Asga\nWeitere Informationen\n"
+            "Altersguthaben / Austrittsleistung am 01.01.2026 31'500.00 96'416.00\n")
+    assert dk.erkennen(asga)["werte"]["altersguthaben"] == 96416
+    # Ablauf: frühestes «Ende der …» (Prämienbefreiung vor Leistungspflicht)
+    eu = ("Helvetia Erwerbsunfähigkeitsrente\nEnde der Leistungspflicht spätestens am 31.07.2057\n"
+          "Ende der Prämienbefreiung spätestens am 31.07.2055\n")
+    assert vi.erkennen(eu)["ablauf"] == "2055-07-31"

@@ -57,6 +57,12 @@ ANBIETER_3A = ["VIAC", "frankly", "finpension", "Selma", "True Wealth", "Descart
                "Generali", "Zurich", "BHW"]
 
 
+def nur_police(text: str) -> bool:
+    """Police (Vertragsurkunde) ohne aktuelle Werte – Guthaben und Prämien stehen in der jährlichen Information."""
+    return bool(re.search(r"^\s*Police\s*$", text, re.M) and re.search(r"prämienübersicht|versicherte leistungen", text, re.I)
+                and not re.search(r"informationen über den versicherungsvertrag|gesamtguthaben des vertrags", text, re.I))
+
+
 def _mobiliar_guthaben(text: str) -> dict:
     """Mobiliar «Informationen über den Versicherungsvertrag»: Gesamtguthaben (Summe unter den Anlagen),
     Projektion am Vertragsende, Rückkaufswert. Beträge mit Leerzeichen als Tausendertrennung («12 345.60»)."""
@@ -151,7 +157,7 @@ RISIKO = ("iv_rente_pk", "iv_kinderrente_pk", "partnerrente_pk", "waisenrente_pk
 
 
 def _wert_nach(text: str, muster: str, prozent: bool = False, alter65: bool = False,
-               hoechster: bool = False) -> float | None:
+               hoechster: bool = False, zeile_max: bool = False) -> float | None:
     """Erster Betrag nach der Beschriftung. `hoechster`: der höchste Betrag aller passenden Zeilen – für
     Risikoleistungen, wo Ausweise oft BVG-Minimum und reglementarische Leistung nebeneinander zeigen
     (reglementarisch ≥ BVG)."""
@@ -168,7 +174,8 @@ def _wert_nach(text: str, muster: str, prozent: bool = False, alter65: bool = Fa
         if not werte:
             continue
         bonus = 1 if alter65 and re.search(r"\b65\b", zeile) else 0
-        kandidaten.append((bonus, max(werte) if hoechster else werte[-1] if alter65 else werte[0]))
+        # zeile_max: Spalten «BVG | total» (z. B. Asga «Altersguthaben / Austrittsleistung») – das Total ist das grössere
+        kandidaten.append((bonus, max(werte) if hoechster or zeile_max else werte[-1] if alter65 else werte[0]))
     if not kandidaten:
         return None
     if hoechster:
@@ -234,13 +241,18 @@ def erkennen(text: str) -> dict:
     if erg["typ"] == "pk_ausweis":
         for schluessel, (_, _, muster) in WERTE_PK.items():
             w = _wert_nach(text, muster, prozent=schluessel in ("umwandlungssatz", "zins"), hoechster=schluessel in RISIKO,
-                           alter65=schluessel in ("ausweis_alterskapital", "ausweis_altersrente", "kinderrente_alter"))
+                           alter65=schluessel in ("ausweis_alterskapital", "ausweis_altersrente", "kinderrente_alter"),
+                           zeile_max=schluessel == "altersguthaben")
             if w is not None:
                 erg["werte"][schluessel] = w
         erg["werte"].update(_pk_tabellen(text))
         m = re.search(r"(?:pensionskasse|vorsorgeeinrichtung|stiftung)\s*:?\s*([A-ZÄÖÜ][^\n]{2,60})", text)
         bekannt = next((a for a in PENSIONSKASSEN if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
         erg["anbieter"] = bekannt or (m.group(1).strip() if m else "")
+    elif erg["typ"] == "saeule3a" and nur_police(text):
+        erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
+    elif erg["typ"] == "saeule3b" and nur_police(text):
+        erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
     elif erg["typ"] == "saeule3a":
         mob = _mobiliar_guthaben(text)
         w = mob.get("guthaben") or _wert_nach(

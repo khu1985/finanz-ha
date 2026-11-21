@@ -550,7 +550,9 @@ Sparte wird aus Text bzw. Bezeichnung erkannt; jedes Feld lässt sich auf der Ve
 - **Krankenkassen-Policen:** Policen mit Grund- und Zusatzversicherung im gleichen PDF werden seitenweise gelesen
   (Monatsprämie, Modell, Franchise, Unfalldeckung und Unfallanteil, versicherte Person und Geburtsdatum,
   Versicherten-Nr., gültig ab, erste Anlaufstelle, Prämienregion); die Zusatzversicherung wird ein eigener Vertrag
-  mit Produkten und Rabatten. Die Grundversicherung geht beim Hochladen direkt in den Krankenkassen-Rechner (ein Kind
+  mit Produkten und Rabatten. Familienpolicen (eine KVG-Seite je Person) ergeben Verträge pro Person; die Person
+  steht unter «Sie sind versichert für» bzw. «Versicherte Person». Jahresprämie aus «Total pro Fakturaperiode
+  (jährlich)», Kündigungsfrist 3 Monate (Ende Juni bzw. Dezember; nach der Prämienmitteilung bis 30.11.). Die Grundversicherung geht beim Hochladen direkt in den Krankenkassen-Rechner (ein Kind
   unter anderem Namen wird dem einzigen Kind ohne Police zugeordnet). Die Karte zeigt alle Policen mit Grund- und
   Zusatzprämien sowie Empfehlungen: günstigeres Modell bei der gleichen Kasse, Frist 30.11., Unfalldeckung
   (8-Stunden-Regel), Modelle für Kinder, Zusatzversicherungen erst nach Zusage der neuen Kasse kündigen,

@@ -137,7 +137,7 @@ def _versicherungen(k: dict, db, daten: Path, b: Bericht, alle: bool) -> bool:
             b.fehlend += 1
             continue
         b.geprueft += 1
-        erkannt = vi.erkennen(text)
+        erkannt = vi.erkennen(text, haupt.get("person") or None)
         zusatz = erkannt.pop("_zusatz", None)
         for v, werte in ((haupt, erkannt), *(((vertraege[1], zusatz),) if zusatz and len(vertraege) > 1 else ())):
             db.execute("UPDATE vertraege SET text = ? WHERE id = ?", (text, v["id"]))

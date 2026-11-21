@@ -200,6 +200,14 @@ def hochladen(db, daten: Path, dateiname: str, inhalt: bytes) -> int:
         cur = db.execute("INSERT INTO vertraege (dateiname, hochgeladen, text, datei) VALUES (?, ?, ?, ?)",
                          (_sicherer_name(dateiname), datetime.now().isoformat(timespec="seconds"), text, pfad.name))
         aktualisieren(db, cur.lastrowid, zusatz, quelle="muster")
+    # Familienpolice: Grund- und Zusatzversicherung der weiteren Personen als eigene Verträge
+    for weitere in kk_policen(text)[1:]:
+        z_ = weitere.pop("_zusatz", None)
+        for werte in (weitere, z_):
+            if werte:
+                cur = db.execute("INSERT INTO vertraege (dateiname, hochgeladen, text, datei) VALUES (?, ?, ?, ?)",
+                                 (_sicherer_name(dateiname), datetime.now().isoformat(timespec="seconds"), text, pfad.name))
+                aktualisieren(db, cur.lastrowid, werte, quelle="muster")
     return vid
 
 
@@ -302,7 +310,7 @@ def praemie_erkennen(text: str) -> float:
         if not re.search(r"prämie|praemie|total|zu bezahlen|rechnungsbetrag|betrag", z):
             continue
         if re.search(r"summe|franchise|selbstbehalt|versicherungswert|kapital|leistung|zwischentotal|subtotal|"
-                     r"überschuss|abgaben?\b|stempel", z):
+                     r"überschuss|abgaben?\b|stempel|minimalbetrag|garantie|rückkauf|sparbetrag|sparprämie|guthaben", z):
             continue
         for m in re.finditer(BETRAG, zeile):
             try:
@@ -315,6 +323,11 @@ def praemie_erkennen(text: str) -> float:
             gewicht = (4 if re.search(r"zu bezahlen|rechnungsbetrag|total\s+jahresprämie|jahresprämie\s+total", z)
                        else 3 if re.search(r"jahresprämie|total|gesamtprämie", z) else 1)
             kandidaten.append((gewicht, wert * faktor))
+    # Prämie vor Abgaben, danach «Jahresprämie» allein mit dem Total inkl. Stempelabgabe (z. B. smile)
+    if re.search(r"gesetzliche abgaben|stempelabgabe", text, re.I):
+        m = list(re.finditer(r"(?mi)^\s*(?:deine |ihre )?jahresprämie\s*$\n\s*(?:CHF|Fr\.)?\s*" + r"([0-9'’ ]+[.,][0-9]{2})", text))
+        if m:
+            return round(zahl(m[-1].group(1)), 2)
     if not kandidaten:
         return 0.0
     gewicht = max(g for g, _ in kandidaten)
@@ -352,9 +365,9 @@ def _kk_seite(seite: str) -> dict:
         m = re.search(r"(?:(?:total\s+)?monatsprämie|prämie pro monat|monatliche prämie)\D{0,15}" + _BETRAG_KK, t, re.I)
         if m:
             e["praemie_jahr"] = round(_kk_zahl(m.group(1)) * 12, 2)
-    m = re.search(r"Versicherte Person:?\s*\n?\s*([^\n]+)", t)
+    m = re.search(r"Versicherte Person:?\s*\n?\s*([^\n]+)", t) or re.search(r"Sie sind versichert für:?\s*\n\s*([^\n]+)", t)
     if m and not re.search(r"geburt|familien", m.group(1), re.I):
-        e["person"] = m.group(1).strip()
+        e["person"] = re.sub(r",?\s*\d{1,2}\.\d{1,2}\.\d{4}.*$", "", m.group(1)).strip(" ,")
     m = re.search(r"Geburtsdatum[^:\n]*:?\s*\n?\s*(\d{1,2}\.\d{1,2}\.\d{4})", t)
     if m:
         e["geburtsdatum"] = datum_iso(m.group(1))
@@ -367,21 +380,16 @@ def _kk_seite(seite: str) -> dict:
     return e
 
 
-def kk_police(text: str) -> dict | None:
+def _kk_eine(text: str, k: str, vvg: list[str]) -> dict:
     """Krankenkassen-Police mit Grund- und Zusatzversicherung (z. B. Atupri, CSS, Helsana …) erkennen.
 
     Gibt die Werte der Grundversicherung zurück; die Zusatzversicherungen stehen unter `_zusatz` (eigener Vertrag)."""
-    seiten = [s for s in text.split("\f") if s.strip()]
-    kvg = [s for s in seiten if re.search(r"Versicherungspolice KVG|Obligatorische Krankenpflege", s, re.I)]
-    vvg = [s for s in seiten if re.search(r"Versicherungspolice VVG", s, re.I) and s not in kvg]
-    if not kvg:
-        return None
     versicherer = next((n for n in VERSICHERER if re.search(rf"\b{re.escape(n)}\b", text, re.I)), "")
-    k = kvg[0]
     erg = {"sparte": "kvg", "versicherer": versicherer, **_kk_seite(k)}
     erg["beginn"] = erg.pop("gueltig_ab", "")
-    # Grundversicherung: gesetzlich auf Ende Jahr kündbar, Eingang bis 30.11. (nach Prämienmitteilung) → 1 Monat
-    erg["kuendigungsfrist_monate"] = 1
+    # Grundversicherung (KVG Art. 7): 3 Monate auf Ende Juni bzw. Dezember; nach der Prämienmitteilung zusätzlich
+    # 1 Monat auf Ende Jahr (Eingang bis 30.11.) – die App rechnet mit der sicheren Frist
+    erg["kuendigungsfrist_monate"] = 3
     m = re.search(r"Obligatorische Krankenpflege,?\s*([^\n]+)", k, re.I)
     produkt = m.group(1).strip() if m else ""
     for quelle in (produkt, k):
@@ -409,6 +417,7 @@ def kk_police(text: str) -> dict | None:
         teile.append(f"Prämienregion {m.group(1).strip()} {m.group(2)}")
     if produkt:
         teile.append(f"Produkt: {produkt}")
+    teile.append("Kündigung: 3 Monate auf Ende Semester; nach der Prämienmitteilung bis 30.11. auf Ende Jahr")
     erg["notiz"] = "; ".join(teile)
     if vvg:
         v = vvg[0]
@@ -436,15 +445,53 @@ def kk_police(text: str) -> dict | None:
     return erg
 
 
-def erkennen(text: str) -> dict:
+def _seiten_kk(text: str) -> tuple[list[str], list[str]]:
+    seiten = [s for s in text.split("\f") if s.strip()]
+    if len(seiten) == 1:          # ohne Seitenumbrüche: an «Versicherungspolice KVG/VVG» trennen
+        teile = re.split(r"(?=Versicherungspolice (?:KVG|VVG))", text)
+        seiten = [t for t in teile if t.strip()]
+    kvg = [s for s in seiten if re.search(r"Versicherungspolice KVG|Obligatorische Krankenpflege", s, re.I)]
+    vvg = [s for s in seiten if re.search(r"Versicherungspolice VVG", s, re.I) and s not in kvg]
+    return kvg, vvg
+
+
+def kk_policen(text: str) -> list[dict]:
+    """Krankenkassen-Police mit Grund- und Zusatzversicherung (z. B. Atupri, CSS, Helsana …) – pro versicherte
+    Person (Familienpolice: eine KVG-Seite je Person). Zusatzversicherungen stehen unter `_zusatz`."""
+    kvg, vvg = _seiten_kk(text)
+    if not kvg:
+        return []
+    erg = []
+    for i, k in enumerate(kvg):
+        person = _kk_seite(k).get("person", "")
+        passend = [v for v in vvg if person and _kk_seite(v).get("person", "") == person] or \
+            ([vvg[i]] if i < len(vvg) and len(vvg) == len(kvg) else vvg[:1] if len(kvg) == 1 else [])
+        erg.append(_kk_eine(text, k, passend))
+    return erg
+
+
+def kk_police(text: str, person: str | None = None) -> dict | None:
+    """Police der Person (bzw. die erste)."""
+    alle_ = kk_policen(text)
+    if not alle_:
+        return None
+    if person:
+        for p in alle_:
+            if p.get("person") and gleiche_person(p["person"], person):
+                return p
+    return alle_[0]
+
+
+def erkennen(text: str, person: str | None = None) -> dict:
+    """Werte eines Vertrags; `person`: bei Familienpolicen der Krankenkasse die Seite dieser Person."""
     erg: dict = {}
     if not text.strip():
         return erg
-    kk = kk_police(text)
+    kk = kk_police(text, person)
     if kk:
         # Lücken mit der allgemeinen Erkennung auf der Seite der Grundversicherung füllen
-        seite = next((x for x in text.split("\f") if re.search(r"Versicherungspolice KVG|Obligatorische Krankenpflege",
-                                                               x, re.I)), text)
+        kvg, _ = _seiten_kk(text)
+        seite = next((x for x in kvg if not kk.get("person") or kk["person"] in x), kvg[0] if kvg else text)
         allgemein = _allgemein(seite)
         for schluessel, wert in allgemein.items():
             if schluessel != "sparte" and kk.get(schluessel) in (None, "", 0) and wert not in (None, ""):
@@ -565,7 +612,15 @@ def _allgemein(text: str) -> dict:
         except (ValueError, AttributeError, IndexError):
             pass
     if not erg["ablauf"]:
-        erg["ablauf"] = _erstes_datum(text, r"ende der (?:leistungspflicht|prämienzahlung|versicherung)\w*(?:\s+spätestens)?")
+        # Vertrag endet mit der Prämienzahlung bzw. -befreiung; die Leistungspflicht kann länger laufen → frühestes Datum
+        enden = []
+        for m in re.finditer(r"ende der (?:leistungspflicht|prämienzahlung|prämienbefreiung|versicherung)\w*"
+                             r"(?:\s+spätestens)?(?:\s+am)?\s*" + DATUM, text, re.I):
+            try:
+                enden.append(datum_iso(m.group(1)))
+            except (ValueError, AttributeError):
+                pass
+        erg["ablauf"] = min(enden) if enden else ""
     zahl_ = r"(\d{1,2}|" + "|".join(ZAHLWORTE) + r")"
     monat_ = r"\s*(?:monat|mt\b|mte\b|mon\.)"
     m = re.search(r"kündigungsfrist\D{0,20}" + zahl_ + monat_, text, re.I) or \

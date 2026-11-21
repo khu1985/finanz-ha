@@ -174,6 +174,13 @@ def _problem(probleme: dict | None, schluessel: str, titel: str, text: str, feld
         p["korrekturen"].append(f"{beschriftung or feld}: {richtung(erkannt, richtig)}")
 
 
+def _anders(erkannt, richtig) -> bool:
+    """Weicht der Handwert ab? Beträge mit 0.5 % Toleranz (Rundung, Rappen)."""
+    if isinstance(erkannt, (int, float)) and isinstance(richtig, (int, float)):
+        return abs(erkannt - richtig) > max(0.005, abs(richtig) * 0.005)
+    return erkannt != richtig
+
+
 def richtung(erkannt, richtig) -> str:
     """Wie sich der von Hand korrigierte Wert vom erkannten unterscheidet – ohne Beträge oder Daten preiszugeben."""
     if erkannt in (None, "", 0):
@@ -227,18 +234,21 @@ def _vorsorge(db, erg: dict, probleme: dict | None = None) -> None:
             continue
         art = dk.TYPEN.get(d["typ"], d["typ"])
         dok = (f"d:{d['id']}", f"{art} ({anbieter})", text)
+        police = dk.nur_police(text)        # Police ohne aktuelle Werte: Guthaben/Prämie kommen aus der Jahresinfo
         if d.get("quelle") == "hand":
             if e["typ"] != d["typ"]:
                 _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): als «{dk.TYPEN.get(e['typ'], e['typ'])}» erkannt",
                                "von Hand auf die richtige Art korrigiert"), HOCH)
             for f in sorted(set(d["werte"]) | set(e["werte"])):
-                if d["werte"].get(f) not in (None, "") and d["werte"].get(f) != e["werte"].get(f):
+                if police and f in ("guthaben_3a", "beitrag_3a", "guthaben_3b", "praemie_3b", "erlebensfall_3b"):
+                    continue
+                if d["werte"].get(f) not in (None, "") and _anders(e["werte"].get(f), d["werte"].get(f)):
                     wie = "nicht erkannt" if e["werte"].get(f) in (None, "") else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): «{beschriftung.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
                     _problem(probleme, *dok, f, e["werte"].get(f), d["werte"].get(f), beschriftung.get(f, f))
         else:
-            for f in dk.WERTE_JE_TYP.get(d["typ"], []):
+            for f in ([] if police else dk.WERTE_JE_TYP.get(d["typ"], [])):
                 if d["werte"].get(f) in (None, ""):
                     _zaehlen(erg, ("Dokumente erkennen", f"{art} ({anbieter}): «{beschriftung.get(f, f)}» nicht erkannt",
                                    "Feld fehlt nach dem Einlesen"), MITTEL)
@@ -278,7 +288,7 @@ def _steuern(k: dict, db, erg: dict, probleme: dict | None = None) -> None:
                 if d["typ"] == "erklaerung" and f in NICHT_IN_ERKLAERUNG and not re.search(
                         r"steuerberechnung|provisorische berechnung|steuerbetrag", text, re.I):
                     continue     # Steuerbeträge stehen in keiner Steuererklärung – von Hand ergänzt, kein Erkennungsfehler
-                if d["werte"].get(f) not in (None, "") and d["werte"].get(f) != e["werte"].get(f):
+                if d["werte"].get(f) not in (None, "") and _anders(e["werte"].get(f), d["werte"].get(f)):
                     wie = "nicht erkannt" if e["werte"].get(f) in (None, "") else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen", f"{art}: «{beschriftung.get(f, f)}» {wie}",
                                    "Wert wurde von Hand korrigiert"), HOCH)
@@ -310,9 +320,10 @@ def _versicherungen(db, erg: dict, probleme: dict | None = None) -> None:
             continue
         versicherer = v.get("versicherer") or "unbekannter Versicherer"
         sparte = vi.SPARTEN.get(v["sparte"], v["sparte"])
-        if v["datei"] not in erkannt_je_datei:
-            erkannt_je_datei[v["datei"]] = vi.erkennen(text)
-        e = erkannt_je_datei[v["datei"]]
+        schl = (v["datei"], v.get("person") or "")
+        if schl not in erkannt_je_datei:
+            erkannt_je_datei[schl] = vi.erkennen(text, v.get("person") or None)
+        e = erkannt_je_datei[schl]
         if v["sparte"] == "vvg" and e.get("_zusatz"):
             e = e["_zusatz"]
         dok = (f"v:{v['datei']}", f"{sparte} ({versicherer})", text)
@@ -326,7 +337,7 @@ def _versicherungen(db, erg: dict, probleme: dict | None = None) -> None:
                     continue
                 w = e.get(f)
                 gleich = (w == v.get(f) or (isinstance(w, (int, float)) and isinstance(v.get(f), (int, float))
-                                            and abs(w - v[f]) < 0.005))
+                                            and abs(w - v[f]) <= max(0.005, abs(v[f]) * 0.005)))
                 if not gleich:
                     wie = "nicht erkannt" if w in (None, "", 0) else "falsch erkannt"
                     _zaehlen(erg, ("Dokumente erkennen",
