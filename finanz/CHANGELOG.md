@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.61.2 – 2026-11-21
+
+- **Kürzere Seiten:** Selten Gebrauchtes ist als Karte zugeklappt (▸ Titel, ein Klick öffnet): Saldo erfassen,
+  Bank- und CSV-Import, «Nach Art» (Vermögen); Verträge hochladen, Liste importieren, Prämien nach Sparte, Alle
+  Kassen im Vergleich (Versicherungen); Liegenschaft in der Steuererklärung, Deklaration je Person, Amortisation bis
+  zur Fälligkeit, Bauteile (Wohnen). Links auf einen Abschnitt darin klappen ihn auf.
+- Usability-Prüfung: lange Tabellen auf Druckseiten (Notfallordner) gelten nicht mehr als Problem.
+
 ## 0.61.1 – 2026-11-21
 
 - Fahrzeuge: Die Erinnerung zum Reifenwechsel bleibt sichtbar, bis sie als erledigt markiert ist (Winterreifen bis

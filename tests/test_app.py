@@ -592,3 +592,12 @@ def test_startseite_heute_und_menu(server, daten):
     nav = html.split('<nav id="nav"', 1)[1].split("</nav>", 1)[0]
     assert 'href="vermoegen" class="aktiv"' in nav and 'href="sparplan" class="aktiv"' in html
     assert urllib.request.urlopen(f"{server}/uebersicht").status == 200
+
+
+def test_lange_seiten_zugeklappt(server, daten):
+    import usability as u
+    html = urllib.request.urlopen(f"{server}/vermoegen").read().decode()
+    assert '<details class="karte klapp"><summary><h2>Saldo erfassen</h2>' in html
+    for p in ("vermoegen", "versicherungen"):
+        h = urllib.request.urlopen(f"{server}/{p}").read().decode()
+        assert not [x for x in u.pruefen_html(h[h.find("<main"):]) if x.titel == "Seite sehr lang"]

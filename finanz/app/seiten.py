@@ -190,6 +190,11 @@ border-radius:12px;padding:10px 12px;text-decoration:none;color:var(--text)}
 h1{font-size:22px;margin:4px 0 16px}h2{font-size:17px;margin:0 0 12px}
 .raster{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
 .karte{background:var(--karte);border:1px solid var(--linie);border-radius:12px;padding:16px;margin-bottom:16px}
+details.klapp>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+details.klapp>summary::-webkit-details-marker{display:none}
+details.klapp>summary h2{margin:0;display:inline}details.klapp>summary h2::before{content:"▸ ";color:var(--leise)}
+details.klapp[open]>summary{margin-bottom:12px}details.klapp[open]>summary h2::before{content:"▾ "}
+details.klapp>summary span{font-size:13px}.raster>details.klapp:not([open]){align-self:start}
 .kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
 .kpi{background:var(--karte);border:1px solid var(--linie);border-radius:12px;padding:12px 14px}
 .kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.kpi span{color:var(--leise);font-size:13px}
@@ -408,7 +413,10 @@ JS = """
   var m = document.querySelector('.meldung:not(.fehler)');
   if (m) setTimeout(function(){ m.classList.add('weg'); }, 6000);
   if (location.search.indexOf('m=') >= 0 && history.replaceState) history.replaceState(null, '', location.pathname + location.hash);
-  if (location.hash) addEventListener('load', function(){ var z = document.getElementById(location.hash.slice(1)); if (z) z.scrollIntoView(); });
+  function zeigen(){ if (!location.hash) return; var z = document.getElementById(location.hash.slice(1)); if (!z) return;
+    for (var d = z.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+    z.scrollIntoView(); }
+  addEventListener('load', zeigen); addEventListener('hashchange', zeigen);
 })();
 """
 
@@ -612,7 +620,11 @@ def _feld_titel(k: dict, pfad: str) -> str:
     return pfad.rsplit(".", 1)[-1]
 
 
-def karte(titel: str, inhalt: str) -> str:
+def karte(titel: str, inhalt: str, zu: bool = False, kurz: str = "") -> str:
+    """Karte; `zu`: zugeklappt (selten Gebrauchtes) mit Titel und optional einem kurzen Hinweis daneben."""
+    if zu:
+        return (f'<details class="karte klapp"><summary><h2>{escape(titel)}</h2>'
+                f'{f"<span class=leise>{escape(kurz)}</span>" if kurz else ""}</summary>{inhalt}</details>')
     return f'<section class="karte"><h2>{escape(titel)}</h2>{inhalt}</section>'
 
 
@@ -1057,7 +1069,7 @@ def liegenschaft_steuer_html(k: dict, e: dict) -> tuple[str, str]:
             zeilen.append([escape(p.get("name") or ""), f"{s['anteil']:g}&nbsp;%", chf(s["eigenmietwert"]),
                            chf(s["eigenmietwert_bund"]), chf(s["mieteinnahmen"]), chf(s["schuldzinsen"]),
                            f'{chf(s["unterhalt"])} / {chf(s["unterhalt_bund"])}'])
-        je_person = karte("Liegenschaft: Deklaration je Person", tabelle(
+        je_person = karte("Liegenschaft: Deklaration je Person", zu=True, kurz="Miteigentum", inhalt=tabelle(
             ["Person", "Anteil", "Eigenmietwert Staat", "Eigenmietwert Bund", "Mieteinnahmen", "Schuldzinsen",
              "Unterhalt pauschal Staat / Bund"], zeilen)
             + '<p class="leise">Jede Person deklariert ihren Eigentumsanteil (Einstellungen → Person → «Anteil an der '
@@ -1093,9 +1105,11 @@ def wohnen(k: dict, db) -> str:
     ]) + hinweisliste(t["pruefungen"])
     emw, je_person = liegenschaft_steuer_html(k, e)
     a = br.amortisation(k, db)
-    amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a)) if a else ""
+    amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a), True, "Liquidität und 3a/3b bis zur Fälligkeit") \
+        if a else ""
     return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
-        "Liegenschaft in der Steuererklärung", emw) + "</div>" + je_person + amort + amortisation_vergleich_karte(k, db) \
+        "Liegenschaft in der Steuererklärung", emw, True, "Eigenmietwert, Abzüge") + "</div>" + je_person + amort \
+        + amortisation_vergleich_karte(k, db) \
         + amortisation_strategie_karte(k, db) \
         + liegenschaft_karten(k, db)
 
@@ -1355,7 +1369,7 @@ def liegenschaft_karten(k: dict, db) -> str:
                 '<div class="zeile"><button>Bauteile speichern</button><button class="zweit" name="richtwerte" value="1">'
                 'Richtwerte verwenden</button></div></form></details>')
     return kpis + karte("Erneuerungen und Fonds", plan_html) + '<div class="raster">' + karte(
-        "Liegenschaft: Wert und Fonds", grund) + karte("Bauteile", bauteile) + "</div>"
+        "Liegenschaft: Wert und Fonds", grund) + karte("Bauteile", bauteile, True, f"{len(p.bauteile)} Bauteile") + "</div>"
 
 
 # ---------------------------------------------------------------- Vermögen
@@ -1431,10 +1445,11 @@ angeben.</p>
     return ('<div class="kpis">' + kpi(chf(nv["total"]), "Nettovermögen") + kpi(chf(nv["verfuegbar"]), "Frei verfügbar (ohne Immobilie, Hypothek, Vorsorge)") + (kpi(chf(nv["gebunden"]), "Gebundene Vorsorge (3a, 3b)") if nv["gebunden"] else "") + "</div>"
             + personen_karte(k, db, ks)
             + karte("Konten", liste)
-            + '<div class="raster">' + karte("Saldo erfassen", erfassen) + karte("Bank-Import", bank)
-            + karte("CSV importieren (eigene Liste)", importieren) + "</div>"
+            + '<div class="raster">' + karte("Saldo erfassen", erfassen, True, "von Hand")
+            + karte("Bank-Import", bank, True, "Auszug hochladen")
+            + karte("CSV importieren (eigene Liste)", importieren, True) + "</div>"
             + '<div class="raster">' + karte("Verlauf", dg.linie({"Nettovermögen": vm.verlauf(db)}))
-            + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen)) + "</div>"
+            + karte("Nach Art", tabelle(["Art", "CHF"], arten_zeilen), True) + "</div>"
             + dreia_karte(k, db) + wertschriften_karte(k, db) + anlage_karte(k, db))
 
 
@@ -1974,8 +1989,10 @@ Die Sparte wird aus der Bezeichnung erkannt (z. B. «Hausrat», «Tod Person 1»
                if pr["total"] else '<p class="leer">Noch keine Prämien.</p>')
     # Reihenfolge: Liste → direkt darunter hinzufügen → Fristen und Prämien → Analysen
     return (f'<div class="kpis">{kpis}</div>' + karte("Verträge", liste)
-            + '<div class="raster">' + karte("Verträge hochladen", hochladen) + karte("Liste importieren", liste_import) + "</div>"
-            + '<div class="raster">' + karte("Kündigungstermine", termin_html) + karte("Prämien nach Sparte", sparten) + "</div>"
+            + '<div class="raster">' + karte("Verträge hochladen", hochladen, True, "Policen als PDF")
+            + karte("Liste importieren", liste_import, True) + "</div>"
+            + '<div class="raster">' + karte("Kündigungstermine", termin_html) + karte("Prämien nach Sparte", sparten, True)
+            + "</div>"
             + karte("Deckungscheck", _deckung(k, vertraege))
             + krankenkasse_karte(k, db) + kassenvergleich_karte(k, db) + risiko_karte(k, vertraege))
 
@@ -2982,7 +2999,7 @@ def kassenvergleich_karte(k: dict, db) -> str:
     teile.append('<p class="leise">Wechsel der Grundversicherung bis 30. November (eingeschrieben, Eingang zählt). Die '
                  'Grundversicherung muss jede Kasse aufnehmen; Zusatzversicherungen erst kündigen, wenn die neue Kasse '
                  'sie zugesagt hat. Hausarzt-, HMO- und Telmed-Modelle binden an die erste Anlaufstelle.</p>')
-    return karte("Alle Kassen im Vergleich", "".join(teile) + laden)
+    return karte("Alle Kassen im Vergleich", "".join(teile) + laden, True, "Grundversicherung aller Kassen (BAG)")
 
 
 def krankenkasse_karte(k: dict, db) -> str:

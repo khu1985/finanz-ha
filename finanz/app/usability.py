@@ -163,7 +163,7 @@ def pruefen_html(html: str, druckseite: bool = False) -> list[Problem]:
             p.append(Problem("Lange Kartenliste auf dem Handy",
                              f"{t['zeilen']} Zeilen × {t['spalten']} Spalten – Filter, Seiten oder aufklappbare Zeilen",
                              6))
-        elif t["zeilen"] > 40:
+        elif t["zeilen"] > 40 and not druckseite:
             p.append(Problem("Lange Tabelle", f"{t['zeilen']} Zeilen – Filter oder «mehr anzeigen»", 4))
     for f in lz.formulare:      # ab 8 Feldern blendet die Seite bei Änderungen eine Speicher-Leiste ein
         if f["felder"] >= 50 and f["knoepfe"] <= 1:

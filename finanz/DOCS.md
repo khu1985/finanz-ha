@@ -88,6 +88,9 @@ personen:
   Spinner, Anzahl und Grösse der Dateien. Knöpfe sind während der Verarbeitung gesperrt.
 - **Statuszeile** auf der Übersicht: Stand der Saldi, Anzahl Verträge und Dokumente, offene TODO, wartende Dateien im
   Import-Ordner, KI an/aus, Warnungen von heute; auf «Heute» nur die Warnungen daraus.
+- **Zugeklappte Karten** (▸) für selten Gebrauchtes: Erfassen und Importieren unter Vermögen und Versicherungen,
+  «Nach Art», «Prämien nach Sparte», «Alle Kassen im Vergleich», unter Wohnen Steuererklärung, Deklaration je
+  Person, «Amortisation bis zur Fälligkeit» und Bauteile. Ein Link auf einen Abschnitt darin klappt ihn auf.
 - **Erklärungen «i»** an Kennzahlen und Tabellen: wie gerechnet wird und aus welchen Einstellungen (mit Herkunft und
   Stand), siehe [Datenqualität und Annahmen](#datenqualität-und-annahmen).
 - **Protokoll:** neueste Einträge zuerst, Filter nach Stufe, Download. Die Stufe für neue Einträge steht in der
