@@ -44,8 +44,8 @@ kantonalem Steuerrechner oder einer Fachperson prüfen.
    Ausbildungsweg ergänzen.
 5. Nach Bedarf: **Fahrzeuge**, **Solar & vZEV** (Werte aus der vZEV-App), 3a-Konten und Sparkonten mit Bezugslimite
    unter **Vermögen**, Lebensziele im **Finanzplan**.
-6. **Heute** (Startseite) zeigt, was jetzt zu tun ist; die **Übersicht** daneben alle Ampeln. Werte mit «TODO» in
-   der Konfiguration sind Platzhalter; ihre Zahl steht in der Statuszeile der Übersicht.
+6. **Heute** (Startseite) zeigt, was jetzt zu tun ist; der Teil **Alle Bereiche** alle Ampeln. Werte mit «TODO» in
+   der Konfiguration sind Platzhalter; ihre Zahl steht als Hinweis auf «Heute».
 
 Geplante PK-Einkäufe, verpfändete Vorsorge oder eine weitere Person werden im YAML-Editor erfasst, z. B.:
 
@@ -64,7 +64,7 @@ personen:
 
   | Gruppe | Menüeintrag (Reiter) |
   |---|---|
-  | Heute | Heute (Übersicht, Jahresbericht, Berater) |
+  | Heute | Heute (Checklisten, Jahresbericht, Berater) |
   | Geld | Budget (Liquidität 12 Monate), Vermögen (Sparen & Anlegen), Steuern (Steuern bezahlen, Steuererklärung) |
   | Zukunft | Vorsorge, Finanzplan (Rechner, Simulationen, Lebensereignisse) |
   | Familie & Wohnen | Wohnen (Solar & vZEV, Fahrzeuge), Kinder, Versicherungen |
@@ -76,15 +76,24 @@ personen:
   Seiten. Die Reiter stehen oben auf der Seite; auf einem Reiter ist im Menü der Eintrag der Gruppe hervorgehoben.
   Ein farbiger Punkt markiert Menüeinträge (samt ihren Reitern) mit gelber oder roter Ampel; bei Einstellungen bzw.
   dem Reiter Protokoll steht die Zahl der Warnungen von heute. Adressen und Lesezeichen bleiben gleich – nur die
-  frühere Startseite «Übersicht» liegt jetzt unter `uebersicht`.
+  frühere Seite «Übersicht» ist jetzt der Teil «Alle Bereiche» bzw. «Kennzahlen & Hinweise» von «Heute»;
+  `uebersicht` leitet dorthin weiter.
 - **Teile langer Seiten:** Unter den Reitern gliedert eine zweite Leiste (Knöpfe) lange Seiten in Teile; sichtbar ist
-  jeweils ein Teil, die App merkt sich den zuletzt gewählten pro Seite. Vermögen (Überblick, Konten, Erfassen & Import,
+  jeweils ein Teil, die App merkt sich den zuletzt gewählten pro Seite. Heute (Jetzt, Alle Bereiche, Kennzahlen &
+  Hinweise), Vermögen (Überblick, Konten, Erfassen & Import,
   3a & Anlagen), Wohnen (Tragbarkeit, Amortisation, Steuern, Unterhalt & Wert), Versicherungen (Verträge, Krankenkasse,
   Deckung & Risiko, Hochladen & Import), Kinder (Überblick, Sparen, Zulagen & Steuern, Erfassen), Rechner (PK-Einkauf,
-  Teilzeit, Frühpension, Hypothek, Heirat), Einstellungen (Haushalt, Personen, Steuern, Wohnen, KI & Erinnerungen),
+  Teilzeit, Frühpension, Hypothek, Heirat), Einstellungen (Haushalt, je Person ein Teil mit den Abschnitten Person
+  und Lohn, AHV, Pensionskasse, Säule 3a, Risiko und Zuzug – nur der erste offen –, Steuern, Wohnen, KI &
+  Erinnerungen), Konkubinat (Check, Abhaken),
   Notfallordner (Im Todesfall, Vermögen & Verträge, Kontakte & Ablage), Steuern bezahlen und Vorschläge. Links auf
   eine Stelle (z. B. `wohnen#amortisationstabelle`) öffnen den passenden Teil; Drucken und Browser ohne JavaScript
-  zeigen alles. «Änderungen» zeigt die letzten fünf Versionen, ältere zugeklappt.
+  zeigen alles. Kennzahlen zwischen zwei Karten gehören zum Teil der folgenden Karte. Breite Vergleichstabellen
+  (Amortisation, Amortisationsstrategie, PK-Einkauf-Varianten) scrollen am Handy seitlich mit fester erster Spalte,
+  statt jede Zeile als Karte zu zeigen. «Änderungen» zeigt die letzten fünf Versionen, ältere zugeklappt.
+- **Löschen** in Listen (Dokumente, Versicherungen, Konten) als kleines ✕ statt Text-Knopf; mehrere über die
+  Auswahl-Kästchen.
+- **Screenreader:** Dateiauswahl und Textfelder ohne sichtbare Beschriftung haben eine Beschriftung für Screenreader.
 - **Filter** über längeren Tabellen (Konten, Dokumente, Versicherungen, Vorsorgedokumente, Wertschriften, Finanzplan
   Jahr für Jahr): «Filter» aufklappen; pro Spalte Textsuche («enthält …») oder – bei wenigen verschiedenen Werten wie
   Art, Person, Sparte, Phase – Mehrfachauswahl. Die Zeile zeigt, wie viele Einträge passen; der Filter bleibt beim
@@ -94,10 +103,11 @@ personen:
   Browser gespeichert.
 - **Statusanzeige:** Ladebalken beim Seitenwechsel; bei Uploads, Importen, KI und Beratern ein Hinweisfenster mit
   Spinner, Anzahl und Grösse der Dateien. Knöpfe sind während der Verarbeitung gesperrt.
-- **Statuszeile** auf der Übersicht: Stand der Saldi, Anzahl Verträge und Dokumente, offene TODO, wartende Dateien im
-  Import-Ordner, KI an/aus, Warnungen von heute; auf «Heute» nur die Warnungen daraus.
-- **Kurz-Zeile** oben auf Budget, Vermögen, Steuern, Vorsorge, Finanzplan, Wohnen, Kinder, Versicherungen, Nachlass
-  und Fahrzeuge (dazu Konkubinat: wie viele Bereiche geregelt sind und was zuerst): die Kernaussage in einem Satz und – bei gelber oder roter Ampel der Seite – was zu tun ist.
+- **Hinweise der App** auf «Heute» – nur, wenn es etwas zu tun gibt, jeweils als Link: alte oder fehlende Saldi,
+  noch keine Verträge, offene TODO, wartende Dateien im Import-Ordner, Warnungen von heute (gleiche Meldungen zählen
+  einmal, auch bei der Zahl im Menü).
+- **Kurz-Zeile** oben auf Budget, Liquidität, Vermögen, Sparen & Anlegen, Steuern, Steuern bezahlen, Steuererklärung,
+  Vorsorge, Finanzplan, Lebensereignisse, Wohnen, Kinder, Versicherungen, Nachlass und Fahrzeuge (dazu Konkubinat: wie viele Bereiche geregelt sind und was zuerst): die Kernaussage in einem Satz und – bei gelber oder roter Ampel der Seite – was zu tun ist.
 - **Zugeklappte Karten** (▸) für selten Gebrauchtes: Erfassen und Importieren unter Vermögen und Versicherungen,
   «Nach Art», «Prämien nach Sparte», «Alle Kassen im Vergleich», unter Wohnen Steuererklärung, Deklaration je
   Person, «Amortisation bis zur Fälligkeit» und Bauteile. Ein Link auf einen Abschnitt darin klappt ihn auf.
@@ -111,9 +121,8 @@ personen:
 
 | Seite | Inhalt |
 |---|---|
-| Heute | Startseite: ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen mit Veränderung in 30 Tagen, Bankkonten, offene Steuern, Pensionslücke pro Monat); Aufgaben der nächsten 30 Tage (höchstens 5, mit «erledigt»); Bereiche mit gelber bzw. roter Ampel (höchstens 5); Warnungen der App |
+| Heute | Startseite: ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen mit Veränderung in 30 Tagen, Bankkonten, offene Steuern, Pensionslücke pro Monat). Teil «Jetzt»: Aufgaben der nächsten 30 Tage (höchstens 5, mit «erledigt»; lange Texte mit «mehr»), Bereiche mit gelber bzw. roter Ampel (höchstens 5), Hinweise der App. Teil «Alle Bereiche»: alle Ampeln und alle anstehenden Erinnerungen. Teil «Kennzahlen & Hinweise»: Kennzahlen, Hinweise, Vermögensverlauf, Einkommen im Ruhestand |
 | Checklisten | Reiter unter «Heute»: Monats-Check (Kontoauszüge, Saldi, fällige Aufgaben, Steuerzahlungen, erkannte Werte bestätigen, neue Dokumente) und Jahresabschluss (Saldi per 31.12., Lohnausweise, 3a-Bescheinigungen, Vorsorgeausweis, Wertschriften, Hypothek, Abzüge, Prämien, Steuererklärung bis 31.3.); Punkte mit Status aus den Daten haken sich selbst ab, die übrigen von Hand; offene Checklisten erscheinen als Erinnerung (Monats-Check fällig am 10., Jahresabschluss Januar bis April) |
-| Übersicht | Reiter unter «Heute»: alle Ampeln, alle anstehenden Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Jahresbericht | Reiter unter «Heute»: Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
 | Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr (im Konkubinat pro Person), Fälligkeit, Vergütungs- und Verzugszins, Steuerkonto mit allen Positionen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
@@ -764,7 +773,9 @@ Rechtsberatung – Testament und Vorsorgeauftrag handschriftlich bzw. notariell 
 
 Für unverheiratete Paare zeigt der Reiter «Konkubinat», wo sie anders gestellt sind als ein Ehepaar und was davon
 geregelt ist. Den Status leitet die App aus der Checkliste, der PK-Meldung (`personen[].risiko.partner_bei_pk_gemeldet`),
-dem Beginn des gemeinsamen Haushalts (`nachlass.zusammen_seit`), den Nachlass-Fällen und dem Heiratsvergleich ab:
+dem Beginn des gemeinsamen Haushalts (`nachlass.zusammen_seit`), den Nachlass-Fällen und dem Heiratsvergleich ab.
+Abgehakt wird im Teil «Abhaken» des Konkubinat-Checks (dieselbe Checkliste wie unter Nachlass; die Nachlass-Seite
+zeigt im Konkubinat nur den Stand mit einem Link dorthin):
 
 | Bereich | Thema | Grün, wenn |
 |---|---|---|
@@ -816,7 +827,7 @@ einfügen. Alle Beratungen bleiben gespeichert. Die Berater sind KI-Profile, kei
 
 ![Jahreslauf](https://raw.githubusercontent.com/khu1985/finanz-ha/main/docs/prozess-jahr.svg)
 
-Die Übersicht zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfällig, gelb ≤ 30 Tage) und dem Knopf
+«Heute» → Alle Bereiche zeigt anstehende Aufgaben mit Ampel (rot ≤ 7 Tage oder überfällig, gelb ≤ 30 Tage) und dem Knopf
 «erledigt», der die Aufgabe bis zur nächsten Periode ausblendet; «Heute» zeigt davon die nächsten 30 Tage (höchstens
 fünf):
 
@@ -1192,7 +1203,7 @@ Steuerdokumente legen fehlende Einträge unter `steuern.personen` bei der Übern
 ## Ampeln
 
 Grün = in Ordnung, gelb = prüfen, rot = handeln, grau = keine Daten. «Heute» zeigt die gelben und roten Bereiche
-(höchstens fünf), die Übersicht alle Bereiche als Kacheln (dringendste zuerst, mit Link); Ampeln stehen auch bei Kennzahlen, im Deckungscheck, bei Kündigungsterminen,
+(höchstens fünf), der Teil «Alle Bereiche» alle als Kacheln (dringendste zuerst, mit Link); Ampeln stehen auch bei Kennzahlen, im Deckungscheck, bei Kündigungsterminen,
 Risiko-Tabellen, Amortisation, PK-Einkauf, Szenarien, Dokumenten und Beratungen.
 
 | Bereich | Grün | Gelb | Rot |
@@ -1392,7 +1403,7 @@ sichten» (oder mit dem Knopf bei den Listen) geht das jederzeit.
 
 Das Ergebnis (geprüft, geändert, neu, belassen) steht auf der Karte – mit einer Tabelle aller geänderten Werte
 (Dokument, Feld, vorher, neu) – und im Protokoll; nach einem Update mit
-Änderungen erscheint 14 Tage lang ein Hinweis in der Übersicht.
+Änderungen erscheint 14 Tage lang ein Hinweis auf «Heute» (Kennzahlen & Hinweise).
 
 ## Uploads und Dateigrösse
 
@@ -1439,7 +1450,7 @@ beim Start und mit «Einstellungen → Import-Ordner jetzt einlesen» ein und ve
 
 ## Datenqualität und Annahmen
 
-**Woher kommt die Zahl?** Die wichtigsten Kennzahlen (Übersicht: Nettovermögen, Einkommen im Ruhestand,
+**Woher kommt die Zahl?** Die wichtigsten Kennzahlen (Heute → Kennzahlen & Hinweise: Nettovermögen, Einkommen im Ruhestand,
 Pensionslücke, Steuern, 3a-Ersparnis) haben ein kleines «i»: aufgeklappt steht, wie die Zahl gerechnet wird und aus
 welchen Werten – jeweils mit Herkunft, Stand und Status. Ein «!» statt «i» heisst: mindestens ein Wert ist noch ein
 Beispielwert der Vorlage, die Zahl stimmt so nicht.

@@ -94,9 +94,63 @@ def _konkubinat(k, db) -> str:
     return (f"{gut} von {gut + offen} Bereichen geregelt" + (f"; zuerst: {erst.tun}." if erst else "."))
 
 
+def _liquiditaet(k, db) -> str:
+    import liquiplan as lp
+    p = lp.rechnen(k, db)
+    t = p.tief
+    if t.ende < 0:
+        return f"Im {t.name} fehlen auf den Bankkonten rund {_chf(-t.ende)} – vorher Geld bereitstellen."
+    return (f"Tiefster Kontostand {_chf(t.ende)} im {t.name}; für grosse Rechnungen {_chf(p.zuruecklegen)} pro Monat "
+            "zurücklegen.")
+
+
+def _sparplan(k, db) -> str:
+    import sparplan as sp
+    p = sp.rechnen(k, db)
+    erster = next((s for s in p.schritte if s.status in (sp.OFFEN, sp.TEILWEISE)), None)
+    return (f"Sparpotenzial {_chf(p.sparpotenzial)} pro Monat; "
+            + (f"nächster Schritt: {erster.titel}." if erster else "alle Schritte erledigt."))
+
+
+def _steuerzahlung(k, db) -> str:
+    import steuerzahlung as sz
+    heute = date.today()
+    posten = sz.auswerten(k, db, heute)
+    offen = [p for p in posten if p.offen > 0.5]
+    ueber = [p for p in offen if p.faellig < heute]
+    if not offen:
+        return "Alle Steuerrechnungen sind bezahlt."
+    n = min(offen, key=lambda p: p.faellig)
+    return (f"Offen {_chf(sz.offen_total(posten))}"
+            + (f", davon {len(ueber)} Position{'' if len(ueber) == 1 else 'en'} überfällig" if ueber else "")
+            + f"; nächste Fälligkeit {n.faellig:%d.%m.%Y} ({n.name} {n.jahr}).")
+
+
+def _steuererklaerung(k, db) -> str:
+    import steuererklaerung as se
+    heute = date.today()
+    c = se.erstellen(k, db, se.standard_jahr(heute), heute)
+    return (f"Steuererklärung {c.jahr}: {c.total - c.offen} von {c.total} Punkten bereit, Frist {c.frist:%d.%m.%Y} "
+            f"(noch {(c.frist - heute).days} Tage).")
+
+
+def _lebensereignisse(k, db) -> str:
+    import lebensereignisse as le
+    teile = []
+    for p in k["personen"]:
+        if not float(p.get("lohn_brutto") or 0):
+            continue
+        s_ = le.stellenverlust(k, db, p["name"])
+        teile.append(f"{p['name']}: " + ("keine Lücke" if s_.reicht_monate is None
+                                          else f"Reserve reicht rund {s_.reicht_monate:.0f} Monate"))
+    return ("Bei Stellenverlust – " + "; ".join(teile) + ".") if teile else ""
+
+
 SAETZE = {"budget": _budget, "vermoegen": _vermoegen, "steuern": _steuern, "vorsorge": _vorsorge,
           "wohnen": _wohnen, "versicherungen": _versicherungen, "kinder": _kinder, "fahrzeuge": _fahrzeuge,
-          "finanzplan": None, "nachlass": None, "konkubinat": _konkubinat}
+          "finanzplan": None, "nachlass": None, "konkubinat": _konkubinat,
+          "liquiditaet": _liquiditaet, "sparplan": _sparplan, "steuerzahlung": _steuerzahlung,
+          "steuererklaerung": _steuererklaerung, "lebensereignisse": _lebensereignisse}
 
 
 def satz(pfad: str, k: dict, db) -> str:

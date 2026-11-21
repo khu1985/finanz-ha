@@ -2997,3 +2997,18 @@ def test_unterteile_und_aenderungen(k):
     assert seiten._absatz("- **A:** eins\n  zwei") == "<ul><li><b>A:</b> eins zwei</li></ul>"
     a = seiten.aenderungen(k, db)
     assert a.count('class="antwort"') >= 5 and "Ältere Versionen" in a
+
+
+def test_kurztext_und_kurz_zeilen(k):
+    import kurz
+    import seiten
+    t = seiten.kurztext("Neue Prämien sind bekannt; Grundversicherung bis 30. November kündigen, sonst läuft der Vertrag "
+                        "ein weiteres Jahr. Vergleich unter Versicherungen.")
+    assert "bis 30. November" in t.split("<details")[0] and '<details class="mehr">' in t
+    assert "<details" not in seiten.kurztext("Kurz und gut.")
+    db = vm.verbinden(":memory:")
+    assert kurz.satz("steuererklaerung", k, db).startswith("Steuererklärung ")
+    assert kurz.satz("steuerzahlung", k, db)
+    assert "Sparpotenzial" in kurz.satz("sparplan", k, db)
+    # Dateiauswahl bekommt eine Beschriftung
+    assert 'aria-label="Datei auswählen"' in seiten.seite("x", "budget", '<input type="file" name="datei">')

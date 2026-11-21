@@ -1,5 +1,24 @@
 # Änderungen
 
+## 0.67.0 – 2026-11-21
+
+- **Heute statt Übersicht:** Die frühere Seite «Übersicht» ist jetzt Teil der Startseite – «Jetzt», «Alle Bereiche»
+  (alle Ampeln und Erinnerungen), «Kennzahlen & Hinweise». Der Reiter «Übersicht» fällt weg, alte Links leiten weiter.
+- **Erinnerungen kürzer:** lange Texte zeigen den ersten Satz, der Rest mit «mehr».
+- **Konkubinat:** Die Nachlass-Checkliste wird im Konkubinat-Check abgehakt (Teil «Abhaken»); die Nachlass-Seite
+  zeigt nur noch den Stand mit Link – keine doppelten To-dos mehr.
+- **Lange Teile kürzer:** Einstellungen je Person ein Teil, die Felder in Abschnitten (Person und Lohn, AHV,
+  Pensionskasse, Säule 3a, Risiko, Zuzug – nur der erste offen); Amortisations- und PK-Einkauf-Vergleiche am Handy
+  als seitlich scrollbare Tabelle mit fester erster Spalte (Amortisation 7'700 → 4'200 px, Personen 8'200 → 1'600 px).
+- **Kurz-Zeilen** auch auf Liquidität, Sparen & Anlegen, Steuern bezahlen, Steuererklärung und Lebensereignisse.
+- **Wohnen:** Die Kennzahlen zur Tragbarkeit stehen in der Karte «Tragbarkeit», die zur Liegenschaft beim Teil
+  «Unterhalt & Wert» – nicht mehr auf jedem Teil.
+- **Weniger Knöpfe:** Löschen in Listen als kleines ✕.
+- **Hinweise auf Heute** nur noch, wenn es etwas zu tun gibt, als Link («0 Dokumente», «KI aus» fallen weg).
+  Warnungen mit gleichem Text zählen einmal – auch bei der Zahl im Menü.
+- **Barrierefreiheit:** Dateiauswahl und Textfelder mit Beschriftung für Screenreader; die Bedarfslinie im
+  Vorsorge-Diagramm ist auch über den Säulen lesbar.
+
 ## 0.66.0 – 2026-11-21
 
 - **Teile langer Seiten:** zweite Leiste unter den Reitern; sichtbar ist jeweils ein Teil (zuletzt gewählter bleibt).

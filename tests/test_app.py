@@ -221,7 +221,10 @@ def test_nachlass_fragebogen_und_notfallordner(server):
     konfig.speichern(k)
     p1 = k["personen"][0]["name"]
     html = urllib.request.urlopen(f"{server}/nachlass").read().decode()
+    assert 'href="konkubinat#t-checkliste"' in html          # im Konkubinat wird im Konkubinat-Check abgehakt
+    html = urllib.request.urlopen(f"{server}/konkubinat").read().decode()
     assert 'href="nachlass/fragebogen?bereich=testament#testament"' in html
+    assert 'name="zurueck" value="konkubinat#t-checkliste"' in html
     html = urllib.request.urlopen(f"{server}/nachlass/fragebogen?bereich=testament").read().decode()
     assert 'id="testament" open' in html and "Konkubinatsvertrag" in html and 'class="aktiv"' in html
     code, ziel = _post(f"{server}/nachlass/fragebogen", {
@@ -584,7 +587,8 @@ def test_amortisationsvergleich_aktualisieren(server, daten):
 def test_startseite_heute_und_menu(server, daten):
     html = urllib.request.urlopen(f"{server}/").read().decode()
     assert '<p class="kurz">' in html and "<h1>Heute</h1>" in html
-    assert 'href="uebersicht"' in html and 'class="reiterleiste"' in html
+    assert 'href="checklisten"' in html and 'class="reiterleiste"' in html and 'href="uebersicht"' not in html
+    assert 'href="#t-bereiche"' in html and "<h2>Alle Bereiche</h2>" in html and "<h2>Kennzahlen</h2>" in html
     nav = html.split('<nav id="nav"', 1)[1].split("</nav>", 1)[0]
     assert nav.count("<a ") <= 13 and "Sparen &amp; Anlegen" not in nav and "Simulationen" not in nav
     # Seiten ohne Menüeintrag: Menüeintrag der Gruppe hervorgehoben, Reiter sichtbar

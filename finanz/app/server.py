@@ -193,6 +193,8 @@ class Handler(BaseHTTPRequestHandler):
     def _get(self):
         pfad, q = self._pfad()
         try:
+            if pfad == "uebersicht":                     # frühere Seite: heute Teil der Startseite
+                return self.weiter("#t-bereiche")
             if pfad == "export":
                 inhalt = konfig.konfig_pfad().read_bytes() if konfig.konfig_pfad().exists() else b""
                 return self.senden(200, inhalt, "application/x-yaml",
@@ -816,7 +818,8 @@ class Handler(BaseHTTPRequestHandler):
             if str(form.get("zusammen_seit", "")).strip():
                 n["zusammen_seit"] = int(str(form["zusammen_seit"]).strip()[:4])
             konfig.speichern(k)
-            return "Nachlass-Checkliste gespeichert.", "nachlass"
+            zurueck = str(form.get("zurueck") or "nachlass")
+            return "Nachlass-Checkliste gespeichert.", (zurueck if zurueck.split("#")[0] in SEITEN else "nachlass")
         if pfad == "erinnerungen/erledigt":
             import erinnerungen as er
             with db() as v:

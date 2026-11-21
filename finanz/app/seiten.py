@@ -34,8 +34,7 @@ NAVIGATION = [
 ]
 # Seiten, die als Reiter einer Seite erscheinen (erster Reiter = Menüeintrag)
 REITER = [
-    [("", "Heute"), ("checklisten", "Checklisten"), ("uebersicht", "Übersicht"), ("bericht", "Jahresbericht"),
-     ("berater", "Berater")],
+    [("", "Heute"), ("checklisten", "Checklisten"), ("bericht", "Jahresbericht"), ("berater", "Berater")],
     [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
     [("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen")],
     [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
@@ -50,6 +49,9 @@ REITER = [
 # Unternavigation innerhalb langer Seiten: Teil → Karten (Titel beginnt mit … bzw. «#id-anfang» für die id des
 # umschliessenden Elements). Karten ohne Treffer gehören zum Teil der Karte davor. Im Browser ist jeweils ein Teil sichtbar; ohne JavaScript und beim Drucken alles.
 UNTERTEILE: dict[str, list[tuple[str, str, list[str]]]] = {
+    "": [("jetzt", "Jetzt", ["Zu tun in den nächsten", "Wo es hakt"]),
+         ("bereiche", "Alle Bereiche", ["Alle Bereiche", "Anstehend"]),
+         ("zahlen", "Kennzahlen & Hinweise", ["Kennzahlen", "Hinweise", "Nettovermögen", "Ruhestand"])],
     "vermoegen": [("ueberblick", "Überblick", ["Vermögen pro Person", "Verlauf", "Nach Art"]),
                   ("konten", "Konten", ["Konten"]),
                   ("erfassen", "Erfassen & Import", ["Saldo erfassen", "Bank-Import", "CSV importieren"]),
@@ -71,8 +73,10 @@ UNTERTEILE: dict[str, list[tuple[str, str, list[str]]]] = {
                   ("fruehpension", "Frühpension", ["Frühpensionierung"]),
                   ("hypothek", "Hypothek", ["Hypothekar"]),
                   ("heirat", "Heirat", ["Verheiratet oder"])],
+    "konkubinat": [("check", "Check", ["Tod", "Urteilsunfähigkeit", "Trennung", "Kinder", "Steuern und AHV"]),
+                   ("checkliste", "Abhaken", ["Checkliste"])],
     "einstellungen": [("haushalt", "Haushalt", ["Zu prüfen", "Haushalt"]),
-                      ("personen", "Personen", ["#b-person"]),
+                      ("person", "", ["#b-person"]),        # je Person ein Teil (Titel = Name)
                       ("steuern", "Steuern", ["Steuern"]),
                       ("wohnen", "Wohnen", ["Wohnen"]),
                       ("weitere", "KI & Erinnerungen", ["KI", "Erinnerungen"])],
@@ -102,10 +106,18 @@ var cfg=JSON.parse(l.getAttribute('data-teile')),m=document.querySelector('main'
 var karten=[].slice.call(m.querySelectorAll('.karte')).filter(function(e){return !e.parentElement.closest('.karte')});
 function passt(k,t,p){if(p.charAt(0)!=='#')return t.indexOf(p)===0;var e=k.parentElement;
  return !!(e&&e.id&&e.id.indexOf(p.slice(1))===0)}
-var cur=cfg[0][0],belegt={};
-karten.forEach(function(k){var h=k.querySelector('h2'),t=h?h.textContent.trim():'',best='',bl=0;
- cfg.forEach(function(c){c[2].forEach(function(p){if(passt(k,t,p)&&p.length>bl){best=c[0];bl=p.length}})});
+var cur=cfg[0][0],belegt={},n=0;
+karten.forEach(function(k){var h=k.querySelector('h2'),t=h?h.textContent.trim():'',best='',bl=0,bc=null;
+ cfg.forEach(function(c){c[2].forEach(function(p){if(passt(k,t,p)&&p.length>bl){best=c[0];bl=p.length;bc=c}})});
+ if(bc&&!bc[1]){best=bc[0]+'-'+(n++);var a=document.createElement('a');a.href='#t-'+best;a.setAttribute('data-teil',best);
+  a.textContent=t;var vor=l.querySelector('a[data-teil="'+bc[0]+'"]');l.insertBefore(a,vor)}
  if(best)cur=best;k.setAttribute('data-teil',cur);if(!k.closest('.nur-druck'))belegt[cur]=1});
+// Blöcke zwischen den Karten (z. B. Kennzahlen über einer Karte) gehören zur nächsten Karte
+var kinder=[].slice.call(m.children),erste=-1;
+kinder.forEach(function(e,i){if(erste<0&&(e.matches('.karte')||e.querySelector('.karte')))erste=i});
+kinder.forEach(function(e,i){if(i<=erste||e.matches('.karte,script,style')||e.querySelector('.karte'))return;
+ for(var j=i+1;j<kinder.length;j++){var z=kinder[j].matches('[data-teil]')?kinder[j]:kinder[j].querySelector('[data-teil]');
+  if(z){e.setAttribute('data-teil',z.getAttribute('data-teil'));karten.push(e);break}}});
 var links=[].slice.call(l.querySelectorAll('a'));
 links.forEach(function(a){if(!belegt[a.getAttribute('data-teil')])a.remove()});
 links=[].slice.call(l.querySelectorAll('a'));if(links.length<2)return;
@@ -116,7 +128,8 @@ function zeige(t){if(!belegt[t])t=links[0].getAttribute('data-teil');
   if(an){a.setAttribute('aria-current','true');l.scrollLeft=Math.max(0,a.offsetLeft-l.offsetLeft-16)}
   else a.removeAttribute('aria-current')});
  try{sessionStorage.setItem(schl,t)}catch(e){}}
-function ausHash(){var h=decodeURIComponent(location.hash.slice(1));if(!h)return '';
+function oeffne(z){for(var d=z&&z.closest('details');d;d=d.parentElement&&d.parentElement.closest('details'))d.open=true}
+function ausHash(){var h=decodeURIComponent(location.hash.slice(1));if(!h)return '';oeffne(document.getElementById(h));
  if(h.indexOf('t-')===0&&belegt[h.slice(2)])return h.slice(2);
  var z=document.getElementById(h);var k=z&&(z.closest('[data-teil]')||z.querySelector('[data-teil]'));
  return k?k.getAttribute('data-teil'):''}
@@ -124,7 +137,7 @@ links.forEach(function(a){a.addEventListener('click',function(e){e.preventDefaul
  zeige(t);history.replaceState(null,'','#t-'+t);l.scrollIntoView({block:'nearest'})})});
 addEventListener('hashchange',function(){var t=ausHash();if(t){zeige(t);var z=document.getElementById(location.hash.slice(1));
  if(z)z.scrollIntoView()}});
-document.addEventListener('invalid',function(e){var k=e.target.closest&&e.target.closest('[data-teil]');
+document.addEventListener('invalid',function(e){oeffne(e.target);var k=e.target.closest&&e.target.closest('[data-teil]');
  if(k&&k.classList.contains('teil-aus'))zeige(k.getAttribute('data-teil'))},true);
 var start=ausHash();if(!start){try{start=sessionStorage.getItem(schl)||''}catch(e){}}
 l.hidden=false;zeige(start||links[0].getAttribute('data-teil'));
@@ -133,7 +146,7 @@ if(location.hash&&location.hash.indexOf('#t-')!==0){var z=document.getElementByI
 
 
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
-MENU_ALIAS = {p: gruppe[0][0] for gruppe in REITER for p, _ in gruppe[1:]}
+MENU_ALIAS = {p: gruppe[0][0] for gruppe in REITER for p, _ in gruppe[1:]} | {"uebersicht": ""}
 OFFEN_IMMER = {g for g, _ in NAVIGATION}          # wenige Einträge: alle Gruppen offen
 
 
@@ -185,6 +198,11 @@ white-space:nowrap;margin-bottom:-1px}
 font-size:14px;font-weight:600;white-space:nowrap;background:var(--karte)}
 .teilleiste a.aktiv{color:var(--karte);background:var(--akzent);border-color:var(--akzent)}
 .teil-aus{display:none!important}
+details.mehr{display:inline}details.mehr>summary{display:inline;cursor:pointer;color:var(--akzent);font-size:14px;list-style:none}
+details.mehr>summary::-webkit-details-marker{display:none}details.mehr[open]>summary{display:none}
+a.chip{text-decoration:none}
+details.abschnitt{border-top:1px solid var(--linie);padding:8px 0}details.abschnitt>summary{cursor:pointer;font-weight:600;padding:4px 0}
+details.abschnitt>.felder{margin-top:8px}
 .speicherleiste{position:sticky;bottom:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;
 margin:12px 0;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--karte);
 border:1px solid var(--akzent);border-radius:12px;box-shadow:0 -4px 16px rgba(0,0,0,.15);font-weight:600}
@@ -298,7 +316,7 @@ td.z,th.z{text-align:right}th{color:var(--leise);font-weight:600;font-size:13px}
 .tab{overflow-x:auto}
 .diagramm{margin:0}.diagramm svg{width:100%;height:auto;display:block}
 .gitter{stroke:var(--linie)}.achse{fill:var(--leise);font-size:11px}
-.ziel{stroke:var(--schlecht);stroke-dasharray:5 4;stroke-width:1.5}.ziel-text{fill:var(--schlecht)}
+.ziel{stroke:var(--schlecht);stroke-dasharray:5 4;stroke-width:1.5}.ziel-text{fill:var(--schlecht);paint-order:stroke;stroke:var(--karte);stroke-width:4px;stroke-linejoin:round;font-weight:600}
 fieldset.kind{border:1px solid var(--linie);border-radius:10px;padding:10px 14px 12px;margin:0 0 14px}
 fieldset.kind legend{font-weight:600;padding:0 6px}
 .ueq{border-bottom:1px solid var(--linie);padding:8px 0;display:grid;grid-template-columns:1fr repeat(7,auto) 1fr;align-items:center;gap:4px}
@@ -331,6 +349,8 @@ label.wahl input{width:auto;margin-top:3px;flex:none}
 .st-spur{display:flex;height:16px;gap:1px;background:transparent}.st-teil{display:block;height:100%}
 .st-teil:first-child{border-radius:4px 0 0 4px}.st-teil:last-child{border-radius:0 4px 4px 0}
 table.matrix td,table.matrix th{white-space:nowrap}
+table.matrix td:first-child,table.matrix th:first-child{position:sticky;left:0;z-index:1;background:var(--karte);
+box-shadow:1px 0 0 var(--linie)}
 @media (max-width:640px){table.matrix{font-size:12px}table.matrix td,table.matrix th{padding:6px 5px}}
 .vorschlag{display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-size:inherit;color:inherit;padding:8px 0;border-bottom:1px solid var(--linie)}
 .vorschlag input{margin-top:3px;flex:none;width:auto!important}.vorschlag>span{flex:1;min-width:0}.vorschlag span.leise{display:block;font-size:.9em}
@@ -604,7 +624,9 @@ def _warnungen_heute() -> int:
         import konfig
         import meta
         heute = date.today().isoformat()
-        return sum(1 for e in meta.protokoll(konfig.datenordner() / "finanz.log", "WARNING", 200) if e[0][:10] == heute)
+        # gleiche Meldung mehrfach (z. B. bei jedem Durchlauf) zählt einmal
+        return len({re.sub(r"\d+", "#", e[2])[:80] for e in meta.protokoll(konfig.datenordner() / "finanz.log",
+                                                                             "WARNING", 200) if e[0][:10] == heute})
     except Exception:  # noqa: BLE001
         return 0
 
@@ -643,6 +665,8 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
                     f'<span>{gruppe}</span>{gpunkt}</button>')
         gruppen.append(f'<div class="grp{"" if offen else " zu"}">{kopf}{"".join(links)}</div>')
     m = f'<div class="meldung{" fehler" if fehler else ""}" role="status">{escape(meldung)}</div>' if meldung else ""
+    # Dateiauswahl ohne eigene Beschriftung: für Screenreader benennen
+    inhalt = re.sub(r'<input type="file"(?![^>]*aria-label)', '<input type="file" aria-label="Datei auswählen"', inhalt)
     if 'id="sichtung-laeuft"' not in inhalt:
         m += sichtung_fortschritt()
     v = meta.version()
@@ -665,6 +689,17 @@ def licht(status: str, titel: str = "") -> str:
     """Ampel-Punkt; Text für Screenreader und Tooltip."""
     t = titel or am.TEXT.get(status, "")
     return f'<span class="ampel {status}" title="{escape(t)}" role="img" aria-label="Ampel {escape(am.TEXT.get(status, ""))}"></span>'
+
+
+def kurztext(text: str, mehr: str = "mehr") -> str:
+    """Erster Satz sichtbar, der Rest zum Aufklappen (für lange Erinnerungs- und Hinweistexte)."""
+    t = (text or "").strip()
+    m = re.search(r"(?<=[^\d\s.][.!?])\s+(?=[A-ZÄÖÜ«(])", t[25:]) if len(t) > 110 else None
+    if not m:
+        return f"<span>{escape(t)}</span>"
+    i = 25 + m.start()
+    return (f'<span>{escape(t[:i])}</span> <details class="mehr"><summary>{mehr}</summary>'
+            f'<span>{escape(t[i:].strip())}</span></details>')
 
 
 def kpi(wert: str, text: str, klasse: str = "", ampel: str = "", woher_: str = "") -> str:
@@ -787,7 +822,8 @@ def konkubinat_seite(k: dict, db) -> str:
             zeilen.append([f'{licht(p.status)} <b>{escape(p.titel)}</b>', escape(p.lage), tun + link])
         teile.append(karte(bereich, tabelle(["Thema", "Lage im Konkubinat", "Nächster Schritt"], zeilen, zahlen_ab=9,
                                             karten=True)))
-    teile.append('<p class="leise">Status aus der <a href="nachlass">Nachlass-Checkliste</a>, der PK-Meldung, dem Beginn '
+    teile.append(nachlass_checkliste_karte(k, k.get("nachlass") or {}, "konkubinat#t-checkliste"))
+    teile.append('<p class="leise">Status aus der Checkliste, der PK-Meldung, dem Beginn '
                  'des gemeinsamen Haushalts und dem <a href="szenarien">Heiratsvergleich</a>. Vereinfachte Übersicht, '
                  'keine Rechtsberatung – für Testament, Erbvertrag und Konkubinatsvertrag eine Fachperson beiziehen.</p>')
     return "".join(teile)
@@ -884,11 +920,11 @@ def heute(k: dict, db) -> str:
             link = f' <a href="{e.seite}">öffnen</a>' if e.seite else ""
             zeilen.append(
                 f'<li class="erinnerung">{licht(er.status(e, tag), wann)}<div><b>{escape(e.titel)}</b>'
-                f'<span class="leise"> · {wann}</span><br><span>{escape(e.text)}</span>{link}</div>'
+                f'<span class="leise"> · {wann}</span><br>{kurztext(e.text)}{link}</div>'
                 f'<form method="post" action="erinnerungen/erledigt" data-status="Wird gespeichert …">'
                 f'<input type="hidden" name="schluessel" value="{escape(e.schluessel)}"><button class="zweit klein">'
                 'erledigt</button></form></li>')
-        mehr = (f'<p class="leise">{len(aufgaben) - 5} weitere im nächsten Monat – <a href="uebersicht">Übersicht</a>.</p>'
+        mehr = (f'<p class="leise">{len(aufgaben) - 5} weitere im nächsten Monat – <a href="#t-bereiche">alle anzeigen</a>.</p>'
                 if len(aufgaben) > 5 else "")
         html.append(karte("Zu tun in den nächsten 30 Tagen", f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>' + mehr))
     # Bereiche
@@ -899,18 +935,28 @@ def heute(k: dict, db) -> str:
         gruen = sum(1 for a in ampeln if a.status == am.GRUEN)
         html.append(karte("Wo es hakt", f'<div class="ampeln">{kacheln}</div>'
                           + (f'<p class="leise">{len(handeln) - 5} weitere – ' if len(handeln) > 5 else '<p class="leise">')
-                          + f'{gruen} Bereiche in Ordnung. Alles im Detail: <a href="uebersicht">Übersicht</a>.</p>'))
+                          + f'{gruen} Bereiche in Ordnung. <a href="#t-bereiche">Alle Bereiche</a>.</p>'))
     # Warnungen der App (Saldi alt, Import-Ordner, Protokoll)
     try:
-        chips = re.findall(r'<span class="chip warn">.*?</span>', statuszeile(k, db))
+        chips = re.findall(r'<(?:span|a) class="chip warn"[^>]*>.*?</(?:span|a)>', statuszeile(k, db))
         if chips:
             html.append(f'<div class="status-zeile">{"".join(chips)}</div>')
+    except Exception:  # noqa: BLE001
+        pass
+    # früher eigene Seite «Übersicht»: alle Ampeln und Erinnerungen, Kennzahlen, Hinweise, Verläufe
+    try:
+        html.append(karte("Alle Bereiche", ampel_karte(k, db)) + erinnerungen_karte(k, db))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        html.append(uebersicht(k, db, teil=True))
     except Exception:  # noqa: BLE001
         pass
     return "".join(html)
 
 
-def uebersicht(k: dict, db) -> str:
+def uebersicht(k: dict, db, teil: bool = False) -> str:
+    """Kennzahlen, Hinweise und Verläufe – heute als Teil «Kennzahlen & Hinweise» der Startseite (`teil`)."""
     jetzt = date.today().year
     nv = vm.nettovermoegen(db)
     luecke = vs.pensionsluecke(k, nv["frei"], jetzt)
@@ -997,7 +1043,8 @@ def uebersicht(k: dict, db) -> str:
             + [p_ for p_ in pfade_steuer if not p_.endswith(("vermoegen", "vermoegenssteuer"))])),
     ])
     verl = vm.verlauf(db)
-    return statuszeile(k, db) + ampel_karte(k, db) + erinnerungen_karte(k, db) + f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
+    kopf = "" if teil else statuszeile(k, db) + ampel_karte(k, db) + erinnerungen_karte(k, db)
+    return kopf + karte("Kennzahlen", f'<div class="kpis">{kpis}</div>') + '<div class="raster">' + karte("Hinweise", hinweisliste(hinweise)) + karte(
         "Nettovermögen", dg.linie({"Nettovermögen": verl}, "Nettovermögen")
         + '<p class="leise">Saldi unter «Vermögen» erfassen oder als CSV importieren.</p>') + "</div>" + karte(
         "Ruhestand: Einkommen und Bedarf", _luecke_diagramm(luecke))
@@ -1263,7 +1310,7 @@ def wohnen(k: dict, db) -> str:
     a = br.amortisation(k, db)
     amort = karte("Amortisation bis zur Fälligkeit", _amortisation_html(a), True, "Liquidität und 3a/3b bis zur Fälligkeit") \
         if a else ""
-    return f'<div class="kpis">{kpis}</div>' + '<div class="raster">' + karte("Tragbarkeit", trag) + karte(
+    return '<div class="raster">' + karte("Tragbarkeit", f'<div class="kpis">{kpis}</div>' + trag) + karte(
         "Liegenschaft in der Steuererklärung", emw, True, "Eigenmietwert, Abzüge") + "</div>" + je_person + amort \
         + amortisation_vergleich_karte(k, db) \
         + amortisation_strategie_karte(k, db) \
@@ -1354,7 +1401,7 @@ def amortisation_vergleich_karte(k: dict, db) -> str:
             'Fälligkeit (ohne Arten unter «nicht antasten»). 3a/3b: Zuordnung über den Namen des Vertrags.</p>')
     tab = tabelle(["direkt amortisiert", "total mit 3a/3b", "Resthypothek", "Zinsen pro Jahr", "Steuerersparnis Zinsabzug",
                    "Netto-Zinskosten", "Restliquidität", f"Ertrag {v.ertrag:g} %", "nach Steuern", "gegenüber 0 direkt",
-                   "Belehnung"], zeilen, zahlen_ab=1, karten=True)
+                   "Belehnung"], zeilen, zahlen_ab=1, responsiv=False)
     return '<div id="amortisationstabelle">' + karte(
         f"Amortisation bei Fälligkeit {jahr}: Höhe im Vergleich",
         form + f'<div class="erklaer-zeile"><span class="leise">Was bedeuten die Spalten?</span> {spalten}</div>'
@@ -1452,7 +1499,7 @@ def amortisation_strategie_karte(k: dict, db) -> str:
     kpis += f'<div class="erklaer-zeile"><span class="leise">Was bedeuten die Spalten?</span> {spalten}</div>'
     return '<div id="amortisationsstrategie">' + karte("Amortisationsstrategie", kpis + tabelle(
         ["Variante", "amortisiert", f"Hypothek {s.pension}", "Zinsen nach Steuern", "Vorteil (sicher angelegt)",
-         "Vorteil (Wertschriften)", "Tragbarkeit im Alter", "tiefste Liquidität"], zeilen, zahlen_ab=1, karten=True)
+         "Vorteil (Wertschriften)", "Tragbarkeit im Alter", "tiefste Liquidität"], zeilen, zahlen_ab=1, responsiv=False)
         + diagramm + hinweisliste(s.hinweise) + (
         f'<p class="leise">Gerechnet von heute bis {s.pension} mit Zins {s.zins:g} %, Grenzsteuersatz {s.grenz:.0f} %, '
         f'Sparen CHF {chf(s.sparen_jahr)} pro Jahr, freie Liquidität heute CHF {chf(s.liquid)}, Notreserve CHF '
@@ -1851,6 +1898,10 @@ def _felder_person(i: int) -> list[tuple]:
     ]
 
 
+PERSON_ABSCHNITTE = {"ahv": "AHV", "pk": "Pensionskasse", "risiko": "Risiko (IV und Tod)", "saeule3a": "Säule 3a",
+                     "zuzug": "Zuzug aus dem Ausland"}
+PERSON_REIHE = ["Person und Lohn", "AHV", "Pensionskasse", "Säule 3a", "Risiko (IV und Tod)", "Zuzug aus dem Ausland"]
+
 FELDER_HAUSHALT = [
     ("haushalt.name", "Name"), ("haushalt.zivilstand", "Zivilstand (verheiratet/ledig)"), ("haushalt.kanton", "Kanton"),
     ("krankenkasse.region", "Prämienregion Krankenkasse (leer = aus der Police)"),
@@ -1984,6 +2035,16 @@ def _feld(k: dict, pfad: str, text: str) -> str:
 def einstellungen(k: dict, db) -> str:
     def gruppe(titel, felder, anker):
         knopf = (f'<div class="zeile"><button name="bereich" value="{anker}">Speichern</button></div>')
+        if anker.startswith("person"):                 # lange Personen-Karte: Abschnitte, nur der erste offen
+            abschnitte: dict[str, list] = {}
+            for p, t in felder:
+                teil_ = p.split(".")[2] if p.count(".") >= 2 else ""
+                abschnitte.setdefault(PERSON_ABSCHNITTE.get(teil_, "Person und Lohn"), []).append((p, t))
+            inhalt = "".join(
+                f'<details class="abschnitt"{" open" if i_ == 0 else ""}><summary>{escape(n_)}</summary>'
+                f'<div class="felder">{"".join(_feld(k, p, t) for p, t in ff)}</div></details>'
+                for i_, (n_, ff) in enumerate(sorted(abschnitte.items(), key=lambda x: PERSON_REIHE.index(x[0]))))
+            return f'<div id="b-{anker}">' + karte(titel, inhalt + knopf) + "</div>"
         return (f'<div id="b-{anker}">' + karte(titel, '<div class="felder">' + "".join(_feld(k, p, t) for p, t in felder)
                                                 + "</div>" + knopf) + "</div>")
 
@@ -2514,8 +2575,8 @@ def statuszeile(k: dict, db) -> str:
         chips.append(("gut" if alter <= 45 else "warn", f"Saldi vom {date.fromisoformat(letzter).strftime('%d.%m.%Y')}"))
     else:
         chips.append(("warn", "Noch keine Saldi"))
-    chips.append(("", f"{len(vi.alle(db))} Verträge"))
-    chips.append(("", f"{len(dk.alle(db))} Vorsorge- und {len(sd.alle(db))} Steuerdokumente"))
+    if not vi.alle(db):
+        chips.append(("warn", "Noch keine Verträge"))
     todo = konfig.konfig_pfad().read_text(encoding="utf-8").count("TODO") if konfig.konfig_pfad().exists() else 0
     if todo:
         chips.append(("warn", f"{todo} offene TODO in der Konfiguration"))
@@ -2523,12 +2584,16 @@ def statuszeile(k: dict, db) -> str:
     wartend = [p for p in imp.iterdir() if p.is_file()] if imp.exists() else []
     if wartend:
         chips.append(("warn", f"{len(wartend)} Datei(en) im Import-Ordner"))
-    chips.append(("gut" if k.get("ki", {}).get("aktiv") else "", "KI an" if k.get("ki", {}).get("aktiv") else "KI aus"))
-    fehler = [e for e in meta.protokoll(konfig.datenordner() / "finanz.log", "WARNING", 50)
-              if e[0][:10] == date.today().isoformat()]
-    if fehler:
-        chips.append(("warn", f"{len(fehler)} Warnung(en) heute – Protokoll"))
-    html = "".join(f'<span class="chip {c}">{escape(t)}</span>' for c, t in chips)
+    n = _warnungen_heute()
+    if n:
+        chips.append(("warn", f"{n} Warnung{'' if n == 1 else 'en'} heute"))
+    ziele = {"Saldi": "vermoegen#t-erfassen", "Noch keine Saldi": "vermoegen#t-erfassen",
+             "Noch keine Verträge": "versicherungen#t-import", "offene TODO": "einstellungen", "Import-Ordner": "daten",
+             "Warnung": "protokoll"}
+    def ziel(t):
+        return next((z for w, z in ziele.items() if w in t), "")
+    html = "".join((f'<a class="chip {c}" href="{ziel(t)}">{escape(t)}</a>' if ziel(t) and c == "warn"
+                    else f'<span class="chip {c}">{escape(t)}</span>') for c, t in chips)
     return f'<div class="status-zeile">{html}</div>'
 
 
@@ -3048,7 +3113,7 @@ def erinnerungen_karte(k: dict, db) -> str:
         link = f' <a href="{e.seite}">öffnen</a>' if e.seite else ""
         zeilen.append(
             f'<li class="erinnerung">{licht(er.status(e, heute), wann)}<div><b>{escape(e.titel)}</b>'
-            f'<span class="leise"> · bis {e.faellig:%d.%m.%Y} ({wann})</span><br><span>{escape(e.text)}</span>{link}</div>'
+            f'<span class="leise"> · bis {e.faellig:%d.%m.%Y} ({wann})</span><br>{kurztext(e.text)}{link}</div>'
             f'<form method="post" action="erinnerungen/erledigt" data-status="Wird gespeichert …">'
             f'<input type="hidden" name="schluessel" value="{escape(e.schluessel)}"><button class="zweit klein">erledigt</button></form></li>')
     ziel = (k.get("erinnerungen") or {}).get("benachrichtigung")
@@ -3993,7 +4058,22 @@ def nachlass(k: dict, db) -> str:
                     + f' Erbschaftssteuer: {escape(st_text)} Vorsorge und Policen fallen nicht in den Nachlass. '
                     'Güterrecht und Hausrat sind nicht berücksichtigt – für Testament und Erbvertrag eine Fachperson beiziehen.</p>')
         teile.append(karte("Was erhält der Partner?", tabelle(kopf, zeilen) + hinweisliste(hinweise) + annahmen))
-    # Checkliste
+    # Checkliste – im Konkubinat wird sie im Konkubinat-Check abgehakt (dort mit Lage und nächstem Schritt)
+    import konkubinat as ko
+    if ko.aktiv(k):
+        offen = sum(1 for _, _, _, st_ in nl.checkliste(k) for v in st_.values() if not v)
+        teile.append(karte(f"Checkliste ({offen} offen)",
+                           '<p>Abhaken, mit Lage und nächstem Schritt je Bereich: <a class="knopf zweit" '
+                           'href="konkubinat#t-checkliste">Konkubinat-Check öffnen</a></p>'
+                           '<p class="leise">Zu jedem Punkt gibt es einen <a href="nachlass/fragebogen">Fragebogen</a> – '
+                           'die Antworten erscheinen im <a href="notfall">Notfallordner</a>.</p>'))
+        return "".join(teile)
+    teile.append(nachlass_checkliste_karte(k, cfg, "nachlass"))
+    return "".join(teile)
+
+
+def nachlass_checkliste_karte(k: dict, cfg: dict, zurueck: str) -> str:
+    import nachlass as nl
     liste = nl.checkliste(k)
     namen = [p["name"] for p in k["personen"]]
     zeilen = []
@@ -4018,14 +4098,13 @@ def nachlass(k: dict, db) -> str:
         zeilen.append(zellen)
     offen = sum(1 for _, _, _, st_ in liste for v in st_.values() if not v)
     zusammen = escape(str(cfg.get("zusammen_seit") or ""))
-    form = (f'<form method="post" action="nachlass/checkliste">'
+    form = (f'<form method="post" action="nachlass/checkliste"><input type="hidden" name="zurueck" value="{escape(zurueck)}">'
             + tabelle(["Was", *[escape(n) for n in namen]], zeilen, zahlen_ab=9)
             + f'<div class="felder"><label>Gemeinsamer Haushalt seit (Jahr)<input name="zusammen_seit" value="{zusammen}" inputmode="numeric"></label></div>'
             + '<div class="zeile"><button>Speichern</button></div></form>')
-    teile.append(karte(f"Checkliste ({offen} offen)", form
-                       + '<p class="leise">Zu jedem Punkt gibt es einen <a href="nachlass/fragebogen">Fragebogen</a> – die '
-                         'Antworten erscheinen im <a href="notfall">Notfallordner</a>.</p>'))
-    return "".join(teile)
+    return karte(f"Checkliste ({offen} offen)", form
+                 + '<p class="leise">Zu jedem Punkt gibt es einen <a href="nachlass/fragebogen">Fragebogen</a> – die '
+                   'Antworten erscheinen im <a href="notfall">Notfallordner</a>.</p>')
 
 
 def nachlass_fragebogen(k: dict, db, q: dict | None = None) -> str:
@@ -4846,7 +4925,7 @@ def auswahl_zelle(schluessel: str) -> str:
 
 def loesch_knopf(schluessel: str, frage: str = "Eintrag löschen?") -> str:
     return (f'<button class="zweit klein loeschen" name="einzeln" value="{escape(schluessel)}" '
-            f'onclick="return confirm(\'{escape(frage)}\')" title="löschen" aria-label="löschen">Löschen</button>')
+            f'onclick="return confirm(\'{escape(frage)}\')" title="löschen" aria-label="löschen">✕</button>')
 
 
 def loesch_form(inhalt: str, zurueck: str, bereich: str = "", alle_text: str = "") -> str:
@@ -4969,7 +5048,7 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
         f'onclick="return confirm(\'Idee löschen?\')">Löschen</button></li>' for i in vs.ideen(db))
     teil_idee = karte("Eigene Idee", '<form method="post" action="vorschlaege">'
                       + (f"<ul>{idee_liste}</ul>" if idee_liste else "")
-                      + '<textarea name="idee" rows="3" class="kurz" placeholder="Was fehlt dir, was stört dich?"></textarea>'
+                      + '<textarea name="idee" rows="3" class="kurz" aria-label="Eigene Idee" placeholder="Was fehlt dir, was stört dich?"></textarea>'
                         '<div class="zeile"><button name="aktion" value="idee">Hinzufügen</button></div></form>'
                         '<p class="leise">Namen, Beträge und Daten werden beim Weitergeben ersetzt – schreib trotzdem '
                         'nichts Persönliches hinein.</p>')
@@ -5002,7 +5081,7 @@ def vorschlaege(k: dict, db, q: dict | None = None) -> str:
         schalter += (f'<p class="{"gut" if auszuege else "warn"}">' + escape(" ".join(teile_)) + "</p>")
     teil_text = karte("Weitergeben", (
         schalter
-        + f'<textarea id="vorschlaege-text" class="mittel" readonly>{escape(text)}</textarea>'
+        + f'<textarea id="vorschlaege-text" class="mittel" readonly aria-label="Vorschläge als Text">{escape(text)}</textarea>'
         '<div class="zeile nicht-drucken">'
         '<button type="button" class="zweit" data-kopieren="vorschlaege-text">Kopieren</button>'
         f'<a class="knopf zweit" href="vorschlaege.md{"?auszuege=1" if mit_auszug else ""}">Herunterladen (.md)</a>'
@@ -5520,7 +5599,7 @@ Kasse die Rente aus dem projizierten Altersguthaben (wie das BVG-Minimum), steig
         balken = dg.balken_liste([(x.name, max(0, x.total)) for x in v.varianten if x.einkauf])
         teile.append(f"<h3>{escape(v.person)} – Potenzial CHF {chf(v.potenzial)}, Pensionierung {v.pension}</h3>"
                      + tabelle(["Variante", "Jahre", "Einkauf", "Steuern gespart", "Steuer beim Bezug", "Zins PK vs. sicher",
-                                "Netto", "IV-Rente +", "IV-Prämie gespart", "Total", ""], zeilen, zahlen_ab=2, karten=True)
+                                "Netto", "IV-Rente +", "IV-Prämie gespart", "Total", ""], zeilen, zahlen_ab=2, responsiv=False)
                      + balken + lage + hinweisliste(v.hinweise) + einst)
     return '<div id="varianten">' + karte("PK-Einkauf: Varianten im Vergleich", "".join(teile) + (
         '<p class="leise">Steuern gespart: Einkommenssteuer mit dem heutigen Einkommen pro Jahr (Progression – verteilt '

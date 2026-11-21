@@ -12,8 +12,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 
 | Bereich | Inhalt |
 |---|---|
-| Heute | Startseite: ein Satz, was jetzt zählt, vier Kennzahlen, Aufgaben der nächsten 30 Tage, Bereiche zum Handeln; Reiter Checklisten (Monats-Check, Jahresabschluss) |
-| Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
+| Heute | Startseite in drei Teilen: «Jetzt» (ein Satz, was jetzt zählt, vier Kennzahlen, Aufgaben der nächsten 30 Tage, Bereiche zum Handeln), «Alle Bereiche» (alle Ampeln und Erinnerungen), «Kennzahlen & Hinweise» (Kennzahlen, Hinweise, Vermögensverlauf, Einkommen im Ruhestand); Reiter Checklisten (Monats-Check, Jahresabschluss) |
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
 | Steuern | Steuern bezahlen mit Steuerkonto (pro Person im Konkubinat), Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
 | Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Höhe der Amortisation im Vergleich (Zins und Ertrag wählbar, gleich viel pro Person im Konkubinat), Amortisationsstrategie bis zur Pensionierung, Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |

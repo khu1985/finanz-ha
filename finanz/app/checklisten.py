@@ -126,7 +126,7 @@ def monat(k: dict, db, heute: date | None = None) -> Liste:
         Punkt("saldi", "Saldi aktualisieren", "Kontostände von Bankkonten, Depot und Krypto eintragen bzw. importieren "
               "(3a, Policen und Hypothek genügen einmal im Jahr).",
               "vermoegen", *_versuch(lambda: _saldi(db, heute))),
-        Punkt("aufgaben", "Fällige Aufgaben erledigen", "Was in den nächsten 7 Tagen fällig ist.", "uebersicht",
+        Punkt("aufgaben", "Fällige Aufgaben erledigen", "Was in den nächsten 7 Tagen fällig ist.", "./#t-bereiche",
               *_versuch(lambda: _aufgaben(k, db, heute))),
         Punkt("steuern", "Steuerzahlungen erfassen", "Bezahlte Steuerrechnungen im Steuerkonto eintragen.",
               "steuerzahlung", *_versuch(lambda: _steuern(k, db, heute))),
