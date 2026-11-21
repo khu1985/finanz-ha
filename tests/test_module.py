@@ -2805,6 +2805,11 @@ def test_fahrzeug_wartung_kia_ev3_und_erinnerungen(k):
     assert any("eCall" in t for t, _, _ in w.arbeiten)
     titel = [e.titel for e in fz.erinnerungen(k, heute, db)]
     assert "Winterreifen montieren: Familienauto" in titel
+    # noch nicht erledigt: bis Ende Dezember sichtbar, danach erst wieder im März
+    assert "Winterreifen montieren: Familienauto" in [e.titel for e in fz.erinnerungen(k, date(2026, 11, 21), db)]
+    assert not any("reifen" in e.titel for e in fz.erinnerungen(k, date(2027, 2, 1), db))
+    assert fz.reifen_naechster(date(2026, 11, 21)) == (date(2026, 10, 31), "Winterreifen")
+    assert fz.reifen_naechster(date(2027, 1, 5)) == (date(2027, 4, 30), "Sommerreifen")
     assert not any(t.startswith("Service") for t in titel)
     # Sensoren: Kilometerstand gemessen, km bis Service vom Hersteller → Service bald
     fz.einlesen(db, "Familienauto", {"km": 20000}, date(2026, 7, 1))

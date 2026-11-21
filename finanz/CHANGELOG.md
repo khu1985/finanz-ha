@@ -1,5 +1,11 @@
 # Änderungen
 
+## 0.61.1 – 2026-11-21
+
+- Fahrzeuge: Die Erinnerung zum Reifenwechsel bleibt sichtbar, bis sie als erledigt markiert ist (Winterreifen bis
+  31.12., Sommerreifen bis 31.5.; vorher endete sie am 15.11. bzw. 15.5.). Die Wartung zeigt den nächsten
+  Reifenwechsel mit Datum.
+
 ## 0.61.0 – 2026-11-21
 
 - **Fahrzeuge: Wartung und Erinnerungen.** Pro Fahrzeug Wartungsplan (eingebaut für den Kia EV3 mit Quelle, sonst

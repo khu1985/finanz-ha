@@ -3483,9 +3483,13 @@ def _fahrzeug_wartung(k: dict, db, f: dict, a) -> str:
         kpis_.append(kpi(f"{w.garantie_ende:%m.%Y}", "Garantie bis" + (f" bzw. {chf(w.garantie_km)} km"
                                                                        if w.garantie_km else ""), "",
                          am.GELB if 0 <= (w.garantie_ende - heute_).days <= 120 else ""))
-    kpis_.append(kpi("Wechsel" if w.reifen == "wechsel" else "Ganzjahr", "Reifen" + (
-        " · Winter ab Oktober, Sommer ab April" if w.reifen == "wechsel" else ""), "",
-        am.ROT if w.reifendruck_warnung else ""))
+    if w.reifen == "wechsel":
+        r_dat, r_art = fz.reifen_naechster(heute_)
+        kpis_.append(kpi(f"{r_dat:%d.%m.%Y}", f"{r_art} montieren" + (" – überfällig, falls noch nicht gemacht"
+                                                                         if r_dat < heute_ else ""), "",
+                         am.ROT if w.reifendruck_warnung else am.GELB if r_dat < heute_ else ""))
+    else:
+        kpis_.append(kpi("Ganzjahr", "Reifen – kein Wechsel", "", am.ROT if w.reifendruck_warnung else ""))
     zeilen = [[escape(t), f"{d:%m.%Y}" if d else "–", chf(b) if b else "–"] for t, d, b in w.arbeiten]
     quellen = "".join(f'<li>{f"<a href={chr(34)}{escape(u)}{chr(34)} target={chr(34)}_blank{chr(34)} rel={chr(34)}noopener{chr(34)}>{escape(t)}</a>" if u else escape(t)}</li>'
                       for t, u in w.quellen)

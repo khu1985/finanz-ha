@@ -304,8 +304,18 @@ WARTUNGSPLAENE = [
 ]
 TYPISCH = {   # ohne Plan des Modells: typische Intervalle, im Serviceheft prüfen
     "elektro": (24, 30000), "benzin": (12, 20000), "diesel": (12, 20000), "hybrid": (12, 15000)}
-REIFEN_WINTER = (10, 1, 11, 15)      # Erinnerung vom 1.10. bis 15.11. (Faustregel «von O bis O»)
-REIFEN_SOMMER = (4, 1, 5, 15)        # vom 1.4. bis 15.5.
+# (ab Monat, Tag), fällig (Monat, Tag), sichtbar bis (Monat, Tag) – bis «erledigt» geklickt ist (Faustregel «von O bis O»)
+REIFEN_WINTER = ((10, 1), (10, 31), (12, 31))
+REIFEN_SOMMER = ((4, 1), (4, 30), (5, 31))
+
+
+def reifen_naechster(heute: date) -> tuple[date, str]:
+    """Nächster Reifenwechsel (Fälligkeit) und welche Reifen."""
+    for j in (heute.year, heute.year + 1):
+        for (ab, faellig, bis), art in ((REIFEN_SOMMER, "Sommerreifen"), (REIFEN_WINTER, "Winterreifen")):
+            if heute <= date(j, *bis):
+                return date(j, *faellig), art
+    return date(heute.year + 1, *REIFEN_SOMMER[1]), "Sommerreifen"
 
 
 def plan_fuer(f: dict) -> dict | None:
@@ -479,11 +489,11 @@ def _wartung_erinnerungen(k: dict, heute: date, db) -> list:
                                   wa.naechster, f"Service fällig{rest} – {wa.grund}. Termin in der Garage buchen; "
                                   "danach Datum und Kilometerstand beim Fahrzeug eintragen.", "fahrzeuge"))
         if wa.reifen == "wechsel":
-            for (m0, t0, m1, t1), art, text in ((REIFEN_WINTER, "winter", "Winterreifen montieren"),
-                                               (REIFEN_SOMMER, "sommer", "Sommerreifen montieren")):
-                von, bis = date(heute.year, m0, t0), date(heute.year, m1, t1)
-                if von - timedelta(days=14) <= heute <= bis:
-                    erg.append(Erinnerung(f"fahrzeug-{fz.name}-reifen-{art}-{heute.year}", f"{text}: {fz.name}", bis,
+            for (ab, faellig, bis), art, text in ((REIFEN_WINTER, "winter", "Winterreifen montieren"),
+                                                  (REIFEN_SOMMER, "sommer", "Sommerreifen montieren")):
+                von, f_, bis_ = date(heute.year, *ab), date(heute.year, *faellig), date(heute.year, *bis)
+                if von - timedelta(days=14) <= heute <= bis_:
+                    erg.append(Erinnerung(f"fahrzeug-{fz.name}-reifen-{art}-{heute.year}", f"{text}: {fz.name}", f_,
                                           "Faustregel «von O bis O» (Oktober bis Ostern). Profil prüfen: Winterreifen "
                                           "mindestens 4 mm, Sommerreifen 3 mm empfohlen (gesetzlich 1.6 mm); "
                                           "Reifendruck nach dem Wechsel kontrollieren.", "fahrzeuge"))

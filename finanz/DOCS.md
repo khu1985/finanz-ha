@@ -368,7 +368,7 @@ Kilometerstand), eigene Serviceintervalle, Reifen (Sommer/Winter oder Ganzjahr),
 | Wartungsplan | eigene Intervalle → Online-Abfrage (KI, zum Prüfen markiert) → eingebauter Plan des Modells mit Quelle (Kia EV3: Inspektion alle 24 Monate bzw. 30'000 km, Bremsflüssigkeit 24 Monate, Innenraumfilter 30'000 km, Kühlmittel erstmals nach 120 Monaten bzw. 180'000 km, eCall-Batterie 4 Jahre; Garantie 7 Jahre bzw. 150'000 km) → typisch je Antrieb (elektrisch 24 Monate/30'000 km, Benzin und Diesel 12 Monate/20'000 km, Hybrid 12 Monate/15'000 km) |
 | Kilometerstand und Fahrleistung | Sensor (gemessen ab 30 Tagen Verlauf) vor eigener Angabe (bis heute fortgeschrieben) |
 | nächster Service | früheres von Zeit (Monate nach dem letzten Service bzw. der Inverkehrsetzung) und Kilometern (km bis Service vom Fahrzeug bzw. Intervall minus gefahrene km, umgerechnet mit der Fahrleistung); Termin bzw. Tage bis Service vom Fahrzeug haben Vorrang |
-| Reifen | Erinnerung Winterreifen 1.10.–15.11., Sommerreifen 1.4.–15.5. (Faustregel «von O bis O»), Profil 4 bzw. 3 mm empfohlen |
+| Reifen | Winterreifen fällig 31.10., Sommerreifen 30.4. (Faustregel «von O bis O»); die Erinnerung erscheint zwei Wochen vor Monatsbeginn und bleibt bis «erledigt» sichtbar (Winter bis 31.12., Sommer bis 31.5.); Profil 4 bzw. 3 mm empfohlen |
 
 **Wartungsplan online abfragen:** Für Modelle ohne eingebauten Plan fragt die App über die KI-Aufgabe von Home
 Assistant (Einstellungen → KI) nach Serviceintervall, Arbeiten, Garantie und Quelle. Das Ergebnis steht unter
