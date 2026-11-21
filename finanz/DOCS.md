@@ -77,6 +77,14 @@ personen:
   Ein farbiger Punkt markiert Menüeinträge (samt ihren Reitern) mit gelber oder roter Ampel; bei Einstellungen bzw.
   dem Reiter Protokoll steht die Zahl der Warnungen von heute. Adressen und Lesezeichen bleiben gleich – nur die
   frühere Startseite «Übersicht» liegt jetzt unter `uebersicht`.
+- **Teile langer Seiten:** Unter den Reitern gliedert eine zweite Leiste (Knöpfe) lange Seiten in Teile; sichtbar ist
+  jeweils ein Teil, die App merkt sich den zuletzt gewählten pro Seite. Vermögen (Überblick, Konten, Erfassen & Import,
+  3a & Anlagen), Wohnen (Tragbarkeit, Amortisation, Steuern, Unterhalt & Wert), Versicherungen (Verträge, Krankenkasse,
+  Deckung & Risiko, Hochladen & Import), Kinder (Überblick, Sparen, Zulagen & Steuern, Erfassen), Rechner (PK-Einkauf,
+  Teilzeit, Frühpension, Hypothek, Heirat), Einstellungen (Haushalt, Personen, Steuern, Wohnen, KI & Erinnerungen),
+  Notfallordner (Im Todesfall, Vermögen & Verträge, Kontakte & Ablage), Steuern bezahlen und Vorschläge. Links auf
+  eine Stelle (z. B. `wohnen#amortisationstabelle`) öffnen den passenden Teil; Drucken und Browser ohne JavaScript
+  zeigen alles. «Änderungen» zeigt die letzten fünf Versionen, ältere zugeklappt.
 - **Filter** über längeren Tabellen (Konten, Dokumente, Versicherungen, Vorsorgedokumente, Wertschriften, Finanzplan
   Jahr für Jahr): «Filter» aufklappen; pro Spalte Textsuche («enthält …») oder – bei wenigen verschiedenen Werten wie
   Art, Person, Sparte, Phase – Mehrfachauswahl. Die Zeile zeigt, wie viele Einträge passen; der Filter bleibt beim

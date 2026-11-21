@@ -47,6 +47,91 @@ REITER = [
     [("einstellungen", "Einstellungen"), ("datenqualitaet", "Datenqualität"), ("annahmen", "Annahmen"),
      ("daten", "Daten & Import"), ("vorschlaege", "Vorschläge"), ("protokoll", "Protokoll"), ("aenderungen", "Änderungen")],
 ]
+# Unternavigation innerhalb langer Seiten: Teil → Karten (Titel beginnt mit … bzw. «#id-anfang» für die id des
+# umschliessenden Elements). Karten ohne Treffer gehören zum Teil der Karte davor. Im Browser ist jeweils ein Teil sichtbar; ohne JavaScript und beim Drucken alles.
+UNTERTEILE: dict[str, list[tuple[str, str, list[str]]]] = {
+    "vermoegen": [("ueberblick", "Überblick", ["Vermögen pro Person", "Verlauf", "Nach Art"]),
+                  ("konten", "Konten", ["Konten"]),
+                  ("erfassen", "Erfassen & Import", ["Saldo erfassen", "Bank-Import", "CSV importieren"]),
+                  ("anlagen", "3a & Anlagen", ["Säule 3a", "Wertschriften", "Anlage-Check"])],
+    "wohnen": [("tragbarkeit", "Tragbarkeit", ["Tragbarkeit"]),
+               ("amortisation", "Amortisation", ["Amortisation"]),
+               ("steuern", "Steuern", ["Liegenschaft in der Steuer", "Liegenschaft: Deklaration"]),
+               ("unterhalt", "Unterhalt & Wert", ["Erneuerungen", "Liegenschaft: Wert", "Bauteile"])],
+    "versicherungen": [("vertraege", "Verträge", ["Verträge", "Kündigungstermine", "Prämien nach Sparte"]),
+                       ("krankenkasse", "Krankenkasse", ["Krankenkasse", "Alle Kassen"]),
+                       ("deckung", "Deckung & Risiko", ["Deckungscheck", "Risiko"]),
+                       ("import", "Hochladen & Import", ["Verträge hochladen", "Liste importieren"])],
+    "kinder": [("ueberblick", "Überblick", ["Lebenslauf", "Hinweise"]),
+               ("sparen", "Sparen", ["Sparen für"]),
+               ("zulagen", "Zulagen & Steuern", ["Zulagen"]),
+               ("erfassen", "Erfassen", ["Kinder erfassen", "Vergleichswerte"])],
+    "szenarien": [("pk", "PK-Einkauf", ["PK-Einkauf"]),
+                  ("teilzeit", "Teilzeit", ["Teilzeit"]),
+                  ("fruehpension", "Frühpension", ["Frühpensionierung"]),
+                  ("hypothek", "Hypothek", ["Hypothekar"]),
+                  ("heirat", "Heirat", ["Verheiratet oder"])],
+    "einstellungen": [("haushalt", "Haushalt", ["Zu prüfen", "Haushalt"]),
+                      ("personen", "Personen", ["#b-person"]),
+                      ("steuern", "Steuern", ["Steuern"]),
+                      ("wohnen", "Wohnen", ["Wohnen"]),
+                      ("weitere", "KI & Erinnerungen", ["KI", "Erinnerungen"])],
+    "notfall": [("todesfall", "Im Todesfall", ["Personen", "Erste Schritte", "Wen melden"]),
+                ("vermoegen", "Vermögen & Verträge", ["Konten", "Vorsorge", "Versicherungen", "Liegenschaft", "Testament"]),
+                ("kontakte", "Kontakte & Ablage", ["Wichtige Kontakte", "Wo liegt was", "Weitere Hinweise"])],
+    "steuerzahlung": [("offen", "Offen & Konto", ["Offene Steuern", "Steuerkonto"]),
+                      ("erfassen", "Erfassen & Bezug", ["Position erfassen", "Einstellungen zum Bezug", "So funktioniert"])],
+    "vorschlaege": [("vorschlaege", "Vorschläge", ["Woher", "Vorschläge aus", "Weitergeben", "Eigene Idee"]),
+                    ("ux", "UX & Leistung", ["UX", "Usability", "Leistung"])],
+}
+
+
+def teilleiste(pfad: str) -> str:
+    teile = UNTERTEILE.get(pfad)
+    if not teile:
+        return ""
+    import json as _json
+    links = "".join(f'<a href="#t-{s_}" data-teil="{s_}">{escape(t)}</a>' for s_, t, _ in teile)
+    daten = escape(_json.dumps([[s_, t, p] for s_, t, p in teile], ensure_ascii=False))
+    return (f'<nav class="teilleiste" id="teilleiste" aria-label="Teile der Seite" data-teile="{daten}" hidden>'
+            f'{links}</nav>')
+
+
+TEIL_JS = r"""(function(){var l=document.getElementById('teilleiste');if(!l)return;
+var cfg=JSON.parse(l.getAttribute('data-teile')),m=document.querySelector('main');
+var karten=[].slice.call(m.querySelectorAll('.karte')).filter(function(e){return !e.parentElement.closest('.karte')});
+function passt(k,t,p){if(p.charAt(0)!=='#')return t.indexOf(p)===0;var e=k.parentElement;
+ return !!(e&&e.id&&e.id.indexOf(p.slice(1))===0)}
+var cur=cfg[0][0],belegt={};
+karten.forEach(function(k){var h=k.querySelector('h2'),t=h?h.textContent.trim():'',best='',bl=0;
+ cfg.forEach(function(c){c[2].forEach(function(p){if(passt(k,t,p)&&p.length>bl){best=c[0];bl=p.length}})});
+ if(best)cur=best;k.setAttribute('data-teil',cur);if(!k.closest('.nur-druck'))belegt[cur]=1});
+var links=[].slice.call(l.querySelectorAll('a'));
+links.forEach(function(a){if(!belegt[a.getAttribute('data-teil')])a.remove()});
+links=[].slice.call(l.querySelectorAll('a'));if(links.length<2)return;
+var schl='teil:'+location.pathname;
+function zeige(t){if(!belegt[t])t=links[0].getAttribute('data-teil');
+ karten.forEach(function(k){k.classList.toggle('teil-aus',k.getAttribute('data-teil')!==t)});
+ links.forEach(function(a){var an=a.getAttribute('data-teil')===t;a.classList.toggle('aktiv',an);
+  if(an){a.setAttribute('aria-current','true');l.scrollLeft=Math.max(0,a.offsetLeft-l.offsetLeft-16)}
+  else a.removeAttribute('aria-current')});
+ try{sessionStorage.setItem(schl,t)}catch(e){}}
+function ausHash(){var h=decodeURIComponent(location.hash.slice(1));if(!h)return '';
+ if(h.indexOf('t-')===0&&belegt[h.slice(2)])return h.slice(2);
+ var z=document.getElementById(h);var k=z&&(z.closest('[data-teil]')||z.querySelector('[data-teil]'));
+ return k?k.getAttribute('data-teil'):''}
+links.forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();var t=a.getAttribute('data-teil');
+ zeige(t);history.replaceState(null,'','#t-'+t);l.scrollIntoView({block:'nearest'})})});
+addEventListener('hashchange',function(){var t=ausHash();if(t){zeige(t);var z=document.getElementById(location.hash.slice(1));
+ if(z)z.scrollIntoView()}});
+document.addEventListener('invalid',function(e){var k=e.target.closest&&e.target.closest('[data-teil]');
+ if(k&&k.classList.contains('teil-aus'))zeige(k.getAttribute('data-teil'))},true);
+var start=ausHash();if(!start){try{start=sessionStorage.getItem(schl)||''}catch(e){}}
+l.hidden=false;zeige(start||links[0].getAttribute('data-teil'));
+if(location.hash&&location.hash.indexOf('#t-')!==0){var z=document.getElementById(location.hash.slice(1));if(z)z.scrollIntoView()}
+})();"""
+
+
 # Seiten ohne eigenen Menüeintrag → Eintrag, der dafür hervorgehoben wird (Reiter bzw. Unterseite)
 MENU_ALIAS = {p: gruppe[0][0] for gruppe in REITER for p, _ in gruppe[1:]}
 OFFEN_IMMER = {g for g, _ in NAVIGATION}          # wenige Einträge: alle Gruppen offen
@@ -94,6 +179,12 @@ nav button.gl .ampel{width:8px;height:8px;box-shadow:none}
 .reiterleiste a{padding:8px 14px;color:var(--leise);text-decoration:none;font-weight:600;border-bottom:2px solid transparent;
 white-space:nowrap;margin-bottom:-1px}
 .reiterleiste a.aktiv{color:var(--text);border-bottom-color:var(--akzent)}
+.teilleiste{display:flex;gap:6px;margin:-6px 0 14px;overflow-x:auto;padding:2px 0;scrollbar-width:none}
+.teilleiste[hidden]{display:none}
+.teilleiste a{padding:5px 12px;border:1px solid var(--linie);border-radius:999px;color:var(--leise);text-decoration:none;
+font-size:14px;font-weight:600;white-space:nowrap;background:var(--karte)}
+.teilleiste a.aktiv{color:var(--karte);background:var(--akzent);border-color:var(--akzent)}
+.teil-aus{display:none!important}
 .speicherleiste{position:sticky;bottom:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;
 margin:12px 0;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--karte);
 border:1px solid var(--akzent);border-radius:12px;box-shadow:0 -4px 16px rgba(0,0,0,.15);font-weight:600}
@@ -298,6 +389,7 @@ body,.inhalt,main{background:#fff!important;color:#000!important}main{max-width:
 table.responsiv thead{display:table-header-group!important}table.responsiv tr{display:table-row!important}
 table.responsiv td{display:table-cell!important;text-align:left!important}table.responsiv td::before{content:none!important}
 a{color:#000;text-decoration:none}input,textarea{border:0!important;background:none!important;padding:0!important;color:#000}
+.teil-aus{display:block!important}.teilleiste{display:none!important}
 }
 .erinnerung{display:flex;gap:6px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--linie)}
 .erinnerung>div{flex:1}.erinnerung .ampel{margin-top:6px}.erinnerung form{margin-left:8px}
@@ -562,11 +654,11 @@ def seite(titel: str, pfad: str, inhalt: str, basis: str = "", meldung: str = ""
 <button id="thema" type="button" title="Darstellung umstellen: Auto (wie das Gerät) → Hell → Dunkel" aria-label="Darstellung umstellen">Auto</button>
 {MENU_KNOPF}</div>
 <nav id="nav" aria-label="Hauptmenü">{"".join(gruppen)}</nav></aside>
-<div class="inhalt"><main><h1>{escape(titel)}</h1>{reiter(pfad, warnungen)}{m}{inhalt}</main>
+<div class="inhalt"><main><h1>{escape(titel)}</h1>{reiter(pfad, warnungen)}{teilleiste(pfad)}{m}{inhalt}</main>
 <footer>Finanzplanung v{escape(v)} · <a href="aenderungen">Änderungen</a> · <a href="protokoll">Protokoll</a>
 <br>Keine Anlage-, Steuer- oder Rechtsberatung.</footer></div></div>
 <div id="status" aria-live="polite"><div class="status-box"><div class="spinner"></div><p id="status-text">Bitte warten …</p></div></div>
-<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script><script>{THEMA_JS}</script><script>{FILTER_JS}</script></body></html>"""
+<script>{JS % _json.dumps(STATUS_TEXTE, ensure_ascii=False)}</script><script>{THEMA_JS}</script><script>{FILTER_JS}</script><script>{TEIL_JS}</script></body></html>"""
 
 
 def licht(status: str, titel: str = "") -> str:
@@ -2389,6 +2481,9 @@ def _absatz(text: str) -> str:
     for zeile in text.splitlines():
         z = escape(zeile.rstrip())
         z = _re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", z)
+        if liste and z.startswith("  ") and z.strip() and not _re.match(r"^\s*([-*•]|\d+\.)\s+", z):
+            html[-1] = html[-1][:-5] + " " + z.strip() + "</li>"      # Fortsetzung des Listenpunkts
+            continue
         if _re.match(r"^\s*([-*•]|\d+\.)\s+", z):
             if not liste:
                 html.append("<ul>")
@@ -2459,7 +2554,14 @@ def aenderungen(k: dict, db) -> str:
     import meta
     text = meta.changelog()
     text = "\n".join(z for z in text.splitlines() if not z.startswith("# "))
-    return karte(f"Version {meta.version()}", f'<div class="antwort">{_absatz(text)}</div>')
+    # die letzten fünf Versionen offen, ältere zugeklappt
+    teile = [t for t in ("\n" + text).split("\n## ") if t.strip()]
+    neu, alt = teile[:5], teile[5:]
+    html = "".join(f'<div class="antwort">{_absatz("## " + t)}</div>' for t in neu)
+    if alt:
+        html += (f'<details class="aeltere"><summary>Ältere Versionen ({len(alt)})</summary>'
+                 + "".join(f'<div class="antwort">{_absatz("## " + t)}</div>' for t in alt) + "</details>")
+    return karte(f"Version {meta.version()}", html)
 
 
 # ---------------------------------------------------------------- Steuerdokumente

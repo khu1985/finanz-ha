@@ -2983,3 +2983,17 @@ def test_konkubinat_check(k, konkubinat):
     gut, offen = ko.zusammenfassung(ko.pruefen(kk, db, heute))
     assert gut >= 1 and offen >= 1
     assert kurz.satz("konkubinat", kk, db).startswith(f"{gut} von {gut + offen} Bereichen geregelt")
+
+
+def test_unterteile_und_aenderungen(k):
+    import seiten
+    db = vm.verbinden(":memory:")
+    html = seiten.seite("Wohnen", "wohnen", seiten.karte("Tragbarkeit", "x") + seiten.karte("Amortisation 2030", "y"))
+    assert 'id="teilleiste"' in html and 'href="#t-amortisation"' in html and "TEIL" not in html
+    assert 'id="teilleiste"' not in seiten.seite("Budget", "budget", "")
+    for pfad, teile in seiten.UNTERTEILE.items():
+        assert len({s for s, _, _ in teile}) == len(teile) >= 2, pfad
+    # Listenpunkte über mehrere Zeilen bleiben ein Punkt
+    assert seiten._absatz("- **A:** eins\n  zwei") == "<ul><li><b>A:</b> eins zwei</li></ul>"
+    a = seiten.aenderungen(k, db)
+    assert a.count('class="antwort"') >= 5 and "Ältere Versionen" in a

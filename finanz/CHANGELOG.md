@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.66.0 – 2026-11-21
+
+- **Teile langer Seiten:** zweite Leiste unter den Reitern; sichtbar ist jeweils ein Teil (zuletzt gewählter bleibt).
+  Vermögen, Wohnen, Versicherungen, Kinder, Rechner, Einstellungen, Notfallordner, Steuern bezahlen und Vorschläge
+  sind am Handy damit deutlich kürzer (z. B. Rechner 16'300 → 2'100–7'400 px je Teil, Wohnen 9'800 → 1'100–7'700 px).
+  Links auf eine Stelle öffnen den richtigen Teil; Drucken zeigt alles.
+- **Änderungen:** letzte fünf Versionen offen, ältere zugeklappt; mehrzeilige Punkte werden nicht mehr zerstückelt.
+
 ## 0.65.0 – 2026-11-21
 
 - **Konkubinat-Check** (Reiter unter «Nachlass»): für unverheiratete Paare je Bereich – Tod (Erbe, Erbschaftssteuer,
