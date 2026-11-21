@@ -44,6 +44,9 @@ CHECKLISTE = [
     ("begünstigung_3a", "Begünstigung Säule 3a angepasst", "Lebenspartner nach 5 Jahren Zusammenleben oder mit gemeinsamem "
      "Kind möglich – schriftlich bei der Stiftung bzw. Versicherung festlegen."),
     ("begünstigung_policen", "Begünstigte der Risiko- und Lebensversicherungen", "Partner namentlich als Begünstigten eintragen."),
+    ("todesfallschutz", "Todesfallschutz für den Partner", "Risiko-Todesfallversicherung zugunsten des Partners, z. B. in "
+     "Höhe des eigenen Hypothekenanteils – besonders, wenn verpfändete Sparversicherungen aufgelöst werden. AHV-"
+     "Witwen- bzw. Witwerrenten gibt es im Konkubinat nicht."),
     ("vorsorgeauftrag", "Vorsorgeauftrag", "Wer handelt bei Urteilsunfähigkeit (Vermögen, Rechtsverkehr, Person)? Sonst entscheidet die KESB."),
     ("patientenverfuegung", "Patientenverfügung", "Medizinische Wünsche und Vertretungsperson; der Konkubinatspartner ist "
      "gesetzlich nachrangig vertretungsberechtigt."),

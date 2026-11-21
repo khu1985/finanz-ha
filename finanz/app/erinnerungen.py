@@ -155,6 +155,11 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
     erg.extend(kp.erinnerungen(k, heute))
     import fahrzeuge as fz
     erg.extend(fz.erinnerungen(k, heute, db))
+    try:
+        import checklisten
+        erg.extend(checklisten.erinnerungen(k, db, heute))
+    except Exception as e:  # noqa: BLE001
+        LOG.debug("Checklisten: %s", e)
     import solar
     erg.extend(solar.erinnerungen(k, db, heute))
     for modul in ("steuerzahlung", "liquiplan", "kindersparen", "ux"):
@@ -177,6 +182,14 @@ def alle(k: dict, db, heute: date | None = None, mit_erledigten: bool = False) -
 
     # Hypothek
     w = k.get("wohnen") or {}
+    if w.get("aktiv") and w.get("hypothek_faellig") and w.get("verpfaendet"):
+        f = date.fromisoformat(str(w["hypothek_faellig"]))
+        ab = _monate_zurueck(f, 42)
+        if ab <= heute <= f:
+            erg.append(Erinnerung(f"bank-verpfaendet-{f.year}", "Verpfändete Policen: Fragen an die Bank",
+                                  max(heute, ab), "Prämienfrei stellen vor der Fälligkeit? Rückkaufswert per Fälligkeit? "
+                                  "Begünstigung bis dahin prüfen; danach neuen 3a eröffnen und Todesfallschutz regeln.",
+                                  "wohnen#amortisationstabelle"))
     if w.get("aktiv") and w.get("hypothek_faellig"):
         f = date.fromisoformat(str(w["hypothek_faellig"]))
         start = _monate_zurueck(f, 36)

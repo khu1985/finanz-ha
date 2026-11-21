@@ -34,7 +34,8 @@ NAVIGATION = [
 ]
 # Seiten, die als Reiter einer Seite erscheinen (erster Reiter = Menüeintrag)
 REITER = [
-    [("", "Heute"), ("uebersicht", "Übersicht"), ("bericht", "Jahresbericht"), ("berater", "Berater")],
+    [("", "Heute"), ("checklisten", "Checklisten"), ("uebersicht", "Übersicht"), ("bericht", "Jahresbericht"),
+     ("berater", "Berater")],
     [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
     [("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen")],
     [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
@@ -654,6 +655,43 @@ def hinweisliste(punkte: list[str]) -> str:
 
 
 # ---------------------------------------------------------------- Übersicht
+
+def _checkliste_html(liste) -> str:
+    zeilen = []
+    for p in liste.punkte:
+        st_ = am.GRUEN if p.fertig else am.GELB if p.auto is False else ""
+        knopf = (f'<form method="post" action="checklisten/abhaken" class="zeile"><input type="hidden" name="liste" '
+                 f'value="{escape(liste.schluessel)}"><input type="hidden" name="punkt" value="{escape(p.schluessel)}">'
+                 + (f'<input type="hidden" name="aus" value="1"><button class="zweit klein">zurücksetzen</button>'
+                    if p.erledigt else '<button class="klein">erledigt</button>') + "</form>")
+        if p.auto is True and not p.erledigt:
+            knopf = '<span class="chip gut">laut Daten erledigt</span>'
+        zeilen.append(f'<li class="erinnerung">{licht(st_ or am.GRAU, "")}<div><b>{escape(p.titel)}</b>'
+                      f'<br><span>{escape(p.text)}</span>'
+                      + (f'<br><small class="leise">{escape(p.grund)}</small>' if p.grund else "")
+                      + f' <a href="{p.seite}">öffnen</a></div>{knopf}</li>')
+    fertig = sum(1 for p in liste.punkte if p.fertig)
+    return (f'<p class="leise">{fertig} von {len(liste.punkte)} erledigt · fällig {liste.faellig:%d.%m.%Y}</p>'
+            f'<ul class="hinweise ohne">{"".join(zeilen)}</ul>')
+
+
+def checklisten(k: dict, db) -> str:
+    """Monats-Check und Jahresabschluss: geführt, mit Status aus den Daten."""
+    import checklisten as cl
+    tag = date.today()
+    m = cl.monat(k, db, tag)
+    j = cl.jahr(k, db, tag)
+    kurz_ = ("Monats-Check erledigt." if not m.offen else
+             f"Monats-Check: noch {len(m.offen)} von {len(m.punkte)} Punkten offen.")
+    return (f'<p class="kurz">{escape(kurz_)}</p>'
+            + karte(m.titel, '<p>Einmal im Monat, rund 10 Minuten: Auszüge importieren, Saldi und erkannte Werte '
+                    "bestätigen, Fälliges erledigen. Punkte mit Status aus den Daten haken sich selbst ab.</p>"
+                    + _checkliste_html(m))
+            + f'<div id="jahr">' + karte(j.titel, "<p>Für die Steuererklärung und einen sauberen Jahresstand – von "
+                                         "Januar bis März.</p>" + _checkliste_html(j), zu=not 1 <= tag.month <= 4,
+                                         kurz=f"{len(j.punkte) - len(j.offen)} von {len(j.punkte)} erledigt")
+            + "</div>")
+
 
 def heute(k: dict, db) -> str:
     """Startseite: was jetzt zählt – fällige Aufgaben, Bereiche zum Handeln, vier Kennzahlen."""

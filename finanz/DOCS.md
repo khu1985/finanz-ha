@@ -88,6 +88,8 @@ personen:
   Spinner, Anzahl und Grösse der Dateien. Knöpfe sind während der Verarbeitung gesperrt.
 - **Statuszeile** auf der Übersicht: Stand der Saldi, Anzahl Verträge und Dokumente, offene TODO, wartende Dateien im
   Import-Ordner, KI an/aus, Warnungen von heute; auf «Heute» nur die Warnungen daraus.
+- **Kurz-Zeile** oben auf Budget, Vermögen, Steuern, Vorsorge, Finanzplan, Wohnen, Kinder, Versicherungen, Nachlass
+  und Fahrzeuge: die Kernaussage in einem Satz und – bei gelber oder roter Ampel der Seite – was zu tun ist.
 - **Zugeklappte Karten** (▸) für selten Gebrauchtes: Erfassen und Importieren unter Vermögen und Versicherungen,
   «Nach Art», «Prämien nach Sparte», «Alle Kassen im Vergleich», unter Wohnen Steuererklärung, Deklaration je
   Person, «Amortisation bis zur Fälligkeit» und Bauteile. Ein Link auf einen Abschnitt darin klappt ihn auf.
@@ -102,6 +104,7 @@ personen:
 | Seite | Inhalt |
 |---|---|
 | Heute | Startseite: ein Satz, was jetzt zählt; vier Kennzahlen (Nettovermögen mit Veränderung in 30 Tagen, Bankkonten, offene Steuern, Pensionslücke pro Monat); Aufgaben der nächsten 30 Tage (höchstens 5, mit «erledigt»); Bereiche mit gelber bzw. roter Ampel (höchstens 5); Warnungen der App |
+| Checklisten | Reiter unter «Heute»: Monats-Check (Kontoauszüge, Saldi, fällige Aufgaben, Steuerzahlungen, erkannte Werte bestätigen, neue Dokumente) und Jahresabschluss (Saldi per 31.12., Lohnausweise, 3a-Bescheinigungen, Vorsorgeausweis, Wertschriften, Hypothek, Abzüge, Prämien, Steuererklärung bis 31.3.); Punkte mit Status aus den Daten haken sich selbst ab, die übrigen von Hand; offene Checklisten erscheinen als Erinnerung (Monats-Check fällig am 10., Jahresabschluss Januar bis April) |
 | Übersicht | Reiter unter «Heute»: alle Ampeln, alle anstehenden Erinnerungen, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Jahresbericht | Reiter unter «Heute»: Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |

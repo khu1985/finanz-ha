@@ -202,12 +202,15 @@ def schreiben(k: dict, db, senden=_senden_ha, heute: date | None = None) -> list
     praefix = str(cfg.get("praefix") or "finanz").strip().lower().replace(" ", "_")
     werte = berechnen(k, db, heute)
     fehler = ""
-    for x in werte:
-        try:
-            senden(x.entity_id(praefix), x.nutzlast())
-        except Exception as e:  # noqa: BLE001
-            fehler = str(e)
-            break
+    # parallel senden: jeder Zustand ist eine eigene Anfrage an Home Assistant
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        auftraege = [pool.submit(senden, x.entity_id(praefix), x.nutzlast()) for x in werte]
+        for a in auftraege:
+            try:
+                a.result()
+            except Exception as e:  # noqa: BLE001
+                fehler = fehler or str(e)
     _letzter.update(zeit=datetime.now().isoformat(timespec="seconds"), anzahl=0 if fehler else len(werte), fehler=fehler,
                     werte=[(x.entity_id(praefix), x.nutzlast()["state"], x.einheit) for x in werte])
     if fehler:

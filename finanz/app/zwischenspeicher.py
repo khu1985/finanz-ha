@@ -18,6 +18,7 @@ import sqlite3
 import threading
 import time
 from datetime import date
+from datetime import datetime as datetime_
 
 LOG = logging.getLogger("finanz")
 _SPEICHER: dict[tuple, tuple[float, object]] = {}
@@ -72,17 +73,41 @@ def _wert(x):
     raise TypeError                                  # unbekannt → nicht zwischenspeichern
 
 
+def _normal(sig, a: tuple, kw: dict) -> tuple[tuple, dict]:
+    """Aufrufe vereinheitlichen: f(k, db) und f(k, db, heute=date.today()) teilen sich denselben Eintrag."""
+    if sig is None:
+        return a, kw
+    try:
+        b = sig.bind(*a, **kw)
+        b.apply_defaults()
+    except TypeError:
+        return a, kw
+    heute = date.today()
+    werte = {n: (None if (isinstance(v, date) and not isinstance(v, datetime_) and v == heute) else v)
+             for n, v in b.arguments.items()}
+    return (), werte
+
+
 def speichernd(name: str):
     def deko(f):
+        import inspect
+        try:
+            sig = inspect.signature(f)
+            if any(p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) for p in sig.parameters.values()):
+                sig = None
+        except (TypeError, ValueError):
+            sig = None
+
         @functools.wraps(f)
         def innen(*a, **kw):
             db = next((x for x in list(a) + list(kw.values()) if isinstance(x, sqlite3.Connection)), None)
             stand = _db_stand(db) if db is not None else ("ohne-db",)
             if stand is None:
                 return f(*a, **kw)
+            na, nkw = _normal(sig, a, kw)
             try:
-                schluessel = (name, stand, _konfig_stand(), tuple(_wert(x) for x in a),
-                              tuple(sorted((k_, _wert(v)) for k_, v in kw.items())))
+                schluessel = (name, stand, _konfig_stand(), tuple(_wert(x) for x in na),
+                              tuple(sorted((k_, _wert(v)) for k_, v in nkw.items())))
             except TypeError:
                 return f(*a, **kw)
             jetzt = time.time()

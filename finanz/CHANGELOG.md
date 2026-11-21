@@ -1,5 +1,19 @@
 # Änderungen
 
+## 0.64.0 – 2026-11-21
+
+- **Kurz-Zeilen:** oben auf den Hauptseiten ein Satz mit der Kernaussage (z. B. «Hypothek …, Belehnung 59 %,
+  Tragbarkeit 28 %») und – bei gelber oder roter Ampel – was zu tun ist.
+- **Checklisten** (Reiter unter «Heute»): Monats-Check und Jahresabschluss. Punkte, die die App aus den Daten kennt
+  (Buchungen bis Ende Vormonat, aktuelle Saldi, fällige Aufgaben, überfällige Steuern, zu prüfende Werte, Saldi per
+  31.12., neue Ausweise), haken sich selbst ab; die übrigen von Hand. Offene Checklisten als Erinnerung.
+- **Konkubinat:** Checkliste Nachlass mit «Todesfallschutz für den Partner». Verpfändete Policen: Erinnerung «Fragen
+  an die Bank» (prämienfrei stellen, Rückkaufswert, Begünstigung) ab 42 Monaten vor der Fälligkeit; der
+  Amortisationsvergleich nennt die Fragen und den neuen 3a nach der Auflösung.
+- **UX-Umfrage:** nach den Änderungen an der Bedienung zwei Wochen Nutzung, dann erneut fragen.
+- **Tempo:** Zwischenspeicher teilt sich Aufrufe mit und ohne heutiges Datum (Sensoren, Ampeln, Erinnerungen
+  rechneten doppelt); Sensoren werden parallel an Home Assistant gesendet.
+
 ## 0.63.1 – 2026-11-21
 
 - Erkennung: Mobiliar-Police – Jahresprämie aus der Spalte «Monatliche Prämie» (Sparversicherung,

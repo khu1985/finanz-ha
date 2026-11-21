@@ -36,6 +36,9 @@ EIGENE = [("vertrauen", "Ich vertraue den Zahlen der App."),
           ("nutzen", "Die App hilft mir, finanzielle Entscheide zu treffen.")]
 GEWICHTE = {"befragung": 0.4, "verhalten": 0.4, "usability": 0.2}
 UMFRAGE_TAGE = 90
+# Grössere Änderungen an der Bedienung (Vertrauen, «Heute», Menü, Kurz-Zeilen, Checklisten): danach nach zwei Wochen
+# Nutzung erneut fragen, auch wenn die 90 Tage noch nicht um sind
+UX_AENDERUNG = date(2026, 11, 22)
 FENSTER = 90
 QUELLEN = [("UEQ – User Experience Questionnaire (Kurzform UEQ-S)", "https://www.ueq-online.org/"),
            ("HEART-Framework (Google Research)", "https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/")]
@@ -108,7 +111,12 @@ def umfragen(db) -> list[tuple[str, dict]]:
 def umfrage_faellig(db, heute: date | None = None) -> bool:
     heute = heute or date.today()
     u = umfragen(db)
-    return not u or (heute - date.fromisoformat(u[-1][0])).days >= UMFRAGE_TAGE
+    if not u:
+        return True
+    letzte = date.fromisoformat(u[-1][0])
+    if letzte < UX_AENDERUNG <= heute - timedelta(days=14):
+        return True
+    return (heute - letzte).days >= UMFRAGE_TAGE
 
 
 @dataclass
@@ -326,6 +334,8 @@ def erinnerungen(k: dict, db, heute: date) -> list:
         return []
     u = umfragen(db)
     stichtag = date.fromisoformat(u[-1][0]) + timedelta(days=UMFRAGE_TAGE) if u else heute
+    if u and date.fromisoformat(u[-1][0]) < UX_AENDERUNG:
+        stichtag = min(stichtag, UX_AENDERUNG + timedelta(days=14))
     return [er.Erinnerung(f"ux-umfrage-{stichtag:%Y-%m}", "Kurzbefragung zur App", stichtag,
                           "Eine Minute: wie die App sich anfühlt und ob du den Zahlen vertraust – für den UX-Score.",
                           "vorschlaege#ux")]

@@ -54,6 +54,7 @@ SEITEN = {
     "annahmen": ("Annahmen", seiten.annahmen),
     "notfall": ("Notfallordner", seiten.notfall),
     "bericht": ("Jahresbericht", seiten.bericht),
+    "checklisten": ("Checklisten", seiten.checklisten),
     "dokumente": ("Dokumente", seiten.dokumente),
     "vorschlaege": ("Vorschläge", seiten.vorschlaege),
     "nachlass/fragebogen": ("Fragebögen zum Nachlass", seiten.nachlass_fragebogen),
@@ -251,6 +252,10 @@ class Handler(BaseHTTPRequestHandler):
                 fahrzeuge.abgleichen(k, verbindung)          # Fahrzeugwert als Konto (steuerbares Vermögen)
                 fahrzeuge.aktualisieren(k, verbindung)       # Sensoren der Fahrzeuge einmal am Tag
                 inhalt = funktion(k, verbindung, q) if pfad in MIT_ABFRAGE else funktion(k, verbindung)
+                import kurz
+                kurz_ = kurz.satz(pfad, k, verbindung)
+                if kurz_:
+                    inhalt = f'<p class="kurz">{seiten.escape(kurz_)}</p>' + inhalt
             meldung = unquote(q.get("m", [""])[0])
             html = seiten.seite(titel, pfad, inhalt, self.basis, meldung, bool(q.get("f")), self._ampeln())
             self.senden(200, html.encode("utf-8"), "text/html; charset=utf-8")
@@ -517,6 +522,11 @@ class Handler(BaseHTTPRequestHandler):
             if st_["fehler"]:
                 raise ValueError("Sensoren nicht geschrieben: " + st_["fehler"])
             return f"{len(werte)} Sensoren geschrieben.", "daten"
+        if pfad == "checklisten/abhaken":
+            import checklisten as cl
+            with db() as v:
+                cl.abhaken(v, str(form.get("liste")), str(form.get("punkt")), not form.get("aus"))
+            return ("Zurückgesetzt." if form.get("aus") else "Erledigt."), "checklisten"
         if pfad == "wohnen/amortisationsvergleich":
             k = konfig.laden()
             for feld, schl in (("zins", "vergleich_zins"), ("ertrag", "vergleich_ertrag")):

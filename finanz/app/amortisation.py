@@ -474,6 +474,12 @@ def vergleich(k: dict, db, zins: float | None = None, ertrag: float | None = Non
         knapp = min(personen, key=lambda t: t[1])
         hinweise.append(f"Gleich viel pro Person: höchstens CHF {_chf(max_gleich)} direkt (je CHF {_chf(max_gleich / len(personen))}) "
                         f"– begrenzt durch die Liquidität von {knapp[0]} (Reserve anteilig).")
+    if indirekt:
+        hinweise.append("Vor der Verlängerung mit der Bank klären: Dürfen die verpfändeten Policen schon jetzt prämienfrei "
+                        "gestellt werden (spart Kosten bis zur Fälligkeit)? Wie hoch ist der Rückkaufswert per Fälligkeit? "
+                        "Welche Aufteilung in Tranchen (fest/SARON) ist möglich?")
+        hinweise.append("Nach der Auflösung: pro Person einen neuen 3a (Konto oder Fonds) eröffnen und weiter das Maximum "
+                        "einzahlen – der Steuerabzug bleibt. Mehrere 3a-Konten erlauben später einen gestaffelten Bezug.")
     if personen and indirekt:
         ind = ", ".join(f"{nm} CHF {_chf(i)}" for nm, _, i in personen)
         hinweise.append(f"Verpfändete 3a/3b pro Person: {ind}" + (" – ungleich: die Differenz direkt ausgleichen, damit "

@@ -12,7 +12,7 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 
 | Bereich | Inhalt |
 |---|---|
-| Heute | Startseite: ein Satz, was jetzt zählt, vier Kennzahlen, Aufgaben der nächsten 30 Tage, Bereiche zum Handeln |
+| Heute | Startseite: ein Satz, was jetzt zählt, vier Kennzahlen, Aufgaben der nächsten 30 Tage, Bereiche zum Handeln; Reiter Checklisten (Monats-Check, Jahresabschluss) |
 | Übersicht | Ampeln pro Bereich, Kennzahlen, Hinweise, Statuszeile, Vermögensverlauf, Einkommen im Ruhestand |
 | Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
 | Steuern | Steuern bezahlen mit Steuerkonto (pro Person im Konkubinat), Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
@@ -142,6 +142,7 @@ flowchart TB
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
+| `finanz/app/checklisten.py` | Geführte Checklisten: Monats-Check und Jahresabschluss mit Status aus den Daten |
 | `finanz/app/verwaltung.py` | Übersicht, Duplikate und Löschen aller Dokumente |
 | `finanz/app/ocr.py` | Texterkennung (tesseract) für gescannte PDFs |
 | `finanz/app/fragebogen.py` | Detail-Fragebögen zur Nachlass-Checkliste für den Notfallordner |
@@ -167,6 +168,7 @@ flowchart TB
 | `finanz/app/ux.py` | UX-Score: Kurzbefragung (UEQ-S), Verhalten (Nutzung, Fehler, Datenaktualität) und Usability |
 | `finanz/app/pk_einkauf.py` | PK-Einkauf: Varianten im Vergleich inkl. Wirkung auf die IV-Deckung |
 | `finanz/app/simulation.py` | Simulationen: benannte Varianten des Plans speichern, vergleichen, übernehmen |
+| `finanz/app/kurz.py` | Kurz-Zeilen: ein Satz mit der Kernaussage oben auf den Hauptseiten |
 | `finanz/app/kindersparen.py` | Sparen für die Kinder: Bestand, Sparplan, Ziel, Empfehlung |
 | `finanz/app/liquiplan.py` | Liquiditätsplan: Kontostand Monat für Monat über 12 Monate |
 | `finanz/app/kinder.py` | Kinder: Abzüge, Gutschriften, Zulagen, Zeitachse |

@@ -2908,3 +2908,55 @@ def test_mobiliar_police_monatspraemie():
               "Prämienbefreiung bei Erwerbsunfähigkeit\nGeschuldete Prämien\n19.50\nBeitrag zu den Vertragskosten\n22.10\n"
               "Geschuldete Beträge bis 30.06.2050\n")
     assert vi.praemie_erkennen(police) == round(568.80 * 12, 2)
+
+
+def test_checklisten_und_kurz(k):
+    import checklisten as cl
+    import erinnerungen as er
+    import kurz
+    db = vm.verbinden(":memory:")
+    heute = date(2026, 11, 21)
+    kid = vm.konto_anlegen(db, "Muster Privat")
+    vm.saldo_setzen(db, kid, "2026-09-01", 10000)
+    m = cl.monat(k, db, heute)
+    p = {x.schluessel: x for x in m.punkte}
+    assert p["saldi"].auto is False and "Muster Privat" in p["saldi"].grund
+    assert p["buchungen"].auto is False and not p["dokumente"].fertig
+    cl.abhaken(db, m.schluessel, "dokumente")
+    assert {x.schluessel: x for x in cl.monat(k, db, heute).punkte}["dokumente"].fertig
+    vm.saldo_setzen(db, kid, "2026-11-15", 11000)
+    assert {x.schluessel: x for x in cl.monat(k, db, heute).punkte}["saldi"].auto is True
+    # Erinnerung ohne Rekursion (Monats-Check fragt selbst nach fälligen Aufgaben)
+    titel = [e.titel for e in er.alle(k, db, heute)]
+    assert "Monats-Check 11.2026" in titel
+    j = cl.jahr(k, db, date(2027, 1, 15))
+    assert j.titel == "Jahresabschluss 2026" and j.faellig == date(2027, 3, 31)
+    assert any(e.titel == "Jahresabschluss 2026" for e in cl.erinnerungen(k, db, date(2027, 1, 15)))
+    assert kurz.satz("vermoegen", k, db).startswith("Nettovermögen CHF 11'000")
+    assert kurz.satz("einstellungen", k, db) == ""
+
+
+def test_zwischenspeicher_heute_normalisiert(tmp_path):
+    import zwischenspeicher as zs
+    aufrufe = []
+
+    def f(k, db, heute=None):
+        aufrufe.append(heute)
+        return 1
+    g = zs.speichernd("test.f")(f)
+    db = vm.verbinden(str(tmp_path / "z.sqlite"))
+    g({"a": 1}, db)
+    g({"a": 1}, db, date.today())
+    g({"a": 1}, db, heute=date.today())
+    assert len(aufrufe) == 1
+    g({"a": 1}, db, date(2020, 1, 1))
+    assert len(aufrufe) == 2
+
+
+def test_ux_umfrage_nach_aenderung():
+    import ux
+    db = vm.verbinden(":memory:")
+    ux.tabellen(db)
+    db.execute("INSERT INTO ux_umfrage VALUES (?, ?)", ("2026-11-09", "{}"))
+    assert not ux.umfrage_faellig(db, date(2026, 11, 30))
+    assert ux.umfrage_faellig(db, date(2026, 12, 7))
