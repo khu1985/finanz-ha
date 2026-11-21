@@ -2898,3 +2898,13 @@ def test_erkennung_aus_textauszuegen_0_62():
     eu = ("Helvetia Erwerbsunfähigkeitsrente\nEnde der Leistungspflicht spätestens am 31.07.2057\n"
           "Ende der Prämienbefreiung spätestens am 31.07.2055\n")
     assert vi.erkennen(eu)["ablauf"] == "2055-07-31"
+
+
+def test_mobiliar_police_monatspraemie():
+    police = ("Police\nWandelbare Sparversicherung und Prämienbefreiung - Gebundene Vorsorge\nPrämienübersicht\n"
+              "Monatliche\nPrämie\nWandelbare Sparversicherung\nGeschuldete Prämien bis 30.06.2050\n"
+              "Anlage mit Garantie bis 30.06.2035 (CHF 527.20)\nIm Falle eines Rückkaufs an diesem Datum, beträgt der\n"
+              "garantierte Minimalbetrag CHF 63 260.00.\nDie Überschussbeteiligung wird auf ein verzinstes Konto\n527.20\n"
+              "Prämienbefreiung bei Erwerbsunfähigkeit\nGeschuldete Prämien\n19.50\nBeitrag zu den Vertragskosten\n22.10\n"
+              "Geschuldete Beträge bis 30.06.2050\n")
+    assert vi.praemie_erkennen(police) == round(568.80 * 12, 2)

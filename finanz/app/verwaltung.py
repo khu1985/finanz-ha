@@ -29,12 +29,25 @@ class Eintrag:
     duplikat_von: str = ""          # Schlüssel des älteren Eintrags mit gleichem Inhalt
 
 
+_PRUEFSUMMEN: dict[str, tuple[int, int, str]] = {}    # Pfad → (Grösse, Änderungszeit, SHA-1)
+
+
 def _datei(pfad: Path) -> tuple[int, str]:
+    """Grösse und Prüfsumme; gemerkt, solange sich Grösse und Änderungszeit nicht ändern."""
+    try:
+        st = pfad.stat()
+    except OSError:
+        return 0, ""
+    alt = _PRUEFSUMMEN.get(str(pfad))
+    if alt and alt[0] == st.st_size and alt[1] == st.st_mtime_ns:
+        return alt[0], alt[2]
     try:
         inhalt = pfad.read_bytes()
     except OSError:
         return 0, ""
-    return len(inhalt), hashlib.sha1(inhalt).hexdigest()
+    h = hashlib.sha1(inhalt).hexdigest()
+    _PRUEFSUMMEN[str(pfad)] = (st.st_size, st.st_mtime_ns, h)
+    return len(inhalt), h
 
 
 def eintraege(db, daten: Path) -> list[Eintrag]:

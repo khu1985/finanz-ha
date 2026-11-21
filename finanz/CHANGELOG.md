@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.63.1 – 2026-11-21
+
+- Erkennung: Mobiliar-Police – Jahresprämie aus der Spalte «Monatliche Prämie» (Sparversicherung,
+  Prämienbefreiung, Vertragskosten) × 12. 3a/3b: «Sparbetrag» bzw. Sparanteil gilt nicht als Prämie oder Beitrag.
+- Tempo: Vorschläge und Textauszüge zwischengespeichert; die Seite «Dokumente» liest Dateien nur noch neu, wenn sie
+  sich geändert haben (Prüfsumme gemerkt).
+
 ## 0.63.0 – 2026-11-21
 
 - **Erkennung aus den Korrektur-Hinweisen:**

@@ -259,7 +259,9 @@ def erkennen(text: str) -> dict:
             text, r"(?:saldo|kontostand|(?<!vertrags)guthaben(?!s)|gesamtvermögen|vermögen total|total vermögen|depotwert)")
         if w is not None:
             erg["werte"]["guthaben_3a"] = w
-        w = _wert_nach(text, r"(?:einzahlungen|einzahlung|beiträge|jahresprämie|prämie pro jahr|gesamtprämie)\s*(?:\d{4})?")
+        ohne_spar3a = "\n".join(z for z in text.splitlines()
+                                if not re.search(r"sparprämie|sparbetrag|sparanteil|% der|anlage mit", z, re.I))
+        w = _wert_nach(ohne_spar3a, r"(?:einzahlungen|einzahlung|beiträge|jahresprämie|prämie pro jahr|gesamtprämie)\s*(?:\d{4})?")
         if w is not None and w <= 40000:
             erg["werte"]["beitrag_3a"] = w
         erg["anbieter"] = next((a for a in ANBIETER_3A if re.search(rf"\b{re.escape(a)}\b", text, re.I)), "")
@@ -270,7 +272,8 @@ def erkennen(text: str) -> dict:
         if mob.get("projektion"):
             erg["werte"]["erlebensfall_3b"] = mob["projektion"]
         ohne_spar = "\n".join(z for z in text.splitlines()
-                              if not re.search(r"sparprämie|% der|projektion|anlage mit|fondsgebunden", z, re.I))
+                              if not re.search(r"sparprämie|sparbetrag|sparanteil|% der|projektion|anlage mit|fondsgebunden",
+                                               z, re.I))
         for schluessel, muster in (
                 ("guthaben_3b", r"(?:rückkaufswert|vertragswert|policenwert|saldo|kontostand|guthaben|depotwert|vermögen total)"),
                 ("praemie_3b", r"(?:jahresprämie|prämie pro jahr|jährliche prämie|gesamtprämie|prämie|einzahlungen|einzahlung|beiträge)"),

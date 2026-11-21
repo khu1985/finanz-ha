@@ -30,6 +30,7 @@ FUNKTIONEN = [
     ("versicherungen", "alle"), ("ampel", "bewerten"), ("erinnerungen", "alle"), ("steuererklaerung", "erstellen"),
     ("finanzplan", "rechnen"), ("szenarien", "einkauf_optimieren"), ("vorsorge", "pensionsluecke"),
     ("anlage", "pruefen"), ("krankenkasse", "haushalt"), ("steuern", "kapitalbezug_varianten"),
+    ("vorschlaege", "sammeln"), ("vorschlaege", "textauszuege"),
 ]
 
 
@@ -64,6 +65,8 @@ def _wert(x):
         return "db"
     if isinstance(x, (str, int, float, bool, type(None), date)):
         return repr(x)
+    if isinstance(x, os.PathLike):
+        return repr(os.fspath(x))
     if isinstance(x, (dict, list, tuple)):
         return hashlib.sha1(json.dumps(x, sort_keys=True, default=str).encode()).hexdigest()
     raise TypeError                                  # unbekannt → nicht zwischenspeichern

@@ -323,6 +323,13 @@ def praemie_erkennen(text: str) -> float:
             gewicht = (4 if re.search(r"zu bezahlen|rechnungsbetrag|total\s+jahresprämie|jahresprämie\s+total", z)
                        else 3 if re.search(r"jahresprämie|total|gesamtprämie", z) else 1)
             kandidaten.append((gewicht, wert * faktor))
+    # Mobiliar-Police: Spalte «Monatliche Prämie» – Sparversicherung, Prämienbefreiung, Vertragskosten → Summe × 12
+    m = re.search(r"Monatliche\s*\n\s*Prämie\s*\n(.*?)(?:Geschuldete Beträge|Prämienübersicht\s*\n\s*Wandelbare)", text, re.S)
+    if m and re.search(r"wandelbare sparversicherung", text, re.I):
+        werte = [zahl(x) for x in re.findall(r"(?m)^\s*(\d{1,3}(?:[ '’]\d{3})*[.,]\d{2})\s*$", m.group(1))]
+        werte = [w for w in werte if 1 <= w < 5000]
+        if 2 <= len(werte) <= 5:
+            return round(sum(werte) * 12, 2)
     # Prämie vor Abgaben, danach «Jahresprämie» allein mit dem Total inkl. Stempelabgabe (z. B. smile)
     if re.search(r"gesetzliche abgaben|stempelabgabe", text, re.I):
         m = list(re.finditer(r"(?mi)^\s*(?:deine |ihre )?jahresprämie\s*$\n\s*(?:CHF|Fr\.)?\s*" + r"([0-9'’ ]+[.,][0-9]{2})", text))
