@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.68.2 – 2026-11-22
+
+- **Stand von Vorsorgeausweisen:** Die App nahm teils das Geburtsdatum als Stand («Geburtsdatum» enthält «datum»,
+  «Person» enthält «per»). Jetzt zählen nur ganze Stichwörter (Stichtag, gültig ab, Stand, per); Geburts-, Eintritts-,
+  Pensionierungs- und Bezugsdaten werden übergangen. Ohne Stichwort gilt der jüngste 1.1. bzw. 31.12., sonst das
+  jüngste Datum der letzten drei Jahre; auch «1. Januar 2026» wird erkannt.
+
 ## 0.68.1 – 2026-11-22
 
 - **Notfallordner:** Unter Vorsorge erscheint je Person und Anbieter nur noch der neueste Vorsorgeausweis bzw.

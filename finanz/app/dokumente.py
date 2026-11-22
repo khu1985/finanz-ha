@@ -220,14 +220,57 @@ def _pk_tabellen(text: str) -> dict:
     return erg
 
 
+_DATUM = (r"(\d{1,2}\.\s?\d{1,2}\.\s?\d{4}|\d{1,2}\.\s?(?:januar|februar|märz|maerz|april|mai|juni|juli|august|"
+          r"september|oktober|november|dezember)\s+\d{4})")
+# Datum gehört zu einer Person oder einem Ereignis, nicht zum Stand des Dokuments
+_KEIN_STICHTAG = re.compile(r"geburt|geboren|jahrgang|eintritt|austritt|rücktritt|pensionier|rentenbeginn|alter\s*\d|"
+                            r"zivilstand|heirat|scheidung|einkauf|vorbezug|bezug|fällig|ablauf|vertragsende|beginn",
+                            re.I)
+# je kleiner, desto eher der Stand (Stichtag) des Dokuments
+_STICHWORT = [(r"stichtag", 0), (r"gültig\s+(?:ab|per)", 1), (r"stand(?:\s+(?:per|am))?", 1),
+              (r"(?:ausweis|auszug|bescheinigung|vorsorgeausweis|kontoauszug)\s+(?:per|vom|zum)", 1), (r"per", 2),
+              (r"datum", 3)]
+
+
 def _stichtag(text: str) -> str:
-    m = re.search(r"(?:stichtag|stand|per|gültig ab|datum)\D{0,15}(\d{1,2}\.\s?\d{1,2}\.\s?\d{4})", text, re.I)
-    if m:
+    """Stand des Dokuments: Datum nach «Stichtag», «gültig ab», «Stand», «per» – nicht Geburts-, Eintritts- oder
+    Bezugsdaten. Ohne Stichwort das jüngste 1.1. bzw. 31.12., das nicht zu einer Person gehört."""
+    kandidaten = []
+    for wort, rang in _STICHWORT:
+        for m in re.finditer(rf"(?<![\wäöü]){wort}(?![\wäöü])[^\d\n]{{0,15}}{_DATUM}", text, re.I):
+            vor = text[max(0, m.start() - 30):m.start() + len(m.group(0)) - len(m.group(1))]
+            if _KEIN_STICHTAG.search(vor):
+                continue
+            try:
+                kandidaten.append((rang, m.start(), vi.datum_iso(m.group(1))))
+            except (ValueError, IndexError, AttributeError):
+                pass
+    if kandidaten:
+        return min(kandidaten)[2]
+    jahrestage = []
+    for m in re.finditer(r"(?<!\d)(01\.\s?01\.|1\.\s?1\.|31\.\s?12\.)\s?(\d{4})", text):
+        if _KEIN_STICHTAG.search(text[max(0, m.start() - 30):m.start()]):
+            continue
         try:
-            return vi.datum_iso(m.group(1))
+            jahrestage.append(vi.datum_iso(m.group(1).replace(" ", "") + m.group(2)))
         except (ValueError, IndexError):
             pass
-    return ""
+    heute = date.today()
+    jahrestage = [d for d in jahrestage if d <= f"{heute.year + 1}-12-31"]
+    if jahrestage:
+        return max(jahrestage)
+    # sonst das jüngste Datum der letzten drei Jahre, das nicht zu einer Person gehört (z. B. «Basel, 15.02.2026»)
+    rest = []
+    for m in re.finditer(_DATUM, text, re.I):
+        if _KEIN_STICHTAG.search(text[max(0, m.start() - 30):m.start()]):
+            continue
+        try:
+            d = vi.datum_iso(m.group(1))
+        except (ValueError, IndexError, AttributeError):
+            continue
+        if f"{heute.year - 3}-01-01" <= d <= f"{heute.year + 1}-12-31":
+            rest.append(d)
+    return max(rest) if rest else ""
 
 
 def erkennen(text: str) -> dict:

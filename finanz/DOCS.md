@@ -164,7 +164,9 @@ personen:
 - **Vorsorgedokumente:** Vorsorgeausweis, 3a-Auszug, 3b-Police bzw. 3b-Konto und IK-Auszug als PDF hochladen
   (mehrere Dateien auf einmal möglich). Erkannt werden u. a. Altersguthaben, Einkaufspotenzial, Prognose mit 65,
   Sparbeitrag, Umwandlungssatz, Invaliden-, Partner- und Waisenrenten, Todesfallkapital, Jahreslohn, 3a-Saldo,
-  3b-Rückkaufswert bzw. -Guthaben, Prämie, Erlebensfall- und Todesfallkapital sowie AHV-Beitragsjahre. Das
+  3b-Rückkaufswert bzw. -Guthaben, Prämie, Erlebensfall- und Todesfallkapital sowie AHV-Beitragsjahre. Der Stand
+  des Dokuments kommt aus «Stichtag», «gültig ab», «Stand» oder «per» – Geburts-, Eintritts- und Bezugsdaten zählen
+  nicht; ohne Stichwort der jüngste 1.1. bzw. 31.12. Das
   3b-Guthaben wird als Saldo eines Vorsorge-Kontos unter «Vermögen» übernommen (Konto wählbar; eine gleichnamige
   verpfändete 3b unter Wohnen wird nachgeführt), die 3b-Todesfallleistung als «Todesfallkapital Policen»; das
   3a-Guthaben als Saldo eines 3a-Kontos (Feld leer lassen = nur Einstellungen). Auf der Dokumentseite stehen

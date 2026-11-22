@@ -3049,3 +3049,15 @@ def test_dokumente_neueste():
             {"id": 4, "typ": "saeule3a", "person": "Anna", "anbieter": "Musterbank", "stichtag": "", "hochgeladen": "2026-01-05"},
             {"id": 5, "typ": "lohnausweis", "person": "Anna", "anbieter": "", "stichtag": "", "hochgeladen": "2026-01-05"}]
     assert [d["id"] for d in dk.neueste(doks, ("pk_ausweis", "saeule3a"))] == [2, 3, 4]
+
+
+def test_stichtag_nicht_geburtsdatum():
+    import dokumente as dk
+    gd = "Versicherte Person: Anna Muster\nGeburtsdatum 12.03.1985\nEintrittsdatum 01.04.2015\n"
+    assert dk._stichtag(gd + "Stand per 01.01.2026\nAltersguthaben 120'000") == "2026-01-01"
+    assert dk._stichtag("Persönlicher Ausweis gültig ab 1. Januar 2026\n" + gd) == "2026-01-01"
+    assert dk._stichtag(gd + "Vorsorgeausweis 01.01.2026\nDatum Pensionierung 01.04.2050") == "2026-01-01"
+    assert dk._stichtag(gd + "Basel, 15.02.2026") == "2026-02-15"
+    assert dk._stichtag("Datum: 15.02.2026\n" + gd + "Altersguthaben per 31.12.2025") == "2025-12-31"
+    assert dk._stichtag(gd) == ""                                   # lieber leer als das Geburtsdatum
+    assert dk._stichtag("Geburtsdatum: 01.01.1985") == ""
