@@ -3012,3 +3012,30 @@ def test_kurztext_und_kurz_zeilen(k):
     assert "Sparpotenzial" in kurz.satz("sparplan", k, db)
     # Dateiauswahl bekommt eine Beschriftung
     assert 'aria-label="Datei auswählen"' in seiten.seite("x", "budget", '<input type="file" name="datei">')
+
+
+def test_entnahme_pflege_zinsrisiko(k):
+    import entnahme as en
+    import pflege as pf
+    import zinsrisiko as zr
+    db = vm.verbinden(":memory:")
+    kk = copy.deepcopy(k)
+    kk["haushalt"]["bedarf_ruhestand"] = 90_000
+    p = en.rechnen(kk, db, 2026)
+    assert p and {v.schluessel for v in p.varianten} >= {"eingestellt", "kapital"}
+    rente = next(v for v in p.varianten if v.schluessel in ("rente", "eingestellt") and (v.anteil == 0 or v.anteil is None))
+    kapital = next(v for v in p.varianten if v.schluessel == "kapital")
+    assert kapital.steuern_kapital > rente.steuern_kapital            # Kapital kostet Kapitalsteuer
+    assert kapital.rente_jahr < rente.rente_jahr or rente.schluessel == "eingestellt"
+    assert all(v.jahre for v in p.varianten)
+    kk["haushalt"]["bedarf_ruhestand"] = 0
+    assert en.rechnen(kk, db, 2026) is None
+    kk["haushalt"]["bedarf_ruhestand"] = 90_000
+    faelle = pf.rechnen(kk, db, 2026)
+    assert len(faelle) == len(kk["personen"])
+    f = faelle[0]
+    assert f.kosten == round((190 + 23) * 365 + 400 * 12) and f.hilflosen == round(0.5 * kk["kennzahlen"]["ahv_min"] * 12)
+    kk["pflege"] = {"hilflosigkeit": "leicht"}
+    assert pf.rechnen(kk, db, 2026)[0].hilflosen == 0              # leichter Grad im Heim ohne Anspruch
+    assert any("Wohnrecht" in m for m in pf.massnahmen(kk)) == (kk["haushalt"].get("zivilstand") != "verheiratet")
+    assert zr.rechnen({**kk, "wohnen": {"aktiv": False}}, db) is None

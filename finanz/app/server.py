@@ -59,6 +59,8 @@ SEITEN = {
     "vorschlaege": ("Vorschläge", seiten.vorschlaege),
     "nachlass/fragebogen": ("Fragebögen zum Nachlass", seiten.nachlass_fragebogen),
     "konkubinat": ("Konkubinat-Check", seiten.konkubinat_seite),
+    "entnahme": ("Entnahmeplan", seiten.entnahme_seite),
+    "pflege": ("Pflege im Alter", seiten.pflege_seite),
     "verfuegungen": ("Verfügungen", seiten.verfuegungen),
     "einstellungen": ("Einstellungen", seiten.einstellungen),
     "daten": ("Daten & Import", seiten.daten),
@@ -530,6 +532,23 @@ class Handler(BaseHTTPRequestHandler):
             with db() as v:
                 cl.abhaken(v, str(form.get("liste")), str(form.get("punkt")), not form.get("aus"))
             return ("Zurückgesetzt." if form.get("aus") else "Erledigt."), "checklisten"
+        if pfad in ("entnahme/annahmen", "pflege/annahmen"):
+            k = konfig.laden()
+            felder = ({"bis_alter": (60, 110), "abzuege": (0, 50_000)} if pfad.startswith("entnahme") else
+                      {"taxe_tag": (50, 600), "eintritt_alter": (60, 105), "dauer_jahre": (1, 20)})
+            ziel = k.setdefault(pfad.split("/")[0], {})
+            for f, (lo, hi) in felder.items():
+                roh = str(form.get(f) or "").strip().replace("'", "").replace(",", ".")
+                if not roh:
+                    continue
+                wert = float(roh)
+                if not lo <= wert <= hi:
+                    raise ValueError(f"{f}: zwischen {lo} und {hi} angeben.")
+                ziel[f] = int(wert) if wert == int(wert) else wert
+            if pfad.startswith("pflege") and form.get("hilflosigkeit") in ("keine", "leicht", "mittel", "schwer"):
+                ziel["hilflosigkeit"] = str(form.get("hilflosigkeit"))
+            konfig.speichern(k)
+            return "Annahmen gespeichert.", pfad.split("/")[0]
         if pfad == "wohnen/amortisationsvergleich":
             k = konfig.laden()
             for feld, schl in (("zins", "vergleich_zins"), ("ertrag", "vergleich_ertrag")):

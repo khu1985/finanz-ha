@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.68.0 – 2026-11-22
+
+- **Entnahmeplan** (Reiter unter Vorsorge): Rente oder Kapital – nur Rente, wie eingestellt, halb/halb, nur Kapital –
+  Jahr für Jahr bis 95 mit Kapital-, Einkommens- und Vermögenssteuer, Vermögen mit 85 und am Ende, ob das Geld reicht,
+  Bezugsplan und Hinweise zur Reihenfolge (3a gestaffelt, PK-Kapital, Freizügigkeit, Konkubinat).
+- **Pflege im Alter** (Reiter unter Vorsorge): Heimkosten pro Jahr, Renten und Hilflosenentschädigung, Lücke, wie
+  lange das Vermögen reicht, wann Ergänzungsleistungen möglich wären – mit dem Hausanteil im Konkubinat – und
+  Massnahmen. Heimtaxe, Eintrittsalter, Dauer und Hilflosigkeit direkt auf der Seite änderbar.
+- **Zinsrisiko** (Teil unter Wohnen): 2–6 % bei der Verlängerung, mit und ohne direkte Amortisation – Zinsen nach
+  Steuern, Mehrkosten pro Monat inklusive Wegfall des Eigenmietwerts, Sparen danach, Tragbarkeit, Schmerzgrenze.
+- Kurz-Zeilen für Entnahmeplan und Pflege; Formulare mit mehreren Feldern brechen am Handy um.
+
 ## 0.67.0 – 2026-11-21
 
 - **Heute statt Übersicht:** Die frühere Seite «Übersicht» ist jetzt Teil der Startseite – «Jetzt», «Alle Bereiche»

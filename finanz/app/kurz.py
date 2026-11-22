@@ -146,11 +146,37 @@ def _lebensereignisse(k, db) -> str:
     return ("Bei Stellenverlust – " + "; ".join(teile) + ".") if teile else ""
 
 
+def _entnahme(k, db) -> str:
+    import entnahme as en
+    p = en.rechnen(k, db)
+    if not p:
+        return ""
+    ok = [v for v in p.varianten if v.reicht_bis is None]
+    if not ok:
+        v = min(p.varianten, key=lambda v: v.luecke_total)
+        return f"Das Vermögen reicht in keiner Variante bis {p.bis_alter}; am längsten mit «{v.name}» (bis {v.reicht_bis})."
+    b = max(ok, key=lambda v: v.vermoegen_ende)
+    return (f"Am meisten bleibt mit «{b.name.split(' (')[0]}»: {_chf(b.vermoegen_ende)} mit {p.bis_alter}"
+            + ("; das Geld reicht in allen Varianten." if len(ok) == len(p.varianten) else "."))
+
+
+def _pflege(k, db) -> str:
+    import pflege as pf
+    f = pf.rechnen(k, db)
+    if not f:
+        return ""
+    teile = [f"{x.person} " + ("Renten decken" if x.jahre_gedeckt is None else "über 30 Jahre" if x.jahre_gedeckt > 30
+                               else f"{x.jahre_gedeckt:.0f} Jahre") for x in f]
+    return (f"Ein Jahr im Pflegeheim kostet rund {_chf(f[0].kosten)}; die Lücke nach Renten deckt das Vermögen: "
+            + ", ".join(teile) + ".")
+
+
 SAETZE = {"budget": _budget, "vermoegen": _vermoegen, "steuern": _steuern, "vorsorge": _vorsorge,
           "wohnen": _wohnen, "versicherungen": _versicherungen, "kinder": _kinder, "fahrzeuge": _fahrzeuge,
           "finanzplan": None, "nachlass": None, "konkubinat": _konkubinat,
           "liquiditaet": _liquiditaet, "sparplan": _sparplan, "steuerzahlung": _steuerzahlung,
-          "steuererklaerung": _steuererklaerung, "lebensereignisse": _lebensereignisse}
+          "steuererklaerung": _steuererklaerung, "lebensereignisse": _lebensereignisse, "entnahme": _entnahme,
+          "pflege": _pflege}
 
 
 def satz(pfad: str, k: dict, db) -> str:

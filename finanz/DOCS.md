@@ -125,8 +125,10 @@ personen:
 | Checklisten | Reiter unter «Heute»: Monats-Check (Kontoauszüge, Saldi, fällige Aufgaben, Steuerzahlungen, erkannte Werte bestätigen, neue Dokumente) und Jahresabschluss (Saldi per 31.12., Lohnausweise, 3a-Bescheinigungen, Vorsorgeausweis, Wertschriften, Hypothek, Abzüge, Prämien, Steuererklärung bis 31.3.); Punkte mit Status aus den Daten haken sich selbst ab, die übrigen von Hand; offene Checklisten erscheinen als Erinnerung (Monats-Check fällig am 10., Jahresabschluss Januar bis April) |
 | Jahresbericht | Reiter unter «Heute»: Vergleich mit dem Vorjahr, das Wichtigste, Ampeln, Massnahmen der nächsten 12 Monate, Drucken |
 | Vorsorge | Pensionslücke, AHV, Pensionskasse, 3a, Vorsorgedokumente |
+| Entnahmeplan | Reiter unter «Vorsorge»: Rente oder Kapital im Vergleich, Bezugsplan, Jahr für Jahr bis 95 (siehe [Entnahmeplan](#entnahmeplan-im-ruhestand)) |
+| Pflege im Alter | Reiter unter «Vorsorge»: Heimkosten, Deckung durch Renten und Vermögen, Ergänzungsleistungen (siehe [Pflege](#pflege-im-alter)) |
 | Steuern | Reiter «Steuern bezahlen»: offene Beträge je Steuerjahr (im Konkubinat pro Person), Fälligkeit, Vergütungs- und Verzugszins, Steuerkonto mit allen Positionen (auch aus den Buchungen); Steuern heute (pro Steuererklärung), Abzüge simulieren, Steuerdokumente mit Vergleich und Abgleich, E-Steuerauszug der Bank, Kapitalbezug |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Amortisation bei Fälligkeit im Vergleich (Höhe, Zins und Ertrag wählbar), Amortisationsstrategie (Varianten bis zur Pensionierung), Wert der Liegenschaft und Erneuerungsplanung; Reiter «Solar & vZEV» und «Fahrzeuge» |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Wegfall Eigenmietwert, Amortisation bis zur Fälligkeit, Amortisation bei Fälligkeit im Vergleich (Höhe, Zins und Ertrag wählbar), Amortisationsstrategie (Varianten bis zur Pensionierung), Zinsrisiko bei der Verlängerung, Wert der Liegenschaft und Erneuerungsplanung; Reiter «Solar & vZEV» und «Fahrzeuge» |
 | Kinder | Sparen für die Kinder (Bestand, Sparplan, Ziel, Wert am Ziel), Lebenslauf je Kind (Kita, Kindergarten, Schule, Lehre bzw. Gymnasium, Studium) mit eigenen Kosten und Vergleichswerten je Phase, Kosten pro Jahr, Zulagen und Steuerwirkung, Kinder erfassen |
 | Sparen & Anlegen | Reiter unter «Vermögen»: Reihenfolge für den nächsten Franken (Reserve, Schulden, 3a, zweckgebunden, PK-Einkauf, langfristig), Sparplan pro Monat, Aufteilung Soll-Ist, Produktarten |
 | Vermögen | Vermögen pro Person (Diagramm), Konten (auch in Fremdwährung) mit eigener Seite zum Verwalten, Saldi, Säule 3a je Konto mit gestaffeltem Bezug, Wertschriften pro Position, Anlage-Check, Bank-Import (camt.053, CSV), eigene Liste, Verlauf, Aufteilung nach Art |
@@ -168,6 +170,47 @@ personen:
   3a-Guthaben als Saldo eines 3a-Kontos (Feld leer lassen = nur Einstellungen). Auf der Dokumentseite stehen
   erkannte und heutige Werte nebeneinander; Person wählen, Werte prüfen, übernehmen. Dazu eine Einschätzung
   (Ersparnis eines Einkaufs, Umwandlungssatz, Beitragslücken, Partnerrente im Konkubinat).
+
+### Entnahmeplan im Ruhestand
+
+Reiter «Entnahmeplan» unter Vorsorge: Rente oder Kapital – und reicht das Geld? Jahr für Jahr ab der Pensionierung
+bis `entnahme.bis_alter` (Standard 95) in heutigen Franken, je Steuereinheit (Ehepaar gemeinsam, im Konkubinat jede
+Person mit der Hälfte des Bedarfs `haushalt.bedarf_ruhestand`):
+
+| Variante | PK-Kapitalanteil |
+|---|---|
+| Nur Rente | 0 % |
+| Wie eingestellt | `personen[].pk.kapitalbezug_anteil` |
+| Halb Rente, halb Kapital | 50 % |
+| Nur Kapital | 100 % |
+
+Einnahmen: AHV ab dem Rentenalter (Kaufkraft ungefähr erhalten), PK-Rente (nominal fix, verliert die Teuerung).
+Kapitalbezüge (PK und 3a, gestaffelt wie unter Vorsorge) mit Kapitalleistungssteuer im Bezugsjahr; laufend
+Einkommenssteuer auf Renten und ⅓ des Vermögensertrags (`haushalt.entnahme_rendite`) abzüglich `entnahme.abzuege`
+pro Person (Standard 8'000) sowie Vermögenssteuer. Startvermögen: freie Konten heute (gemeinsame anteilig) plus
+`sparen_monat` bis zur Pensionierung ohne Rendite. Die Tabelle zeigt Renten im ersten Jahr, Kapital- und laufende
+Steuern, Vermögen mit 85 und am Ende und ob das Geld reicht; darunter der Bezugsplan und – zugeklappt – Jahr für Jahr.
+Vereinfacht: Tarife in heutigen Franken, keine Hinterlassenenrenten, Hypothek nicht zurückbezahlt.
+
+### Pflege im Alter
+
+Reiter «Pflege im Alter» unter Vorsorge, pro Person in heutigen Franken (`pflege`):
+
+| Annahme | Standard |
+|---|---|
+| Heimtaxe Hotellerie und Betreuung (`taxe_tag`) | 190 pro Tag |
+| Eigenanteil Pflege (`pflege_tag`, KVG Art. 25a: höchstens 20 % des höchsten Kassenbeitrags) | 23 pro Tag |
+| Persönliche Auslagen (`auslagen_monat`) | 400 pro Monat |
+| Eintritt (`eintritt_alter`), Dauer (`dauer_jahre`) | 85, 3 Jahre |
+| Hilflosenentschädigung (`hilflosigkeit`: mittel 50 %, schwer 80 % der AHV-Minimalrente; leicht im Heim ohne Anspruch) | mittel |
+| EL-Vermögensschwelle (`el_schwelle`, Ehepaare `el_schwelle_paar`) | 100'000 / 200'000 |
+
+Die Seite zeigt Heimkosten, Renten (AHV und PK im Eintrittsjahr), Hilflosenentschädigung, die Lücke pro Jahr, das
+freie Vermögen bei Eintritt (aus dem Entnahmeplan), wie viele Jahre es die Lücke deckt und ab wann Ergänzungsleistungen
+möglich wären. Die selbst bewohnte Liegenschaft zählt für die EL-Schwelle nicht – im Heim nur, solange der Ehegatte
+darin wohnt; im Konkubinat zählt der Hausanteil deshalb voraussichtlich mit (Hinweis auf der Seite). Dazu Massnahmen:
+Wohnrecht für den Partner, Vorsorgeauftrag, Vermögensverzicht bei Schenkungen, Rückerstattung der EL durch die Erben
+(Nachlass über 40'000), Hilflosenentschädigung, Pflegereserve. Taxen und EL-Berechnung bei der SVA prüfen.
 
 ## Steuern
 
@@ -279,6 +322,16 @@ Beträge, deren Hälfte die Liquidität einer Person (abzüglich ihres Anteils a
 - **Hinweise:** Fragen an die Bank zu den verpfändeten Policen (prämienfrei stellen, Rückkaufswert,
   Begünstigung, Todesfallschutz) und – bei indirekter Amortisation – ein neues 3a-Konto nach der Auflösung, damit
   der Steuerabzug weiterläuft.
+
+### Zinsrisiko bei der Verlängerung
+
+Teil «Zinsrisiko» unter Wohnen: Was halten Budget und Tragbarkeit bei der Fälligkeit (`wohnen.hypothek_faellig`)
+aus? Für 2, 3, 4, 5 und 6 % je ohne zusätzliche und mit der grössten möglichen direkten Amortisation (aus dem Vergleich
+bei Fälligkeit): Resthypothek, Zinsen nach Steuern (nach dem Wegfall des Eigenmietwerts nur noch der vermietete Anteil
+abziehbar), Mehrkosten pro Monat gegenüber heute inklusive übriger Wirkung des Systemwechsels, was vom geplanten Sparen
+(`sparen_monat`) bleibt und die Tragbarkeit mit heutigen Löhnen und 1 % Unterhalt. Die **Schmerzgrenze** ist der
+Zins, bei dem das Sparen auf null fällt; Hinweise, ab welchem Zins die Tragbarkeit über der Grenze liegt und wie sich
+das Risiko absichern lässt.
 
 ### Teilweise vermietet und Miteigentum
 

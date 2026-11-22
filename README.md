@@ -13,9 +13,9 @@ Assistant; Dokumente (PDF, auch gescannt), Kontoauszüge (camt.053, CSV) und E-S
 | Bereich | Inhalt |
 |---|---|
 | Heute | Startseite in drei Teilen: «Jetzt» (ein Satz, was jetzt zählt, vier Kennzahlen, Aufgaben der nächsten 30 Tage, Bereiche zum Handeln), «Alle Bereiche» (alle Ampeln und Erinnerungen), «Kennzahlen & Hinweise» (Kennzahlen, Hinweise, Vermögensverlauf, Einkommen im Ruhestand); Reiter Checklisten (Monats-Check, Jahresabschluss) |
-| Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen |
+| Vorsorge | AHV (Rentenskala 44, Splitting, Erziehungsgutschriften, Plafond, 13. Rente), Pensionskasse (Ausweis-Prognose oder BVG-Minimum, Einkäufe, Sperrfrist), Säule 3a, Pensionslücke in heutigen Franken mit Teuerung, Zuzug in die Schweiz (Beitragslücken, Einkaufsgrenze, Renten aus dem Ausland); Vorsorgeausweis, 3a-, 3b- und IK-Auszug hochladen; Reiter Entnahmeplan (Rente oder Kapital, Bezugsplan, reicht das Geld bis 95?) und Pflege im Alter (Heimkosten, Deckung, Ergänzungsleistungen) |
 | Steuern | Steuern bezahlen mit Steuerkonto (pro Person im Konkubinat), Bundessteuer nach Tarif, Kanton als Kurve durch die letzte Veranlagung, Konkubinat getrennt, 3a und PK-Einkauf simulieren, Vermögenssteuer, Kapitalbezug gestaffelt; Steuererklärungen und Veranlagungen hochladen, Mehrjahresvergleich, Grenzsteuersatz, Abgleich; E-Steuerauszug der Bank (eCH-0196) |
-| Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Höhe der Amortisation im Vergleich (Zins und Ertrag wählbar, gleich viel pro Person im Konkubinat), Amortisationsstrategie bis zur Pensionierung, Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
+| Wohnen | Tragbarkeit, maximaler Kaufpreis, Amortisation bis zur Fälligkeit (inkl. verpfändeter 3a/3b), Höhe der Amortisation im Vergleich (Zins und Ertrag wählbar, gleich viel pro Person im Konkubinat), Amortisationsstrategie bis zur Pensionierung, Zinsrisiko bei der Verlängerung (2–6 %, Schmerzgrenze), Wegfall des Eigenmietwerts ab 2029; Wert der Liegenschaft, Erneuerungen und Erneuerungsfonds |
 | Solar & vZEV | Werte der vZEV-App über Home Assistant: Ertrag, Rendite, Steuern (Abzug der Investition, Einspeisung netto), Komponenten in der Erneuerungsplanung, Einnahmen im Finanzplan |
 | Fahrzeuge | Wert als steuerbares Vermögen, Kosten pro Jahr und Kilometer mit TCS-Vergleich, Leasing, Ersatz als Lebensziel, Erinnerungen für MFK und Leasingende |
 | Kinder | Lebenslauf je Kind von der Kita über Schule und Lehre bzw. Gymnasium bis zum Studium – mit eigenen Kosten und Vergleichswerten je Phase (Zürcher Kinderkosten-Tabelle, Kita-Vollkosten, Studienbudget); Zulagen, Betreuung, Steuerwirkung über die Jahre; wirkt auf Steuern, AHV, Risiko, Nachlass, Krankenkasse, Finanzplan und Erinnerungen |
@@ -142,6 +142,9 @@ flowchart TB
 | `finanz/app/sensoren.py` | Sensoren für Home Assistant |
 | `finanz/app/nachlass.py` | Nachlass, Erbschaftssteuer, Checkliste |
 | `finanz/app/budget.py` | Buchungen, Kategorien, Budget-Auswertung |
+| `finanz/app/entnahme.py` | Entnahmeplan im Ruhestand: Rente oder Kapital (0 %, wie eingestellt, 50 %, 100 %) Jahr für Jahr mit Kapital-, Einkommens- und Vermögenssteuer, Vermögen mit 85 und am Ende, Bezugsplan |
+| `finanz/app/pflege.py` | Pflegefall im Alter: Heimkosten, Renten und Hilflosenentschädigung, wie lange das Vermögen reicht, Ergänzungsleistungen und Hausanteil im Konkubinat |
+| `finanz/app/zinsrisiko.py` | Zinsrisiko bei der Verlängerung der Hypothek: 2–6 % mit und ohne direkte Amortisation, Mehrkosten, Sparen danach, Tragbarkeit, Schmerzgrenze |
 | `finanz/app/konkubinat.py` | Konkubinat-Check: je Bereich (Tod, Urteilsunfähigkeit, Trennung, Kinder, Steuern und AHV) Lage, Status und nächster Schritt |
 | `finanz/app/checklisten.py` | Geführte Checklisten: Monats-Check und Jahresabschluss mit Status aus den Daten |
 | `finanz/app/verwaltung.py` | Übersicht, Duplikate und Löschen aller Dokumente |

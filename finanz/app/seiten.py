@@ -38,6 +38,7 @@ REITER = [
     [("budget", "Budget"), ("liquiditaet", "Liquidität 12 Monate")],
     [("vermoegen", "Vermögen"), ("sparplan", "Sparen & Anlegen")],
     [("steuern", "Planung und Dokumente"), ("steuerzahlung", "Steuern bezahlen"), ("steuererklaerung", "Steuererklärung")],
+    [("vorsorge", "Vorsorge"), ("entnahme", "Entnahmeplan"), ("pflege", "Pflege im Alter")],
     [("finanzplan", "Finanzplan"), ("szenarien", "Rechner"), ("simulationen", "Simulationen"),
      ("lebensereignisse", "Lebensereignisse")],
     [("wohnen", "Wohnen"), ("solar", "Solar & vZEV"), ("fahrzeuge", "Fahrzeuge")],
@@ -58,6 +59,7 @@ UNTERTEILE: dict[str, list[tuple[str, str, list[str]]]] = {
                   ("anlagen", "3a & Anlagen", ["Säule 3a", "Wertschriften", "Anlage-Check"])],
     "wohnen": [("tragbarkeit", "Tragbarkeit", ["Tragbarkeit"]),
                ("amortisation", "Amortisation", ["Amortisation"]),
+               ("zinsrisiko", "Zinsrisiko", ["Zinsrisiko"]),
                ("steuern", "Steuern", ["Liegenschaft in der Steuer", "Liegenschaft: Deklaration"]),
                ("unterhalt", "Unterhalt & Wert", ["Erneuerungen", "Liegenschaft: Wert", "Bauteile"])],
     "versicherungen": [("vertraege", "Verträge", ["Verträge", "Kündigungstermine", "Prämien nach Sparte"]),
@@ -286,8 +288,8 @@ details.woher>div p{margin:0 0 6px}details.woher ul.hinweise{margin:0 0 6px;padd
 .kpi details.woher span,.kpi details.woher small{display:inline;font-size:12px;margin:0}
 .kpis .kpi:has(details.woher[open]){grid-column:1/-1}
 p.kurz{font-size:17px;font-weight:600;margin:4px 0 14px;padding:10px 14px;border-left:4px solid var(--akzent);background:var(--karte);border-radius:6px}
-.vergleich-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}.vergleich-form .felder{display:flex;gap:12px;margin:0}
-.vergleich-form .felder label{width:150px}.vergleich-form .zeile{margin:0}
+.vergleich-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}.vergleich-form .felder{display:flex;flex-wrap:wrap;gap:12px;margin:0}
+.vergleich-form .felder label{width:150px;max-width:calc(50% - 6px)}.vergleich-form .zeile{margin:0}
 .erklaer-zeile{margin:10px 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .erklaer-zeile>details.woher{margin:0}.erklaer-zeile>details.woher[open]{flex-basis:100%}td details.woher{margin-top:4px}
 .ampeln{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));margin-bottom:16px}
@@ -829,6 +831,124 @@ def konkubinat_seite(k: dict, db) -> str:
     return "".join(teile)
 
 
+def zinsrisiko_karte(k: dict, db) -> str:
+    import zinsrisiko as zr
+    try:
+        r_ = zr.rechnen(k, db)
+    except Exception:  # noqa: BLE001
+        return ""
+    if not r_:
+        return ""
+    zeilen = []
+    for z in r_.zeilen:
+        bleibt = f'<span class="{"schlecht" if z.bleibt_monat < 0 else ""}">{chf(z.bleibt_monat)}</span>'
+        trag = f'<span class="{"schlecht" if z.tragbarkeit > k["kennzahlen"]["tragbarkeit_max"] else ""}">{z.tragbarkeit:.1f} %</span>'
+        zeilen.append([f"{z.zins:.0f} %", "–" if not z.direkt else chf(z.direkt), chf(z.rest), chf(z.netto_jahr),
+                       ("+" if z.mehr_monat > 0 else "") + chf(z.mehr_monat), bleibt, trag])
+    kpis = (f'<div class="kpis">{kpi(f"{r_.schmerzgrenze:.1f} %" if r_.schmerzgrenze is not None else "–", "Schmerzgrenze Zins", ampel=am.GRUEN if (r_.schmerzgrenze or 99) >= 5 else am.GELB if (r_.schmerzgrenze or 0) >= 3.5 else am.ROT)}'
+            f'{kpi(chf(r_.hypothek_heute), f"Hypothek heute zu {r_.zins_heute:g} %")}'
+            f'{kpi(chf(r_.sparen_monat), "Sparen pro Monat heute")}</div>')
+    spalten = erklaerung(
+        '<ul class="hinweise"><li><b>direkt:</b> zusätzliche direkte Amortisation bei der Fälligkeit (– = keine).</li>'
+        '<li><b>Zinsen netto:</b> pro Jahr nach Steuern; nach dem Wegfall des Eigenmietwerts nur noch der vermietete '
+        'Anteil abziehbar.</li><li><b>Mehrkosten:</b> pro Monat gegenüber heute, inklusive übriger Wirkung des '
+        'Systemwechsels (Eigenmietwert, Unterhalt).</li><li><b>Sparen danach:</b> geplantes Sparen minus Mehrkosten.'
+        '</li><li><b>Tragbarkeit:</b> Zins und 1 % Unterhalt im Verhältnis zu den heutigen Löhnen.</li></ul>',
+        "Was bedeuten die Spalten?")
+    return karte(f"Zinsrisiko ab {r_.faellig:%m.%Y}", kpis + tabelle(
+        ["Zins", "direkt", "Resthypothek", "Zinsen netto", "Mehrkosten/Monat", "Sparen danach", "Tragbarkeit"],
+        zeilen, zahlen_ab=1, responsiv=False) + spalten + hinweisliste(r_.hinweise))
+
+
+def entnahme_seite(k: dict, db) -> str:
+    import entnahme as en
+    p = en.rechnen(k, db)
+    if not p:
+        return karte("Entnahmeplan", '<p>Zuerst den Bedarf im Ruhestand erfassen: <a href="einstellungen#f-haushalt-'
+                                     'bedarf_ruhestand">Einstellungen → Haushalt</a>.</p>')
+    zeilen = []
+    for v in p.varianten:
+        reicht = ('<span class="gut">bis ' + str(p.bis_alter) + "</span>") if v.reicht_bis is None else \
+            f'<span class="schlecht">bis {v.reicht_bis}</span>'
+        zeilen.append([f"<b>{escape(v.name)}</b>", chf(v.rente_jahr), chf(v.steuern_kapital), chf(v.steuern_laufend),
+                       chf(v.steuern), chf(v.vermoegen_85), chf(v.vermoegen_ende), reicht])
+    c = en.konfiguration(k)
+    form = (f'<form method="post" action="entnahme/annahmen" class="vergleich-form"><div class="felder">'
+            f'<label>Rechnen bis Alter<input name="bis_alter" inputmode="numeric" value="{int(c["bis_alter"])}"></label>'
+            f'<label>Abzüge pro Person<input name="abzuege" inputmode="numeric" value="{int(c["abzuege"])}"></label>'
+            '</div><div class="zeile"><button>Aktualisieren</button></div></form>')
+    spalten = erklaerung(
+        '<ul class="hinweise"><li>Alle Beträge in heutigen Franken, je Steuereinheit gerechnet und zusammengezählt.</li>'
+        '<li><b>Renten 1. Jahr:</b> AHV und PK-Rente im ersten Ruhestandsjahr.</li>'
+        '<li><b>Kapitalsteuer:</b> auf PK-Kapital und 3a (gestaffelt).</li>'
+        '<li><b>laufende Steuern:</b> Einkommens- und Vermögenssteuer bis zum Endalter.</li>'
+        f'<li><b>Vermögen mit 85 / {p.bis_alter}:</b> freies Vermögen nach Bedarf und Steuern '
+        f'(Rendite {float(k["haushalt"].get("entnahme_rendite", 0) or 0):g} % minus Teuerung).</li></ul>',
+        "Was bedeuten die Spalten?")
+    teile = [karte("Rente oder Kapital", form + tabelle(
+        ["Variante", "Renten 1. Jahr", "Kapitalsteuer", "laufende Steuern", "Steuern total", "Vermögen mit 85",
+         f"Vermögen mit {p.bis_alter}", "Geld reicht"], zeilen, zahlen_ab=1, responsiv=False) + spalten
+        + hinweisliste(p.hinweise))]
+    if p.bezugsplan:
+        teile.append(karte("Bezugsplan (wie eingestellt)", tabelle(
+            ["Jahr", "Steuereinheit", "Kapitalbezug", "Kapitalsteuer"],
+            [[str(j), escape(e), chf(b), chf(st_)] for j, e, b, st_ in p.bezugsplan], zahlen_ab=2)
+            + '<p class="leise">PK-Kapitalanteil und 3a-Konten unter <a href="einstellungen#t-person-0">Einstellungen '
+              '→ Personen</a>; geplante Einkäufe unter Vorsorge.</p>'))
+    eing = next((v for v in p.varianten if v.schluessel == "eingestellt"), None)
+    if eing:
+        for e, js in eing.jahre.items():
+            z_ = [[str(z.jahr), chf(z.einnahmen), chf(z.kapital_netto), chf(z.steuern), chf(z.entnahme),
+                   chf(z.vermoegen)] for z in js if (z.jahr - js[0].jahr) % 5 == 0 or z.kapital_netto or z.luecke]
+            teile.append(karte(f"Jahr für Jahr – {e}", tabelle(
+                ["Jahr", "Renten", "Kapital netto", "Steuern", "aus Vermögen", "Vermögen Ende"], z_, zahlen_ab=1),
+                zu=True, kurz="alle 5 Jahre und Bezugsjahre"))
+    teile.append('<p class="leise">Vereinfachte Planung: Tarife in heutigen Franken, keine Hinterlassenenrenten, keine '
+                 'Rückzahlung der Hypothek. Annahmen unter <a href="annahmen">Annahmen</a>.</p>')
+    return "".join(teile)
+
+
+def pflege_seite(k: dict, db) -> str:
+    import pflege as pf
+    c = pf.konfiguration(k)
+    faelle = pf.rechnen(k, db)
+    zeilen = []
+    for f in faelle:
+        gedeckt = ('<span class="gut">Renten decken</span>' if f.jahre_gedeckt is None else
+                   f'<span class="{"gut" if f.jahre_gedeckt >= f.dauer * 2 else "schlecht" if f.jahre_gedeckt < f.dauer else ""}">'
+                   f'{f.jahre_gedeckt:.0f} Jahre</span>' if f.jahre_gedeckt <= 30 else '<span class="gut">über 30 Jahre</span>')
+        el = ("Hausanteil zählt" if f.haus_zaehlt else "–" if f.el_ab is None else
+              "sofort" if f.el_ab == 0 else f"nach {f.el_ab:.0f} Jahren")
+        zeilen.append([f"<b>{escape(f.person)}</b> ({f.jahr})", chf(f.kosten), chf(f.renten), chf(f.hilflosen),
+                       chf(f.luecke), chf(f.vermoegen), chf(f.hausanteil), gedeckt, chf(f.kosten_dauer), el])
+    grade = "".join(f'<option value="{g}"{" selected" if c["hilflosigkeit"] == g else ""}>{g}</option>'
+                    for g in ("keine", "leicht", "mittel", "schwer"))
+    form = ('<form method="post" action="pflege/annahmen" class="vergleich-form"><div class="felder">'
+            f'<label>Heimtaxe pro Tag<input name="taxe_tag" inputmode="numeric" value="{float(c["taxe_tag"]):g}"></label>'
+            f'<label>Eintritt mit Alter<input name="eintritt_alter" inputmode="numeric" value="{int(c["eintritt_alter"])}"></label>'
+            f'<label>Dauer Jahre<input name="dauer_jahre" inputmode="numeric" value="{int(c["dauer_jahre"])}"></label>'
+            f'<label>Hilflosigkeit<select name="hilflosigkeit">{grade}</select></label>'
+            '</div><div class="zeile"><button>Aktualisieren</button></div></form>')
+    spalten = erklaerung(
+        '<ul class="hinweise"><li>Pro Person und Jahr, heutige Franken.</li>'
+        f'<li><b>Heimkosten:</b> Taxe {float(c["taxe_tag"]):g} + Pflege-Eigenanteil {float(c["pflege_tag"]):g} pro Tag '
+        f'plus {float(c["auslagen_monat"]):g} persönliche Auslagen pro Monat.</li>'
+        '<li><b>Renten:</b> AHV und PK-Rente im Eintrittsjahr; <b>HE:</b> Hilflosenentschädigung der AHV.</li>'
+        '<li><b>Vermögen:</b> freies Vermögen der Person bei Eintritt laut Entnahmeplan (wie eingestellt).</li>'
+        '<li><b>reicht für:</b> Vermögen geteilt durch die jährliche Lücke (ohne Hausanteil).</li>'
+        '<li><b>EL möglich:</b> wann das Vermögen unter die Schwelle der Ergänzungsleistungen fällt.</li></ul>',
+        "Was bedeuten die Spalten?")
+    hinw = [h for f in faelle for h in f.hinweise]
+    teile = [karte("Pflegeheim: Kosten und Deckung", form + tabelle(
+        ["Person (Eintritt)", "Heimkosten", "Renten", "HE", "Lücke pro Jahr", "Vermögen", "Hausanteil", "reicht für",
+         f"Lücke {int(c['dauer_jahre'])} Jahre", "EL möglich"], zeilen, zahlen_ab=1, responsiv=False) + spalten
+        + hinweisliste(list(dict.fromkeys(hinw)))),
+        karte("Was ihr tun könnt", hinweisliste(pf.massnahmen(k))),
+        '<p class="leise">Vereinfachte Übersicht, keine Rechtsberatung. Taxen je Heim, Pflegestufe und die genaue '
+        'EL-Berechnung bei der Ausgleichskasse (SVA) prüfen.</p>']
+    return "".join(teile)
+
+
 def checklisten(k: dict, db) -> str:
     """Monats-Check und Jahresabschluss: geführt, mit Status aus den Daten."""
     import checklisten as cl
@@ -1314,6 +1434,7 @@ def wohnen(k: dict, db) -> str:
         "Liegenschaft in der Steuererklärung", emw, True, "Eigenmietwert, Abzüge") + "</div>" + je_person + amort \
         + amortisation_vergleich_karte(k, db) \
         + amortisation_strategie_karte(k, db) \
+        + zinsrisiko_karte(k, db) \
         + liegenschaft_karten(k, db)
 
 
