@@ -1,5 +1,10 @@
 # Änderungen
 
+## 0.68.1 – 2026-11-22
+
+- **Notfallordner:** Unter Vorsorge erscheint je Person und Anbieter nur noch der neueste Vorsorgeausweis bzw.
+  3a-/3b-Auszug. Ältere Jahrgänge bleiben unter Dokumente als Archiv und müssen nicht gelöscht werden.
+
 ## 0.68.0 – 2026-11-22
 
 - **Entnahmeplan** (Reiter unter Vorsorge): Rente oder Kapital – nur Rente, wie eingestellt, halb/halb, nur Kapital –

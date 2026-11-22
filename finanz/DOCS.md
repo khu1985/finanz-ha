@@ -143,7 +143,7 @@ personen:
 | Nachlass | Was der Partner im Todesfall erhält, Erbschaftssteuer, Checkliste Testament, Begünstigungen, Vorsorgeauftrag, Fragebögen pro Punkt |
 | Konkubinat | Reiter unter «Nachlass» (nur unverheiratete Paare): Konkubinat-Check je Bereich mit Lage, Ampel und nächstem Schritt (siehe [Nachlass](#nachlass-und-absicherung)) |
 | Verfügungen | Reiter unter «Nachlass»: Testament, Vorsorgeauftrag, Patientenverfügung, Konkubinatsvertrag, 3a-Begünstigung, Ehevertrag, Erbvertrag, Darlehen, Schenkung bzw. Erbvorbezug mit Fragen und Optionen entwerfen; Pflichtteile, Verteilung, Text mit vollen Namen zum Abschreiben bzw. Drucken |
-| Notfallordner | Reiter unter «Nachlass»: Druckbare Übersicht für Angehörige: Konten, Vorsorge, Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
+| Notfallordner | Reiter unter «Nachlass»: Druckbare Übersicht für Angehörige: Konten, Vorsorge (je Person und Anbieter nur der neueste Ausweis – ältere bleiben unter Dokumente als Archiv), Policen, Kontakte, Ablageorte, erste Schritte, Antworten der Fragebögen, Meldeliste für den Todesfall |
 | Berater | Reiter unter «Heute»: Situation, Beraterprofile, Amortisations-Szenario, Beratungen |
 | Einstellungen | Formular mit Plausibilitäts-Ampel pro Feld und «Speichern» pro Bereich (Leiste bei ungespeicherten Änderungen), Namen aufteilen; Reiter «Datenqualität» (Herkunft, Bestätigen, Widersprüche), «Annahmen» (alle Annahmen an einem Ort); Reiter «Daten & Import»: Sensoren, Import-Ordner, Dokumente neu sichten, YAML-Editor, Export und Import von `finanz.yaml` |
 | Dokumente | Alle hochgeladenen Dokumente und Buchungen: Datei öffnen, Text-Ampel, Duplikate, einzeln, ausgewählt oder alle löschen |

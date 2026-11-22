@@ -359,6 +359,21 @@ def speichern(db, did: int, typ: str, person: str, werte: dict, quelle: str | No
     db.commit()
 
 
+def neueste(doks: list[dict], typen: tuple[str, ...]) -> list[dict]:
+    """Je Typ, Person und Anbieter nur das neueste Dokument (Stichtag, sonst Hochladedatum) – ältere Jahrgänge
+    bleiben als Archiv, erscheinen aber z. B. im Notfallordner nicht mehrfach."""
+    beste: dict[tuple, dict] = {}
+    for d in doks:
+        if d["typ"] not in typen:
+            continue
+        schl = (d["typ"], str(d.get("person") or "").strip().lower(),
+                str(d.get("anbieter") or "").strip().lower())          # ohne Anbieter: je Typ und Person
+        datum = (d.get("stichtag") or "", d.get("hochgeladen") or "")
+        if schl not in beste or datum > (beste[schl].get("stichtag") or "", beste[schl].get("hochgeladen") or ""):
+            beste[schl] = d
+    return [d for d in doks if d in beste.values()]
+
+
 def loeschen(db, daten: Path, did: int) -> None:
     d = einer(db, did)
     if d and d["datei"]:

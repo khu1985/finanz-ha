@@ -4814,10 +4814,9 @@ def notfall(k: dict, db) -> str:
     vz = []
     try:
         dk.tabellen(db)
-        for d in dk.alle(db):
-            if d["typ"] in ("pk_ausweis", "saeule3a", "saeule3b"):
-                vz.append([escape(d["person"] or "–"), escape(dk.TYPEN.get(d["typ"], d["typ"])), escape(d["anbieter"] or d["dateiname"]),
-                           escape(d["stichtag"] or "")])
+        for d in dk.neueste(dk.alle(db), ("pk_ausweis", "saeule3a", "saeule3b")):
+            vz.append([escape(d["person"] or "–"), escape(dk.TYPEN.get(d["typ"], d["typ"])),
+                       escape(d["anbieter"] or d["dateiname"]), escape(d["stichtag"] or "")])
     except Exception:  # noqa: BLE001
         pass
     risiko = []

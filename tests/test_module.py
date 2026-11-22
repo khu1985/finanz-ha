@@ -3039,3 +3039,13 @@ def test_entnahme_pflege_zinsrisiko(k):
     assert pf.rechnen(kk, db, 2026)[0].hilflosen == 0              # leichter Grad im Heim ohne Anspruch
     assert any("Wohnrecht" in m for m in pf.massnahmen(kk)) == (kk["haushalt"].get("zivilstand") != "verheiratet")
     assert zr.rechnen({**kk, "wohnen": {"aktiv": False}}, db) is None
+
+
+def test_dokumente_neueste():
+    import dokumente as dk
+    doks = [{"id": 1, "typ": "pk_ausweis", "person": "Anna", "anbieter": "Muster PK", "stichtag": "2025-01-01", "hochgeladen": "2025-02-01"},
+            {"id": 2, "typ": "pk_ausweis", "person": "Anna", "anbieter": "Muster PK", "stichtag": "2026-01-01", "hochgeladen": "2026-02-01"},
+            {"id": 3, "typ": "pk_ausweis", "person": "Ben", "anbieter": "Muster PK", "stichtag": "2025-01-01", "hochgeladen": "2025-02-01"},
+            {"id": 4, "typ": "saeule3a", "person": "Anna", "anbieter": "Musterbank", "stichtag": "", "hochgeladen": "2026-01-05"},
+            {"id": 5, "typ": "lohnausweis", "person": "Anna", "anbieter": "", "stichtag": "", "hochgeladen": "2026-01-05"}]
+    assert [d["id"] for d in dk.neueste(doks, ("pk_ausweis", "saeule3a"))] == [2, 3, 4]
